@@ -4,19 +4,35 @@
   />
 </a>
 
-# wsl2distromanager
+# WSL2 Distro Manager
 
-A new Flutter project.
+A quick way to manage your WSL2 instances with a GUI.
 
-## Getting Started
+![image](https://user-images.githubusercontent.com/7342321/133839228-42ae7d5f-e0d6-45c6-9d41-fc787ad714fb.png)
 
-This project is a starting point for a Flutter application.
+## Why
 
-A few resources to get you started if this is your first Flutter project:
+WSL2 is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+## How to use
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Fairly simple. Download the latest release from the releases Page and start wsl2distromanager.exe
+
+## What works
+
+- [x] Starting the program. YAY!
+- [x] List WSL
+- [x] Copy WSL
+- [x] Delete WSL
+- [x] Start WSL
+- [ ] Rename
+- [ ] Create
+- [ ] Download
+
+## FAQ
+
+* There won't be Linux support. Just WSL2.
+
+## Stuff
+
+This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)
