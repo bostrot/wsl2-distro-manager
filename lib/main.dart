@@ -1,11 +1,11 @@
 import 'package:desktop_window/desktop_window.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-//import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:system_theme/system_theme.dart';
-import 'package:file_picker/file_picker.dart';
 
 import 'api.dart';
 import 'distro_list_component.dart';
+import 'distro_create_component.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,12 +20,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FluentApp(
-      title: 'Flutter Demo',
+      title: 'WSL2 Distro Manager by Bostrot',
       theme: ThemeData(
         accentColor: SystemTheme.accentInstance.accent.toAccentColor(),
         brightness: Brightness.light, // or Brightness.dark
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'WSL2 Distro Manager by Bostrot'),
     );
   }
 }
@@ -40,13 +40,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final autoSuggestBox = TextEditingController();
-  final locationController = TextEditingController();
-  final items = ['Debian', 'Ubuntu'];
   String status = '';
-  String? _extension;
 
-  WSLApi api = new WSLApi();
+  WSLApi api = WSLApi();
 
   void statusMsg(msg) {
     setState(() {
@@ -63,91 +59,24 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Padding(
-              padding: EdgeInsets.only(left: 12.0),
-              child: Text(
-                'New WSL2 instance:',
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: TextBox(
-                    placeholder: 'Name',
-                    suffix: IconButton(
-                      icon: const Icon(FluentIcons.close, size: 15.0),
-                      onPressed: () {},
-                    ),
-                  ),
-                ),
-                SizedBox(
-                    width: 150,
-                    child: AutoSuggestBox<String>(
-                      controller: autoSuggestBox,
-                      items: items,
-                      onSelected: (text) {
-                        print(text);
-                      },
-                      textBoxBuilder: (context, controller, focusNode, key) {
-                        return TextBox(
-                          key: key,
-                          controller: controller,
-                          focusNode: focusNode,
-                          suffix: IconButton(
-                            icon: const Icon(FluentIcons.close, size: 15.0),
-                            onPressed: () {
-                              controller.clear();
-                              focusNode.unfocus();
-                            },
-                          ),
-                          placeholder: 'Distro',
-                        );
-                      },
-                    )),
-                SizedBox(
-                  width: 150,
-                  child: TextBox(
-                    controller: locationController,
-                    placeholder: 'Save location',
-                    suffix: IconButton(
-                      icon: const SizedBox(
-                        child: Icon(FluentIcons.open_folder_horizontal,
-                            size: 15.0),
-                      ),
-                      onPressed: () async {
-                        FilePickerResult? result =
-                            await FilePicker.platform.pickFiles(
-                          type: FileType.custom,
-                          allowedExtensions: ['*'],
-                        );
-
-                        if (result != null) {
-                          locationController.text = result.files.single.path!;
-                        } else {
-                          // User canceled the picker
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Button(
-                      onPressed: () {},
-                      child: const Padding(
-                        padding: EdgeInsets.all(6.0),
-                        child: Text('Create'),
-                      ),
-                    )),
-              ],
-            ),
-            Center(
+            createComponent(api, statusMsg),
+            Padding(
+              padding: const EdgeInsets.only(left: 30.0, right: 30.0, top: 14.0, bottom: 8.0),
               child: Builder(
                 builder: (ctx) {
                   if (status != '') {
-                    return Text(status);
+                    return Container(
+                      color: const Color.fromRGBO(0, 0, 0, 0.05),
+                      child: ListTile(
+                        title: Text(status),
+                        leading: const Icon(FluentIcons.info),
+                        trailing: IconButton(icon: const Icon(FluentIcons.close), onPressed: () {
+                            setState(() {
+                              status = '';
+                            });
+                          }),
+                      )
+                    );
                   } else {
                     return const Text('');
                   }
@@ -155,6 +84,25 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             distroList(api, statusMsg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(onPressed: () async {
+                  await canLaunch('https://bostrot.com') ? 
+                  await launch('https://bostrot.com') : throw 'Could not launch URL';
+                  }, child: const Text("Created by Bostrot", style: TextStyle(fontSize: 12.0))),
+                const Text('|', style: TextStyle(fontSize: 12.0)),
+                TextButton(onPressed: () async {
+                  await canLaunch('https://github.com/bostrot/wsl2-distro-manager') ? 
+                  await launch('https://github.com/bostrot/wsl2-distro-manager') : throw 'Could not launch URL';
+                  }, child: const Text("Visit GitHub", style: TextStyle(fontSize: 12.0))),
+                const Text('|', style: TextStyle(fontSize: 12.0)),
+                TextButton(onPressed: () async {
+                  await canLaunch('http://paypal.me/bostrot') ? 
+                  await launch('http://paypal.me/bostrot') : throw 'Could not launch URL';
+                  }, child: const Text("Donate", style: TextStyle(fontSize: 12.0))),
+              ],
+            )
           ],
         ),
       ),

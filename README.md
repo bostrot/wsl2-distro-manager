@@ -10,6 +10,12 @@ A quick way to manage your WSL2 instances with a GUI.
 
 ![image](https://user-images.githubusercontent.com/7342321/133839228-42ae7d5f-e0d6-45c6-9d41-fc787ad714fb.png)
 
+## Build
+
+Enable Flutter Desktop `flutter config --enable-windows-desktop`
+
+https://flutter.dev/desktop
+
 ## Why
 
 WSL2 is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.
@@ -25,9 +31,10 @@ Fairly simple. Download the latest release from the releases Page and start wsl2
 - [x] Copy WSL
 - [x] Delete WSL
 - [x] Start WSL
-- [ ] Rename
-- [ ] Create
-- [ ] Download
+- [X] Rename WSL
+- [X] Create WSL
+- [X] Download WSL
+- [X] Select rootfs from storage
 
 ## FAQ
 

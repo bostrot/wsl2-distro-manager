@@ -10,7 +10,7 @@ FutureBuilder<List<String>> distroList(WSLApi api, statusMsg(msg)) {
         List list = snapshot.data ?? [];
         for (String item in list) {
           newList.add(Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.only(top:8.0),
             child: Container(
               color: const Color.fromRGBO(0, 0, 0, 0.1),
               child: ListTile(
@@ -28,16 +28,14 @@ FutureBuilder<List<String>> distroList(WSLApi api, statusMsg(msg)) {
                       icon: const Icon(FluentIcons.copy),
                       onPressed: () async {
                         print('pushed copy ' + item);
-                        statusMsg(
-                            'Copying ' + item + '. This might take a while...');
-                        String result = await api.copy(item);
-                        statusMsg('DONE: Copying ' + item + '.');
+                        copyDialog(context, item, api, statusMsg);
                       },
                     ),
                     IconButton(
                       icon: const Icon(FluentIcons.rename),
                       onPressed: () {
                         print('pushed rename ' + item);
+                        renameDialog(context, item, api, statusMsg);
                       },
                     ),
                     IconButton(
@@ -62,7 +60,7 @@ FutureBuilder<List<String>> distroList(WSLApi api, statusMsg(msg)) {
       }
 
       // By default, show a loading spinner.
-      return const ProgressRing();
+      return const Center(child: ProgressRing());
     },
   );
 }
@@ -72,7 +70,7 @@ deleteDialog(context, item, api, statusMsg(msg)) {
     context: context,
     builder: (context) {
       return ContentDialog(
-        title: Text('Delete ' + item + ' permanently?'),
+        title: Text('Delete $item permanently?'),
         content: const Text(
             'If you delete this Distro you won\'t be able to recover it. Do you want to delete it?'),
         actions: [
@@ -85,7 +83,88 @@ deleteDialog(context, item, api, statusMsg(msg)) {
               onPressed: () {
                 Navigator.pop(context);
                 api.remove(item);
-                statusMsg('DONE: Deleted ' + item + '.');
+                statusMsg('DONE: Deleted $item.');
+              }),
+          Button(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.pop(context);
+              }),
+        ],
+      );
+    },
+  );
+}
+
+final renameController = TextEditingController();
+renameDialog(context, item, api, statusMsg(msg)) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return ContentDialog(
+        title: Text('Rename $item'),
+        content: Column(
+          children: [
+            const Text('Warning: Renaming will recreate the whole WSL2 instance.'),
+                TextBox(
+                    controller: renameController,
+                    placeholder: item,
+                  ),
+          ],
+        ),
+        actions: [
+          Button(
+              child: const Text('Rename'),
+              style: ButtonStyle(
+                backgroundColor: ButtonState.all(Colors.blue),
+                foregroundColor: ButtonState.all(Colors.white),
+              ),
+              onPressed: () async {
+                Navigator.pop(context);
+                statusMsg('Renaming $item to ${renameController.text}. This might take a while...');
+                await api.copy(item, renameController.text);
+                await api.remove(item);
+                statusMsg('DONE: Renamed $item to ${renameController.text}.');
+              }),
+          Button(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.pop(context);
+              }),
+        ],
+      );
+    },
+  );
+}
+
+final copyController = TextEditingController();
+copyDialog(context, item, api, statusMsg(msg)) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return ContentDialog(
+        title: Text('Copy $item'),
+        content: Column(
+          children: [
+            Text('Copy the WSL instance $item.'),
+                TextBox(
+                    controller: copyController,
+                    placeholder: item,
+                  ),
+          ],
+        ),
+        actions: [
+          Button(
+              child: const Text('Copy'),
+              style: ButtonStyle(
+                backgroundColor: ButtonState.all(Colors.blue),
+                foregroundColor: ButtonState.all(Colors.white),
+              ),
+              onPressed: () async {
+                Navigator.pop(context);
+                statusMsg('Copying $item. This might take a while...');
+                await api.copy(item, copyController.text);
+                statusMsg('DONE: Copied $item to ${copyController.text}.');
               }),
           Button(
               child: const Text('Cancel'),

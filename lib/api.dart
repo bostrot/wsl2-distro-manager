@@ -9,10 +9,13 @@ class WSLApi {
   }
 
   // Start a WSL distro by name
-  Future<String> copy(String distribution) async {
+  Future<String> copy(String distribution, String newName, {String location = ''}) async {
+    if (location == '') {
+      location = distribution + '.tar';
+    }
     String exportRes = await export(distribution, distribution + '.tar');
-    String importRes = await import(distribution + '-copy',
-        './' + distribution + '-copy', distribution + '.tar');
+    String importRes = await import(newName,
+        './' + newName, distribution + '.tar');
     return exportRes + ' ' + importRes;
   }
 
@@ -27,6 +30,13 @@ class WSLApi {
   Future<String> remove(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--unregister', distribution]);
+    return results.stdout;
+  }
+
+  // Install a WSL distro by name
+  Future<String> install(String distribution) async {
+    ProcessResult results =
+        await Process.run('wsl', ['--install', '-d', distribution]);
     return results.stdout;
   }
 
@@ -48,6 +58,26 @@ class WSLApi {
       // Filter out docker data
       if (line != '' && !line.startsWith('docker-desktop-data')) {
         list.add(line);
+      }
+    });
+    return list;
+  }
+
+  // Returns list of downloadable WSL distros
+  Future<List<String>> getDownloadable() async {
+    ProcessResult results =
+        await Process.run('wsl', ['--list', '--online'], stdoutEncoding: null);
+    String output = utf8Convert(results.stdout);
+    List<String> list = [];
+    bool nameStarted = false;
+    output.split('\n').forEach((line) {
+      // Filter out docker data
+      if (line != '' && nameStarted) {
+        list.add(line.split(' ')[0]);
+      }
+      // List started
+      if (line.startsWith('NAME')) {
+        nameStarted = true;
       }
     });
     return list;

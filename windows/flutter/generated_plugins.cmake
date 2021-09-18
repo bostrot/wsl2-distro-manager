@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_window
   system_theme
+  url_launcher_windows
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)
