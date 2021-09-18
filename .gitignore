@@ -1,6 +1,7 @@
 *.tar
 Ubuntu*
-old/
+/old/
+/distros/
 
 # Miscellaneous
 *.class
