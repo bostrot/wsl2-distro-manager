@@ -8,7 +8,7 @@
 
 A quick way to manage your WSL2 instances with a GUI.
 
-![image](https://user-images.githubusercontent.com/7342321/133839228-42ae7d5f-e0d6-45c6-9d41-fc787ad714fb.png)
+![image](https://user-images.githubusercontent.com/7342321/133865387-27acd50f-c2a5-4010-9567-a39710cc72bc.png)
 
 ## Build
 
