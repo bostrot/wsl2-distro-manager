@@ -5,7 +5,7 @@ echo $GITHUB_TOKEN > token
 gh auth login --with-token < token
 version=$(cat pubspec.yaml | grep -o -P '(?<=version: ).*(?= #)')
 echo $version
-apt-get update && apt-get install -y zip
+apt-get update && apt-get install -y zip wget
 pwd
 echo 'cp ./windows-dlls/* ./build/windows/runner/Release'
 echo 'cd ./build/windows/runner/Release'
