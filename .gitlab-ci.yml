@@ -7,5 +7,6 @@ build:
     - apt-get update && apt-get install -y zip wget git
     - wget https://github.com/cli/cli/releases/download/v2.0.0/gh_2.0.0_linux_amd64.deb
     - dpkg -i gh_2.0.0_linux_amd64.deb
+    - gh auth login --with-token <<< $GITHUB_TOKEN
     - ./release-script.sh
 
