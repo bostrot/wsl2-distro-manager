@@ -1,7 +1,5 @@
 image: bostrot/flutter:latest
 
-variables:
-
 build:
   stage: build
   script:
