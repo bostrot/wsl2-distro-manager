@@ -2,6 +2,16 @@ import 'dart:io';
 import 'dart:convert' show utf8;
 
 class WSLApi {
+  WSLApi() {
+    mkRootDir();
+  }
+
+  // Create directory
+  void mkRootDir() async {
+    //await Process.run('help', []);
+    await Process.start('cmd.exe', ['/c', 'mkdir', 'C:\\WSL2-Distros\\']);
+  }
+
   // Start a WSL distro by name
   void start(String distribution) async {
     Process.start('start', ['wsl', '-d', distribution],
@@ -10,10 +20,11 @@ class WSLApi {
 
   // Start a WSL distro by name
   Future<String> copy(String distribution, String newName,
-      {String location = '.\\distros\\'}) async {
+      {String location = 'C:\\WSL2-Distros\\'}) async {
     if (location == '') {
-      location = '.\\distros\\';
+      location = 'C:\\WSL2-Distros\\';
     }
+    print("$distribution, $location + $distribution + '.tar'");
     String exportRes =
         await export(distribution, location + distribution + '.tar');
     String importRes = await import(
@@ -58,7 +69,9 @@ class WSLApi {
     List<String> list = [];
     output.split('\n').forEach((line) {
       // Filter out docker data
-      if (line != '' && !line.startsWith('docker-desktop-data')) {
+      if (line != '' &&
+          !line.startsWith('docker-desktop-data') &&
+          !line.startsWith('docker-desktop')) {
         list.add(line);
       }
     });
