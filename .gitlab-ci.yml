@@ -3,13 +3,6 @@ image: bostrot/flutter:latest
 build:
   stage: build
   script:
-    - wget https://github.com/cli/cli/releases/download/v2.0.0/gh_2.0.0_linux_amd64.deb
-    - dpkg -i gh_2.0.0_linux_amd64.deb
-    - echo $GITHUB_TOKEN > token
-    - gh auth login --with-token < token
-    # get version
-    - version=$(cat pubspec.yaml | grep -o -P '(?<=version: ).*(?= \#)')
-    - echo $version
-    #- flutter build windows
+    - ./release-script.sh
 
     
