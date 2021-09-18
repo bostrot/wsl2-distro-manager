@@ -8,6 +8,5 @@ build:
     - wget https://github.com/cli/cli/releases/download/v2.0.0/gh_2.0.0_linux_amd64.deb
     - dpkg -i gh_2.0.0_linux_amd64.deb
     - git remote add github https://github.com/bostrot/wsl2-distro-manager.git
-    - echo $GITHUB_TOKEN_ENV | gh auth login --with-token --hostname github.com
     - ./release-script.sh
 
