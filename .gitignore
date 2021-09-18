@@ -1,5 +1,6 @@
 *.tar
 Ubuntu*
+old/
 
 # Miscellaneous
 *.class

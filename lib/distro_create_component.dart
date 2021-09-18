@@ -16,44 +16,46 @@ Widget createComponent(WSLApi api, statusMsg(msg)) {
           placeholder: 'Name',
           suffix: IconButton(
             icon: const Icon(FluentIcons.close, size: 15.0),
-              onPressed: () {},
+            onPressed: () {
+              nameController.clear();
+            },
           ),
         ),
       ),
       Expanded(
-        child: FutureBuilder < List < String >> (
-          future: api.getDownloadable(),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              List < String > list = snapshot.data ?? [];
-              return AutoSuggestBox < String > (
-                controller: autoSuggestBox,
-                items: list,
-                onSelected: (text) {
-                  print(text);
-                },
-                textBoxBuilder: (context, controller, focusNode, key) {
-                  return TextBox(
-                    key: key,
-                    controller: controller,
-                    focusNode: focusNode,
-                    suffix: Row(
-                      children: [IconButton(
-                          icon: const Icon(FluentIcons.close, size: 15.0),
+          child: FutureBuilder<List<String>>(
+              future: api.getDownloadable(),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  List<String> list = snapshot.data ?? [];
+                  return AutoSuggestBox<String>(
+                    controller: autoSuggestBox,
+                    items: list,
+                    onSelected: (text) {
+                      print(text);
+                    },
+                    textBoxBuilder: (context, controller, focusNode, key) {
+                      return TextBox(
+                        key: key,
+                        controller: controller,
+                        focusNode: focusNode,
+                        suffix: Row(children: [
+                          IconButton(
+                            icon: const Icon(FluentIcons.close, size: 15.0),
                             onPressed: () {
                               controller.clear();
                               focusNode.unfocus();
                             },
-                        ),
-                        IconButton(
-                          icon: const Icon(FluentIcons.open_folder_horizontal,
-                              size: 15.0),
+                          ),
+                          IconButton(
+                            icon: const Icon(FluentIcons.open_folder_horizontal,
+                                size: 15.0),
                             onPressed: () async {
-                              FilePickerResult ? result =
-                                await FilePicker.platform.pickFiles(
-                                  type: FileType.custom,
-                                  allowedExtensions: ['*'],
-                                );
+                              FilePickerResult? result =
+                                  await FilePicker.platform.pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: ['*'],
+                              );
 
                               if (result != null) {
                                 controller.text = result.files.single.path!;
@@ -61,36 +63,32 @@ Widget createComponent(WSLApi api, statusMsg(msg)) {
                                 // User canceled the picker
                               }
                             },
-                        ),
-                      ]
-                    ),
-                    placeholder: 'Distro',
+                          ),
+                        ]),
+                        placeholder: 'Distro',
+                      );
+                    },
                   );
-                },
-              );
-            } else if (snapshot.hasError) {
-              return Text('${snapshot.error}');
-            }
-            // By default, show a loading spinner.
-            return const Center(child: ProgressRing());
-          }
-        )),
+                } else if (snapshot.hasError) {
+                  return Text('${snapshot.error}');
+                }
+                // By default, show a loading spinner.
+                return const Center(child: ProgressRing());
+              })),
       Expanded(
         child: TextBox(
           controller: locationController,
           placeholder: 'Save location',
           suffix: IconButton(
-            icon: const Icon(FluentIcons.open_folder_horizontal,
-                size: 15.0),
-              onPressed: () async {
-                String ? path =
-                  await FilePicker.platform.getDirectoryPath();
-                if (path != null) {
-                  locationController.text = path;
-                } else {
-                  // User canceled the picker
-                }
-              },
+            icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+            onPressed: () async {
+              String? path = await FilePicker.platform.getDirectoryPath();
+              if (path != null) {
+                locationController.text = path;
+              } else {
+                // User canceled the picker
+              }
+            },
           ),
         ),
       ),
@@ -100,17 +98,25 @@ Widget createComponent(WSLApi api, statusMsg(msg)) {
           if (downloadable.contains(autoSuggestBox.text)) {
             // Get distro from internet
             // Install distro
-            statusMsg('Downloading ${autoSuggestBox.text}. This might take a while...');
+            statusMsg(
+                'Downloading ${autoSuggestBox.text}. This might take a while...');
             await api.install(autoSuggestBox.text);
             // Copy installed to name
-            statusMsg('Creating ${nameController.text}. This might take a while...');
-            await api.copy(autoSuggestBox.text, nameController.text, location: locationController.text);
+            statusMsg(
+                'Creating ${nameController.text}. This might take a while...');
+            await api.copy(autoSuggestBox.text, nameController.text,
+                location: locationController.text);
             statusMsg('DONE: Created ${nameController.text}.');
           } else {
             // Get distro from local storage
             // Copy local storage to name
-            statusMsg('Creating ${nameController.text}. This might take a while...');
-            await api.import(nameController.text, locationController.text, autoSuggestBox.text,);
+            statusMsg(
+                'Creating ${nameController.text}. This might take a while...');
+            await api.import(
+              nameController.text,
+              locationController.text,
+              autoSuggestBox.text,
+            );
             statusMsg('DONE: Created ${nameController.text}.');
           }
         },
