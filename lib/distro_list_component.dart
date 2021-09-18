@@ -113,7 +113,7 @@ copyDialog(context, item, api, Function(String) statusMsg) {
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {
         statusMsg('Copying $item. This might take a while...');
-        //await api.copy(item, copyController.text);
+        await api.copy(item, inputText);
         statusMsg('DONE: Copied $item to $inputText.');
       });
 }

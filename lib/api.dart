@@ -10,14 +10,14 @@ class WSLApi {
 
   // Start a WSL distro by name
   Future<String> copy(String distribution, String newName,
-      {String location = ''}) async {
+      {String location = '.\\distros\\'}) async {
     if (location == '') {
-      location = distribution + '.tar';
+      location = '.\\distros\\';
     }
     String exportRes =
-        await export(distribution, 'distros/' + distribution + '.tar');
+        await export(distribution, location + distribution + '.tar');
     String importRes = await import(
-        newName, './' + newName, 'distros/' + distribution + '.tar');
+        newName, location + newName, location + distribution + '.tar');
     return exportRes + ' ' + importRes;
   }
 
