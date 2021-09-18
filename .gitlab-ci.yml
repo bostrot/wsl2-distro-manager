@@ -3,6 +3,8 @@ image: bostrot/flutter:latest
 build:
   stage: build
   script:
+    - pwd
+    - chmod +x release-script.sh
     - ./release-script.sh
 
     
