@@ -1,5 +1,4 @@
 #!/bin/bash
-flutter build windows
 version=$(cat pubspec.yaml | grep -o -P '(?<=version: ).*(?= #)')
 cp ./windows-dlls/* ./build/windows/runner/Release
 cd ./build/windows/runner/Release
