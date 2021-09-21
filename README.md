@@ -10,6 +10,10 @@ A quick way to manage your WSL2 instances with a GUI.
 
 ![image](https://user-images.githubusercontent.com/7342321/133865387-27acd50f-c2a5-4010-9567-a39710cc72bc.png)
 
+## Install
+
+This app is available on the [Windows Store](https://www.microsoft.com/store/productId/9NWS9K95NMJB) or as a direct download from the Releases page.
+
 ## Build
 
 Enable Flutter Desktop `flutter config --enable-windows-desktop`
