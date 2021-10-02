@@ -2,26 +2,59 @@ import 'api.dart';
 import 'dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-FutureBuilder<List<String>> distroList(WSLApi api, Function(String) statusMsg) {
-  return FutureBuilder<List<String>>(
+class DistroList extends StatefulWidget {
+  DistroList({Key? key, required WSLApi this.api, required Function(String) this.statusMsg}) : super(key: key);
+
+  final WSLApi api;
+  final Function(String) statusMsg;
+
+  @override
+  _DistroListState createState() => _DistroListState();
+}
+
+class _DistroListState extends State<DistroList> {
+  @override
+  Widget build(BuildContext context) {
+    return distroList(widget.api, widget.statusMsg);
+  }
+}
+
+FutureBuilder<Instances> distroList(WSLApi api, Function(String) statusMsg) {
+  isRunning(String distroName, List<String> runningList) {
+    if (runningList.contains(distroName)) {
+      return true;
+    }
+    return false;
+  }
+  return FutureBuilder<Instances>(
     future: api.list(),
     builder: (context, snapshot) {
       if (snapshot.hasData) {
         List<Widget> newList = [];
-        List list = snapshot.data ?? [];
+        List<String> list = snapshot.data?.all ?? [];
+        List<String> running = snapshot.data?.running ?? [];
         for (String item in list) {
           newList.add(Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Container(
               color: const Color.fromRGBO(0, 0, 0, 0.1),
               child: ListTile(
-                title: Text(item),
-                leading: IconButton(
+                title: isRunning(item, running) ? (Text(item + ' (running)')) : Text(item), // running here
+                leading: Row(children: [
+                  IconButton(
                   icon: const Icon(FluentIcons.play),
                   onPressed: () {
                     api.start(item);
+                    Future.delayed(const Duration(milliseconds: 500), statusMsg('$item started.'));
                   },
-                ),
+                ), isRunning(item, running) ? IconButton(
+                  icon: const Icon(FluentIcons.stop),
+                  onPressed: () {
+                    api.stop(item);
+                    statusMsg('$item stopped.');
+                  },
+                ) : const Text(''),
+                ]),
                 trailing: Row(
                   children: [
                     IconButton(

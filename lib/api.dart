@@ -1,6 +1,12 @@
 import 'dart:io';
 import 'dart:convert' show utf8;
 
+class Instances {
+  List<String> running = [];
+  List<String> all = [];
+  Instances(this.all, this.running);
+}
+
 class WSLApi {
   WSLApi() {
     mkRootDir();
@@ -16,6 +22,13 @@ class WSLApi {
   void start(String distribution) async {
     Process.start('start', ['wsl', '-d', distribution],
         mode: ProcessStartMode.detached, runInShell: true);
+  }
+
+  // Stop a WSL distro by name
+  Future<String> stop(String distribution) async {
+    ProcessResult results =
+        await Process.run('wsl', ['--terminate', distribution]);
+    return results.stdout;
   }
 
   // Start a WSL distro by name
@@ -62,7 +75,7 @@ class WSLApi {
   }
 
   // Returns list of WSL distros
-  Future<List<String>> list() async {
+  Future<Instances> list() async {
     ProcessResult results =
         await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
@@ -72,6 +85,22 @@ class WSLApi {
       if (line != '' &&
           !line.startsWith('docker-desktop-data') &&
           !line.startsWith('docker-desktop')) {
+        list.add(line);
+      }
+    });
+    List<String> running = await listRunning();
+    return Instances(list, running);
+  }
+
+  // Returns list of WSL distros
+  Future<List<String>> listRunning() async {
+    ProcessResult results =
+        await Process.run('wsl', ['--list', '--running', '--quiet'], stdoutEncoding: null);
+    String output = utf8Convert(results.stdout);
+    List<String> list = [];
+    output.split('\n').forEach((line) {
+      // Filter out docker data
+      if (line != '') {
         list.add(line);
       }
     });

@@ -2,6 +2,7 @@
 Ubuntu*
 /old/
 /distros/
+/certs/
 
 # Miscellaneous
 *.class
