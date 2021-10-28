@@ -14,7 +14,7 @@ A quick way to manage your WSL2 instances with a GUI.
 
 This app is available on the [Windows Store](https://www.microsoft.com/store/productId/9NWS9K95NMJB) or as a direct download from the Releases page.
 
-As you have come this far here is a promo code for the Windows Store ([RR7D2-HR3MF-46GHC-P6Y3F-WPCYZ](http://go.microsoft.com/fwlink/?LinkId=532540&mstoken=RR7D2-HR3MF-46GHC-P6Y3F-WPCYZ)). You are welcome to support this project by buying it though :)
+As you have come this far here is a promo code for the Windows Store ([V399D-TM4X7-VGHF6-XQQTH-PPDXZ](http://go.microsoft.com/fwlink/?LinkId=532540&mstoken=V399D-TM4X7-VGHF6-XQQTH-PPDXZ)). You are welcome to support this project by buying it though :)
 
 ## Build
 
