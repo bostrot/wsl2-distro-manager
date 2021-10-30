@@ -95,29 +95,34 @@ Widget createComponent(WSLApi api, statusMsg(msg)) {
       Button(
         onPressed: () async {
           List<String> downloadable = await api.getDownloadable();
-          if (downloadable.contains(autoSuggestBox.text)) {
-            // Get distro from internet
-            // Install distro
-            statusMsg(
-                'Downloading ${autoSuggestBox.text}. This might take a while...');
-            await api.install(autoSuggestBox.text);
-            // Copy installed to name
-            statusMsg(
-                'Creating ${nameController.text}. This might take a while...');
-            await api.copy(autoSuggestBox.text, nameController.text,
-                location: locationController.text);
-            statusMsg('DONE: Created ${nameController.text}.');
+
+          if (nameController.text != '') {
+            if (downloadable.contains(autoSuggestBox.text)) {
+              // Get distro from internet
+              // Install distro
+              statusMsg(
+                  'Downloading ${autoSuggestBox.text}. This might take a while...');
+              await api.install(autoSuggestBox.text);
+              // Copy installed to name
+              statusMsg(
+                  'Creating ${nameController.text}. This might take a while...');
+              await api.copy(autoSuggestBox.text, nameController.text,
+                  location: locationController.text);
+              statusMsg('DONE: Created ${nameController.text}.');
+            } else {
+              // Get distro from local storage
+              // Copy local storage to name
+              statusMsg(
+                  'Creating ${nameController.text}. This might take a while...');
+              await api.import(
+                nameController.text,
+                locationController.text,
+                autoSuggestBox.text,
+              );
+              statusMsg('DONE: Created ${nameController.text}.');
+            }
           } else {
-            // Get distro from local storage
-            // Copy local storage to name
-            statusMsg(
-                'Creating ${nameController.text}. This might take a while...');
-            await api.import(
-              nameController.text,
-              locationController.text,
-              autoSuggestBox.text,
-            );
-            statusMsg('DONE: Created ${nameController.text}.');
+            statusMsg('Please type in a name.');
           }
         },
         child: const Padding(

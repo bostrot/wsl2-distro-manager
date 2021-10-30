@@ -53,6 +53,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
+      padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
       content: Padding(
         padding: const EdgeInsets.only(left: 8.0, right: 8.0),
         child: Column(
@@ -61,21 +62,26 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             createComponent(api, statusMsg),
             Padding(
-              padding: const EdgeInsets.only(left: 30.0, right: 30.0, top: 14.0, bottom: 8.0),
+              padding: const EdgeInsets.only(
+                  left: 30.0, right: 30.0, top: 0.0, bottom: 0.0),
               child: Builder(
                 builder: (ctx) {
                   if (status != '') {
-                    return Container(
-                      color: const Color.fromRGBO(0, 0, 0, 0.05),
-                      child: ListTile(
-                        title: Text(status),
-                        leading: const Icon(FluentIcons.info),
-                        trailing: IconButton(icon: const Icon(FluentIcons.close), onPressed: () {
-                            setState(() {
-                              status = '';
-                            });
-                          }),
-                      )
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Container(
+                          color: const Color.fromRGBO(0, 0, 0, 0.05),
+                          child: ListTile(
+                            title: Text(status),
+                            leading: const Icon(FluentIcons.info),
+                            trailing: IconButton(
+                                icon: const Icon(FluentIcons.close),
+                                onPressed: () {
+                                  setState(() {
+                                    status = '';
+                                  });
+                                }),
+                          )),
                     );
                   } else {
                     return const Text('');
@@ -87,20 +93,34 @@ class _MyHomePageState extends State<MyHomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                TextButton(onPressed: () async {
-                  await canLaunch('https://bostrot.com') ? 
-                  await launch('https://bostrot.com') : throw 'Could not launch URL';
-                  }, child: const Text("Created by Bostrot", style: TextStyle(fontSize: 12.0))),
+                TextButton(
+                    onPressed: () async {
+                      await canLaunch('https://bostrot.com')
+                          ? await launch('https://bostrot.com')
+                          : throw 'Could not launch URL';
+                    },
+                    child: const Text("Created by Bostrot",
+                        style: TextStyle(fontSize: 12.0))),
                 const Text('|', style: TextStyle(fontSize: 12.0)),
-                TextButton(onPressed: () async {
-                  await canLaunch('https://github.com/bostrot/wsl2-distro-manager') ? 
-                  await launch('https://github.com/bostrot/wsl2-distro-manager') : throw 'Could not launch URL';
-                  }, child: const Text("Visit GitHub", style: TextStyle(fontSize: 12.0))),
+                TextButton(
+                    onPressed: () async {
+                      await canLaunch(
+                              'https://github.com/bostrot/wsl2-distro-manager')
+                          ? await launch(
+                              'https://github.com/bostrot/wsl2-distro-manager')
+                          : throw 'Could not launch URL';
+                    },
+                    child: const Text("Visit GitHub",
+                        style: TextStyle(fontSize: 12.0))),
                 const Text('|', style: TextStyle(fontSize: 12.0)),
-                TextButton(onPressed: () async {
-                  await canLaunch('http://paypal.me/bostrot') ? 
-                  await launch('http://paypal.me/bostrot') : throw 'Could not launch URL';
-                  }, child: const Text("Donate", style: TextStyle(fontSize: 12.0))),
+                TextButton(
+                    onPressed: () async {
+                      await canLaunch('http://paypal.me/bostrot')
+                          ? await launch('http://paypal.me/bostrot')
+                          : throw 'Could not launch URL';
+                    },
+                    child:
+                        const Text("Donate", style: TextStyle(fontSize: 12.0))),
               ],
             )
           ],
