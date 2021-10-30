@@ -31,6 +31,18 @@ class WSLApi {
     return results.stdout;
   }
 
+  // Start VSCode
+  void startVSCode(String distribution) async {
+    Process.start('start', ['wsl', '-d', distribution, 'code'],
+        mode: ProcessStartMode.normal, runInShell: true);
+  }
+
+  // Start Explorer
+  void startExplorer(String distribution) async {
+    Process.start('start', ['explorer.exe', '\\\\wsl.localhost\\$distribution'],
+        mode: ProcessStartMode.normal, runInShell: true);
+  }
+
   // Start a WSL distro by name
   Future<String> copy(String distribution, String newName,
       {String location = 'C:\\WSL2-Distros\\'}) async {
@@ -94,8 +106,9 @@ class WSLApi {
 
   // Returns list of WSL distros
   Future<List<String>> listRunning() async {
-    ProcessResult results =
-        await Process.run('wsl', ['--list', '--running', '--quiet'], stdoutEncoding: null);
+    ProcessResult results = await Process.run(
+        'wsl', ['--list', '--running', '--quiet'],
+        stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
     output.split('\n').forEach((line) {

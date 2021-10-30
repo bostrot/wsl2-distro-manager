@@ -22,6 +22,8 @@ Enable Flutter Desktop `flutter config --enable-windows-desktop`
 
 https://flutter.dev/desktop
 
+Run with `flutter run -d windows` and build with `flutter build windows`
+
 ## Why
 
 WSL2 is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.

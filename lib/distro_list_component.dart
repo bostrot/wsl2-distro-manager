@@ -58,6 +58,18 @@ FutureBuilder<Instances> distroList(WSLApi api, Function(String) statusMsg) {
                 trailing: Row(
                   children: [
                     IconButton(
+                      icon: const Icon(FluentIcons.folder),
+                      onPressed: () async {
+                        api.startExplorer(item);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(FluentIcons.visual_studio_for_windows),
+                      onPressed: () async {
+                        api.startVSCode(item);
+                      },
+                    ),
+                    IconButton(
                       icon: const Icon(FluentIcons.copy),
                       onPressed: () async {
                         copyDialog(context, item, api, statusMsg);
