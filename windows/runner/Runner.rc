@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "A new Flutter project." "\0"
+            VALUE "CompanyName", "com.bostrot" "\0"
+            VALUE "FileDescription", "A WSL GUI." "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "wsl2distromanager" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2021 com.example. All rights reserved." "\0"
+            VALUE "InternalName", "WSL Distro Manager" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2021 bostrot.com All rights reserved." "\0"
             VALUE "OriginalFilename", "wsl2distromanager.exe" "\0"
-            VALUE "ProductName", "wsl2distromanager" "\0"
+            VALUE "ProductName", "WSL Distro Manager" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

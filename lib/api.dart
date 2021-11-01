@@ -1,10 +1,64 @@
 import 'dart:io';
-import 'dart:convert' show utf8;
+import 'dart:convert' show utf8, json;
+import 'package:dio/dio.dart';
+// import 'package:package_info_plus/package_info_plus.dart';
+
+const String updateUrl =
+    'https://api.github.com/repos/bostrot/wsl2-distro-manager/releases';
+
+const String motdUrl =
+    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json';
 
 class Instances {
   List<String> running = [];
   List<String> all = [];
   Instances(this.all, this.running);
+}
+
+class App {
+  /// Returns an int of the string
+  int versionToInt(String version) {
+    return int.tryParse(
+            version.toString().replaceAll('v', '').replaceAll('.', '')) ??
+        -1;
+  }
+
+  /// Returns an url as String when the app is not up-to-date otherwise empty string
+  Future<String> checkUpdate(String version) async {
+    try {
+      var response = await Dio().get(updateUrl);
+      if (response.data.length > 0) {
+        var latest = response.data[0];
+        String tagName = latest['tag_name'];
+
+        // TODO: change version to PackageInfo once it works with Windows
+        /* PackageInfo packageInfo = await PackageInfo.fromPlatform();
+        String version = packageInfo.buildNumber; */
+        if (versionToInt(tagName) > versionToInt(version)) {
+          return latest['assets'][0]['browser_download_url'];
+        }
+      }
+    } catch (e) {
+      print(e);
+    }
+    return '';
+  }
+
+  /// Returns the message of the day
+  Future<String> checkMotd() async {
+    try {
+      var response = await Dio().get(motdUrl);
+      if (response.data.length > 0) {
+        var jsonData = json.decode(response.data);
+        String motd = jsonData['motd'];
+        print(motd);
+        return motd;
+      }
+    } catch (e) {
+      print(e);
+    }
+    return '';
+  }
 }
 
 class WSLApi {

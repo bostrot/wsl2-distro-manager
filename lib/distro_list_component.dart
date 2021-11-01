@@ -1,3 +1,5 @@
+import 'package:flutter/gestures.dart';
+
 import 'api.dart';
 import 'dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -6,24 +8,35 @@ class DistroList extends StatefulWidget {
   DistroList(
       {Key? key,
       required WSLApi this.api,
-      required Function(String) this.statusMsg})
+      required Function(String, {bool loading}) this.statusMsg})
       : super(key: key);
 
   final WSLApi api;
-  final Function(String) statusMsg;
+  final Function(String, {bool loading}) statusMsg;
 
   @override
   _DistroListState createState() => _DistroListState();
 }
 
 class _DistroListState extends State<DistroList> {
+  Map<String, bool> hover = {};
+  void update(var item, bool enter) {
+    setState(() {
+      hover[item] = enter;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return distroList(widget.api, widget.statusMsg);
+    return distroList(widget.api, widget.statusMsg, update, hover);
   }
 }
 
-FutureBuilder<Instances> distroList(WSLApi api, Function(String) statusMsg) {
+FutureBuilder<Instances> distroList(
+    WSLApi api,
+    Function(String, {bool loading}) statusMsg,
+    Function(dynamic, bool) update,
+    Map<String, bool> hover) {
   isRunning(String distroName, List<String> runningList) {
     if (runningList.contains(distroName)) {
       return true;
@@ -41,62 +54,94 @@ FutureBuilder<Instances> distroList(WSLApi api, Function(String) statusMsg) {
         for (String item in list) {
           newList.add(Padding(
             padding: const EdgeInsets.only(top: 8.0),
-            child: Container(
-              color: const Color.fromRGBO(0, 0, 0, 0.1),
+            child: MouseRegion(
+              onEnter: (event) {
+                update(item, true);
+              },
+              onExit: (event) {
+                update(item, false);
+              },
               child: ListTile(
+                tileColor: (hover[item] != null && hover[item]!)
+                    ? const Color.fromRGBO(0, 0, 0, 0.2)
+                    : Colors.transparent,
+                /* tileColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10.0))), */
                 title: isRunning(item, running)
                     ? (Text(item + ' (running)'))
                     : Text(item), // running here
                 leading: Row(children: [
-                  IconButton(
-                    icon: const Icon(FluentIcons.play),
-                    onPressed: () {
-                      api.start(item);
-                      Future.delayed(const Duration(milliseconds: 500),
-                          statusMsg('$item started.'));
-                    },
+                  Tooltip(
+                    message: 'Start',
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.play),
+                      onPressed: () {
+                        api.start(item);
+                        Future.delayed(const Duration(milliseconds: 500),
+                            statusMsg('$item started.'));
+                      },
+                    ),
                   ),
                   isRunning(item, running)
-                      ? IconButton(
-                          icon: const Icon(FluentIcons.stop),
-                          onPressed: () {
-                            api.stop(item);
-                            statusMsg('$item stopped.');
-                          },
+                      ? Tooltip(
+                          message: 'Stop',
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.stop),
+                            onPressed: () {
+                              api.stop(item);
+                              statusMsg('$item stopped.');
+                            },
+                          ),
                         )
                       : const Text(''),
                 ]),
                 trailing: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(FluentIcons.folder),
-                      onPressed: () async {
-                        api.startExplorer(item);
-                      },
+                    Tooltip(
+                      message: 'Open with File Explorer',
+                      child: IconButton(
+                        icon: const Icon(FluentIcons.open_folder_horizontal),
+                        onPressed: () async {
+                          api.startExplorer(item);
+                        },
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(FluentIcons.visual_studio_for_windows),
-                      onPressed: () async {
-                        api.startVSCode(item);
-                      },
+                    Tooltip(
+                      message: 'Open with Visual Studio Code',
+                      child: IconButton(
+                        icon: const Icon(FluentIcons.visual_studio_for_windows),
+                        onPressed: () async {
+                          api.startVSCode(item);
+                        },
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(FluentIcons.copy),
-                      onPressed: () async {
-                        copyDialog(context, item, api, statusMsg);
-                      },
+                    Tooltip(
+                      message: 'Copy',
+                      child: IconButton(
+                        icon: const Icon(FluentIcons.copy),
+                        onPressed: () async {
+                          copyDialog(context, item, api, statusMsg);
+                        },
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(FluentIcons.rename),
-                      onPressed: () {
-                        renameDialog(context, item, api, statusMsg);
-                      },
-                    ),
-                    IconButton(
-                        icon: const Icon(FluentIcons.delete),
+                    Tooltip(
+                      message: 'Rename',
+                      child: IconButton(
+                        icon: const Icon(FluentIcons.rename),
                         onPressed: () {
-                          deleteDialog(context, item, api, statusMsg);
-                        }),
+                          renameDialog(context, item, api, statusMsg);
+                        },
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Delete',
+                      child: IconButton(
+                          icon: const Icon(FluentIcons.delete),
+                          onPressed: () {
+                            deleteDialog(context, item, api, statusMsg);
+                          }),
+                    ),
                   ],
                 ),
               ),
@@ -118,7 +163,7 @@ FutureBuilder<Instances> distroList(WSLApi api, Function(String) statusMsg) {
   );
 }
 
-deleteDialog(context, item, api, Function(String) statusMsg) {
+deleteDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
       item: item,
@@ -139,7 +184,7 @@ deleteDialog(context, item, api, Function(String) statusMsg) {
       });
 }
 
-renameDialog(context, item, api, Function(String) statusMsg) {
+renameDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
       item: item,
@@ -150,14 +195,15 @@ renameDialog(context, item, api, Function(String) statusMsg) {
       submitText: 'Rename',
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {
-        statusMsg('Renaming $item to $inputText. This might take a while...');
+        statusMsg('Renaming $item to $inputText. This might take a while...',
+            loading: true);
         await api.copy(item, inputText);
         await api.remove(item);
         statusMsg('DONE: Renamed $item to $inputText.');
       });
 }
 
-copyDialog(context, item, api, Function(String) statusMsg) {
+copyDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
       item: item,
@@ -168,7 +214,7 @@ copyDialog(context, item, api, Function(String) statusMsg) {
       submitText: 'Copy',
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {
-        statusMsg('Copying $item. This might take a while...');
+        statusMsg('Copying $item. This might take a while...', loading: true);
         await api.copy(item, inputText);
         statusMsg('DONE: Copied $item to $inputText.');
       });
