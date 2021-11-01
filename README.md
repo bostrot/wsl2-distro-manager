@@ -4,11 +4,14 @@
   />
 </a>
 
+
+
 # WSL2 Distro Manager
 
 A quick way to manage your WSL2 instances with a GUI.
 
-![image](https://user-images.githubusercontent.com/7342321/133865387-27acd50f-c2a5-4010-9567-a39710cc72bc.png)
+![Screenshot 2021-10-30 183504](https://user-images.githubusercontent.com/7342321/139541843-7419a616-c7b5-45cb-8c3c-0d98dd62b350.png)
+
 
 ## Install
 
