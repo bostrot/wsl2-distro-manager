@@ -1,1 +1,3 @@
-🎃 Have fun!
+{ 
+  "motd": "🎃 Have fun!"
+}
