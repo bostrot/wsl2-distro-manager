@@ -8,7 +8,11 @@ import 'api.dart';
 import 'distro_list_component.dart';
 import 'distro_create_component.dart';
 
-String currentVersion = "v0.5.1";
+// TODO: Update on release
+const String currentVersion = "v0.5.2+1";
+
+const String windowsStoreUrl =
+    'https://www.microsoft.com/store/productId/9NWS9K95NMJB';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -109,7 +113,16 @@ class _MyHomePageState extends State<MyHomePage> {
                           : throw 'Could not launch URL';
                     },
                     child: const Text("Download now",
-                        style: TextStyle(fontSize: 12.0)))
+                        style: TextStyle(fontSize: 12.0))),
+                const Text('or check the'),
+                TextButton(
+                    onPressed: () async {
+                      await canLaunch(windowsStoreUrl)
+                          ? await launch(windowsStoreUrl)
+                          : throw 'Could not launch URL';
+                    },
+                    child: const Text("Windows Store",
+                        style: TextStyle(fontSize: 12.0))),
               ],
             ));
       }

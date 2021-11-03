@@ -17,9 +17,12 @@ class Instances {
 
 class App {
   /// Returns an int of the string
-  int versionToInt(String version) {
-    return int.tryParse(
-            version.toString().replaceAll('v', '').replaceAll('.', '')) ??
+  double versionToDouble(String version) {
+    return double.tryParse(version
+            .toString()
+            .replaceAll('v', '')
+            .replaceAll('.', '')
+            .replaceAll('+', '.')) ??
         -1;
   }
 
@@ -34,7 +37,7 @@ class App {
         // TODO: change version to PackageInfo once it works with Windows
         /* PackageInfo packageInfo = await PackageInfo.fromPlatform();
         String version = packageInfo.buildNumber; */
-        if (versionToInt(tagName) > versionToInt(version)) {
+        if (versionToDouble(tagName) > versionToDouble(version)) {
           return latest['assets'][0]['browser_download_url'];
         }
       }
