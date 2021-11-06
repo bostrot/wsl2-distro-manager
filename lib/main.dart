@@ -7,13 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
 import 'dialog.dart';
-import 'distro_list_component.dart';
-import 'distro_create_component.dart';
+import 'list.dart';
+import 'create.dart';
 
 import 'analytics.dart';
 
 // TODO: Update on release
-const String currentVersion = "v0.5.2+1";
+const String currentVersion = "v0.5.3+1";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 
