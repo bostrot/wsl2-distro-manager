@@ -42,7 +42,7 @@ class App {
         }
       }
     } catch (e) {
-      print(e);
+      // ignored
     }
     return '';
   }
@@ -54,11 +54,10 @@ class App {
       if (response.data.length > 0) {
         var jsonData = json.decode(response.data);
         String motd = jsonData['motd'];
-        print(motd);
         return motd;
       }
     } catch (e) {
-      print(e);
+      // ignored
     }
     return '';
   }
@@ -106,7 +105,6 @@ class WSLApi {
     if (location == '') {
       location = 'C:\\WSL2-Distros\\';
     }
-    print("$distribution, $location + $distribution + '.tar'");
     String exportRes =
         await export(distribution, location + distribution + '.tar');
     String importRes = await import(

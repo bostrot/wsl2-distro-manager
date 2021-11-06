@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'api.dart';
+import 'analytics.dart';
 
 dialog({
   required BuildContext context,
@@ -12,8 +13,11 @@ dialog({
   String submitText = '',
   ButtonStyle submitStyle = const ButtonStyle(),
   bool submitInput = true,
+  String cancelText = 'Cancel',
+  Function? onCancel,
 }) {
   final controller = TextEditingController();
+  plausible.event(page: title.split(' ')[0].toLowerCase());
   showDialog(
     context: context,
     builder: (context) {
@@ -42,8 +46,11 @@ dialog({
                 onSubmit(controller.text);
               }),
           Button(
-              child: const Text('Cancel'),
+              child: Text(cancelText),
               onPressed: () {
+                if (onCancel != null) {
+                  onCancel();
+                }
                 Navigator.pop(context);
               }),
         ],

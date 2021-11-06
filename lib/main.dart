@@ -1,18 +1,23 @@
-import 'package:desktop_window/desktop_window.dart';
+//import 'package:desktop_window/desktop_window.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
+import 'dialog.dart';
 import 'distro_list_component.dart';
 import 'distro_create_component.dart';
 
+import 'analytics.dart';
+
 // TODO: Update on release
 const String currentVersion = "v0.5.2+1";
+const String windowsStoreUrl = "https://www.microsoft.com/store/"
+    "productId/9NWS9K95NMJB";
 
-const String windowsStoreUrl =
-    'https://www.microsoft.com/store/productId/9NWS9K95NMJB';
+late SharedPreferences prefs;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +25,7 @@ void main() async {
   runApp(const MyApp());
   doWhenWindowReady(() {
     final win = appWindow;
-    final initialSize = Size(650, 500);
+    const initialSize = Size(650, 500);
     win.minSize = initialSize;
     win.size = initialSize;
     win.alignment = Alignment.center;
@@ -29,6 +34,15 @@ void main() async {
   });
   //DesktopWindow.setWindowSize(const Size(650, 500));
   //DesktopWindow.setMinWindowSize(const Size(650, 500));
+
+  prefs = await SharedPreferences.getInstance();
+  bool? privacyMode = prefs.getBool('privacyMode');
+  if (privacyMode != null && privacyMode) {
+    plausible.enabled = false;
+  }
+
+  // Enable analytics
+  plausible.event();
 }
 
 ThemeData themeData = ThemeData();
@@ -130,7 +144,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Check motd
     app.checkMotd().then((String motd) {
-      print(motd);
       statusMsg(motd, leadingIcon: false);
     });
   }
@@ -241,6 +254,7 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               TextButton(
                   onPressed: () async {
+                    plausible.event(name: "url_clicked");
                     await canLaunch('https://bostrot.com')
                         ? await launch('https://bostrot.com')
                         : throw 'Could not launch URL';
@@ -250,6 +264,7 @@ class _MyHomePageState extends State<MyHomePage> {
               const Text('|', style: TextStyle(fontSize: 12.0)),
               TextButton(
                   onPressed: () async {
+                    plausible.event(name: "git_clicked");
                     await canLaunch(
                             'https://github.com/bostrot/wsl2-distro-manager')
                         ? await launch(
@@ -261,12 +276,43 @@ class _MyHomePageState extends State<MyHomePage> {
               const Text('|', style: TextStyle(fontSize: 12.0)),
               TextButton(
                   onPressed: () async {
+                    plausible.event(name: "donate_clicked");
                     await canLaunch('http://paypal.me/bostrot')
                         ? await launch('http://paypal.me/bostrot')
                         : throw 'Could not launch URL';
                   },
                   child:
                       const Text("Donate", style: TextStyle(fontSize: 12.0))),
+              const Text('|', style: TextStyle(fontSize: 12.0)),
+              TextButton(
+                  onPressed: () async {
+                    plausible.event(name: "analytics_clicked");
+                    dialog(
+                        context: context,
+                        item: "Allow",
+                        api: api,
+                        statusMsg: statusMsg,
+                        title: 'Usage Data',
+                        body: 'Do you want to share anonymous usage data to '
+                            'improve this app?',
+                        submitText: 'Enable privacy mode',
+                        submitInput: false,
+                        submitStyle: const ButtonStyle(),
+                        cancelText: 'Share usage data',
+                        onCancel: () async {
+                          plausible.event(name: "privacy_off");
+                          await prefs.setBool('privacyMode', false);
+                          plausible.enabled = true;
+                        },
+                        onSubmit: (inputText) async {
+                          plausible.event(name: "privacy_on");
+                          await prefs.setBool('privacyMode', true);
+                          plausible.enabled = false;
+                          statusMsg('Privacy mode enabled.');
+                        });
+                  },
+                  child:
+                      const Text("Privacy", style: TextStyle(fontSize: 12.0))),
             ],
           )
         ],

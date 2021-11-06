@@ -1,3 +1,4 @@
+import 'analytics.dart';
 import 'api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
@@ -31,54 +32,39 @@ Widget createComponent(WSLApi api, Function(String, {bool loading}) statusMsg) {
         child: FutureBuilder<List<String>>(
             future: api.getDownloadable(),
             builder: (context, snapshot) {
+              List<String> list = [];
               if (snapshot.hasData) {
-                List<String> list = snapshot.data ?? [];
-                return AutoSuggestBox<String>(
-                  controller: autoSuggestBox,
-                  items: list,
-                  onSelected: (text) {
-                    print(text);
-                  },
-                  textBoxBuilder: (context, controller, focusNode, key) {
-                    return TextBox(
-                      key: key,
-                      controller: controller,
-                      focusNode: focusNode,
-                      suffix: Row(children: [
-                        IconButton(
-                          icon: const Icon(FluentIcons.close, size: 15.0),
-                          onPressed: () {
-                            controller.clear();
-                            focusNode.unfocus();
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(FluentIcons.open_folder_horizontal,
-                              size: 15.0),
-                          onPressed: () async {
-                            FilePickerResult? result =
-                                await FilePicker.platform.pickFiles(
-                              type: FileType.custom,
-                              allowedExtensions: ['*'],
-                            );
+                list = snapshot.data ?? [];
+              } else if (snapshot.hasError) {}
+              return AutoSuggestBox<String>(
+                controller: autoSuggestBox,
+                items: list,
+                textBoxBuilder: (context, controller, focusNode, key) {
+                  return TextBox(
+                    key: key,
+                    controller: controller,
+                    focusNode: focusNode,
+                    suffix: IconButton(
+                      icon: const Icon(FluentIcons.open_folder_horizontal,
+                          size: 15.0),
+                      onPressed: () async {
+                        FilePickerResult? result =
+                            await FilePicker.platform.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: ['*'],
+                        );
 
-                            if (result != null) {
-                              controller.text = result.files.single.path!;
-                            } else {
-                              // User canceled the picker
-                            }
-                          },
-                        ),
-                      ]),
-                      placeholder: 'Distro',
-                    );
-                  },
-                );
-              } else if (snapshot.hasError) {
-                return Text('${snapshot.error}');
-              }
-              // By default, show a loading spinner.
-              return const Center(child: ProgressRing());
+                        if (result != null) {
+                          controller.text = result.files.single.path!;
+                        } else {
+                          // User canceled the picker
+                        }
+                      },
+                    ),
+                    placeholder: 'Distro',
+                  );
+                },
+              );
             }),
       )),
       Expanded(
@@ -103,6 +89,7 @@ Widget createComponent(WSLApi api, Function(String, {bool loading}) statusMsg) {
       ),
       Button(
         onPressed: () async {
+          plausible.event(name: "wsl_create");
           List<String> downloadable = await api.getDownloadable();
 
           if (nameController.text != '') {

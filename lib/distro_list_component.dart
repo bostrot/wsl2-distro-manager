@@ -1,14 +1,10 @@
-import 'package:flutter/gestures.dart';
-
+import 'analytics.dart';
 import 'api.dart';
 import 'dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class DistroList extends StatefulWidget {
-  DistroList(
-      {Key? key,
-      required WSLApi this.api,
-      required Function(String, {bool loading}) this.statusMsg})
+  const DistroList({Key? key, required this.api, required this.statusMsg})
       : super(key: key);
 
   final WSLApi api;
@@ -77,6 +73,7 @@ FutureBuilder<Instances> distroList(
                     child: IconButton(
                       icon: const Icon(FluentIcons.play),
                       onPressed: () {
+                        plausible.event(name: "wsl_started");
                         api.start(item);
                         Future.delayed(const Duration(milliseconds: 500),
                             statusMsg('$item started.'));
@@ -89,6 +86,7 @@ FutureBuilder<Instances> distroList(
                           child: IconButton(
                             icon: const Icon(FluentIcons.stop),
                             onPressed: () {
+                              plausible.event(name: "wsl_stopped");
                               api.stop(item);
                               statusMsg('$item stopped.');
                             },
@@ -103,6 +101,7 @@ FutureBuilder<Instances> distroList(
                       child: IconButton(
                         icon: const Icon(FluentIcons.open_folder_horizontal),
                         onPressed: () async {
+                          plausible.event(name: "wsl_explorer");
                           api.startExplorer(item);
                         },
                       ),
@@ -112,6 +111,7 @@ FutureBuilder<Instances> distroList(
                       child: IconButton(
                         icon: const Icon(FluentIcons.visual_studio_for_windows),
                         onPressed: () async {
+                          plausible.event(name: "wsl_vscode");
                           api.startVSCode(item);
                         },
                       ),
