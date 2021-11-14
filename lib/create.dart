@@ -11,6 +11,9 @@ Widget createComponent(WSLApi api, Function(String, {bool loading}) statusMsg) {
   return Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
+      Container(
+        width: 10.0,
+      ),
       Expanded(
           child: Tooltip(
         message: 'The name of your new WSL instance',
@@ -25,6 +28,9 @@ Widget createComponent(WSLApi api, Function(String, {bool loading}) statusMsg) {
           ),
         ),
       )),
+      Container(
+        width: 10.0,
+      ),
       Expanded(
           child: Tooltip(
         message:
@@ -67,6 +73,9 @@ Widget createComponent(WSLApi api, Function(String, {bool loading}) statusMsg) {
               );
             }),
       )),
+      Container(
+        width: 10.0,
+      ),
       Expanded(
         child: Tooltip(
           message: '(Optional) Path where to save the new instance',
@@ -86,6 +95,9 @@ Widget createComponent(WSLApi api, Function(String, {bool loading}) statusMsg) {
             ),
           ),
         ),
+      ),
+      Container(
+        width: 10.0,
       ),
       Button(
         onPressed: () async {
@@ -128,6 +140,9 @@ Widget createComponent(WSLApi api, Function(String, {bool loading}) statusMsg) {
           padding: EdgeInsets.all(6.0),
           child: Text('Create'),
         ),
+      ),
+      Container(
+        width: 10.0,
       ),
     ],
   );
