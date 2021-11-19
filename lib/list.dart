@@ -259,6 +259,17 @@ class InstallDialog extends StatelessWidget {
                       },
                       child: const Text("wsl --install"))),
             ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child:
+                  Text('Hint: you can click the above command to install it'),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Text('(Keep '
+                  'in mind that you need to restart your system to complete the'
+                  ' install.)'),
+            ),
           ],
         ),
       ),
