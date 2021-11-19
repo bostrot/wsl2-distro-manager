@@ -74,6 +74,17 @@ class WSLApi {
     await Process.start('cmd.exe', ['/c', 'mkdir', 'C:\\WSL2-Distros\\']);
   }
 
+  // Install WSL
+  void installWSL() async {
+    Process.start(
+        'powershell',
+        [
+          'Start-Process cmd -ArgumentList "/c wsl --install" -Verb RunAs',
+        ],
+        mode: ProcessStartMode.detached,
+        runInShell: true);
+  }
+
   // Start a WSL distro by name
   void start(String distribution) async {
     Process.start('start', ['wsl', '-d', distribution],
@@ -147,16 +158,25 @@ class WSLApi {
         await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
-    output.split('\n').forEach((line) {
-      // Filter out docker data
-      if (line != '' &&
-          !line.startsWith('docker-desktop-data') &&
-          !line.startsWith('docker-desktop')) {
-        list.add(line);
-      }
-    });
-    List<String> running = await listRunning();
-    return Instances(list, running);
+    bool wslInstalled = true;
+    // Check if wsl is installed
+    if (output.contains('wsl.exe') || output.contains('ProcessException')) {
+      wslInstalled = false;
+    }
+    if (wslInstalled) {
+      output.split('\n').forEach((line) {
+        // Filter out docker data
+        if (line != '' &&
+            !line.startsWith('docker-desktop-data') &&
+            !line.startsWith('docker-desktop')) {
+          list.add(line);
+        }
+      });
+      List<String> running = await listRunning();
+      return Instances(list, running);
+    } else {
+      return Instances(['wslNotInstalled'], []);
+    }
   }
 
   // Returns list of WSL distros
