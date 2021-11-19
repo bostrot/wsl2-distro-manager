@@ -29,7 +29,7 @@ void main() async {
     win.minSize = initialSize;
     win.size = initialSize;
     win.alignment = Alignment.center;
-    win.title = "Custom window with Flutter";
+    win.title = "WSL Distro Manager";
     win.show();
   });
   //DesktopWindow.setWindowSize(const Size(650, 500));
