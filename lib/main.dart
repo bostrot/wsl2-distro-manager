@@ -214,7 +214,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: MoveWindow(
                       child: const Padding(
                         padding: EdgeInsets.only(left: 20.0, top: 8.0),
-                        child: Text('WSL Manager'),
+                        child: Text('WSL Manager ' + currentVersion),
                       ),
                     ),
                   ),
