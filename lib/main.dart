@@ -13,7 +13,7 @@ import 'create.dart';
 import 'analytics.dart';
 
 // TODO: Update on release
-const String currentVersion = "v0.5.3+1";
+const String currentVersion = "v0.6.0";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 
@@ -32,8 +32,6 @@ void main() async {
     win.title = "WSL Distro Manager";
     win.show();
   });
-  //DesktopWindow.setWindowSize(const Size(650, 500));
-  //DesktopWindow.setMinWindowSize(const Size(650, 500));
 
   prefs = await SharedPreferences.getInstance();
   bool? privacyMode = prefs.getBool('privacyMode');

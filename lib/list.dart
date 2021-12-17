@@ -2,6 +2,10 @@ import 'analytics.dart';
 import 'api.dart';
 import 'dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+late SharedPreferences prefs;
 
 class DistroList extends StatefulWidget {
   const DistroList({Key? key, required this.api, required this.statusMsg})
@@ -22,6 +26,17 @@ class _DistroListState extends State<DistroList> {
     });
   }
 
+  // Initialize shared preferences
+  void initPrefs() async {
+    prefs = await SharedPreferences.getInstance();
+  }
+
+  @override
+  void initState() {
+    initPrefs();
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return distroList(widget.api, widget.statusMsg, update, hover);
@@ -40,6 +55,7 @@ FutureBuilder<Instances> distroList(
     return false;
   }
 
+  // List as FutureBuilder with WSLApi
   return FutureBuilder<Instances>(
     future: api.list(),
     builder: (context, snapshot) {
@@ -86,7 +102,12 @@ FutureBuilder<Instances> distroList(
                       icon: const Icon(FluentIcons.play),
                       onPressed: () {
                         plausible.event(name: "wsl_started");
-                        api.start(item);
+                        String? startPath =
+                            prefs.getString('StartPath_' + item) ?? '';
+                        String? startName =
+                            prefs.getString('StartUser_' + item) ?? '';
+                        api.start(item,
+                            startPath: startPath, startUser: startName);
                         Future.delayed(const Duration(milliseconds: 500),
                             statusMsg('$item started.'));
                       },
@@ -154,6 +175,14 @@ FutureBuilder<Instances> distroList(
                             deleteDialog(context, item, api, statusMsg);
                           }),
                     ),
+                    Tooltip(
+                      message: 'Settings',
+                      child: IconButton(
+                          icon: const Icon(FluentIcons.settings),
+                          onPressed: () {
+                            settingsDialog(context, item, api, statusMsg);
+                          }),
+                    ),
                   ],
                 ),
               ),
@@ -175,6 +204,11 @@ FutureBuilder<Instances> distroList(
   );
 }
 
+/// Delete Dialog
+/// @param context: context
+/// @param item: distro name
+/// @param api: WSLApi
+/// @param statusMsg: status message
 deleteDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
@@ -196,6 +230,79 @@ deleteDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
       });
 }
 
+/// Rename Dialog
+/// @param context: context
+/// @param item: distro name
+/// @param api: WSLApi
+/// @param statusMsg: Function(String, {bool loading})
+settingsDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
+  var title = 'Settings';
+  final pathController = TextEditingController();
+  pathController.text = prefs.getString('StartPath_' + item) ?? '';
+  final userController = TextEditingController();
+  userController.text = prefs.getString('StartUser_' + item) ?? '';
+  plausible.event(page: title.split(' ')[0].toLowerCase());
+  showDialog(
+    context: context,
+    builder: (context) {
+      return ContentDialog(
+        title: Text(title),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8.0),
+              child: Text('Start directory path'),
+            ),
+            Tooltip(
+              message: '(Optional) WSL directory to start in.',
+              child: TextBox(
+                controller: pathController,
+                placeholder: '/home/user/project',
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
+              child: Text('Start user'),
+            ),
+            Tooltip(
+              message: '(Optional) WSL default user to use.',
+              child: TextBox(
+                controller: userController,
+                placeholder: 'root',
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
+              child: Text(
+                  '(empty the fields for default or if your WSL version does not support it)'),
+            ),
+          ],
+        ),
+        actions: [
+          Button(
+              child: const Text('Cancel'),
+              onPressed: () async {
+                Navigator.pop(context);
+              }),
+          Button(
+              child: const Text('Save'),
+              onPressed: () {
+                prefs.setString('StartPath_' + item, pathController.text);
+                prefs.setString('StartUser_' + item, userController.text);
+                Navigator.pop(context);
+              }),
+        ],
+      );
+    },
+  );
+}
+
+/// Rename Dialog
+/// @param context: context
+/// @param item: distro name
+/// @param api: WSLApi
+/// @param statusMsg: Function(String, {bool loading})
 renameDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
@@ -215,6 +322,11 @@ renameDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
       });
 }
 
+/// Copy Dialog
+/// @param context: context
+/// @param item: distro name
+/// @param api: WSLApi
+/// @param statusMsg: Function(String, {bool loading})
 copyDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
@@ -232,6 +344,7 @@ copyDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
       });
 }
 
+/// Install Dialog
 class InstallDialog extends StatelessWidget {
   const InstallDialog({Key? key}) : super(key: key);
 

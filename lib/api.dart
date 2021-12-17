@@ -95,8 +95,17 @@ class WSLApi {
 
   /// Start a WSL distro by name
   /// @param distribution: String
-  void start(String distribution) async {
-    Process.start('start', ['wsl', '-d', distribution],
+  /// @param startPath: String (optional) Defaults to root ('/')
+  void start(String distribution,
+      {String startPath = '', String startUser = ''}) async {
+    List<String> args = ['wsl', '-d', distribution];
+    if (startPath != '') {
+      args.addAll(['--cd', startPath]);
+    }
+    if (startUser != '') {
+      args.addAll(['--user', startUser]);
+    }
+    Process.start('start', args,
         mode: ProcessStartMode.detached, runInShell: true);
   }
 
