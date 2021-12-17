@@ -64,3 +64,5 @@ Fairly simple. Download the latest release from the releases Page and start wsl2
 This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)
 
 VS2022: either use Flutter master branch or set `_cmakeVisualStudioGeneratorIdentifier` in `flutter_tools/lib/src/windows/build_windows.dart` to `Visual Studio 17 2022` and rebuild with `flutter pub run test`. (as of https://github.com/flutter/flutter/issues/85922)
+
+Sign package for Windows Store: flutter build windows && flutter pub run msix:create
