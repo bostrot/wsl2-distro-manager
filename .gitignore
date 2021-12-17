@@ -3,6 +3,7 @@ Ubuntu*
 /old/
 /distros/
 /certs/
+*.secret
 
 # Miscellaneous
 *.class
