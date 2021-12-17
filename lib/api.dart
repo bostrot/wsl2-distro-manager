@@ -17,6 +17,9 @@ class Instances {
 
 class App {
   /// Returns an int of the string
+  /// '1.2.3' -> 123
+  /// @param versionString: String
+  /// @return double
   double versionToDouble(String version) {
     return double.tryParse(version
             .toString()
@@ -27,6 +30,8 @@ class App {
   }
 
   /// Returns an url as String when the app is not up-to-date otherwise empty string
+  /// @param version: String
+  /// @return Future<String>
   Future<String> checkUpdate(String version) async {
     try {
       var response = await Dio().get(updateUrl);
@@ -48,6 +53,7 @@ class App {
   }
 
   /// Returns the message of the day
+  /// @return Future<String>
   Future<String> checkMotd() async {
     try {
       var response = await Dio().get(motdUrl);
@@ -63,18 +69,20 @@ class App {
   }
 }
 
+/// WSL API
 class WSLApi {
+  /// Constructor: create Root Directory
   WSLApi() {
     mkRootDir();
   }
 
-  // Create directory
+  /// Create directory
   void mkRootDir() async {
     //await Process.run('help', []);
     await Process.start('cmd.exe', ['/c', 'mkdir', 'C:\\WSL2-Distros\\']);
   }
 
-  // Install WSL
+  /// Install WSL
   void installWSL() async {
     Process.start(
         'powershell',
@@ -85,32 +93,41 @@ class WSLApi {
         runInShell: true);
   }
 
-  // Start a WSL distro by name
+  /// Start a WSL distro by name
+  /// @param distribution: String
   void start(String distribution) async {
     Process.start('start', ['wsl', '-d', distribution],
         mode: ProcessStartMode.detached, runInShell: true);
   }
 
-  // Stop a WSL distro by name
+  /// Stop a WSL distro by name
+  /// @param distribution: String
+  /// @return Future<String>
   Future<String> stop(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--terminate', distribution]);
     return results.stdout;
   }
 
-  // Start VSCode
+  /// Start VSCode
+  /// @param distribution: String
   void startVSCode(String distribution) async {
     Process.start('start', ['wsl', '-d', distribution, 'code'],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
-  // Start Explorer
+  /// Start Explorer
+  /// @param distribution: String
   void startExplorer(String distribution) async {
     Process.start('start', ['explorer.exe', '\\\\wsl.localhost\\$distribution'],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
-  // Start a WSL distro by name
+  /// Start a WSL distro by name
+  /// @param distribution: String
+  /// @param newName: String
+  /// @param location: String (optional)
+  /// @return Future<String>
   Future<String> copy(String distribution, String newName,
       {String location = 'C:\\WSL2-Distros\\'}) async {
     if (location == '') {
@@ -123,28 +140,39 @@ class WSLApi {
     return exportRes + ' ' + importRes;
   }
 
-  // Export a WSL distro by name
+  /// Export a WSL distro by name
+  /// @param distribution: String
+  /// @param location: String
+  /// @return Future<String>
   Future<String> export(String distribution, String location) async {
     ProcessResult results =
         await Process.run('wsl', ['--export', distribution, location]);
     return results.stdout;
   }
 
-  // Remove a WSL distro by name
+  /// Remove a WSL distro by name
+  /// @param distribution: String
+  /// @return Future<String>
   Future<String> remove(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--unregister', distribution]);
     return results.stdout;
   }
 
-  // Install a WSL distro by name
+  /// Install a WSL distro by name
+  /// @param distribution: String
+  /// @return Future<String>
   Future<String> install(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--install', '-d', distribution]);
     return results.stdout;
   }
 
-  // Import a WSL distro by name
+  /// Import a WSL distro by name
+  /// @param distribution: String
+  /// @param installLocation: String
+  /// @param location: String
+  /// @return Future<String>
   Future<String> import(
       String distribution, String installLocation, String location) async {
     ProcessResult results = await Process.run(
@@ -152,7 +180,8 @@ class WSLApi {
     return results.stdout;
   }
 
-  // Returns list of WSL distros
+  /// Returns list of WSL distros
+  /// @return Future<Instances>
   Future<Instances> list() async {
     ProcessResult results =
         await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
@@ -179,7 +208,8 @@ class WSLApi {
     }
   }
 
-  // Returns list of WSL distros
+  /// Returns list of WSL distros
+  /// @return Future<List<String>>
   Future<List<String>> listRunning() async {
     ProcessResult results = await Process.run(
         'wsl', ['--list', '--running', '--quiet'],
@@ -195,7 +225,8 @@ class WSLApi {
     return list;
   }
 
-  // Returns list of downloadable WSL distros
+  /// Returns list of downloadable WSL distros
+  /// @return Future<List<String>>
   Future<List<String>> getDownloadable() async {
     ProcessResult results =
         await Process.run('wsl', ['--list', '--online'], stdoutEncoding: null);
@@ -215,7 +246,9 @@ class WSLApi {
     return list;
   }
 
-  // Convert bytes to human readable string while removing non-ascii characters
+  /// Convert bytes to human readable string while removing non-ascii characters
+  /// @param bytes: List<int>
+  /// @return String
   String utf8Convert(List<int> bytes) {
     List<int> utf8Lines = List<int>.from(bytes);
     bool running = true;
