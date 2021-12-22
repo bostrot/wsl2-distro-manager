@@ -23,7 +23,7 @@ as a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-
 
 or
 
-`winget install Bostrot.WSLManager`
+`winget install Bostrot.WSLManager` (outdated version)
 
 ## Build
 
