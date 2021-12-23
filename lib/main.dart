@@ -13,7 +13,7 @@ import 'create.dart';
 import 'analytics.dart';
 
 // TODO: Update on release
-const String currentVersion = "v0.6.0";
+const String currentVersion = "v0.6.1";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 
