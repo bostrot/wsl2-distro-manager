@@ -120,15 +120,24 @@ class WSLApi {
 
   /// Start VSCode
   /// @param distribution: String
-  void startVSCode(String distribution) async {
-    Process.start('start', ['wsl', '-d', distribution, 'code'],
+  void startVSCode(String distribution, {String path = ''}) async {
+    List<String> args = ['wsl', '-d', distribution, 'code'];
+    if (path != '') {
+      args.add(path);
+    }
+    Process.start('start', args,
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Start Explorer
   /// @param distribution: String
-  void startExplorer(String distribution) async {
-    Process.start('start', ['explorer.exe', '\\\\wsl.localhost\\$distribution'],
+  void startExplorer(String distribution, {String path = ''}) async {
+    String fullPath = '\\\\wsl.localhost\\$distribution';
+    if (path != '') {
+      path = path.replaceAll('/', '\\');
+      fullPath += path;
+    }
+    Process.start('start', ['explorer.exe', fullPath],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 

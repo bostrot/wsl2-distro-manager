@@ -93,8 +93,8 @@ FutureBuilder<Instances> distroList(
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.all(Radius.circular(10.0))), */
                 title: isRunning(item, running)
-                    ? (Text(item + ' (running)'))
-                    : Text(item), // running here
+                    ? (Text(distroLabel(item) + ' (running)'))
+                    : Text(distroLabel(item)), // running here
                 leading: Row(children: [
                   Tooltip(
                     message: 'Start',
@@ -135,7 +135,9 @@ FutureBuilder<Instances> distroList(
                         icon: const Icon(FluentIcons.open_folder_horizontal),
                         onPressed: () async {
                           plausible.event(name: "wsl_explorer");
-                          api.startExplorer(item);
+                          String? path =
+                              prefs.getString('StartPath_' + item) ?? '';
+                          api.startExplorer(item, path: path);
                         },
                       ),
                     ),
@@ -145,7 +147,10 @@ FutureBuilder<Instances> distroList(
                         icon: const Icon(FluentIcons.visual_studio_for_windows),
                         onPressed: () async {
                           plausible.event(name: "wsl_vscode");
-                          api.startVSCode(item);
+                          // Get path
+                          String? path =
+                              prefs.getString('StartPath_' + item) ?? '';
+                          api.startVSCode(item, path: path);
                         },
                       ),
                     ),
@@ -215,7 +220,7 @@ deleteDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
       item: item,
       api: api,
       statusMsg: statusMsg,
-      title: 'Delete $item permanently?',
+      title: 'Delete \'${distroLabel(item)}\' permanently?',
       body: 'If you delete this Distro you won\'t be able to recover it.'
           ' Do you want to delete it?',
       submitText: 'Delete',
@@ -298,6 +303,17 @@ settingsDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
   );
 }
 
+/// Get distro label from item
+/// @param item: distro name
+/// @returns String
+String distroLabel(String item) {
+  String? distroName = prefs.getString('DistroName_' + item);
+  if (distroName == null || distroName == '') {
+    distroName = item;
+  }
+  return distroName;
+}
+
 /// Rename Dialog
 /// @param context: context
 /// @param item: distro name
@@ -309,16 +325,16 @@ renameDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
       item: item,
       api: api,
       statusMsg: statusMsg,
-      title: 'Rename $item',
-      body: 'Warning: Renaming will recreate the whole WSL2 instance.',
+      title: 'Rename \'${distroLabel(item)}\'',
+      body: 'Warning: Renaming will only change the label of the distro '
+          'in this application. '
+          '\n\nLeave this empty for the default name.',
       submitText: 'Rename',
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {
-        statusMsg('Renaming $item to $inputText. This might take a while...',
-            loading: true);
-        await api.copy(item, inputText);
-        await api.remove(item);
-        statusMsg('DONE: Renamed $item to $inputText.');
+        statusMsg('Renaming $item to $inputText...', loading: true);
+        prefs.setString('DistroName_' + item, inputText);
+        statusMsg('DONE: Renamed ${distroLabel(item)} to $inputText.');
       });
 }
 
@@ -334,13 +350,19 @@ copyDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
       api: api,
       statusMsg: statusMsg,
       title: 'Copy \'$item\'',
-      body: 'Copy the WSL instance \'$item.\'',
+      body: 'Copy the WSL instance \'${distroLabel(item)}\' to a new instance'
+          'with this name.',
       submitText: 'Copy',
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {
         statusMsg('Copying $item. This might take a while...', loading: true);
         await api.copy(item, inputText);
-        statusMsg('DONE: Copied $item to $inputText.');
+        // Copy settings
+        String? startPath = prefs.getString('StartPath_' + item) ?? '';
+        String? startName = prefs.getString('StartUser_' + item) ?? '';
+        prefs.setString('StartPath_' + item, startPath);
+        prefs.setString('StartUser_' + item, startName);
+        statusMsg('DONE: Copied ${distroLabel(item)} to $inputText.');
       });
 }
 
