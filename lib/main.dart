@@ -5,12 +5,11 @@ import 'package:system_theme/system_theme.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'api.dart';
-import 'dialog.dart';
-import 'list.dart';
-import 'create.dart';
-
-import 'analytics.dart';
+import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/list.dart';
+import 'package:wsl2distromanager/dialogs/create_dialog.dart';
+import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 
 // TODO: Update on release
 const String currentVersion = "v0.6.1";
@@ -199,8 +198,29 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
-      padding: const EdgeInsets.only(top: 0.0, bottom: 8.0),
+    return NavigationView(
+      pane: NavigationPane(
+        items: [
+          PaneItemAction(
+            icon: const Icon(FluentIcons.info),
+            onTap: () {
+              infoDialog(context, prefs, statusMsg, currentVersion);
+            },
+            title: const Text('About this app'),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.settings),
+            title: const Text('Settings'),
+          ),
+          PaneItemAction(
+            icon: const Icon(FluentIcons.add),
+            onTap: () {
+              createDialog(context, api, statusMsg);
+            },
+            title: const Text('Add an instance'),
+          ),
+        ],
+      ),
       content: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,10 +255,6 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: createComponent(api, statusMsg),
-          ),
           DistroList(
             api: api,
             statusMsg: statusMsg,
@@ -247,72 +263,6 @@ class _MyHomePageState extends State<MyHomePage> {
             padding: const EdgeInsets.all(15.0),
             child: statusBuilder(),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton(
-                  onPressed: () async {
-                    plausible.event(name: "url_clicked");
-                    await canLaunch('https://bostrot.com')
-                        ? await launch('https://bostrot.com')
-                        : throw 'Could not launch URL';
-                  },
-                  child: const Text("Created by Bostrot",
-                      style: TextStyle(fontSize: 12.0))),
-              const Text('|', style: TextStyle(fontSize: 12.0)),
-              TextButton(
-                  onPressed: () async {
-                    plausible.event(name: "git_clicked");
-                    await canLaunch(
-                            'https://github.com/bostrot/wsl2-distro-manager')
-                        ? await launch(
-                            'https://github.com/bostrot/wsl2-distro-manager')
-                        : throw 'Could not launch URL';
-                  },
-                  child: const Text("Visit GitHub",
-                      style: TextStyle(fontSize: 12.0))),
-              const Text('|', style: TextStyle(fontSize: 12.0)),
-              TextButton(
-                  onPressed: () async {
-                    plausible.event(name: "donate_clicked");
-                    await canLaunch('http://paypal.me/bostrot')
-                        ? await launch('http://paypal.me/bostrot')
-                        : throw 'Could not launch URL';
-                  },
-                  child:
-                      const Text("Donate", style: TextStyle(fontSize: 12.0))),
-              const Text('|', style: TextStyle(fontSize: 12.0)),
-              TextButton(
-                  onPressed: () async {
-                    plausible.event(name: "analytics_clicked");
-                    dialog(
-                        context: context,
-                        item: "Allow",
-                        api: api,
-                        statusMsg: statusMsg,
-                        title: 'Usage Data',
-                        body: 'Do you want to share anonymous usage data to '
-                            'improve this app?',
-                        submitText: 'Enable privacy mode',
-                        submitInput: false,
-                        submitStyle: const ButtonStyle(),
-                        cancelText: 'Share usage data',
-                        onCancel: () async {
-                          plausible.event(name: "privacy_off");
-                          await prefs.setBool('privacyMode', false);
-                          plausible.enabled = true;
-                        },
-                        onSubmit: (inputText) async {
-                          plausible.event(name: "privacy_on");
-                          await prefs.setBool('privacyMode', true);
-                          plausible.enabled = false;
-                          statusMsg('Privacy mode enabled.');
-                        });
-                  },
-                  child:
-                      const Text("Privacy", style: TextStyle(fontSize: 12.0))),
-            ],
-          )
         ],
       ),
     );
