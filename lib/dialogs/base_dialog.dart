@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'api.dart';
-import 'analytics.dart';
+import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/components/analytics.dart';
 
 dialog({
   required BuildContext context,
@@ -41,7 +41,7 @@ dialog({
           Button(
               child: Text(submitText),
               style: submitStyle,
-              onPressed: () async {
+              onPressed: () {
                 Navigator.pop(context);
                 onSubmit(controller.text);
               }),
