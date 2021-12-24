@@ -94,7 +94,7 @@ BEGIN
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "WSL Distro Manager" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2021 bostrot.com All rights reserved." "\0"
-            VALUE "OriginalFilename", "wsl2distromanager.exe" "\0"
+            VALUE "OriginalFilename", "wslmanager.exe" "\0"
             VALUE "ProductName", "WSL Distro Manager" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
