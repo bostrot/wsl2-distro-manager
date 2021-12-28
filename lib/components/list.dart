@@ -59,7 +59,8 @@ FutureBuilder<Instances> distroList(
         if (list.isEmpty) {
           return const Expanded(
             child: Center(
-              child: Text('No distros found.'),
+              child: Text(
+                  'No instances found or there is a migration process running.'),
             ),
           );
         }
