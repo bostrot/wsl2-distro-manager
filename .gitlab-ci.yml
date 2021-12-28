@@ -5,7 +5,7 @@ build:
   script:
     - chmod +x release-script.sh
     - apt-get update && apt-get install -y zip wget git
-    - wget https://github.com/cli/cli/releases/download/v2.0.0/gh_2.0.0_linux_amd64.deb
+    - wget https://github.com/cli/cli/releases/download/v2.4.0/gh_2.4.0_linux_amd64.deb
     - dpkg -i gh_2.0.0_linux_amd64.deb
     - git remote add github https://github.com/bostrot/wsl2-distro-manager.git
     - ./release-script.sh
