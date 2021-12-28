@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 late SharedPreferences prefs;
 
@@ -14,6 +15,16 @@ String distroLabel(String item) {
 }
 
 /// Initialize shared preferences
-void initPrefs() async {
+Future initPrefs() async {
   prefs = await SharedPreferences.getInstance();
+}
+
+/// Launch a URL in the default browser
+/// @param url: URL to launch
+void launchURL(String url) async {
+  if (await canLaunch(url)) {
+    await launch(url);
+  } else {
+    throw 'Could not launch $url';
+  }
 }
