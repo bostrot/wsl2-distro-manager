@@ -5,13 +5,11 @@ import 'package:wsl2distromanager/components/helpers.dart';
 /// Rename Dialog
 /// @param context: context
 /// @param item: distro name
-/// @param api: WSLApi
 /// @param statusMsg: Function(String, {bool loading})
-renameDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
+renameDialog(context, item, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
       item: item,
-      api: api,
       statusMsg: statusMsg,
       title: 'Rename \'${distroLabel(item)}\'',
       body: 'Warning: Renaming will only change the label of the distro '

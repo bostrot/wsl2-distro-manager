@@ -2,11 +2,11 @@ import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 import 'base_dialog.dart';
 
 /// Rename Dialog
 /// @param context: context
-/// @param api: WSLApi
 /// @param statusMsg: Function(String, {bool loading})
 infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
     currentVersion) {
@@ -35,21 +35,26 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                 TextButton(
                     onPressed: () async {
                       plausible.event(name: "git_clicked");
-                      await canLaunch(
-                              'https://github.com/bostrot/wsl2-distro-manager')
-                          ? await launch(
-                              'https://github.com/bostrot/wsl2-distro-manager')
-                          : throw 'Could not launch URL';
+                      launch('https://github.com/bostrot/wsl2-distro-manager');
                     },
                     child: const Text(
                       "Visit GitHub",
                     )),
                 TextButton(
                     onPressed: () async {
+                      plausible.event(name: "changelog_clicked");
+                      launchURL(
+                          'https://github.com/bostrot/wsl2-distro-manager/'
+                                  'releases/tag/' +
+                              currentVersion);
+                    },
+                    child: const Text(
+                      "Changelog",
+                    )),
+                TextButton(
+                    onPressed: () async {
                       plausible.event(name: "donate_clicked");
-                      await canLaunch('http://paypal.me/bostrot')
-                          ? await launch('http://paypal.me/bostrot')
-                          : throw 'Could not launch URL';
+                      launchURL('http://paypal.me/bostrot');
                     },
                     child: const Text(
                       "Donate",
@@ -60,7 +65,6 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                       dialog(
                           context: context,
                           item: "Allow",
-                          api: WSLApi(),
                           statusMsg: statusMsg,
                           title: 'Usage Data',
                           body: 'Do you want to share anonymous usage data to '

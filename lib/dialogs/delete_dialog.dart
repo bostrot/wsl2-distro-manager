@@ -9,11 +9,12 @@ import 'package:wsl2distromanager/components/helpers.dart';
 /// @param item: distro name
 /// @param api: WSLApi
 /// @param statusMsg: status message
-deleteDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
+deleteDialog(context, item, Function(String, {bool loading}) statusMsg) {
+  WSLApi api = WSLApi();
+  plausible.event(page: 'delete');
   dialog(
       context: context,
       item: item,
-      api: api,
       statusMsg: statusMsg,
       title: 'Delete \'${distroLabel(item)}\' permanently?',
       body: 'If you delete this Distro you won\'t be able to recover it.'

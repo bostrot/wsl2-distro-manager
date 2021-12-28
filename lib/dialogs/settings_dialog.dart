@@ -5,9 +5,8 @@ import 'package:wsl2distromanager/components/helpers.dart';
 /// Rename Dialog
 /// @param context: context
 /// @param item: distro name
-/// @param api: WSLApi
 /// @param statusMsg: Function(String, {bool loading})
-settingsDialog(context, item, api, Function(String, {bool loading}) statusMsg) {
+settingsDialog(context, item, Function(String, {bool loading}) statusMsg) {
   var title = 'Settings';
   final pathController = TextEditingController();
   pathController.text = prefs.getString('StartPath_' + item) ?? '';

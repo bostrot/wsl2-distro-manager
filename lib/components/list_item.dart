@@ -81,7 +81,7 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
               child: IconButton(
                 icon: const Icon(FluentIcons.copy),
                 onPressed: () {
-                  copyDialog(context, item, api, statusMsg);
+                  copyDialog(context, item, statusMsg);
                 },
               ),
             ),
@@ -90,7 +90,7 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
               child: IconButton(
                 icon: const Icon(FluentIcons.rename),
                 onPressed: () {
-                  renameDialog(context, item, api, statusMsg);
+                  renameDialog(context, item, statusMsg);
                 },
               ),
             ),
@@ -99,7 +99,7 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
               child: IconButton(
                   icon: const Icon(FluentIcons.delete),
                   onPressed: () {
-                    deleteDialog(context, item, api, statusMsg);
+                    deleteDialog(context, item, statusMsg);
                   }),
             ),
             Tooltip(
@@ -107,7 +107,7 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
               child: IconButton(
                   icon: const Icon(FluentIcons.settings),
                   onPressed: () {
-                    settingsDialog(context, item, api, statusMsg);
+                    settingsDialog(context, item, statusMsg);
                   }),
             ),
           ],
