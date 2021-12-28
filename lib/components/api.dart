@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert' show utf8, json;
 import 'package:dio/dio.dart';
+import 'constants.dart';
 // import 'package:package_info_plus/package_info_plus.dart';
 
 const String updateUrl =
@@ -8,6 +9,8 @@ const String updateUrl =
 
 const String motdUrl =
     'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json';
+
+const String defaultPath = 'C:\\WSL2-Distros\\';
 
 class Instances {
   List<String> running = [];
@@ -79,7 +82,7 @@ class WSLApi {
   /// Create directory
   void mkRootDir() async {
     //await Process.run('help', []);
-    await Process.start('cmd.exe', ['/c', 'mkdir', 'C:\\WSL2-Distros\\']);
+    await Process.start('cmd.exe', ['/c', 'mkdir', defaultPath]);
   }
 
   /// Install WSL
@@ -147,9 +150,9 @@ class WSLApi {
   /// @param location: String (optional)
   /// @return Future<String>
   Future<String> copy(String distribution, String newName,
-      {String location = 'C:\\WSL2-Distros\\'}) async {
+      {String location = defaultPath}) async {
     if (location == '') {
-      location = 'C:\\WSL2-Distros\\';
+      location = defaultPath;
     }
     String exportRes =
         await export(distribution, location + distribution + '.tar');
@@ -189,13 +192,53 @@ class WSLApi {
   /// Import a WSL distro by name
   /// @param distribution: String
   /// @param installLocation: String
-  /// @param location: String
+  /// @param filename: String
   /// @return Future<String>
-  Future<String> import(
-      String distribution, String installLocation, String location) async {
+  Future<dynamic> import(
+      String distribution, String installLocation, String filename) async {
+    if (installLocation == '') {
+      installLocation = defaultPath + '/' + distribution;
+    }
     ProcessResult results = await Process.run(
-        'wsl', ['--import', distribution, installLocation, location]);
-    return results.stdout;
+        'wsl', ['--import', distribution, installLocation, filename]);
+    return results;
+  }
+
+  /// Import a WSL distro by name
+  /// @param distribution: String
+  /// @param installPath: String distro name or tar file
+  /// @param filename: String
+  /// @return Future<String>
+  Future<dynamic> create(
+      String distribution, String filename, String installPath) async {
+    if (installPath == '') {
+      installPath = defaultPath + distribution;
+    }
+
+    // Download
+    String downloadPath = '';
+    downloadPath = defaultPath + 'distros\\' + filename + '.tar.gz';
+    if (distroRootfsLinks[filename] != null &&
+        !(await File(downloadPath).exists())) {
+      String url = distroRootfsLinks[filename]!;
+      // Download file
+      Dio dio = Dio();
+      Response response = await dio.download(url, downloadPath);
+      if (response.statusCode != 200) {
+        return response;
+      }
+    }
+
+    // Downloaded or extracted
+    if (distroRootfsLinks[filename] == null) {
+      downloadPath = filename;
+    }
+
+    // Create
+    ProcessResult results = await Process.run(
+        'wsl', ['--import', distribution, installPath, downloadPath]);
+
+    return results;
   }
 
   /// Returns list of WSL distros
@@ -246,7 +289,7 @@ class WSLApi {
   /// Returns list of downloadable WSL distros
   /// @return Future<List<String>>
   Future<List<String>> getDownloadable() async {
-    ProcessResult results =
+    /*ProcessResult results =
         await Process.run('wsl', ['--list', '--online'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
@@ -260,7 +303,8 @@ class WSLApi {
       if (line.startsWith('NAME')) {
         nameStarted = true;
       }
-    });
+    });*/
+    List<String> list = distroRootfsLinks.keys.toList();
     return list;
   }
 
