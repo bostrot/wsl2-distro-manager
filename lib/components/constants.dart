@@ -1,5 +1,5 @@
 // TODO: Update on release
-const String currentVersion = "v0.7.0";
+const String currentVersion = "v0.7.1";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 
