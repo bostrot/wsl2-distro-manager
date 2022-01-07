@@ -61,6 +61,32 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                     )),
                 TextButton(
                     onPressed: () {
+                      plausible.event(name: "libraries_clicked");
+                      dialog(
+                        context: context,
+                        item: "Dependencies",
+                        statusMsg: statusMsg,
+                        title: 'Dependencies',
+                        body: 'cupertino_icons: ^1.0.2\n'
+                            'desktop_window: ^0.4.0\n'
+                            'fluent_ui: ^3.5.0\n'
+                            'system_theme: ^1.0.1\n'
+                            'file_picker: ^4.0.3\n'
+                            'url_launcher: ^6.0.10\n'
+                            'dio: ^4.0.4\n'
+                            'package_info_plus: ^1.3.0\n'
+                            'bitsdojo_window: ^0.1.1+1\n'
+                            'plausible_analytics: ^0.1.2\n'
+                            'shared_preferences: ^2.0.8\n',
+                        submitInput: false,
+                        centerText: true,
+                      );
+                    },
+                    child: const Text(
+                      "Dependencies",
+                    )),
+                TextButton(
+                    onPressed: () {
                       plausible.event(name: "analytics_clicked");
                       dialog(
                           context: context,

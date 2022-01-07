@@ -5,12 +5,13 @@ dialog({
   required BuildContext context,
   required item,
   required Function statusMsg,
-  required onSubmit,
+  Function? onSubmit,
   String title = '',
   String body = '',
   String submitText = '',
   ButtonStyle submitStyle = const ButtonStyle(),
   bool submitInput = true,
+  bool centerText = false,
   String cancelText = 'Cancel',
   Function? onCancel,
 }) {
@@ -20,10 +21,10 @@ dialog({
     context: context,
     builder: (context) {
       return ContentDialog(
-        title: Text(title),
+        title: centerText ? Center(child: Text(title)) : Text(title),
         content: Column(
           children: [
-            Text(body),
+            centerText ? Center(child: Text(body)) : Text(body),
             submitInput
                 ? Padding(
                     padding: const EdgeInsets.only(top: 10.0),
@@ -36,13 +37,17 @@ dialog({
           ],
         ),
         actions: [
-          Button(
-              child: Text(submitText),
-              style: submitStyle,
-              onPressed: () {
-                Navigator.pop(context);
-                onSubmit(controller.text);
-              }),
+          submitText != ''
+              ? Button(
+                  child: Text(submitText),
+                  style: submitStyle,
+                  onPressed: () {
+                    Navigator.pop(context);
+                    if (onSubmit != null) {
+                      onSubmit(controller.text);
+                    }
+                  })
+              : Container(),
           Button(
               child: Text(cancelText),
               onPressed: () {

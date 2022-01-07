@@ -189,6 +189,38 @@ class WSLApi {
     return results.stdout;
   }
 
+  /// Executes a command in a WSL distro. passwd will open a shell
+  /// @param distribution: String
+  /// @param cmd: List<String>
+  /// @return Future<List<int>>
+  Future<List<int>> exec(String distribution, List<String> cmds) async {
+    List<String> args;
+    List<int> processes = [];
+    int exitCode;
+    for (String cmd in cmds) {
+      if (cmd.contains('passwd')) {
+        args = ['wsl', '-d', distribution];
+        cmd.split(' ').forEach((String arg) {
+          args.add(arg);
+        });
+        Process result = await Process.start('start', args,
+            mode: ProcessStartMode.normal, runInShell: true);
+        exitCode = await result.exitCode;
+        processes.add(exitCode);
+      } else {
+        args = ['-d', distribution];
+        cmd.split(' ').forEach((String arg) {
+          args.add(arg);
+        });
+        ProcessResult result =
+            await Process.run('wsl', args, runInShell: false);
+        exitCode = result.exitCode;
+        processes.add(exitCode);
+      }
+    }
+    return processes;
+  }
+
   /// Import a WSL distro by name
   /// @param distribution: String
   /// @param installLocation: String

@@ -4,11 +4,9 @@
   />
 </a>
 
+# WSL Distro Manager
 
-
-# WSL2 Distro Manager
-
-A quick way to manage your WSL2 instances with a GUI.
+A quick way to manage your WSL instances with a GUI.
 
 ![image](https://user-images.githubusercontent.com/7342321/139673215-5864b99d-7ff4-4198-9027-dae88faef9c6.png)
 
@@ -35,7 +33,7 @@ Run with `flutter run -d windows` and build with `flutter build windows`
 
 ## Why
 
-WSL2 is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.
+WSL is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.
 
 ## How to use
 
@@ -55,12 +53,14 @@ Fairly simple. Download the latest release from the releases Page and start wsl2
 
 ## FAQ
 
-* There won't be Linux support. Just WSL2.
+* There won't be Linux support. Just WSL. (Get it? Its a joke.)
 
 ## Stuff
 
+```
 This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)
 
 VS2022: either use Flutter master branch or set `_cmakeVisualStudioGeneratorIdentifier` in `flutter_tools/lib/src/windows/build_windows.dart` to `Visual Studio 17 2022` and rebuild with `flutter pub run test`. (as of https://github.com/flutter/flutter/issues/85922)
 
 Sign package for Windows Store: flutter build windows && flutter pub run msix:create
+```

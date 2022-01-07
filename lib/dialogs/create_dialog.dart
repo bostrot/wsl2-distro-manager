@@ -13,6 +13,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
   final autoSuggestBox = TextEditingController();
   final locationController = TextEditingController();
   final nameController = TextEditingController();
+  final userController = TextEditingController();
   plausible.event(page: 'create');
 
   showDialog(
@@ -24,7 +25,13 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 10.0,
+              height: 10.0,
+            ),
+            const Text(
+              'Name:',
+            ),
+            Container(
+              height: 5.0,
             ),
             Tooltip(
               message: 'The name of your new WSL instance',
@@ -41,6 +48,12 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
             ),
             Container(
               height: 10.0,
+            ),
+            const Text(
+              'Path to rootfs or distro name:',
+            ),
+            Container(
+              height: 5.0,
             ),
             Tooltip(
               message:
@@ -86,11 +99,17 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
             Container(
               height: 10.0,
             ),
+            const Text(
+              'Save location:',
+            ),
+            Container(
+              height: 5.0,
+            ),
             Tooltip(
               message: '(Optional) Path where to save the new instance',
               child: TextBox(
                 controller: locationController,
-                placeholder: 'Save location',
+                placeholder: 'Save location (optional)',
                 suffix: IconButton(
                   icon: const Icon(FluentIcons.open_folder_horizontal,
                       size: 15.0),
@@ -108,8 +127,18 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
             Container(
               height: 10.0,
             ),
+            const Text(
+              'Create default user (only on Debian/Ubuntu):',
+            ),
             Container(
-              height: 10.0,
+              height: 5.0,
+            ),
+            Tooltip(
+              message: '(Optional) Username',
+              child: TextBox(
+                controller: userController,
+                placeholder: '(Optional) User',
+              ),
             ),
           ],
         ),
@@ -122,16 +151,41 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
           Button(
             onPressed: () async {
               plausible.event(name: "wsl_create");
-              if (nameController.text != '') {
+              String name = nameController.text;
+              if (name != '') {
                 statusMsg('Creating instance. This might take a while...',
                     loading: true);
-                var result = await api.create(nameController.text,
-                    autoSuggestBox.text, locationController.text);
+                var result = await api.create(
+                    name, autoSuggestBox.text, locationController.text);
                 if (result.exitCode != 0) {
                   statusMsg(result.stdout);
                 } else {
-                  Navigator.pop(context);
-                  statusMsg('DONE: creating instance');
+                  String user = userController.text;
+                  if (user != '') {
+                    List<int> processes = await api.exec(name, [
+                      'apt-get update',
+                      'apt-get install -y sudo',
+                      'useradd -m -s /bin/bash -G sudo $user',
+                      'passwd $user',
+                    ]);
+                    bool success = true;
+                    for (dynamic process in processes) {
+                      if (process != 0) {
+                        success = false;
+                        break;
+                      }
+                    }
+                    if (success) {
+                      prefs.setString('StartPath_' + name, '/home/$user');
+                      prefs.setString('StartUser_' + name, user);
+                      Navigator.pop(context);
+                      statusMsg('DONE: creating instance');
+                    } else {
+                      Navigator.pop(context);
+                      statusMsg(
+                          'WARNING: Created instance but failed to create user');
+                    }
+                  }
                 }
                 // Download distro check
               } else {
