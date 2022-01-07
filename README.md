@@ -8,8 +8,7 @@
 
 A quick way to manage your WSL instances with a GUI.
 
-![image](https://user-images.githubusercontent.com/7342321/139673215-5864b99d-7ff4-4198-9027-dae88faef9c6.png)
-
+![screenshot](https://user-images.githubusercontent.com/7342321/148599954-c1567c70-6704-452c-99f9-7ecb6386cfb1.png)
 
 ## Install
 
