@@ -2,6 +2,8 @@
 # get version from pubspec
 version=$(cat pubspec.yaml | grep -o -P '(?<=version: ).*(?= #)')
 
+gh auth login
+
 # copy files
 cp ./windows-dlls/* ./build/windows/runner/Release
 cd ./build/windows/runner/Release
