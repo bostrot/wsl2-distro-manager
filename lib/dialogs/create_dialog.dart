@@ -167,7 +167,8 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                       'apt-get install -y sudo',
                       'useradd -m -s /bin/bash -G sudo $user',
                       'passwd $user',
-                      'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo'
+                      'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo',
+                      'echo -e \'[user]\ndefault = $user\' > /etc/wsl.conf',
                     ]);
                     bool success = true;
                     for (dynamic process in processes) {
