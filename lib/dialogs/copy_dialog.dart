@@ -28,8 +28,8 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           // Copy settings
           String? startPath = prefs.getString('StartPath_' + item) ?? '';
           String? startName = prefs.getString('StartUser_' + item) ?? '';
-          prefs.setString('StartPath_' + item, startPath);
-          prefs.setString('StartUser_' + item, startName);
+          prefs.setString('StartPath_' + inputText, startPath);
+          prefs.setString('StartUser_' + inputText, startName);
           statusMsg('DONE: Copied ${distroLabel(item)} to $inputText.');
         } else {
           statusMsg('ERROR: Please enter a name for the new instance.');

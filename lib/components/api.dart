@@ -269,7 +269,6 @@ class WSLApi {
     // Create
     ProcessResult results = await Process.run(
         'wsl', ['--import', distribution, installPath, downloadPath]);
-
     return results;
   }
 
