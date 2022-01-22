@@ -226,14 +226,14 @@ class WSLApi {
   /// @param installLocation: String
   /// @param filename: String
   /// @return Future<String>
-  Future<dynamic> import(
+  Future<String> import(
       String distribution, String installLocation, String filename) async {
     if (installLocation == '') {
       installLocation = defaultPath + '/' + distribution;
     }
     ProcessResult results = await Process.run(
         'wsl', ['--import', distribution, installLocation, filename]);
-    return results;
+    return results.stdout;
   }
 
   /// Import a WSL distro by name
