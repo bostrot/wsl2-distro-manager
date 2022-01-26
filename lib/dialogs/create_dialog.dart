@@ -155,8 +155,13 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
               if (name != '') {
                 statusMsg('Creating instance. This might take a while...',
                     loading: true);
-                var result = await api.create(
-                    name, autoSuggestBox.text, locationController.text);
+                String location = locationController.text;
+                if (location == '') {
+                  location = prefs.getString("SaveLocation")!;
+                  location += '/' + name;
+                }
+                var result =
+                    await api.create(name, autoSuggestBox.text, location);
                 if (result.exitCode != 0) {
                   statusMsg(result.stdout);
                 } else {
@@ -187,6 +192,9 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                       statusMsg(
                           'WARNING: Created instance but failed to create user');
                     }
+                  } else {
+                    Navigator.pop(context);
+                    statusMsg('DONE: creating instance');
                   }
                 }
                 // Download distro check
