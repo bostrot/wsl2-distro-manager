@@ -132,6 +132,47 @@ class WSLApi {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
+  /// Write wslconfig file
+  void writeConfig(String text) async {
+    File file =
+        File('C:\\Users\\${Platform.environment['USERNAME']}\\.wslconfig');
+    if (!file.existsSync()) {
+      file.createSync();
+    }
+    file.writeAsStringSync('[wsl2]\n\n$text');
+  }
+
+  /// Read wslconfig file
+  /// @return Future<Map<String, String>>
+  Future<Map<String, String>> readConfig() async {
+    File file =
+        File('C:\\Users\\${Platform.environment['USERNAME']}\\.wslconfig');
+    if (!file.existsSync()) {
+      file.createSync();
+    }
+
+    Map<String, String> config = {};
+    String key = '', value = '';
+    List<String> lines = await file.readAsLines();
+
+    for (var line in lines) {
+      if (line.isNotEmpty && line.contains('=')) {
+        key = line.substring(0, line.indexOf('='));
+        key = key.replaceAll(' ', '');
+        value = line.substring(line.indexOf('=') + 1, line.length);
+        value = value.replaceAll(' ', '');
+        config[key] = value;
+      }
+    }
+    return config;
+  }
+
+  /// Open wslconfig file
+  void editConfig() async {
+    Process.start('start', ['notepad.exe', '%USERPROFILE%\\.wslconfig'],
+        mode: ProcessStartMode.normal, runInShell: true);
+  }
+
   /// Start Explorer
   /// @param distribution: String
   void startExplorer(String distribution, {String path = ''}) async {
