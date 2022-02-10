@@ -9,6 +9,8 @@ import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 
+import 'package:wsl2distromanager/components/sync.dart';
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title, required this.themeData})
       : super(key: key);
@@ -30,6 +32,8 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+
+    Sync().startServer('ITS2');
 
     // Check updates
     App app = App();

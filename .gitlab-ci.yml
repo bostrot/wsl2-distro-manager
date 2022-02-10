@@ -9,4 +9,7 @@ build:
     - dpkg -i gh_2.4.0_linux_amd64.deb
     #- git remote add github https://github.com/bostrot/wsl2-distro-manager.git
     - ./release-script.sh
-
+  tags:
+    - docker
+  only:
+    - main

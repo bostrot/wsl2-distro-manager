@@ -43,6 +43,7 @@ dependencies:
   bitsdojo_window: ^0.1.1+1
   plausible_analytics: ^0.1.2
   shared_preferences: ^2.0.8
+  shelf_static: ^1.1.0
 
 dev_dependencies:
   flutter_test:
