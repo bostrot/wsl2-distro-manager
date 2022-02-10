@@ -6,7 +6,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 
-Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
+Widget listItem(item, update, hover, isRunning, running, statusMsg, context,
+    syncing, isSync) {
   WSLApi api = WSLApi();
   return Padding(
     padding: const EdgeInsets.only(top: 8.0),
@@ -63,7 +64,15 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
                       onPressed: () {
                         //plausible.event(name: "wsl_started");
                         Sync sync = Sync.instance(item, statusMsg);
-                        sync.startServer();
+                        if (!isSync) {
+                          syncing(true);
+                          sync.startServer();
+                          statusMsg('Serving $item on network.');
+                        } else {
+                          syncing(false);
+                          sync.stopServer();
+                          statusMsg('Stopped serving $item on network.');
+                        }
                       },
                     ),
                   )
@@ -75,8 +84,7 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
                       icon: const Icon(FluentIcons.download),
                       onPressed: () {
                         //plausible.event(name: "wsl_started");
-                        Sync sync = Sync.instance(item, statusMsg);
-                        sync.download();
+                        syncDialog(context, item, statusMsg);
                       },
                     ),
                   )

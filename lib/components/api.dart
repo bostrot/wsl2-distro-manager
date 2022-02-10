@@ -113,6 +113,13 @@ class WSLApi {
     return results.stdout;
   }
 
+  /// Shutdown WSL
+  /// @return Future<String>
+  Future<String> shutdown() async {
+    ProcessResult results = await Process.run('wsl', ['--shutdown']);
+    return results.stdout;
+  }
+
   /// Start VSCode
   /// @param distribution: String
   void startVSCode(String distribution, {String path = ''}) async {

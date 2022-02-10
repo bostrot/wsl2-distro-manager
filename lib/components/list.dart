@@ -17,9 +17,16 @@ class DistroList extends StatefulWidget {
 
 class _DistroListState extends State<DistroList> {
   Map<String, bool> hover = {};
+  bool isSyncing = false;
   void update(var item, bool enter) {
     setState(() {
       hover[item] = enter;
+    });
+  }
+
+  void syncing(var item) {
+    setState(() {
+      isSyncing = item;
     });
   }
 
@@ -31,12 +38,15 @@ class _DistroListState extends State<DistroList> {
 
   @override
   Widget build(BuildContext context) {
-    return distroList(widget.api, widget.statusMsg, update, hover);
+    return distroList(
+        widget.api, syncing, isSyncing, widget.statusMsg, update, hover);
   }
 }
 
 FutureBuilder<Instances> distroList(
     WSLApi api,
+    Function syncing,
+    bool isSync,
     Function(String, {bool loading}) statusMsg,
     Function(dynamic, bool) update,
     Map<String, bool> hover) {
@@ -69,15 +79,8 @@ FutureBuilder<Instances> distroList(
           return const InstallDialog();
         }
         for (String item in list) {
-          newList.add(listItem(
-            item,
-            update,
-            hover,
-            isRunning,
-            running,
-            statusMsg,
-            context,
-          ));
+          newList.add(listItem(item, update, hover, isRunning, running,
+              statusMsg, context, syncing, isSync));
         }
         return Expanded(
           child: ListView.custom(
