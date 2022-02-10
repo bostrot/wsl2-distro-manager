@@ -14,10 +14,12 @@ class SettingsPage extends StatefulWidget {
   _SettingsPageState createState() => _SettingsPageState();
 }
 
-Map<String, TextEditingController> _settings =
-    <String, TextEditingController>{};
-
 class _SettingsPageState extends State<SettingsPage> {
+  Map<String, TextEditingController> _settings =
+      <String, TextEditingController>{};
+
+  final TextEditingController _syncIpTextController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +31,10 @@ class _SettingsPageState extends State<SettingsPage> {
     settings.forEach((key, value) {
       _settings[key] = TextEditingController(text: value);
     });
+    String? syncIP = prefs.getString('SyncIP');
+    if (syncIP != null && syncIP != '') {
+      _syncIpTextController.text = syncIP;
+    }
     setState(() {
       _settings = _settings;
     });
@@ -73,6 +79,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         padding: ButtonState.all(const EdgeInsets.only(
                             left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
                     onPressed: () {
+                      // Sync target ip setting _syncIpTextController
+                      if (_syncIpTextController.text.isNotEmpty) {
+                        prefs.setString("SyncIP", _syncIpTextController.text);
+                      }
+
+                      // Distro location setting
                       if (_settings['Default Distro Location'] != null) {
                         prefs.setString("SaveLocation",
                             _settings['Default Distro Location']!.text);
@@ -115,6 +127,22 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
             placeholder: prefs.getString("SaveLocation") ?? 'C:\\WSL2-Distros'),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('IP Address of sync target'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'IP Address of sync target',
+                child: TextBox(
+                  controller: _syncIpTextController,
+                  placeholder: '192.168.1.20',
+                ),
+              ),
+            ),
+          ],
+        ),
         const Padding(
           padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
           child: Divider(),

@@ -4,14 +4,6 @@ import 'package:dio/dio.dart';
 import 'constants.dart';
 // import 'package:package_info_plus/package_info_plus.dart';
 
-const String updateUrl =
-    'https://api.github.com/repos/bostrot/wsl2-distro-manager/releases';
-
-const String motdUrl =
-    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json';
-
-const String defaultPath = 'C:\\WSL2-Distros\\';
-
 class Instances {
   List<String> running = [];
   List<String> all = [];

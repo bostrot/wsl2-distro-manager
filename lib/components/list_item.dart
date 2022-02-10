@@ -1,3 +1,5 @@
+import 'package:wsl2distromanager/components/sync.dart';
+
 import 'analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -53,6 +55,32 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
         ]),
         trailing: Row(
           children: [
+            Sync().hasPath(item)
+                ? Tooltip(
+                    message: 'Upload',
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.upload),
+                      onPressed: () {
+                        //plausible.event(name: "wsl_started");
+                        Sync sync = Sync.instance(item, statusMsg);
+                        sync.startServer();
+                      },
+                    ),
+                  )
+                : Container(),
+            Sync().hasPath(item)
+                ? Tooltip(
+                    message: 'Download',
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.download),
+                      onPressed: () {
+                        //plausible.event(name: "wsl_started");
+                        Sync sync = Sync.instance(item, statusMsg);
+                        sync.download();
+                      },
+                    ),
+                  )
+                : Container(),
             Tooltip(
               message: 'Open with File Explorer',
               child: IconButton(

@@ -197,7 +197,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                     statusMsg('DONE: creating instance');
                   }
                   // Save distro path
-                  prefs.setString('Path_' + name, location + 'ext4.vhdx');
+                  prefs.setString('Path_' + name, location);
                 }
                 // Download distro check
               } else {

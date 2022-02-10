@@ -33,8 +33,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
 
-    Sync().startServer('ITS2');
-
     // Check updates
     App app = App();
     app.checkUpdate(currentVersion).then((updateUrl) {
