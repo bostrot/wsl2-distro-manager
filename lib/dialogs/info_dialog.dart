@@ -1,4 +1,3 @@
-import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';

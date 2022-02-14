@@ -3,10 +3,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/analytics.dart';
 
 class SettingsPage extends StatefulWidget {
-  SettingsPage({Key? key, required this.themeData}) : super(key: key);
+  const SettingsPage({Key? key, required this.themeData}) : super(key: key);
 
   final ThemeData themeData;
 
