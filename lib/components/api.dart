@@ -67,11 +67,6 @@ class App {
 
 /// WSL API
 class WSLApi {
-  /// Constructor: create Root Directory
-  WSLApi() {
-    mkRootDir();
-  }
-
   /// Create directory
   void mkRootDir() async {
     //await Process.run('help', []);
