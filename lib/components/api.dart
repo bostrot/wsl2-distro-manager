@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert' show utf8, json;
 import 'package:dio/dio.dart';
 import 'constants.dart';
+import 'helpers.dart';
 // import 'package:package_info_plus/package_info_plus.dart';
 
 class Instances {
@@ -102,6 +103,11 @@ class WSLApi {
     }
     Process.start('start', args,
         mode: ProcessStartMode.detached, runInShell: true);
+
+    //exec(distribution, [
+    //  'cp /mnt/$path/startup.sh ~/startup.sh',
+    //  '/bin/bash ~/startup.sh',
+    //]);
   }
 
   /// Stop a WSL distro by name
@@ -111,6 +117,15 @@ class WSLApi {
     ProcessResult results =
         await Process.run('wsl', ['--terminate', distribution]);
     return results.stdout;
+  }
+
+  /// Open bashrc with notepad from WSL
+  /// @param distribution: String
+  Future<String> openBashrc(String distribution) async {
+    List<String> argsRc = ['wsl', '-d', distribution, 'notepad.exe', '.bashrc'];
+    Process results = await Process.start('start', argsRc,
+        mode: ProcessStartMode.normal, runInShell: true);
+    return results.stdout.toString();
   }
 
   /// Shutdown WSL
@@ -172,6 +187,14 @@ class WSLApi {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
+  /// Open distro config file
+  void editDistroConfig(String distroname) async {
+    String path =
+        prefs.getString("Path_$distroname") ?? defaultPath + distroname;
+    Process.start('start', ['notepad.exe', '$path\\startup.sh'],
+        mode: ProcessStartMode.normal, runInShell: true);
+  }
+
   /// Start Explorer
   /// @param distribution: String
   void startExplorer(String distribution, {String path = ''}) async {
@@ -184,7 +207,7 @@ class WSLApi {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
-  /// Start a WSL distro by name
+  /// Copy a WSL distro by name
   /// @param distribution: String
   /// @param newName: String
   /// @param location: String (optional)

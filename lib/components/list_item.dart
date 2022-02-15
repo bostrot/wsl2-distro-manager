@@ -1,13 +1,10 @@
-import 'package:wsl2distromanager/components/sync.dart';
-
 import 'analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 
-Widget listItem(item, update, hover, isRunning, running, statusMsg, context,
-    syncing, isSync) {
+Widget listItem(item, update, hover, isRunning, running, statusMsg, context) {
   WSLApi api = WSLApi();
   return Padding(
     padding: const EdgeInsets.only(top: 8.0),
@@ -56,39 +53,6 @@ Widget listItem(item, update, hover, isRunning, running, statusMsg, context,
         ]),
         trailing: Row(
           children: [
-            Sync().hasPath(item)
-                ? Tooltip(
-                    message: 'Upload',
-                    child: IconButton(
-                      icon: const Icon(FluentIcons.upload),
-                      onPressed: () {
-                        //plausible.event(name: "wsl_started");
-                        Sync sync = Sync.instance(item, statusMsg);
-                        if (!isSync) {
-                          syncing(true);
-                          sync.startServer();
-                          statusMsg('Serving $item on network.');
-                        } else {
-                          syncing(false);
-                          sync.stopServer();
-                          statusMsg('Stopped serving $item on network.');
-                        }
-                      },
-                    ),
-                  )
-                : Container(),
-            Sync().hasPath(item)
-                ? Tooltip(
-                    message: 'Download',
-                    child: IconButton(
-                      icon: const Icon(FluentIcons.download),
-                      onPressed: () {
-                        //plausible.event(name: "wsl_started");
-                        syncDialog(context, item, statusMsg);
-                      },
-                    ),
-                  )
-                : Container(),
             Tooltip(
               message: 'Open with File Explorer',
               child: IconButton(
