@@ -3,6 +3,7 @@ import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 
 /// Copy Dialog
 /// @param context: context
@@ -30,6 +31,8 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           String? startName = prefs.getString('StartUser_' + item) ?? '';
           prefs.setString('StartPath_' + inputText, startPath);
           prefs.setString('StartUser_' + inputText, startName);
+          // Save distro path
+          prefs.setString('Path_' + inputText, defaultPath + inputText);
           statusMsg('DONE: Copied ${distroLabel(item)} to $inputText.');
         } else {
           statusMsg('ERROR: Please enter a name for the new instance.');

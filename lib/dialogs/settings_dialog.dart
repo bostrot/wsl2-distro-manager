@@ -1,6 +1,9 @@
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+// import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/sync.dart';
+import 'package:wsl2distromanager/dialogs/sync_dialog.dart';
 
 /// Rename Dialog
 /// @param context: context
@@ -13,6 +16,7 @@ settingsDialog(context, item, Function(String, {bool loading}) statusMsg) {
   final userController = TextEditingController();
   userController.text = prefs.getString('StartUser_' + item) ?? '';
   plausible.event(page: title.split(' ')[0].toLowerCase());
+  bool isSyncing = false;
   showDialog(
     context: context,
     builder: (context) {
@@ -48,6 +52,61 @@ settingsDialog(context, item, Function(String, {bool loading}) statusMsg) {
               child: Text(
                   '(empty the fields for default or if your WSL version does not support it)'),
             ),
+            Sync().hasPath(item)
+                ? Tooltip(
+                    message: 'Upload',
+                    child: Button(
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: const [
+                            Text('Start/Stop serving on network'),
+                            Icon(FluentIcons.upload),
+                          ]),
+                      onPressed: () {
+                        //plausible.event(name: "wsl_started");
+                        Sync sync = Sync.instance(item, statusMsg);
+                        if (!isSyncing) {
+                          isSyncing = true;
+                          sync.startServer();
+                          statusMsg('Serving $item on network.');
+                        } else {
+                          isSyncing = false;
+                          sync.stopServer();
+                          statusMsg('Stopped serving $item on network.');
+                        }
+                      },
+                    ),
+                  )
+                : Container(),
+            const SizedBox(height: 8.0),
+            Sync().hasPath(item)
+                ? Tooltip(
+                    message: 'Download',
+                    child: Button(
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: const [
+                            Text('Download/Override from network'),
+                            Icon(FluentIcons.download),
+                          ]),
+                      onPressed: () {
+                        //plausible.event(name: "wsl_started");
+                        syncDialog(context, item, statusMsg);
+                      },
+                    ),
+                  )
+                : Container(),
+            const SizedBox(
+              height: 8.0,
+            ),
+            /* Button(
+                child: const Text('Edit startup file'),
+                style: ButtonStyle(
+                    padding: ButtonState.all(const EdgeInsets.only(
+                        left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+                onPressed: () {
+                  WSLApi().openBashrc(item);
+                }), */
           ],
         ),
         actions: [

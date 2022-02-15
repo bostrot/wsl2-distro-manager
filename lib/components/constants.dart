@@ -1,7 +1,14 @@
 // TODO: Update on release
-const String currentVersion = "v0.7.4";
+const String currentVersion = "v0.8.0";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
+const String defaultPath = 'C:\\WSL2-Distros\\';
+
+const String updateUrl =
+    'https://api.github.com/repos/bostrot/wsl2-distro-manager/releases';
+
+const String motdUrl =
+    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json';
 
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
 const Map<String, String> distroRootfsLinks = {

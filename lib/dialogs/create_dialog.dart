@@ -196,6 +196,8 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                     Navigator.pop(context);
                     statusMsg('DONE: creating instance');
                   }
+                  // Save distro path
+                  prefs.setString('Path_' + name, location);
                 }
                 // Download distro check
               } else {

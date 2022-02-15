@@ -8,7 +8,7 @@ import 'package:wsl2distromanager/screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemTheme.accentInstance.load();
-  runApp(MyApp());
+  runApp(const MyApp());
   doWhenWindowReady(() {
     final win = appWindow;
     const initialSize = Size(650, 500);
@@ -29,9 +29,10 @@ void main() async {
   plausible.event();
 }
 
+ThemeData themeData = ThemeData();
+
 class MyApp extends StatelessWidget {
-  MyApp({Key? key}) : super(key: key);
-  ThemeData themeData = ThemeData();
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

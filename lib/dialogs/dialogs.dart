@@ -6,3 +6,4 @@ export 'info_dialog.dart';
 export 'install_dialog.dart';
 export 'rename_dialog.dart';
 export 'settings_dialog.dart';
+export 'sync_dialog.dart';

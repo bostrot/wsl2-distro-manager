@@ -17,9 +17,16 @@ class DistroList extends StatefulWidget {
 
 class _DistroListState extends State<DistroList> {
   Map<String, bool> hover = {};
+  bool isSyncing = false;
   void update(var item, bool enter) {
     setState(() {
       hover[item] = enter;
+    });
+  }
+
+  void syncing(var item) {
+    setState(() {
+      isSyncing = item;
     });
   }
 
@@ -70,14 +77,7 @@ FutureBuilder<Instances> distroList(
         }
         for (String item in list) {
           newList.add(listItem(
-            item,
-            update,
-            hover,
-            isRunning,
-            running,
-            statusMsg,
-            context,
-          ));
+              item, update, hover, isRunning, running, statusMsg, context));
         }
         return Expanded(
           child: ListView.custom(
