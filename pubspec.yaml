@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.8.0 # Current version
+version: 0.8.1 # Current version
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
@@ -97,4 +97,19 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+msix_config: #gitignore
+  display_name: WSL2 Manager #gitignore
+  publisher_display_name: Bostrot #gitignore
+  identity_name: 9891PhantomDevs.WSL2Manager #gitignore
+  msix_version: 0.8.1.0 #gitignore
+  certificate_path: .\certs\CERTIFICATE.pfx #gitignore
+  certificate_password: gh08hg349AFg034f3 #gitignore
+  publisher: CN=94697CA2-9680-453C-A7CB-2FA531A4A341 #gitignore
+  logo_path: .\assets\logo.png #gitignore
+  start_menu_icon_path: .\assets\logo.png #gitignore
+  tile_icon_path: .\assets\logo.png #gitignore
+  icons_background_color: transparent #gitignore
+  architecture: x64 #gitignore
+  capabilities: 'internetClient' #gitignore
 
