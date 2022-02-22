@@ -1,5 +1,5 @@
 // TODO: Update on release
-const String currentVersion = "v0.8.0";
+const String currentVersion = "v0.8.1";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros\\';

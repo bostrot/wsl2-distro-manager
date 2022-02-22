@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -127,7 +128,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 }
               },
             ),
-            placeholder: prefs.getString("SaveLocation") ?? 'C:\\WSL2-Distros'),
+            placeholder: prefs.getString("SaveLocation") ?? defaultPath),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
