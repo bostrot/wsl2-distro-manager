@@ -2,6 +2,7 @@ import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 /// Rename Dialog
@@ -157,7 +158,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                     loading: true);
                 String location = locationController.text;
                 if (location == '') {
-                  location = prefs.getString("SaveLocation")!;
+                  location = prefs.getString("SaveLocation") ?? defaultPath;
                   location += '/' + name;
                 }
                 var result =
