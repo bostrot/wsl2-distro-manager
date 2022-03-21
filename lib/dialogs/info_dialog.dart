@@ -66,17 +66,18 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                         item: "Dependencies",
                         statusMsg: statusMsg,
                         title: 'Dependencies',
-                        body: 'cupertino_icons: ^1.0.2\n'
+                        body: 'cupertino_icons: ^1.0.2'
                             'desktop_window: ^0.4.0\n'
-                            'fluent_ui: ^3.5.0\n'
+                            'fluent_ui: ^3.9.1\n'
                             'system_theme: ^1.0.1\n'
-                            'file_picker: ^4.0.3\n'
-                            'url_launcher: ^6.0.10\n'
+                            'file_picker: ^4.5.1\n'
+                            'url_launcher: ^6.0.20\n'
                             'dio: ^4.0.4\n'
-                            'package_info_plus: ^1.3.0\n'
+                            'package_info_plus: ^1.4.0\n'
                             'bitsdojo_window: ^0.1.1+1\n'
                             'plausible_analytics: ^0.1.2\n'
-                            'shared_preferences: ^2.0.8\n',
+                            'shared_preferences: ^2.0.13\n'
+                            'shelf_static: ^1.1.0\n',
                         submitInput: false,
                         centerText: true,
                       );
