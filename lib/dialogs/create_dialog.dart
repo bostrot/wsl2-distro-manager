@@ -40,7 +40,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                 controller: nameController,
                 placeholder: 'Name',
                 suffix: IconButton(
-                  icon: const Icon(FluentIcons.close, size: 15.0),
+                  icon: const Icon(FluentIcons.chrome_close, size: 15.0),
                   onPressed: () {
                     nameController.clear();
                   },
@@ -66,34 +66,27 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                     if (snapshot.hasData) {
                       list = snapshot.data ?? [];
                     } else if (snapshot.hasError) {}
-                    return AutoSuggestBox<String>(
+                    return AutoSuggestBox(
+                      placeholder: 'Distro name or path to rootfs',
                       controller: autoSuggestBox,
                       items: list,
-                      textBoxBuilder: (context, controller, focusNode, key) {
-                        return TextBox(
-                          key: key,
-                          controller: controller,
-                          focusNode: focusNode,
-                          suffix: IconButton(
-                            icon: const Icon(FluentIcons.open_folder_horizontal,
-                                size: 15.0),
-                            onPressed: () async {
-                              FilePickerResult? result =
-                                  await FilePicker.platform.pickFiles(
-                                type: FileType.custom,
-                                allowedExtensions: ['*'],
-                              );
+                      trailingIcon: IconButton(
+                        icon: const Icon(FluentIcons.open_folder_horizontal,
+                            size: 15.0),
+                        onPressed: () async {
+                          FilePickerResult? result =
+                              await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['*'],
+                          );
 
-                              if (result != null) {
-                                controller.text = result.files.single.path!;
-                              } else {
-                                // User canceled the picker
-                              }
-                            },
-                          ),
-                          placeholder: 'Distro',
-                        );
-                      },
+                          if (result != null) {
+                            autoSuggestBox.text = result.files.single.path!;
+                          } else {
+                            // User canceled the picker
+                          }
+                        },
+                      ),
                     );
                   }),
             ),
@@ -152,7 +145,9 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
           Button(
             onPressed: () async {
               plausible.event(name: "wsl_create");
-              String name = nameController.text;
+              String label = nameController.text;
+              // Replace all special characters with _
+              String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
               if (name != '') {
                 statusMsg('Creating instance. This might take a while...',
                     loading: true);
@@ -197,6 +192,8 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                     Navigator.pop(context);
                     statusMsg('DONE: creating instance');
                   }
+                  // Save distro label
+                  prefs.setString('DistroName_' + name, label);
                   // Save distro path
                   prefs.setString('Path_' + name, location);
                 }

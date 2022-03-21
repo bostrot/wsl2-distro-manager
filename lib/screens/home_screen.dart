@@ -100,7 +100,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ? const SizedBox(
                       child: ProgressRing(), width: 20.0, height: 20.0)
                   : IconButton(
-                      icon: const Icon(FluentIcons.close),
+                      icon: const Icon(FluentIcons.chrome_close),
                       onPressed: () {
                         setState(() {
                           status = '';
