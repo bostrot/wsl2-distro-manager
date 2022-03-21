@@ -279,6 +279,14 @@ class WSLApi {
     return processes;
   }
 
+  /// Restart WSL
+  /// @return Future<String>
+  Future<String> restart() async {
+    ProcessResult results = await Process.run('wsl', ['--shutdown']);
+    results = await Process.run('wsl', ['--shutdown']);
+    return results.stdout;
+  }
+
   /// Import a WSL distro by name
   /// @param distribution: String
   /// @param installLocation: String

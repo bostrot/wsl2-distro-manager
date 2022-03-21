@@ -71,7 +71,19 @@ class _SettingsPageState extends State<SettingsPage> {
                       WSLApi().editConfig();
                     }),
                 const SizedBox(
-                  width: 180.0,
+                  width: 10.0,
+                ),
+                Button(
+                    child: const Text('Restart WSL'),
+                    style: ButtonStyle(
+                        padding: ButtonState.all(const EdgeInsets.only(
+                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+                    onPressed: () {
+                      WSLApi().restart();
+                      Navigator.pop(context);
+                    }),
+                const SizedBox(
+                  width: 60.0,
                 ),
                 Button(
                     child: const Text('Save'),
