@@ -33,15 +33,12 @@ class _DistroListState extends State<DistroList> {
 
   @override
   Widget build(BuildContext context) {
-    return distroList(widget.api, widget.statusMsg, update, hover);
+    return distroList(widget.api, widget.statusMsg, hover);
   }
 }
 
-FutureBuilder<Instances> distroList(
-    WSLApi api,
-    Function(String, {bool loading}) statusMsg,
-    Function(dynamic, bool) update,
-    Map<String, bool> hover) {
+FutureBuilder<Instances> distroList(WSLApi api,
+    Function(String, {bool loading}) statusMsg, Map<String, bool> hover) {
   // List as FutureBuilder with WSLApi
   return FutureBuilder<Instances>(
     future: api.list(),
