@@ -52,15 +52,16 @@ class _SettingsPageState extends State<SettingsPage> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(left: 20.0, right: 20.0),
               child: SizedBox(
-                width: 400.0,
+                width: MediaQuery.of(context).size.width,
                 child: settingsList(context),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.only(
+                left: 20.0, right: 20.0, bottom: 8.0, top: 2.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Button(
                     child: const Text('Edit .wslconfig directly'),
@@ -73,46 +74,57 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(
                   width: 10.0,
                 ),
-                Button(
-                    child: const Text('Restart WSL'),
-                    style: ButtonStyle(
-                        padding: ButtonState.all(const EdgeInsets.only(
-                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                    onPressed: () {
-                      WSLApi().restart();
-                      Navigator.pop(context);
-                    }),
-                const SizedBox(
-                  width: 60.0,
-                ),
-                Button(
-                    child: const Text('Save'),
-                    style: ButtonStyle(
-                        padding: ButtonState.all(const EdgeInsets.only(
-                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                    onPressed: () {
-                      // Sync target ip setting _syncIpTextController
-                      if (_syncIpTextController.text.isNotEmpty) {
-                        prefs.setString("SyncIP", _syncIpTextController.text);
-                      }
+                Row(
+                  children: [
+                    Button(
+                        child: const Text('Restart WSL'),
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 15.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () {
+                          WSLApi().restart();
+                          Navigator.pop(context);
+                        }),
+                    const SizedBox(
+                      width: 10.0,
+                    ),
+                    Button(
+                        child: const Text('Save'),
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 20.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () {
+                          // Sync target ip setting _syncIpTextController
+                          if (_syncIpTextController.text.isNotEmpty) {
+                            prefs.setString(
+                                "SyncIP", _syncIpTextController.text);
+                          }
 
-                      // Distro location setting
-                      if (_settings['Default Distro Location']
-                          .toString()
-                          .isNotEmpty) {
-                        prefs.setString("SaveLocation",
-                            _settings['Default Distro Location']!.text);
-                      }
-                      String config = '';
-                      _settings.forEach((key, value) {
-                        if (key != 'Default Distro Location' &&
-                            value.text.isNotEmpty) {
-                          config += '$key=${value.text}\n';
-                        }
-                      });
-                      WSLApi().writeConfig(config);
-                      Navigator.pop(context);
-                    }),
+                          // Distro location setting
+                          if (_settings['Default Distro Location']
+                              .toString()
+                              .isNotEmpty) {
+                            prefs.setString("SaveLocation",
+                                _settings['Default Distro Location']!.text);
+                          }
+                          String config = '';
+                          _settings.forEach((key, value) {
+                            if (key != 'Default Distro Location' &&
+                                value.text.isNotEmpty) {
+                              config += '$key=${value.text}\n';
+                            }
+                          });
+                          WSLApi().writeConfig(config);
+                          Navigator.pop(context);
+                        }),
+                  ],
+                ),
               ],
             ),
           ),

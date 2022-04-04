@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/components/theme.dart';
 
 import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -70,8 +71,8 @@ class _ListItemState extends State<ListItem> {
                           borderRadius: BorderRadius.all(Radius.circular(8.0)),
                         ),
                   tileColor: hovered
-                      ? const Color.fromRGBO(255, 255, 255, 0.2)
-                      : Colors.grey,
+                      ? themeData.activeColor.withOpacity(0.1)
+                      : themeData.activeColor.withOpacity(0.05),
                   title: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: Listener(
@@ -103,7 +104,7 @@ class _ListItemState extends State<ListItem> {
                             WSLApi().start(widget.item,
                                 startPath: startPath, startUser: startName);
                             Future.delayed(const Duration(milliseconds: 500),
-                                widget.statusMsg('$widget.item started.'));
+                                widget.statusMsg('${widget.item} started.'));
                           },
                         ),
                       ),
@@ -154,9 +155,9 @@ class Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+          color: themeData.activeColor.withOpacity(0.05),
+          borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(5.0),
               bottomRight: Radius.circular(5.0))),
       child: Padding(
