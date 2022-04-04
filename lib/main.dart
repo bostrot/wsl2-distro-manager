@@ -3,6 +3,7 @@ import 'package:system_theme/system_theme.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
 
 void main() async {
@@ -28,8 +29,6 @@ void main() async {
   // Enable analytics
   plausible.event();
 }
-
-ThemeData themeData = ThemeData();
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);

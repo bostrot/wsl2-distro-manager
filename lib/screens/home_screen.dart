@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/list.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
+import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
@@ -91,7 +92,10 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Padding(
         padding: const EdgeInsets.only(top: 8.0),
         child: Container(
-            color: const Color.fromRGBO(0, 0, 0, 0.2),
+            decoration: BoxDecoration(
+              color: themeData.activeColor.withOpacity(0.05),
+              borderRadius: const BorderRadius.all(Radius.circular(8.0)),
+            ),
             child: ListTile(
               title: status == 'WIDGET' ? statusWidget : Text(status),
               leading:
@@ -115,6 +119,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return NavigationView(
       pane: NavigationPane(
+        displayMode: PaneDisplayMode.auto,
         items: [
           PaneItemAction(
             icon: const Icon(FluentIcons.info),
@@ -154,7 +159,7 @@ class _MyHomePageState extends State<MyHomePage> {
             statusMsg: statusMsg,
           ),
           Padding(
-            padding: const EdgeInsets.all(15.0),
+            padding: const EdgeInsets.all(10.0),
             child: statusBuilder(),
           ),
         ],
