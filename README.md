@@ -8,7 +8,9 @@
 
 A quick way to manage your WSL instances with a GUI.
 
-![screenshot](https://user-images.githubusercontent.com/7342321/148599954-c1567c70-6704-452c-99f9-7ecb6386cfb1.png)
+![Preview with Darkmode](https://user-images.githubusercontent.com/7342321/161707979-f4c3091f-3f24-475e-87d4-0157caafab2a.png)
+
+[Here](https://user-images.githubusercontent.com/7342321/161708030-4f39a89e-7a2d-4460-b002-da7a619d6302.png) is how it looks in Lightmode if you are into that.
 
 ## Install
 
