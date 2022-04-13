@@ -1,5 +1,6 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:convert' show utf8, json;
+import 'dart:convert' show Utf8Decoder, json, utf8;
 import 'package:dio/dio.dart';
 import 'constants.dart';
 import 'helpers.dart';
@@ -247,6 +248,50 @@ class WSLApi {
     return results.stdout;
   }
 
+  List<String> resultQueue = [];
+
+  /// Get the current cached output
+  /// @return String
+  String getCurrentOutput() {
+    String tmp = resultQueue.join('\n');
+    resultQueue = [];
+    return tmp;
+  }
+
+  /// Executes a command list in a WSL distro
+  /// @param distribution: String
+  /// @param cmd: List<String>
+  /// @return Future<List<int>>
+  Future<List<int>> execCmds(
+      String distribution, List<String> cmds, Function(String) callback) async {
+    List<int> processes = [];
+    Process result = await Process.start(
+        'wsl', ['-d', distribution, '-u', 'root'],
+        mode: ProcessStartMode.detachedWithStdio);
+
+    Timer currentWaiter = Timer(const Duration(seconds: 30), () {
+      result.kill();
+    });
+
+    result.stdout
+        .cast<List<int>>()
+        .transform(const Utf8Decoder())
+        .listen((String line) {
+      resultQueue.add(line);
+      callback(line);
+      currentWaiter.cancel();
+      // No new output within the last 30 seconds
+      currentWaiter = Timer(const Duration(seconds: 30), () {
+        result.kill();
+      });
+    });
+
+    for (var cmd in cmds) {
+      result.stdin.writeln(cmd);
+    }
+    return processes;
+  }
+
   /// Executes a command in a WSL distro. passwd will open a shell
   /// @param distribution: String
   /// @param cmd: List<String>
@@ -307,8 +352,8 @@ class WSLApi {
   /// @param installPath: String distro name or tar file
   /// @param filename: String
   /// @return Future<String>
-  Future<dynamic> create(
-      String distribution, String filename, String installPath) async {
+  Future<dynamic> create(String distribution, String filename,
+      String installPath, Function(String) status) async {
     if (installPath == '') {
       installPath = defaultPath + distribution;
     }
@@ -320,10 +365,15 @@ class WSLApi {
         !(await File(downloadPath).exists())) {
       String url = distroRootfsLinks[filename]!;
       // Download file
-      Dio dio = Dio();
-      Response response = await dio.download(url, downloadPath);
-      if (response.statusCode != 200) {
-        return response;
+      try {
+        Dio dio = Dio();
+        Response response = await dio.download(url, downloadPath,
+            onReceiveProgress: (int count, int total) {
+          status(
+              'Step 1: Downloading distro: ${(count / total * 100).toStringAsFixed(0)}%');
+        });
+      } catch (error) {
+        status('Error downloading: $error');
       }
     }
 
@@ -401,7 +451,32 @@ class WSLApi {
         nameStarted = true;
       }
     });*/
-    List<String> list = distroRootfsLinks.keys.toList();
+    // Get even more distros
+    String repoLink =
+        "http://ftp.halifax.rwth-aachen.de/turnkeylinux/images/proxmox/";
+    await Dio().get(repoLink).then((value) => {
+          value.data.split('\n').forEach((line) {
+            if (line.contains('tar.gz"') &&
+                line.contains('href=') &&
+                (line.contains('debian-10') || line.contains('debian-11'))) {
+              String name = line
+                  .split('href="')[1]
+                  .split('"')[0]
+                  .toString()
+                  .replaceAll('.tar.gz', '')
+                  .replaceAll('1_amd64', '')
+                  .replaceAll(RegExp(r'-|_'), ' ')
+                  .replaceAllMapped(RegExp(r' .|^.'),
+                      (Match m) => m[0].toString().toUpperCase());
+              distroRootfsLinks.addAll({
+                name:
+                    repoLink + line.split('href="')[1].split('"')[0].toString()
+              });
+            }
+          })
+        });
+    List<String> list = [];
+    list.addAll(distroRootfsLinks.keys);
     return list;
   }
 

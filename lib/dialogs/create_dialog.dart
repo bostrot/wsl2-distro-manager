@@ -156,8 +156,8 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                   location = prefs.getString("SaveLocation") ?? defaultPath;
                   location += '/' + name;
                 }
-                var result =
-                    await api.create(name, autoSuggestBox.text, location);
+                var result = await api.create(name, autoSuggestBox.text,
+                    location, (String msg) => statusMsg(msg));
                 if (result.exitCode != 0) {
                   statusMsg(result.stdout);
                 } else {
