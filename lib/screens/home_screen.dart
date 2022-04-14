@@ -8,6 +8,7 @@ import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
+import 'package:wsl2distromanager/screens/actions_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -86,6 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget statusBuilder() {
+    ScrollController scrollController = ScrollController();
     return AnimatedOpacity(
       opacity: status != '' ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 100),
@@ -97,7 +99,9 @@ class _MyHomePageState extends State<MyHomePage> {
               borderRadius: const BorderRadius.all(Radius.circular(8.0)),
             ),
             child: ListTile(
-              title: status == 'WIDGET' ? statusWidget : Text(status),
+              title: SingleChildScrollView(
+                  controller: scrollController,
+                  child: status == 'WIDGET' ? statusWidget : Text(status)),
               leading:
                   statusLeading ? const Icon(FluentIcons.info) : const Text(''),
               trailing: loading
@@ -136,6 +140,18 @@ class _MyHomePageState extends State<MyHomePage> {
                   context,
                   FluentPageRoute(
                       builder: (context) => SettingsPage(
+                            themeData: widget.themeData,
+                          )));
+            },
+          ),
+          PaneItemAction(
+            icon: const Icon(FluentIcons.settings_add),
+            title: const Text('Manage Quick Actions'),
+            onTap: () {
+              Navigator.push(
+                  context,
+                  FluentPageRoute(
+                      builder: (context) => QuickPage(
                             themeData: widget.themeData,
                           )));
             },
