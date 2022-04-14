@@ -50,7 +50,8 @@ class _SettingsPageState extends State<SettingsPage> {
           navbar(widget.themeData, back: true, context: context),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0),
+              padding:
+                  const EdgeInsets.only(top: 20.0, left: 100.0, right: 100.0),
               child: SizedBox(
                 width: MediaQuery.of(context).size.width,
                 child: settingsList(context),
@@ -59,7 +60,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Padding(
             padding: const EdgeInsets.only(
-                left: 20.0, right: 20.0, bottom: 8.0, top: 2.0),
+                left: 100.0, right: 100.0, bottom: 8.0, top: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -77,7 +78,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 Row(
                   children: [
                     Button(
-                        child: const Text('Restart WSL'),
+                        child: const Text('Stop WSL'),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
