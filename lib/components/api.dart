@@ -263,14 +263,19 @@ class WSLApi {
   /// @param cmd: List<String>
   /// @return Future<List<int>>
   Future<List<int>> execCmds(
-      String distribution, List<String> cmds, Function(String) callback) async {
+    String distribution,
+    List<String> cmds, {
+    required Function(String) onMsg,
+    required Function onDone,
+  }) async {
     List<int> processes = [];
     Process result = await Process.start(
         'wsl', ['-d', distribution, '-u', 'root'],
         mode: ProcessStartMode.detachedWithStdio);
 
-    Timer currentWaiter = Timer(const Duration(seconds: 30), () {
+    Timer currentWaiter = Timer(const Duration(seconds: 15), () {
       result.kill();
+      onDone();
     });
 
     result.stdout
@@ -278,11 +283,12 @@ class WSLApi {
         .transform(const Utf8Decoder())
         .listen((String line) {
       resultQueue.add(line);
-      callback(line);
+      onMsg(line);
       currentWaiter.cancel();
       // No new output within the last 30 seconds
-      currentWaiter = Timer(const Duration(seconds: 30), () {
+      currentWaiter = Timer(const Duration(seconds: 15), () {
         result.kill();
+        onDone();
       });
     });
 
@@ -367,10 +373,10 @@ class WSLApi {
       // Download file
       try {
         Dio dio = Dio();
-        Response response = await dio.download(url, downloadPath,
+        await dio.download(url, downloadPath,
             onReceiveProgress: (int count, int total) {
-          status(
-              'Step 1: Downloading distro: ${(count / total * 100).toStringAsFixed(0)}%');
+          status('Step 1: Downloading distro: '
+              '${(count / total * 100).toStringAsFixed(0)}%');
         });
       } catch (error) {
         status('Error downloading: $error');
