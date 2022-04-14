@@ -298,6 +298,20 @@ class WSLApi {
     return processes;
   }
 
+  /// Executes a command in a WSL distro and returns the output
+  /// @param distribution: String
+  /// @param cmd: String
+  /// @return Future<String>
+  Future<String> execCmdAsRoot(String distribution, String cmd) async {
+    List<String> args = ['--distribution', distribution, '-u', 'root'];
+    for (var arg in cmd.split(' ')) {
+      args.add(arg);
+    }
+    ProcessResult results = await Process.run('wsl', args,
+        runInShell: true, stdoutEncoding: utf8, stderrEncoding: utf8);
+    return results.stdout;
+  }
+
   /// Executes a command in a WSL distro. passwd will open a shell
   /// @param distribution: String
   /// @param cmd: List<String>
