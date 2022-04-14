@@ -34,7 +34,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   desktop_window: ^0.4.0
-  fluent_ui: ^3.10.0
+  fluent_ui: ^3.10.2
   system_theme: ^1.0.1
   file_picker: ^4.5.1
   url_launcher: ^6.0.20
