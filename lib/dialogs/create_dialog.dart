@@ -87,9 +87,9 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                     if (Navigator.canPop(context)) {
                       Navigator.pop(context);
                     }
-                    statusMsg('Installing fake systemd ...');
                     // Install fake systemctl
                     if (autoSuggestBox.text.contains('Turnkey')) {
+                      statusMsg('Installing fake systemd ...');
                       WSLApi().execCmds(
                           name,
                           [
@@ -100,6 +100,8 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                           ],
                           onMsg: (output) => print(output),
                           onDone: () => statusMsg('DONE: creating instance'));
+                    } else {
+                      statusMsg('DONE: creating instance');
                     }
                   }
                   // Save distro label
