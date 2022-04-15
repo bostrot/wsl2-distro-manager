@@ -98,7 +98,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                             'chmod +x /usr/bin/systemctl',
                             '/usr/bin/systemctl',
                           ],
-                          onMsg: (output) => print(output),
+                          onMsg: (output) => null,
                           onDone: () => statusMsg('DONE: creating instance'));
                     } else {
                       statusMsg('DONE: creating instance');
