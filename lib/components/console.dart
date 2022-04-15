@@ -23,9 +23,13 @@ class _ConsoleState extends State<Console> {
   @override
   void initState() {
     WSLApi().execCmds(widget.item, widget.cmds.split('\n'), onMsg: (msg) {
-      setState(() {
-        output += msg;
-      });
+      try {
+        setState(() {
+          output += msg;
+        });
+      } catch (e) {
+        // ignore if state is already disposed
+      }
       // Scroll to bottom
       scrollController.animateTo(
           scrollController.position.maxScrollExtent + 100.0,
@@ -43,6 +47,7 @@ class _ConsoleState extends State<Console> {
     return Container(
         color: themeData.activeColor.withOpacity(0.1),
         height: 100.0,
+        width: double.infinity,
         child: SingleChildScrollView(
             controller: scrollController,
             child: SingleChildScrollView(
