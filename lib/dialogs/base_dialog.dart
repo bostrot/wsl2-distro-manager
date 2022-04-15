@@ -6,6 +6,8 @@ dialog({
   required item,
   required Function statusMsg,
   Function? onSubmit,
+  bool bodyIsWidget = false,
+  Widget bodyAsWidget = const Text(''),
   String title = '',
   String body = '',
   String submitText = '',
@@ -25,7 +27,14 @@ dialog({
         title: centerText ? Center(child: Text(title)) : Text(title),
         content: Column(
           children: [
-            centerText ? Center(child: Text(body)) : Text(body),
+            !bodyIsWidget
+                ? centerText
+                    ? Center(child: Text(body))
+                    : Text(body)
+                : SizedBox(
+                    width: double.infinity,
+                    height: 120.0,
+                    child: SingleChildScrollView(child: bodyAsWidget)),
             submitInput
                 ? Padding(
                     padding: const EdgeInsets.only(top: 10.0),

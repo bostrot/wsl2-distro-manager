@@ -40,9 +40,27 @@ WSL is great. It makes it very simple to spin up new workplaces with different s
 
 Fairly simple. Download the latest release from the releases Page and start wsl2distromanager.exe
 
+## Features
+
+* Starting the program. YAY!
+* Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
+* Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey Wordpress)
+* Use your own repository for rootfs' or LXC containers
+* List WSL
+* Copy WSL
+* Delete WSL
+* Start WSL
+* Rename WSL
+* Create WSL
+* Download WSL
+* Select rootfs from storage
+* and more but I am tired of writing already ... Feel free to open a PR.
+
+
 ## What works
 
 - [x] Starting the program. YAY!
+- [X] Quick Actions
 - [x] List WSL
 - [x] Copy WSL
 - [x] Delete WSL

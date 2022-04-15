@@ -120,13 +120,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "3.0.1"
-  cupertino_icons:
-    dependency: "direct main"
-    description:
-      name: cupertino_icons
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.0.4"
   dart_console:
     dependency: transitive
     description:

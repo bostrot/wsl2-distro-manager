@@ -19,6 +19,7 @@ class _SettingsPageState extends State<SettingsPage> {
       <String, TextEditingController>{};
 
   final TextEditingController _syncIpTextController = TextEditingController();
+  final TextEditingController _repoTextController = TextEditingController();
 
   @override
   void initState() {
@@ -35,6 +36,10 @@ class _SettingsPageState extends State<SettingsPage> {
     if (syncIP != null && syncIP != '') {
       _syncIpTextController.text = syncIP;
     }
+    String? repoLink = prefs.getString('RepoLink');
+    if (repoLink != null && repoLink != '') {
+      _repoTextController.text = repoLink;
+    }
     setState(() {
       _settings = _settings;
     });
@@ -50,7 +55,8 @@ class _SettingsPageState extends State<SettingsPage> {
           navbar(widget.themeData, back: true, context: context),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0),
+              padding:
+                  const EdgeInsets.only(top: 20.0, left: 100.0, right: 100.0),
               child: SizedBox(
                 width: MediaQuery.of(context).size.width,
                 child: settingsList(context),
@@ -59,7 +65,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Padding(
             padding: const EdgeInsets.only(
-                left: 20.0, right: 20.0, bottom: 8.0, top: 2.0),
+                left: 100.0, right: 100.0, bottom: 8.0, top: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -77,7 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 Row(
                   children: [
                     Button(
-                        child: const Text('Restart WSL'),
+                        child: const Text('Stop WSL'),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
@@ -104,6 +110,14 @@ class _SettingsPageState extends State<SettingsPage> {
                           if (_syncIpTextController.text.isNotEmpty) {
                             prefs.setString(
                                 "SyncIP", _syncIpTextController.text);
+                          }
+
+                          // Save repo link
+                          if (_repoTextController.text.isNotEmpty) {
+                            prefs.setString(
+                                "RepoLink", _repoTextController.text);
+                          } else {
+                            prefs.setString("RepoLink", defaultRepoLink);
                           }
 
                           // Distro location setting
@@ -164,6 +178,17 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: TextBox(
                   controller: _syncIpTextController,
                   placeholder: '192.168.1.20',
+                ),
+              ),
+            ),
+            const Text('Extra repo for Distros'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'Extra repo for Distros',
+                child: TextBox(
+                  controller: _repoTextController,
+                  placeholder: defaultRepoLink,
                 ),
               ),
             ),
