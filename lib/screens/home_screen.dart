@@ -101,7 +101,12 @@ class _MyHomePageState extends State<MyHomePage> {
             child: ListTile(
               title: SingleChildScrollView(
                   controller: scrollController,
-                  child: status == 'WIDGET' ? statusWidget : Text(status)),
+                  child: status == 'WIDGET'
+                      ? statusWidget
+                      : Text(
+                          status,
+                          maxLines: 1,
+                        )),
               leading:
                   statusLeading ? const Icon(FluentIcons.info) : const Text(''),
               trailing: loading

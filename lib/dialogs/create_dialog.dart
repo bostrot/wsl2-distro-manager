@@ -29,7 +29,8 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
               api: api,
               autoSuggestBox: autoSuggestBox,
               locationController: locationController,
-              userController: userController),
+              userController: userController,
+              statusMsg: statusMsg),
         ),
         actions: [
           Button(
@@ -130,6 +131,7 @@ class CreateWidget extends StatefulWidget {
     required this.autoSuggestBox,
     required this.locationController,
     required this.userController,
+    required this.statusMsg,
   }) : super(key: key);
 
   final TextEditingController nameController;
@@ -137,6 +139,7 @@ class CreateWidget extends StatefulWidget {
   final TextEditingController autoSuggestBox;
   final TextEditingController locationController;
   final TextEditingController userController;
+  final Function(String, {bool loading}) statusMsg;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -185,7 +188,11 @@ class _CreateWidgetState extends State<CreateWidget> {
               'Either use one of the pre-defined Distros or a file path to a '
               'rootfs',
           child: FutureBuilder<List<String>>(
-              future: widget.api.getDownloadable(),
+              future: widget.api.getDownloadable(
+                  (prefs.getString('RepoLink') ??
+                      'http://ftp.halifax.rwth-aachen.de/'
+                          'turnkeylinux/images/proxmox/'),
+                  (e) => widget.statusMsg(e)),
               builder: (context, snapshot) {
                 List<String> list = [];
                 if (snapshot.hasData) {

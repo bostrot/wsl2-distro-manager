@@ -19,6 +19,7 @@ class _SettingsPageState extends State<SettingsPage> {
       <String, TextEditingController>{};
 
   final TextEditingController _syncIpTextController = TextEditingController();
+  final TextEditingController _repoTextController = TextEditingController();
 
   @override
   void initState() {
@@ -34,6 +35,10 @@ class _SettingsPageState extends State<SettingsPage> {
     String? syncIP = prefs.getString('SyncIP');
     if (syncIP != null && syncIP != '') {
       _syncIpTextController.text = syncIP;
+    }
+    String? repoLink = prefs.getString('RepoLink');
+    if (repoLink != null && repoLink != '') {
+      _repoTextController.text = repoLink;
     }
     setState(() {
       _settings = _settings;
@@ -107,6 +112,14 @@ class _SettingsPageState extends State<SettingsPage> {
                                 "SyncIP", _syncIpTextController.text);
                           }
 
+                          // Save repo link
+                          if (_repoTextController.text.isNotEmpty) {
+                            prefs.setString(
+                                "RepoLink", _repoTextController.text);
+                          } else {
+                            prefs.setString("RepoLink", defaultRepoLink);
+                          }
+
                           // Distro location setting
                           if (_settings['Default Distro Location']
                               .toString()
@@ -165,6 +178,17 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: TextBox(
                   controller: _syncIpTextController,
                   placeholder: '192.168.1.20',
+                ),
+              ),
+            ),
+            const Text('Extra repo for Distros'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'Extra repo for Distros',
+                child: TextBox(
+                  controller: _repoTextController,
+                  placeholder: defaultRepoLink,
                 ),
               ),
             ),

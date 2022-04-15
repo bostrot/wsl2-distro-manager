@@ -10,6 +10,9 @@ const String updateUrl =
 const String motdUrl =
     'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json';
 
+const String defaultRepoLink =
+    'http://ftp.halifax.rwth-aachen.de/turnkeylinux/images/proxmox/';
+
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
 Map<String, String> distroRootfsLinks = {
   'Ubuntu 21.04':

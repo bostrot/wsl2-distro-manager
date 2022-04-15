@@ -455,46 +455,32 @@ class WSLApi {
 
   /// Returns list of downloadable WSL distros
   /// @return Future<List<String>>
-  Future<List<String>> getDownloadable() async {
-    /*ProcessResult results =
-        await Process.run('wsl', ['--list', '--online'], stdoutEncoding: null);
-    String output = utf8Convert(results.stdout);
-    List<String> list = [];
-    bool nameStarted = false;
-    output.split('\n').forEach((line) {
-      // Filter out docker data
-      if (line != '' && nameStarted) {
-        list.add(line.split(' ')[0]);
-      }
-      // List started
-      if (line.startsWith('NAME')) {
-        nameStarted = true;
-      }
-    });*/
-    // Get even more distros
-    String repoLink =
-        "http://ftp.halifax.rwth-aachen.de/turnkeylinux/images/proxmox/";
-    await Dio().get(repoLink).then((value) => {
-          value.data.split('\n').forEach((line) {
-            if (line.contains('tar.gz"') &&
-                line.contains('href=') &&
-                (line.contains('debian-10') || line.contains('debian-11'))) {
-              String name = line
-                  .split('href="')[1]
-                  .split('"')[0]
-                  .toString()
-                  .replaceAll('.tar.gz', '')
-                  .replaceAll('1_amd64', '')
-                  .replaceAll(RegExp(r'-|_'), ' ')
-                  .replaceAllMapped(RegExp(r' .|^.'),
-                      (Match m) => m[0].toString().toUpperCase());
-              distroRootfsLinks.addAll({
-                name:
-                    repoLink + line.split('href="')[1].split('"')[0].toString()
-              });
-            }
-          })
-        });
+  Future<List<String>> getDownloadable(
+      String repo, Function(String) onError) async {
+    try {
+      await Dio().get(repo).then((value) => {
+            value.data.split('\n').forEach((line) {
+              if (line.contains('tar.gz"') &&
+                  line.contains('href=') &&
+                  (line.contains('debian-10') || line.contains('debian-11'))) {
+                String name = line
+                    .split('href="')[1]
+                    .split('"')[0]
+                    .toString()
+                    .replaceAll('.tar.gz', '')
+                    .replaceAll('1_amd64', '')
+                    .replaceAll(RegExp(r'-|_'), ' ')
+                    .replaceAllMapped(RegExp(r' .|^.'),
+                        (Match m) => m[0].toString().toUpperCase());
+                distroRootfsLinks.addAll({
+                  name: repo + line.split('href="')[1].split('"')[0].toString()
+                });
+              }
+            })
+          });
+    } catch (e) {
+      onError(e.toString());
+    }
     List<String> list = [];
     list.addAll(distroRootfsLinks.keys);
     return list;
