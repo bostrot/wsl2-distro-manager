@@ -1,5 +1,5 @@
 // TODO: Update on release
-const String currentVersion = "v0.9.1";
+const String currentVersion = "v1.0.0";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros\\';
@@ -11,7 +11,7 @@ const String motdUrl =
     'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json';
 
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
-const Map<String, String> distroRootfsLinks = {
+Map<String, String> distroRootfsLinks = {
   'Ubuntu 21.04':
       'https://cloud-images.ubuntu.com/releases/hirsute/release/ubuntu-21.04-server-cloudimg-amd64-wsl.rootfs.tar.gz',
   'Ubuntu 20.04':

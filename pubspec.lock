@@ -182,7 +182,7 @@ packages:
       name: fluent_ui
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.10.0"
+    version: "3.10.2"
   flutter:
     dependency: "direct main"
     description: flutter

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
@@ -28,7 +30,15 @@ class _DistroListState extends State<DistroList> {
   @override
   void initState() {
     initPrefs();
+    reloadEvery5Seconds();
     super.initState();
+  }
+
+  void reloadEvery5Seconds() async {
+    for (;;) {
+      await Future.delayed(const Duration(seconds: 5));
+      setState(() {});
+    }
   }
 
   @override
@@ -43,6 +53,7 @@ FutureBuilder<Instances> distroList(WSLApi api,
   return FutureBuilder<Instances>(
     future: api.list(),
     builder: (context, snapshot) {
+      // Update every 20 seconds
       if (snapshot.hasData) {
         List<Widget> newList = [];
         List<String> list = snapshot.data?.all ?? [];
