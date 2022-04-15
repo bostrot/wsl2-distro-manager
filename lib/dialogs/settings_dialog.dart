@@ -4,6 +4,7 @@ import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/console.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/sync.dart';
+import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/sync_dialog.dart';
 
 String extractPorts(String portRaw) {
@@ -151,9 +152,12 @@ Column settingsColumn(
           if (quickSettingsContents != null && quickSettingsTitles != null) {
             for (int i = 0; i < quickSettingsTitles.length; i++) {
               actions.add(DropDownButtonItem(
-                leading: const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Icon(FluentIcons.play),
+                leading: const MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Icon(FluentIcons.play),
+                  ),
                 ),
                 onTap: () async {
                   setState(() {
@@ -165,17 +169,22 @@ Column settingsColumn(
                     cmds = quickSettingsContents[i];
                   });
                 },
-                title: Text(quickSettingsTitles[i]),
+                title: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Text(quickSettingsTitles[i])),
               ));
             }
           }
-          return DropDownButton(
-            buttonStyle: ButtonStyle(
-                padding: ButtonState.all(const EdgeInsets.only(
-                    left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-            leading: const Icon(FluentIcons.code),
-            title: const Text('Run Quick Action'),
-            items: actions,
+          return MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: DropDownButton(
+              buttonStyle: ButtonStyle(
+                  padding: ButtonState.all(const EdgeInsets.only(
+                      left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+              leading: const Icon(FluentIcons.code),
+              title: const Text('Run Quick Action'),
+              items: actions,
+            ),
           );
         }),
       ),
@@ -194,69 +203,78 @@ Column settingsColumn(
               ),
             )
           : Container(),
-      SelectableText('eth0 IPv4: ${ip.replaceAll('\n', '')}'),
-      SelectableText('TCP ports: $portsTcp'),
-      SelectableText('TCP6 ports: $portsTcp6'),
-      SelectableText('UDP ports: $portsUdp'),
-      SelectableText('UDP6 ports: $portsUdp6'),
-      /* Button(
-                  child: const Text('Edit startup file'),
-                  style: ButtonStyle(
-                      padding: ButtonState.all(const EdgeInsets.only(
-                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                  onPressed: () {
-                    WSLApi().openBashrc(item);
-                  }), */
+      Container(
+        color: themeData.activeColor.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText('eth0 IPv4: ${ip.replaceAll('\n', '')}'),
+              SelectableText('TCP ports: $portsTcp'),
+              SelectableText('TCP6 ports: $portsTcp6'),
+              SelectableText('UDP ports: $portsUdp'),
+              SelectableText('UDP6 ports: $portsUdp6'),
+            ],
+          ),
+        ),
+      ),
       const SizedBox(
         height: 12.0,
       ),
       Sync().hasPath(item)
-          ? Tooltip(
-              message: 'Upload',
-              child: Button(
-                style: ButtonStyle(
-                    padding: ButtonState.all(const EdgeInsets.only(
-                        left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text('Start/Stop serving on network'),
-                      Icon(FluentIcons.upload),
-                    ]),
-                onPressed: () {
-                  //plausible.event(name: "wsl_started");
-                  Sync sync = Sync.instance(item, statusMsg);
-                  if (!isSyncing) {
-                    isSyncing = true;
-                    sync.startServer();
-                    statusMsg('Serving $item on network.');
-                  } else {
-                    isSyncing = false;
-                    sync.stopServer();
-                    statusMsg('Stopped serving $item on network.');
-                  }
-                },
+          ? MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Tooltip(
+                message: 'Upload',
+                child: Button(
+                  style: ButtonStyle(
+                      padding: ButtonState.all(const EdgeInsets.only(
+                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Text('Start/Stop serving on network'),
+                        Icon(FluentIcons.upload),
+                      ]),
+                  onPressed: () {
+                    //plausible.event(name: "wsl_started");
+                    Sync sync = Sync.instance(item, statusMsg);
+                    if (!isSyncing) {
+                      isSyncing = true;
+                      sync.startServer();
+                      statusMsg('Serving $item on network.');
+                    } else {
+                      isSyncing = false;
+                      sync.stopServer();
+                      statusMsg('Stopped serving $item on network.');
+                    }
+                  },
+                ),
               ),
             )
           : Container(),
       const SizedBox(height: 8.0),
       Sync().hasPath(item)
-          ? Tooltip(
-              message: 'Download',
-              child: Button(
-                style: ButtonStyle(
-                    padding: ButtonState.all(const EdgeInsets.only(
-                        left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text('Download/Override from network'),
-                      Icon(FluentIcons.download),
-                    ]),
-                onPressed: () {
-                  //plausible.event(name: "wsl_started");
-                  syncDialog(context, item, statusMsg);
-                },
+          ? MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Tooltip(
+                message: 'Download',
+                child: Button(
+                  style: ButtonStyle(
+                      padding: ButtonState.all(const EdgeInsets.only(
+                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Text('Download/Override from network'),
+                        Icon(FluentIcons.download),
+                      ]),
+                  onPressed: () {
+                    //plausible.event(name: "wsl_started");
+                    syncDialog(context, item, statusMsg);
+                  },
+                ),
               ),
             )
           : Container(),
