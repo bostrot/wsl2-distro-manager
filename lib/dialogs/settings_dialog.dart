@@ -204,13 +204,14 @@ Column settingsColumn(
             )
           : Container(),
       Container(
+        width: MediaQuery.of(context).size.width,
         color: themeData.activeColor.withOpacity(0.1),
         child: Padding(
           padding: const EdgeInsets.all(4.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SelectableText('eth0 IPv4: ${ip.replaceAll('\n', '')}'),
+              SelectableText('eth0 IPv4: ${ip.replaceAll('\n', ' ')}'),
               SelectableText('TCP ports: $portsTcp'),
               SelectableText('TCP6 ports: $portsTcp6'),
               SelectableText('UDP ports: $portsUdp'),
