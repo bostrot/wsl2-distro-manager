@@ -58,81 +58,7 @@ class _ListItemState extends State<ListItem> {
           padding: const EdgeInsets.only(left: 12.0, right: 12.0),
           child: Column(
             children: [
-              ListTile(
-                  shape: showBar
-                      ? const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(8.0),
-                            topRight: Radius.circular(8.0),
-                          ),
-                        )
-                      : const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                  tileColor: hovered
-                      ? themeData.activeColor.withOpacity(0.1)
-                      : themeData.activeColor.withOpacity(0.05),
-                  title: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Listener(
-                        onPointerDown: (PointerDownEvent e) => setState(() {
-                              showBar = !showBar;
-                            }),
-                        child: SizedBox(
-                            width: MediaQuery.of(context).size.width,
-                            child: isRunning(widget.item, widget.running)
-                                ? (Text(
-                                    distroLabel(widget.item) + ' (running)'))
-                                : Text(distroLabel(widget.item)))),
-                  ), // running here
-                  leading: Row(children: [
-                    Tooltip(
-                      message: 'Start',
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: IconButton(
-                          icon: const Icon(FluentIcons.play),
-                          onPressed: () {
-                            plausible.event(name: "wsl_started");
-                            String? startPath =
-                                prefs.getString('StartPath_' + widget.item) ??
-                                    '';
-                            String? startName =
-                                prefs.getString('StartUser_' + widget.item) ??
-                                    '';
-                            WSLApi().start(widget.item,
-                                startPath: startPath, startUser: startName);
-                            Future.delayed(const Duration(milliseconds: 500),
-                                widget.statusMsg('${widget.item} started.'));
-                          },
-                        ),
-                      ),
-                    ),
-                    isRunning(widget.item, widget.running)
-                        ? Tooltip(
-                            message: 'Stop',
-                            child: MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: IconButton(
-                                icon: const Icon(FluentIcons.stop),
-                                onPressed: () {
-                                  plausible.event(name: "wsl_stopped");
-                                  WSLApi().stop(widget.item);
-                                  widget.statusMsg('${widget.item} stopped.');
-                                },
-                              ),
-                            ),
-                          )
-                        : const Text(''),
-                  ]),
-                  trailing: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: IconButton(
-                        icon: const Icon(FluentIcons.chevron_down),
-                        onPressed: () => setState(() {
-                              showBar = !showBar;
-                            })),
-                  )),
+              listTile(context),
               showBar
                   ? Bar(
                       widget: widget,
@@ -143,6 +69,94 @@ class _ListItemState extends State<ListItem> {
         ),
       ),
     );
+  }
+
+  ListTile listTile(BuildContext context) {
+    return ListTile(
+        shape: showBar
+            ? const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(8.0),
+                  topRight: Radius.circular(8.0),
+                ),
+              )
+            : const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8.0)),
+              ),
+        tileColor: hovered
+            ? themeData.activeColor.withOpacity(0.1)
+            : themeData.activeColor.withOpacity(0.05),
+        title: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Listener(
+              onPointerDown: (PointerDownEvent e) => setState(() {
+                    showBar = !showBar;
+                  }),
+              child: SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  child: isRunning(widget.item, widget.running)
+                      ? (Text(distroLabel(widget.item) + ' (running)'))
+                      : Text(distroLabel(widget.item)))),
+        ), // running here
+        leading: Row(children: [
+          Tooltip(
+            message: 'Start',
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                icon: const Icon(FluentIcons.play),
+                onPressed: () {
+                  startInstance();
+                },
+              ),
+            ),
+          ),
+          isRunning(widget.item, widget.running)
+              ? Tooltip(
+                  message: 'Stop',
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.stop),
+                      onPressed: () {
+                        stopInstance();
+                      },
+                    ),
+                  ),
+                )
+              : const Text(''),
+        ]),
+        trailing: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: IconButton(
+              icon: const Icon(FluentIcons.chevron_down),
+              onPressed: () => setState(() {
+                    showBar = !showBar;
+                  })),
+        ));
+  }
+
+  void stopInstance() {
+    plausible.event(name: "wsl_stopped");
+    WSLApi().stop(widget.item);
+    widget.statusMsg('${widget.item} stopped.');
+  }
+
+  void startInstance() {
+    plausible.event(name: "wsl_started");
+    String? startPath = prefs.getString('StartPath_' + widget.item) ?? '';
+    String? startName = prefs.getString('StartUser_' + widget.item) ?? '';
+    String startCmd = '';
+    if (prefs.getBool('TurnkeyFirstStart_' + widget.item) ?? false) {
+      startCmd = 'turnkey-init';
+      prefs.setBool('TurnkeyFirstStart_' + widget.item, false);
+    }
+    // Normal start
+    WSLApi().start(widget.item,
+        startPath: startPath, startUser: startName, startCmd: startCmd);
+
+    Future.delayed(const Duration(milliseconds: 500),
+        widget.statusMsg('${widget.item} started.'));
   }
 }
 

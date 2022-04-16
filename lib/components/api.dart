@@ -89,7 +89,9 @@ class WSLApi {
   /// @param distribution: String
   /// @param startPath: String (optional) Defaults to root ('/')
   void start(String distribution,
-      {String startPath = '', String startUser = ''}) async {
+      {String startPath = '',
+      String startUser = '',
+      String startCmd = ''}) async {
     List<String> args = ['wsl', '-d', distribution];
     if (startPath != '') {
       args.addAll(['--cd', startPath]);
@@ -97,13 +99,13 @@ class WSLApi {
     if (startUser != '') {
       args.addAll(['--user', startUser]);
     }
+    if (startCmd != '') {
+      for (String cmd in startCmd.split(' ')) {
+        args.add(cmd);
+      }
+    }
     Process.start('start', args,
         mode: ProcessStartMode.detached, runInShell: true);
-
-    //exec(distribution, [
-    //  'cp /mnt/$path/startup.sh ~/startup.sh',
-    //  '/bin/bash ~/startup.sh',
-    //]);
   }
 
   /// Stop a WSL distro by name
