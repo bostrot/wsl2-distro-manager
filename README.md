@@ -72,14 +72,24 @@ Fairly simple. Download the latest release from the releases Page and start wsl2
 
 ## FAQ
 
-* There won't be Linux support. Just WSL. (Get it? Its a joke.)
+### How do I access my Turnkey instance? (e.g. Wordpress)
+
+Turnkey instances can be inited with `turnkey-init` in console. This will let you choose new passwords for your services.
+
+### What does it mean that it installs "fake_systemd" with Turnkey?
+
+As systemd is not officially supported in WSL (yet) [fake_systemd](https://github.com/bostrot/fake-systemd) is a custom fork from @kvaps specifically for WSL so that Turnkey services will actually startup when opening the instance.
+
+## Help
+
+You need more help but the FAQ did not help? 
+
+Contact me on Telegram [@bostrot_bot](https://t.me/bostrot_bot).
 
 ## Stuff
 
 ```
 This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)
-
-VS2022: either use Flutter master branch or set `_cmakeVisualStudioGeneratorIdentifier` in `flutter_tools/lib/src/windows/build_windows.dart` to `Visual Studio 17 2022` and rebuild with `flutter pub run test`. (as of https://github.com/flutter/flutter/issues/85922)
 
 Sign package for Windows Store: flutter build windows && flutter pub run msix:create
 ```
