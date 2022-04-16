@@ -8,7 +8,7 @@ import 'package:wsl2distromanager/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemTheme.accentInstance.load();
+  await SystemTheme.accentColor.load();
   runApp(const MyApp());
   doWhenWindowReady(() {
     final win = appWindow;
@@ -35,41 +35,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: SystemTheme.darkMode,
-      builder: (BuildContext context, AsyncSnapshot<bool> darkMode) {
-        if (darkMode.hasData) {
-          if (darkMode.data == false) {
-            // lightmode
-            themeData = ThemeData(
-              activeColor: Colors.black,
-              accentColor: SystemTheme.accentInstance.accent.toAccentColor(),
-              brightness: Brightness.light, // or Brightness.dark
-            );
-          } else {
-            // darkmode
-            themeData = ThemeData(
-              activeColor: Colors.white,
-              accentColor: SystemTheme.accentInstance.accent.toAccentColor(),
-              brightness: Brightness.dark, // or Brightness.dark
-            );
-          }
-          return FluentApp(
-            title: 'WSL2 Distro Manager by Bostrot',
-            theme: themeData,
-            home: MyHomePage(
-              title: 'WSL Distro Manager by Bostrot',
-              themeData: themeData,
-            ),
-            debugShowCheckedModeBanner: false,
-          );
-        } else if (darkMode.hasError) {
-          return const FluentApp(
-            home: Center(child: Text('An error occured. Please report this.')),
+    return Builder(
+      builder: (BuildContext context) {
+        bool darkMode = SystemTheme.isDarkMode;
+        if (!darkMode) {
+          // lightmode
+          themeData = ThemeData(
+            activeColor: Colors.black,
+            accentColor: SystemTheme.accentColor.accent.toAccentColor(),
+            brightness: Brightness.light, // or Brightness.dark
           );
         } else {
-          return const FluentApp(home: Text(''));
+          // darkmode
+          themeData = ThemeData(
+            activeColor: Colors.white,
+            accentColor: SystemTheme.accentColor.accent.toAccentColor(),
+            brightness: Brightness.dark, // or Brightness.dark
+          );
         }
+        return FluentApp(
+          title: 'WSL2 Distro Manager by Bostrot',
+          theme: themeData,
+          home: MyHomePage(
+            title: 'WSL Distro Manager by Bostrot',
+            themeData: themeData,
+          ),
+          debugShowCheckedModeBanner: false,
+        );
       },
     );
   }
