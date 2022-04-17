@@ -7,7 +7,7 @@ packages:
       name: archive
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.2.2"
+    version: "3.3.0"
   args:
     dependency: transitive
     description:
@@ -25,9 +25,11 @@ packages:
   bitsdojo_window:
     dependency: "direct main"
     description:
-      name: bitsdojo_window
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: bitsdojo_window
+      ref: master
+      resolved-ref: "73984019864ac83053bd47d0a8f5e524bffba32b"
+      url: "https://github.com/bufan22/bitsdojo_window.git"
+    source: git
     version: "0.1.1+1"
   bitsdojo_window_linux:
     dependency: transitive
@@ -51,11 +53,13 @@ packages:
     source: hosted
     version: "0.1.0"
   bitsdojo_window_windows:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: bitsdojo_window_windows
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: bitsdojo_window_windows
+      ref: master
+      resolved-ref: "73984019864ac83053bd47d0a8f5e524bffba32b"
+      url: "https://github.com/bufan22/bitsdojo_window"
+    source: git
     version: "0.1.0"
   boolean_selector:
     dependency: transitive
@@ -140,7 +144,7 @@ packages:
       name: dio
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "4.0.4"
+    version: "4.0.6"
   fake_async:
     dependency: transitive
     description:
@@ -175,7 +179,7 @@ packages:
       name: fluent_ui
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.10.2"
+    version: "3.10.3"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -210,6 +214,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  get_it:
+    dependency: transitive
+    description:
+      name: get_it
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "7.2.0"
   http:
     dependency: transitive
     description:
@@ -286,7 +297,7 @@ packages:
       name: msix
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.4.0"
+    version: "3.5.1"
   package_config:
     dependency: transitive
     description:
@@ -300,14 +311,14 @@ packages:
       name: package_info_plus
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.4.0"
+    version: "1.4.2"
   package_info_plus_linux:
     dependency: transitive
     description:
       name: package_info_plus_linux
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.3"
+    version: "1.0.5"
   package_info_plus_macos:
     dependency: transitive
     description:
@@ -328,14 +339,14 @@ packages:
       name: package_info_plus_web
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.4"
+    version: "1.0.5"
   package_info_plus_windows:
     dependency: transitive
     description:
       name: package_info_plus_windows
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.4"
+    version: "1.0.5"
   path:
     dependency: transitive
     description:
@@ -482,7 +493,7 @@ packages:
       name: shelf
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.2.0"
+    version: "1.3.0"
   shelf_static:
     dependency: "direct main"
     description:
@@ -529,7 +540,7 @@ packages:
       name: system_theme
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.1"
+    version: "2.0.0"
   system_theme_web:
     dependency: transitive
     description:
@@ -606,7 +617,7 @@ packages:
       name: url_launcher_web
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.6"
+    version: "2.0.9"
   url_launcher_windows:
     dependency: transitive
     description:
@@ -627,7 +638,7 @@ packages:
       name: win32
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.4.2"
+    version: "2.5.1"
   xdg_directories:
     dependency: transitive
     description:
@@ -650,5 +661,5 @@ packages:
     source: hosted
     version: "3.1.0"
 sdks:
-  dart: ">=2.15.0 <3.0.0"
-  flutter: ">=2.8.0"
+  dart: ">=2.16.0 <3.0.0"
+  flutter: ">=2.10.0"

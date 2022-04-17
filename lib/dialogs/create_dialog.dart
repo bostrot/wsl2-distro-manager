@@ -40,80 +40,14 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
               }),
           Button(
             onPressed: () async {
-              plausible.event(name: "wsl_create");
-              String label = nameController.text;
-              // Replace all special characters with _
-              String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
-              if (name != '') {
-                statusMsg('Creating instance. This might take a while...',
-                    loading: true);
-                String location = locationController.text;
-                if (location == '') {
-                  location = prefs.getString("SaveLocation") ?? defaultPath;
-                  location += '/' + name;
-                }
-                var result = await api.create(name, autoSuggestBox.text,
-                    location, (String msg) => statusMsg(msg));
-                if (result.exitCode != 0) {
-                  statusMsg(result.stdout);
-                } else {
-                  String user = userController.text;
-                  if (user != '') {
-                    List<int> processes = await api.exec(name, [
-                      'apt-get update',
-                      'apt-get install -y sudo',
-                      'useradd -m -s /bin/bash -G sudo $user',
-                      'passwd $user',
-                      'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo',
-                      'echo -e \'[user]\ndefault = $user\' > /etc/wsl.conf',
-                    ]);
-                    bool success = true;
-                    for (dynamic process in processes) {
-                      if (process != 0) {
-                        success = false;
-                        break;
-                      }
-                    }
-                    if (success) {
-                      prefs.setString('StartPath_' + name, '/home/$user');
-                      prefs.setString('StartUser_' + name, user);
-                      Navigator.pop(context);
-                      statusMsg('DONE: creating instance');
-                    } else {
-                      Navigator.pop(context);
-                      statusMsg(
-                          'WARNING: Created instance but failed to create user');
-                    }
-                  } else {
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    }
-                    // Install fake systemctl
-                    if (autoSuggestBox.text.contains('Turnkey')) {
-                      statusMsg('Installing fake systemd ...');
-                      WSLApi().execCmds(
-                          name,
-                          [
-                            'wget https://raw.githubusercontent.com/bostrot/'
-                                'fake-systemd/master/systemctl -O /usr/bin/systemctl',
-                            'chmod +x /usr/bin/systemctl',
-                            '/usr/bin/systemctl',
-                          ],
-                          onMsg: (output) => null,
-                          onDone: () => statusMsg('DONE: creating instance'));
-                    } else {
-                      statusMsg('DONE: creating instance');
-                    }
-                  }
-                  // Save distro label
-                  prefs.setString('DistroName_' + name, label);
-                  // Save distro path
-                  prefs.setString('Path_' + name, location);
-                }
-                // Download distro check
-              } else {
-                statusMsg('Please type in a name.');
-              }
+              await createInstance(
+                  nameController,
+                  statusMsg,
+                  locationController,
+                  api,
+                  autoSuggestBox,
+                  userController,
+                  context);
             },
             child: const Text('Create'),
           ),
@@ -121,6 +55,91 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
       );
     },
   );
+}
+
+Future<void> createInstance(
+    TextEditingController nameController,
+    Function(String, {bool loading}) statusMsg,
+    TextEditingController locationController,
+    WSLApi api,
+    TextEditingController autoSuggestBox,
+    TextEditingController userController,
+    BuildContext context) async {
+  plausible.event(name: "wsl_create");
+  String label = nameController.text;
+  // Replace all special characters with _
+  String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
+  if (name != '') {
+    statusMsg('Creating instance. This might take a while...', loading: true);
+    String location = locationController.text;
+    if (location == '') {
+      location = prefs.getString("SaveLocation") ?? defaultPath;
+      location += '/' + name;
+    }
+    var result = await api.create(
+        name, autoSuggestBox.text, location, (String msg) => statusMsg(msg));
+    if (result.exitCode != 0) {
+      statusMsg(result.stdout);
+    } else {
+      String user = userController.text;
+      if (user != '') {
+        List<int> processes = await api.exec(name, [
+          'apt-get update',
+          'apt-get install -y sudo',
+          'useradd -m -s /bin/bash -G sudo $user',
+          'passwd $user',
+          'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo',
+          'echo -e \'[user]\ndefault = $user\' > /etc/wsl.conf',
+        ]);
+        bool success = true;
+        for (dynamic process in processes) {
+          if (process != 0) {
+            success = false;
+            break;
+          }
+        }
+        if (success) {
+          prefs.setString('StartPath_' + name, '/home/$user');
+          prefs.setString('StartUser_' + name, user);
+          Navigator.pop(context);
+
+          statusMsg('DONE: creating instance');
+        } else {
+          Navigator.pop(context);
+          statusMsg('WARNING: Created instance but failed to create user');
+        }
+      } else {
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+        // Install fake systemctl
+        if (autoSuggestBox.text.contains('Turnkey')) {
+          // Set first start variable
+          prefs.setBool('TurnkeyFirstStart_' + name, true);
+          statusMsg('Installing fake systemd ...', loading: true);
+          WSLApi().execCmds(
+              name,
+              [
+                'wget https://raw.githubusercontent.com/bostrot/'
+                    'fake-systemd/master/systemctl -O /usr/bin/systemctl',
+                'chmod +x /usr/bin/systemctl',
+                '/usr/bin/systemctl',
+              ],
+              onMsg: (output) => null,
+              onDone: () => statusMsg('DONE: creating instance'));
+        } else {
+          statusMsg('DONE: creating instance');
+        }
+      }
+      // Save distro label
+      prefs.setString('DistroName_' + name, label);
+      // Save distro path
+      prefs.setString('Path_' + name, location);
+    }
+    // Download distro check
+  } else {
+    statusMsg('Please type in a name.');
+  }
 }
 
 class CreateWidget extends StatefulWidget {
