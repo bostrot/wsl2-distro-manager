@@ -20,6 +20,13 @@ version: 1.0.0 # Current version
 environment:
   sdk: ">=2.12.0 <3.0.0"
 
+dependency_overrides:
+  bitsdojo_window_windows:
+    git:
+      url: https://github.com/bufan22/bitsdojo_window
+      path: bitsdojo_window_windows
+      ref: master
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -37,7 +44,12 @@ dependencies:
   url_launcher: ^6.0.20
   dio: ^4.0.6
   package_info_plus: ^1.4.2
-  bitsdojo_window: ^0.1.1+1
+  # bitsdojo_window: ^0.1.1+1
+  bitsdojo_window:
+    git:
+      url: https://github.com/bufan22/bitsdojo_window.git
+      path: bitsdojo_window
+      ref: master
   plausible_analytics: ^0.1.3
   shared_preferences: ^2.0.13
   shelf_static: ^1.1.0
