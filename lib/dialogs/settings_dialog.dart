@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/api.dart';
@@ -34,7 +35,7 @@ String cmds = '';
 /// @param statusMsg: Function(String, {bool loading})
 settingsDialog(
     context, item, Function(String, {bool loading}) statusMsg) async {
-  var title = 'Settings';
+  var title = 'settings-text'.i18n();
   final pathController = TextEditingController();
   pathController.text = prefs.getString('StartPath_' + item) ?? '';
   final userController = TextEditingController();
@@ -78,12 +79,12 @@ settingsDialog(
         }),
         actions: [
           Button(
-              child: const Text('Cancel'),
+              child: Text('cancel-text'.i18n()),
               onPressed: () {
                 Navigator.pop(context);
               }),
           Button(
-              child: const Text('Save'),
+              child: Text('save-text'.i18n()),
               onPressed: () {
                 prefs.setString('StartPath_' + item, pathController.text);
                 prefs.setString('StartUser_' + item, userController.text);
@@ -111,32 +112,31 @@ Column settingsColumn(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Padding(
-        padding: EdgeInsets.only(bottom: 8.0),
-        child: Text('Start directory path'),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: Text('save-text'.i18n()),
       ),
       Tooltip(
-        message: '(Optional) WSL directory to start in.',
+        message: 'startdirectorypath-text'.i18n(),
         child: TextBox(
           controller: pathController,
           placeholder: '/home/user/project',
         ),
       ),
-      const Padding(
-        padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
-        child: Text('Start user'),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
+        child: Text('startuser-text'.i18n()),
       ),
       Tooltip(
-        message: '(Optional) WSL default user to use.',
+        message: 'wsldefaultuser-text'.i18n(),
         child: TextBox(
           controller: userController,
           placeholder: 'root',
         ),
       ),
-      const Padding(
-        padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
-        child: Text('(empty the fields for default or if your WSL version '
-            'does not support it)'),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
+        child: Text('emptyfieldsfordefault-text'.i18n()),
       ),
       const SizedBox(
         height: 8.0,
@@ -160,6 +160,7 @@ Column settingsColumn(
                   ),
                 ),
                 onTap: () async {
+                  plausible.event(page: 'use_action');
                   setState(() {
                     cmds = '';
                   });
@@ -183,7 +184,7 @@ Column settingsColumn(
                         padding: ButtonState.all(const EdgeInsets.only(
                             left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
                     leading: const Icon(FluentIcons.code),
-                    title: const Text('Run Quick Action'),
+                    title: Text('runquickaction-text'.i18n()),
                     items: actions,
                   ),
                 )
@@ -214,10 +215,10 @@ Column settingsColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SelectableText('eth0 IPv4: ${ip.replaceAll('\n', ' ')}'),
-              SelectableText('TCP ports: $portsTcp'),
-              SelectableText('TCP6 ports: $portsTcp6'),
-              SelectableText('UDP ports: $portsUdp'),
-              SelectableText('UDP6 ports: $portsUdp6'),
+              SelectableText('TCP ${'ports-text'.i18n()}: $portsTcp'),
+              SelectableText('TCP6 ${'ports-text'.i18n()}: $portsTcp6'),
+              SelectableText('UDP ${'ports-text'.i18n()}: $portsUdp'),
+              SelectableText('UDP6 ${'ports-text'.i18n()}: $portsUdp6'),
             ],
           ),
         ),
@@ -229,28 +230,28 @@ Column settingsColumn(
           ? MouseRegion(
               cursor: SystemMouseCursors.click,
               child: Tooltip(
-                message: 'Upload',
+                message: 'upload-text'.i18n(),
                 child: Button(
                   style: ButtonStyle(
                       padding: ButtonState.all(const EdgeInsets.only(
                           left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
                   child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('Start/Stop serving on network'),
-                        Icon(FluentIcons.upload),
+                      children: [
+                        Text('startstopserving-text'.i18n()),
+                        const Icon(FluentIcons.upload),
                       ]),
                   onPressed: () {
-                    //plausible.event(name: "wsl_started");
+                    plausible.event(name: "network_uploaded");
                     Sync sync = Sync.instance(item, statusMsg);
                     if (!isSyncing) {
                       isSyncing = true;
                       sync.startServer();
-                      statusMsg('Serving $item on network.');
+                      statusMsg('startedserving-text'.i18n([item]));
                     } else {
                       isSyncing = false;
                       sync.stopServer();
-                      statusMsg('Stopped serving $item on network.');
+                      statusMsg('stoppedserving-text'.i18n([item]));
                     }
                   },
                 ),
@@ -262,19 +263,19 @@ Column settingsColumn(
           ? MouseRegion(
               cursor: SystemMouseCursors.click,
               child: Tooltip(
-                message: 'Download',
+                message: 'download-text'.i18n(),
                 child: Button(
                   style: ButtonStyle(
                       padding: ButtonState.all(const EdgeInsets.only(
                           left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
                   child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('Download/Override from network'),
-                        Icon(FluentIcons.download),
+                      children: [
+                        Text('downloadoverride-text'.i18n()),
+                        const Icon(FluentIcons.download),
                       ]),
                   onPressed: () {
-                    //plausible.event(name: "wsl_started");
+                    plausible.event(name: "network_downloaded");
                     syncDialog(context, item, statusMsg);
                   },
                 ),

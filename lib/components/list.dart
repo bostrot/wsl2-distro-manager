@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
@@ -60,10 +61,9 @@ FutureBuilder<Instances> distroList(WSLApi api,
         List<String> running = snapshot.data?.running ?? [];
         // Check if there are distros
         if (list.isEmpty) {
-          return const Expanded(
+          return Expanded(
             child: Center(
-              child: Text(
-                  'No instances found or there is a migration process running.'),
+              child: Text('noinstancesfound-text'.i18n()),
             ),
           );
         }

@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -22,7 +23,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
     builder: (context) {
       return ContentDialog(
         constraints: const BoxConstraints(maxHeight: 450.0, maxWidth: 400.0),
-        title: const Text('Create a new distro'),
+        title: Text('createnewinstance-text'.i18n()),
         content: SingleChildScrollView(
           child: CreateWidget(
               nameController: nameController,
@@ -34,7 +35,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
         ),
         actions: [
           Button(
-              child: const Text('Cancel'),
+              child: Text('cancel-text'.i18n()),
               onPressed: () async {
                 Navigator.pop(context);
               }),
@@ -49,7 +50,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
                   userController,
                   context);
             },
-            child: const Text('Create'),
+            child: Text('create-text'.i18n()),
           ),
         ],
       );
@@ -70,7 +71,7 @@ Future<void> createInstance(
   // Replace all special characters with _
   String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
   if (name != '') {
-    statusMsg('Creating instance. This might take a while...', loading: true);
+    statusMsg('creatinginstance-text'.i18n(), loading: true);
     String location = locationController.text;
     if (location == '') {
       location = prefs.getString("SaveLocation") ?? defaultPath;
@@ -103,10 +104,10 @@ Future<void> createInstance(
           prefs.setString('StartUser_' + name, user);
           Navigator.pop(context);
 
-          statusMsg('DONE: creating instance');
+          statusMsg('createdinstance-text'.i18n());
         } else {
           Navigator.pop(context);
-          statusMsg('WARNING: Created instance but failed to create user');
+          statusMsg('createdinstancenouser-text'.i18n());
         }
       } else {
         if (Navigator.canPop(context)) {
@@ -116,7 +117,7 @@ Future<void> createInstance(
         if (autoSuggestBox.text.contains('Turnkey')) {
           // Set first start variable
           prefs.setBool('TurnkeyFirstStart_' + name, true);
-          statusMsg('Installing fake systemd ...', loading: true);
+          statusMsg('installingfakesystemd-text'.i18n(), loading: true);
           WSLApi().execCmds(
               name,
               [
@@ -126,9 +127,9 @@ Future<void> createInstance(
                 '/usr/bin/systemctl',
               ],
               onMsg: (output) => null,
-              onDone: () => statusMsg('DONE: creating instance'));
+              onDone: () => statusMsg('createdinstance-text'.i18n()));
         } else {
-          statusMsg('DONE: creating instance');
+          statusMsg('createdinstance-text'.i18n());
         }
       }
       // Save distro label
@@ -138,7 +139,7 @@ Future<void> createInstance(
     }
     // Download distro check
   } else {
-    statusMsg('Please type in a name.');
+    statusMsg('entername-text'.i18n());
   }
 }
 
@@ -174,17 +175,17 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
-        const Text(
-          'Name:',
+        Text(
+          '${'name-text'.i18n()}:',
         ),
         Container(
           height: 5.0,
         ),
         Tooltip(
-          message: 'The name of your new WSL instance',
+          message: 'namehint-text'.i18n(),
           child: TextBox(
             controller: widget.nameController,
-            placeholder: 'Name',
+            placeholder: 'name-text'.i18n(),
             suffix: IconButton(
               icon: const Icon(FluentIcons.chrome_close, size: 15.0),
               onPressed: () {
@@ -196,16 +197,14 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
-        const Text(
-          'Path to rootfs or distro name:',
+        Text(
+          '${'pathtorootfs-text'.i18n()}:',
         ),
         Container(
           height: 5.0,
         ),
         Tooltip(
-          message:
-              'Either use one of the pre-defined Distros or a file path to a '
-              'rootfs',
+          message: 'pathtorootfshint-text'.i18n(),
           child: FutureBuilder<List<String>>(
               future: widget.api.getDownloadable(
                   (prefs.getString('RepoLink') ??
@@ -218,7 +217,7 @@ class _CreateWidgetState extends State<CreateWidget> {
                   list = snapshot.data ?? [];
                 } else if (snapshot.hasError) {}
                 return AutoSuggestBox(
-                  placeholder: 'Distro name or path to rootfs',
+                  placeholder: 'distroname-text'.i18n(),
                   controller: widget.autoSuggestBox,
                   items: list,
                   onChanged: (String value, TextChangedReason reason) {
@@ -259,17 +258,17 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
-        const Text(
-          'Save location:',
+        Text(
+          '${'savelocation-text'.i18n()}:',
         ),
         Container(
           height: 5.0,
         ),
         Tooltip(
-          message: '(Optional) Path where to save the new instance',
+          message: 'savelocationhint-text'.i18n(),
           child: TextBox(
             controller: widget.locationController,
-            placeholder: 'Save location (optional)',
+            placeholder: 'savelocationplaceholder-text'.i18n(),
             suffix: IconButton(
               icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
               onPressed: () async {
@@ -287,20 +286,12 @@ class _CreateWidgetState extends State<CreateWidget> {
           height: 10.0,
         ),
         turnkey
-            ? const Text(
-                'Warning: You selected a turnkey container. [Experimental]\n'
-                'As most of them use systemd and WSL currently does not '
-                'support systemd out of the box it will '
-                'be replaced with a fork of fake_systemd. This will start the '
-                'applications not on init but on console openings for more info '
-                'check the GitHub project\'s README.\n'
-                'To access the service you can use "ip a | grep inet" to find '
-                'the ip and then navigate to WSL-IP:PORT e.g. in your browser.',
-                style: TextStyle(fontStyle: FontStyle.italic))
+            ? Text('turnkeywarning-text'.i18n(),
+                style: const TextStyle(fontStyle: FontStyle.italic))
             : Container(),
         !turnkey
-            ? const Text(
-                'Create default user (only on Debian/Ubuntu):',
+            ? Text(
+                '${'createuser-text'.i18n()}:',
               )
             : Container(),
         !turnkey
@@ -310,10 +301,10 @@ class _CreateWidgetState extends State<CreateWidget> {
             : Container(),
         !turnkey
             ? Tooltip(
-                message: '(Optional) Username',
+                message: 'optionalusername-text'.i18n(),
                 child: TextBox(
                   controller: widget.userController,
-                  placeholder: '(Optional) User',
+                  placeholder: 'optionaluser-text'.i18n(),
                 ),
               )
             : Container(),

@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/sync.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -12,11 +13,9 @@ syncDialog(context, item, Function(String, {bool loading}) statusMsg) {
       context: context,
       item: item,
       statusMsg: statusMsg,
-      title: 'Sync \'${distroLabel(item)}\' from the server',
-      body: 'Warning: Syncing will shutdown WSL and override the distro '
-          '"$item" completely! There is no way to turn back! A backup is advised.'
-          '\n\nAre you sure you want to continue?',
-      submitText: 'Yes, sync (override)',
+      title: 'syncfromserver-text'.i18n([distroLabel(item)]),
+      body: 'syncwarning-text'.i18n([item]),
+      submitText: 'yesoverride-text'.i18n(),
       submitInput: false,
       submitStyle: ButtonStyle(
         backgroundColor: ButtonState.all(Colors.red),

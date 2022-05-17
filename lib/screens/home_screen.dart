@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:localization/localization.dart';
 
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -41,16 +42,16 @@ class _MyHomePageState extends State<MyHomePage> {
             useWidget: true,
             widget: Row(
               children: [
-                const Text('A new version is available'),
+                Text('newversion-text'.i18n()),
                 TextButton(
                     onPressed: () => launchURL(updateUrl),
-                    child: const Text("Download now",
-                        style: TextStyle(fontSize: 12.0))),
-                const Text('or check the'),
+                    child: Text('downloadnow-text'.i18n(),
+                        style: const TextStyle(fontSize: 12.0))),
+                Text('orcheck-text'.i18n()),
                 TextButton(
                     onPressed: () => launchURL(windowsStoreUrl),
-                    child: const Text("Windows Store",
-                        style: TextStyle(fontSize: 12.0))),
+                    child: Text('windowsstore-text'.i18n(),
+                        style: const TextStyle(fontSize: 12.0))),
               ],
             ));
       }
@@ -132,14 +133,14 @@ class _MyHomePageState extends State<MyHomePage> {
         items: [
           PaneItemAction(
             icon: const Icon(FluentIcons.info),
-            title: const Text('About this app'),
+            title: Text('about-text'.i18n()),
             onTap: () {
               infoDialog(context, prefs, statusMsg, currentVersion);
             },
           ),
           PaneItemAction(
             icon: const Icon(FluentIcons.settings),
-            title: const Text('Settings'),
+            title: Text('settings-text'.i18n()),
             onTap: () {
               Navigator.push(
                   context,
@@ -151,7 +152,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           PaneItemAction(
             icon: const Icon(FluentIcons.settings_add),
-            title: const Text('Manage Quick Actions'),
+            title: Text('managequickactions-text'.i18n()),
             onTap: () {
               Navigator.push(
                   context,
@@ -163,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           PaneItemAction(
             icon: const Icon(FluentIcons.add),
-            title: const Text('Add an instance'),
+            title: Text('addinstance-text'.i18n()),
             onTap: () {
               createDialog(context, statusMsg);
             },

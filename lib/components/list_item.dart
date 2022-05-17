@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/theme.dart';
 
@@ -95,12 +96,15 @@ class _ListItemState extends State<ListItem> {
               child: SizedBox(
                   width: MediaQuery.of(context).size.width,
                   child: isRunning(widget.item, widget.running)
-                      ? (Text(distroLabel(widget.item) + ' (running)'))
+                      ? (Text(distroLabel(widget.item) +
+                          ' (' +
+                          'running-text'.i18n() +
+                          ')'))
                       : Text(distroLabel(widget.item)))),
         ), // running here
         leading: Row(children: [
           Tooltip(
-            message: 'Start',
+            message: 'start-text'.i18n(),
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               child: IconButton(
@@ -113,7 +117,7 @@ class _ListItemState extends State<ListItem> {
           ),
           isRunning(widget.item, widget.running)
               ? Tooltip(
-                  message: 'Stop',
+                  message: 'stop-text'.i18n(),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
@@ -148,7 +152,8 @@ class _ListItemState extends State<ListItem> {
   void stopInstance() {
     plausible.event(name: "wsl_stopped");
     WSLApi().stop(widget.item);
-    widget.statusMsg('${widget.item} stopped.');
+    widget.statusMsg('${widget.item} ${'stopped-text'.i18n()}.',
+        loading: false);
   }
 
   void startInstance() {
@@ -165,7 +170,7 @@ class _ListItemState extends State<ListItem> {
         startPath: startPath, startUser: startName, startCmd: startCmd);
 
     Future.delayed(const Duration(milliseconds: 500),
-        widget.statusMsg('${widget.item} started.'));
+        widget.statusMsg('${widget.item} ${'started-text'.i18n()}.'));
   }
 }
 
@@ -188,7 +193,7 @@ class Bar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Tooltip(
-              message: 'Open with File Explorer',
+              message: 'openwithexplorer-text'.i18n(),
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: IconButton(
@@ -204,7 +209,7 @@ class Bar extends StatelessWidget {
               ),
             ),
             Tooltip(
-              message: 'Open with Visual Studio Code',
+              message: 'openwithvscode-text'.i18n(),
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: IconButton(
@@ -221,7 +226,7 @@ class Bar extends StatelessWidget {
               ),
             ),
             Tooltip(
-              message: 'Copy',
+              message: 'copy-text'.i18n(),
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: IconButton(
@@ -233,7 +238,7 @@ class Bar extends StatelessWidget {
               ),
             ),
             Tooltip(
-              message: 'Rename',
+              message: 'rename-text'.i18n(),
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: IconButton(
@@ -245,7 +250,7 @@ class Bar extends StatelessWidget {
               ),
             ),
             Tooltip(
-              message: 'Delete',
+              message: 'delete-text'.i18n(),
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: IconButton(
@@ -256,7 +261,7 @@ class Bar extends StatelessWidget {
               ),
             ),
             Tooltip(
-              message: 'Settings',
+              message: 'settings-text'.i18n(),
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: IconButton(

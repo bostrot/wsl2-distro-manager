@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 
 dialog({
@@ -14,7 +15,7 @@ dialog({
   ButtonStyle submitStyle = const ButtonStyle(),
   bool submitInput = true,
   bool centerText = false,
-  String cancelText = 'Cancel',
+  String cancelText = '',
   Function? onCancel,
 }) {
   final controller = TextEditingController();
@@ -59,7 +60,7 @@ dialog({
                   })
               : Container(),
           Button(
-              child: Text(cancelText),
+              child: Text(cancelText == '' ? 'cancel-text'.i18n() : cancelText),
               onPressed: () {
                 if (onCancel != null) {
                   onCancel();

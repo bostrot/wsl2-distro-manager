@@ -1,4 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/theme.dart';
@@ -24,6 +26,8 @@ class _QuickPageState extends State<QuickPage> {
   @override
   void initState() {
     super.initState();
+
+    plausible.event(page: 'actions_screen');
     genLineNumbers(0);
     scrollController.addListener(() {
       lineNumbers = '';
@@ -46,7 +50,6 @@ class _QuickPageState extends State<QuickPage> {
 
   Map<int, bool> opened = {};
 
-  //plausible.event(page: 'create');
   @override
   Widget build(BuildContext context) {
     return NavigationView(
@@ -73,7 +76,7 @@ class _QuickPageState extends State<QuickPage> {
                         height: 35.0,
                         child: TextBox(
                           controller: nameController,
-                          placeholder: "Name of the setting",
+                          placeholder: 'settingname-text'.i18n(),
                         ),
                       )
                     : Container(),
@@ -99,7 +102,8 @@ class _QuickPageState extends State<QuickPage> {
                           ),
                           minLines: lineNum,
                           maxLines: lineNum,
-                          placeholder: '#!/bin/bash\n\n# Your code here',
+                          placeholder:
+                              '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
                         ),
                       )
                     : Container(),
@@ -137,12 +141,12 @@ class _QuickPageState extends State<QuickPage> {
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(FluentIcons.chrome_close),
-                    SizedBox(
+                  children: [
+                    const Icon(FluentIcons.chrome_close),
+                    const SizedBox(
                       width: 10.0,
                     ),
-                    Text('Close'),
+                    Text('close-text'.i18n()),
                   ],
                 ),
               )
@@ -158,6 +162,8 @@ class _QuickPageState extends State<QuickPage> {
               });
             } else if (nameController.text.isNotEmpty &&
                 contentController.text.isNotEmpty) {
+              plausible.event(page: 'add_action');
+
               // Load data
               List<String>? titles = prefs.getStringList('quickSettingsTitles');
               titles ??= [];
@@ -190,7 +196,9 @@ class _QuickPageState extends State<QuickPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              showInput ? const Text('Save') : const Text('Add a quick action'),
+              showInput
+                  ? Text('save-text'.i18n())
+                  : Text('addquickaction-text'.i18n()),
               const SizedBox(
                 width: 10.0,
               ),
@@ -300,8 +308,8 @@ class _QuickPageState extends State<QuickPage> {
           return Padding(
             padding:
                 EdgeInsets.only(top: MediaQuery.of(context).size.height / 2.5),
-            child: const Center(
-              child: Text("Add a quick setting and you will see it here."),
+            child: Center(
+              child: Text('addquickactioninfo-text'.i18n()),
             ),
           );
         }

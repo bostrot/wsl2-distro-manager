@@ -1,5 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
@@ -70,7 +72,7 @@ class _SettingsPageState extends State<SettingsPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Button(
-                    child: const Text('Edit .wslconfig directly'),
+                    child: Text('editwslconfig-text'.i18n()),
                     style: ButtonStyle(
                         padding: ButtonState.all(const EdgeInsets.only(
                             left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
@@ -83,7 +85,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 Row(
                   children: [
                     Button(
-                        child: const Text('Stop WSL'),
+                        child: Text('stopwsl-text'.i18n()),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
@@ -98,7 +100,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       width: 10.0,
                     ),
                     Button(
-                        child: const Text('Save'),
+                        child: Text('save-text'.i18n()),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
@@ -106,6 +108,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 top: 10.0,
                                 bottom: 10.0))),
                         onPressed: () {
+                          plausible.event(name: "global_settings_saved");
                           // Sync target ip setting _syncIpTextController
                           if (_syncIpTextController.text.isNotEmpty) {
                             prefs.setString(
@@ -152,8 +155,8 @@ class _SettingsPageState extends State<SettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         settingsWidget(context,
-            title: 'Default Distro Location',
-            tooltip: 'Path where to save copied distros by default',
+            title: 'defaultdistrolocation-text'.i18n(),
+            tooltip: 'distropath-text'.i18n(),
             suffix: IconButton(
               icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
               onPressed: () async {
@@ -170,22 +173,22 @@ class _SettingsPageState extends State<SettingsPage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('IP Address of sync target'),
+            Text('syncipaddress-text'.i18n()),
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
               child: Tooltip(
-                message: 'IP Address of sync target',
+                message: 'syncipaddress-text'.i18n(),
                 child: TextBox(
                   controller: _syncIpTextController,
                   placeholder: '192.168.1.20',
                 ),
               ),
             ),
-            const Text('Extra repo for Distros'),
+            Text('repofordistro-text'.i18n()),
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
               child: Tooltip(
-                message: 'Extra repo for Distros',
+                message: 'repofordistro-text'.i18n(),
                 child: TextBox(
                   controller: _repoTextController,
                   placeholder: defaultRepoLink,
@@ -198,78 +201,59 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
           child: Divider(),
         ),
-        const Center(
-          child: Text("Global Configuration"),
+        Center(
+          child: Text("globalconfiguration-text".i18n()),
         ),
-        const Padding(
-          padding: EdgeInsets.all(8.0),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
           child: Text(
-            'Note: Global configuration options with .wslconfig is only available for'
-            ' distributions running as WSL 2 in Windows Build 19041 and later. '
-            'Keep in mind you may need to run wsl --shutdown to shut down the '
-            'WSL 2 VM and then restart your WSL instance for these changes to '
-            'take affect.',
-            style: TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+            'globalconfigurationinfo-text'.i18n(),
+            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
           ),
         ),
         settingsWidget(context,
             title: 'kernel',
-            tooltip: 'An absolute Windows path to a custom Linux kernel.',
+            tooltip: 'absolutewindowspath-text'.i18n(),
             placeholder: ''),
         settingsWidget(context,
             title: 'memory',
-            tooltip: 'How much memory to assign to the WSL 2 VM.',
+            tooltip: 'memoryinfo-text'.i18n(),
             placeholder: ''),
         settingsWidget(context,
             title: 'processors',
-            tooltip: 'How many processors to assign to the WSL 2 VM.',
+            tooltip: 'processorinfo-text'.i18n(),
             placeholder: ''),
         settingsWidget(context,
             title: 'localhostForwarding',
-            tooltip: 'Boolean specifying if ports bound to wildcard or '
-                'localhost in the WSL 2 VM should be connectable from the '
-                'host via localhost:port.',
+            tooltip: 'wildcardinfo-text'.i18n(),
             checkbox: true),
         settingsWidget(context,
             title: 'kernelCommandLine',
-            tooltip: 'Additional kernel command line arguments.',
+            tooltip: 'kernelcmdinfo-text'.i18n(),
             placeholder: ''),
         settingsWidget(context,
-            title: 'swap',
-            tooltip: 'How much swap space to add to the WSL 2 VM, 0 for '
-                'no swap file. Swap storage is disk-based RAM used when '
-                'memory demand exceeds limit on hardware device.',
-            placeholder: ''),
+            title: 'swap', tooltip: 'swapinfo-text'.i18n(), placeholder: ''),
         settingsWidget(context,
-            title: 'swapFile',
-            tooltip: 'An absolute Windows path to the swap virtual hard disk.',
-            placeholder: ''),
+            title: 'swapFile', tooltip: 'vhdinfo-text'.i18n(), placeholder: ''),
         settingsWidget(context,
             title: 'pageReporting',
-            tooltip: 'Default true setting enables Windows to reclaim '
-                'unused memory allocated to WSL 2 virtual machine.',
+            tooltip: 'unusedmemoryinfo-text'.i18n(),
             checkbox: true),
         settingsWidget(context,
             title: 'guiApplications',
-            tooltip: 'Boolean to turn on or off support for GUI applications '
-                '(WSLg) in WSL. Only available for Windows 11.',
+            tooltip: 'guiinfo-text'.i18n(),
             checkbox: true),
         settingsWidget(context,
             title: 'debugConsole',
-            tooltip: 'Boolean to turn on an output console Window that shows '
-                'the contents of dmesg upon start of a WSL 2 distro instance. '
-                'Only available for Windows 11.',
+            tooltip: 'consoleinfo-text'.i18n(),
             checkbox: true),
         settingsWidget(context,
             title: 'nestedVirtualization',
-            tooltip: 'Boolean to turn on or off nested virtualization, '
-                'enabling other nested VMs to run inside WSL 2. Only available '
-                'for Windows 11.',
+            tooltip: 'nestedvirtinfo-text'.i18n(),
             checkbox: true),
         settingsWidget(context,
             title: 'vmIdleTimeout',
-            tooltip: 'The number of milliseconds that a VM is idle, before '
-                'it is shut down. Only available for Windows 11.',
+            tooltip: 'vmidleinfo-text'.i18n(),
             placeholder: ''),
       ],
     );
