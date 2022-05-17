@@ -143,18 +143,12 @@ class ClickableDependency extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           TextButton(
-              onPressed: () async {
-                await canLaunch("https://pub.dev/packages/$name")
-                    ? await launch("https://pub.dev/packages/$name")
-                    : null;
-              },
+              onPressed: () =>
+                  launchUrl(Uri.parse("https://pub.dev/packages/$name")),
               child: Text(name)),
           TextButton(
-              onPressed: () async {
-                await canLaunch("https://pub.dev/packages/$name/license")
-                    ? await launch("https://pub.dev/packages/$name/license")
-                    : null;
-              },
+              onPressed: () => launchUrl(
+                  Uri.parse("https://pub.dev/packages/$name/license")),
               child: const Text("(LICENSE)")),
         ],
       ),
@@ -181,7 +175,7 @@ class ClickableUrl extends StatelessWidget {
       child: TextButton(
           onPressed: () async {
             plausible.event(name: clickEvent);
-            await canLaunch(url) ? await launch(url) : null;
+            launchUrl(Uri.parse(url));
           },
           child: Text(text)),
     );

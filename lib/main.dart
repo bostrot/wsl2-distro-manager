@@ -26,9 +26,6 @@ void main() async {
   if (privacyMode != null && privacyMode) {
     plausible.enabled = false;
   }
-
-  // Enable analytics
-  plausible.event();
 }
 
 class MyApp extends StatelessWidget {
@@ -58,10 +55,14 @@ class MyApp extends StatelessWidget {
         }
         return FluentApp(
           localeResolutionCallback: (locale, supportedLocales) {
+            if (locale == null) {
+              return const Locale('en', '');
+            }
+            language = locale.toLanguageTag();
             if (supportedLocales.contains(locale)) {
               return locale;
             }
-            Locale lang = Locale(locale!.languageCode, '');
+            Locale lang = Locale(locale.languageCode, '');
             if (supportedLocales.contains(lang)) {
               return lang;
             }
