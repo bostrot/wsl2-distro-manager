@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, utf8;
 import 'package:dio/dio.dart';
+import 'package:localization/localization.dart';
 import 'constants.dart';
 import 'helpers.dart';
 // import 'package:package_info_plus/package_info_plus.dart';
@@ -85,7 +86,7 @@ class WSLApi {
         byteSize = file.lengthSync();
       }
       double size = byteSize / 1024 / 1024 / 1024; // Convert to GB
-      return 'Size: ' + size.toStringAsFixed(2) + ' GB';
+      return '${'size-text'.i18n()}: ' + size.toStringAsFixed(2) + ' GB';
     } catch (e) {
       return null;
     }

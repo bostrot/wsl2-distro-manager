@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
@@ -17,14 +18,13 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
       context: context,
       item: item,
       statusMsg: statusMsg,
-      title: 'Copy \'$item\'',
-      body: 'Copy the WSL instance \'${distroLabel(item)}\' to a new instance'
-          ' with this name.',
-      submitText: 'Copy',
+      title: '${'copy-text'.i18n()} \'$item\'',
+      body: 'copyinstance-text'.i18n([distroLabel(item)]),
+      submitText: 'copy-text'.i18n(),
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {
         if (inputText.length > 0) {
-          statusMsg('Copying $item. This might take a while...', loading: true);
+          statusMsg('copyinginstance-text'.i18n([item]), loading: true);
           await api.copy(item, inputText);
           // Copy settings
           String? startPath = prefs.getString('StartPath_' + item) ?? '';
@@ -33,9 +33,11 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           prefs.setString('StartUser_' + inputText, startName);
           // Save distro path
           prefs.setString('Path_' + inputText, defaultPath + inputText);
-          statusMsg('DONE: Copied ${distroLabel(item)} to $inputText.');
+          statusMsg(
+              'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
+              loading: false);
         } else {
-          statusMsg('ERROR: Please enter a name for the new instance.');
+          statusMsg('errorentername-text'.i18n(), loading: false);
         }
       });
 }

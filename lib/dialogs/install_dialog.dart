@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -13,11 +14,10 @@ class InstallDialog extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text('WSL is not installed.'),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8.0),
-              child: Text(
-                  'You can install it with following command in the Terminal:'),
+            Text('wslnotinstalled-text'.i18n()),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Text('wslnotinstalledbody-text'.i18n()),
             ),
             Container(
               color: const Color.fromRGBO(0, 0, 0, 0.2),
@@ -30,16 +30,13 @@ class InstallDialog extends StatelessWidget {
                       },
                       child: const Text("wsl --install"))),
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child:
-                  Text('Hint: you can click the above command to install it'),
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text('wslinstallhint-text'.i18n()),
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child: Text('(Keep '
-                  'in mind that you need to restart your system to complete the'
-                  ' install.)'),
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text('wslinstallinfo-text'.i18n()),
             ),
           ],
         ),

@@ -1,4 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:localization/localization.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/components/analytics.dart';
 
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -10,6 +13,8 @@ import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
+
+import 'dart:io';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title, required this.themeData})
@@ -29,9 +34,37 @@ class _MyHomePageState extends State<MyHomePage> {
 
   WSLApi api = WSLApi();
 
+  void enableAnalytics() async {
+    String platform = Platform.operatingSystemVersion;
+    String exec = Platform.resolvedExecutable.toString();
+    try {
+      List<String> tmpSplitted = exec.split('.');
+      exec = tmpSplitted[tmpSplitted.length - 1];
+      if (int.parse(platform.split('Build ')[1].split(')')[0]) >= 22000) {
+        platform = platform
+            .replaceAll('Windows 10', 'Windows 11')
+            .replaceAll('10.0', '11.0');
+      }
+    } catch (e) {
+      // Empty path
+      exec = '';
+    }
+
+    // Enable analytics
+    plausible.event(name: 'Devices', props: {
+      'app_source': exec,
+      'app_version': currentVersion,
+      'app_platform': platform,
+      'app_locale': language,
+      'app_theme':
+          themeData.brightness.toString().replaceAll('Brightness.', ''),
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    enableAnalytics();
 
     // Check updates
     App app = App();
@@ -41,16 +74,16 @@ class _MyHomePageState extends State<MyHomePage> {
             useWidget: true,
             widget: Row(
               children: [
-                const Text('A new version is available'),
+                Text('newversion-text'.i18n()),
                 TextButton(
-                    onPressed: () => launchURL(updateUrl),
-                    child: const Text("Download now",
-                        style: TextStyle(fontSize: 12.0))),
-                const Text('or check the'),
+                    onPressed: () => launchUrl(Uri.parse(updateUrl)),
+                    child: Text('downloadnow-text'.i18n(),
+                        style: const TextStyle(fontSize: 12.0))),
+                Text('orcheck-text'.i18n()),
                 TextButton(
-                    onPressed: () => launchURL(windowsStoreUrl),
-                    child: const Text("Windows Store",
-                        style: TextStyle(fontSize: 12.0))),
+                    onPressed: () => launchUrl(Uri.parse(windowsStoreUrl)),
+                    child: Text('windowsstore-text'.i18n(),
+                        style: const TextStyle(fontSize: 12.0))),
               ],
             ));
       }
@@ -132,14 +165,14 @@ class _MyHomePageState extends State<MyHomePage> {
         items: [
           PaneItemAction(
             icon: const Icon(FluentIcons.info),
-            title: const Text('About this app'),
+            title: Text('about-text'.i18n()),
             onTap: () {
               infoDialog(context, prefs, statusMsg, currentVersion);
             },
           ),
           PaneItemAction(
             icon: const Icon(FluentIcons.settings),
-            title: const Text('Settings'),
+            title: Text('settings-text'.i18n()),
             onTap: () {
               Navigator.push(
                   context,
@@ -151,7 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           PaneItemAction(
             icon: const Icon(FluentIcons.settings_add),
-            title: const Text('Manage Quick Actions'),
+            title: Text('managequickactions-text'.i18n()),
             onTap: () {
               Navigator.push(
                   context,
@@ -163,7 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           PaneItemAction(
             icon: const Icon(FluentIcons.add),
-            title: const Text('Add an instance'),
+            title: Text('addinstance-text'.i18n()),
             onTap: () {
               createDialog(context, statusMsg);
             },

@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
@@ -16,10 +17,9 @@ deleteDialog(context, item, Function(String, {bool loading}) statusMsg) {
       context: context,
       item: item,
       statusMsg: statusMsg,
-      title: 'Delete \'${distroLabel(item)}\' permanently?',
-      body: 'If you delete this Distro you won\'t be able to recover it.'
-          ' Do you want to delete it?',
-      submitText: 'Delete',
+      title: 'deleteinstancequestion-text'.i18n([distroLabel(item)]),
+      body: 'deleteinstancebody-text'.i18n(),
+      submitText: 'delete-text'.i18n(),
       submitInput: false,
       submitStyle: ButtonStyle(
         backgroundColor: ButtonState.all(Colors.red),
@@ -27,6 +27,6 @@ deleteDialog(context, item, Function(String, {bool loading}) statusMsg) {
       ),
       onSubmit: (inputText) {
         api.remove(item);
-        statusMsg('DONE: Deleted $item.');
+        statusMsg('deletedinstance-text'.i18n([item]));
       });
 }

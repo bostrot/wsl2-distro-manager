@@ -1,3 +1,4 @@
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,63 +23,59 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const ClickableUrl(
+                  ClickableUrl(
                     clickEvent: "url_clicked",
                     url: 'https://bostrot.com',
-                    text: "Created by Bostrot",
+                    text: 'createdby-text'.i18n(),
                   ),
-                  const ClickableUrl(
+                  ClickableUrl(
                       clickEvent: "git_clicked",
                       url: "https://github.com/bostrot/wsl2-distro-manager",
-                      text: "Visit GitHub"),
-                  const ClickableUrl(
+                      text: 'visitgithub-text'.i18n()),
+                  ClickableUrl(
                       clickEvent: "changelog_clicked",
                       url: "https://github.com/bostrot/wsl2-distro-manager/"
                           "releases",
-                      text: "Changelog"),
-                  const ClickableUrl(
+                      text: 'changelog-text'.i18n()),
+                  ClickableUrl(
                       clickEvent: "donate_clicked",
                       url: "https://paypal.me/bostrot",
-                      text: "Donate"),
+                      text: 'donate-text'.i18n()),
                   ClickableText(
-                      clickEvent: "libraries_clicked",
-                      onPressed: () {
-                        dialog(
-                          context: context,
-                          item: "Dependencies",
-                          statusMsg: statusMsg,
-                          title: 'Dependencies',
-                          body: "",
-                          bodyIsWidget: true,
-                          bodyAsWidget: const DependencyList(),
-                          submitInput: false,
-                          centerText: true,
-                        );
-                      },
-                      text: "Dependencies"),
+                    clickEvent: "libraries_clicked",
+                    onPressed: () {
+                      dialog(
+                        context: context,
+                        item: 'dependencies-text'.i18n(),
+                        statusMsg: statusMsg,
+                        title: 'dependencies-text'.i18n(),
+                        body: "",
+                        bodyIsWidget: true,
+                        bodyAsWidget: const DependencyList(),
+                        submitInput: false,
+                        centerText: true,
+                      );
+                    },
+                    text: 'dependencies-text'.i18n(),
+                  ),
                   ClickableText(
                       clickEvent: "analytics_clicked",
                       onPressed: () {
                         bool privacyMode =
                             prefs.getBool('privacyMode') ?? false;
                         String privacyStatus = privacyMode
-                            ? "\"NOT sharing anonymous usage data\""
-                            : "\"Sharing anonymous usage data\"";
+                            ? 'notsharingdata-text'.i18n()
+                            : 'sharingdata-text'.i18n();
                         dialog(
                             context: context,
-                            item: "Allow",
+                            item: 'allow-text'.i18n(),
                             statusMsg: statusMsg,
-                            title: 'Usage Data',
-                            body:
-                                'Do you want to share anonymous usage data to '
-                                'improve this app? This is done via plausible '
-                                'a privacy-friendly and open source analytics '
-                                'tool.\n\n'
-                                'Current status: $privacyStatus',
-                            submitText: 'Do NOT share',
+                            title: 'usagedata-text'.i18n(),
+                            body: 'usagedatawarning-text'.i18n([privacyStatus]),
+                            submitText: 'donotshare-text'.i18n(),
                             submitInput: false,
                             submitStyle: const ButtonStyle(),
-                            cancelText: 'Share',
+                            cancelText: 'share-text'.i18n(),
                             onCancel: () {
                               plausible.event(name: "privacy_off");
                               prefs.setBool('privacyMode', false);
@@ -88,17 +85,17 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                               plausible.event(name: "privacy_on");
                               prefs.setBool('privacyMode', true);
                               plausible.enabled = false;
-                              statusMsg('Privacy mode enabled.');
+                              statusMsg('privacymodeenabled-text'.i18n());
                             });
                       },
-                      text: "Privacy"),
+                      text: 'privacy-text'.i18n()),
                 ],
               ),
             ),
           ),
           actions: [
             Button(
-                child: const Text('OK'),
+                child: Text('ok-text'.i18n()),
                 onPressed: () {
                   Navigator.pop(context);
                 }),
@@ -146,18 +143,12 @@ class ClickableDependency extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           TextButton(
-              onPressed: () async {
-                await canLaunch("https://pub.dev/packages/$name")
-                    ? await launch("https://pub.dev/packages/$name")
-                    : null;
-              },
+              onPressed: () =>
+                  launchUrl(Uri.parse("https://pub.dev/packages/$name")),
               child: Text(name)),
           TextButton(
-              onPressed: () async {
-                await canLaunch("https://pub.dev/packages/$name/license")
-                    ? await launch("https://pub.dev/packages/$name/license")
-                    : null;
-              },
+              onPressed: () => launchUrl(
+                  Uri.parse("https://pub.dev/packages/$name/license")),
               child: const Text("(LICENSE)")),
         ],
       ),
@@ -184,7 +175,7 @@ class ClickableUrl extends StatelessWidget {
       child: TextButton(
           onPressed: () async {
             plausible.event(name: clickEvent);
-            await canLaunch(url) ? await launch(url) : null;
+            launchUrl(Uri.parse(url));
           },
           child: Text(text)),
     );

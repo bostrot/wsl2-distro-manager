@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:localization/localization.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_static/shelf_static.dart';
 import 'package:wsl2distromanager/components/api.dart';
@@ -20,7 +21,7 @@ class Sync {
   Sync.instance(this.distroName, this.statusMsg) {
     String? distroLocation = prefs.getString('Path_' + distroName);
     if (distroLocation == null) {
-      statusMsg('Distro not found', loading: false);
+      statusMsg('distronotfound-text'.i18n(), loading: false);
       return;
     }
     this.distroLocation = distroLocation.replaceAll('/', '\\');
@@ -60,25 +61,26 @@ class Sync {
     // Get path for distro filesystem
     String? syncIP = prefs.getString('SyncIP');
     if (syncIP == null) {
-      statusMsg('Sync IP not set. Please set it in the settings.',
-          loading: false);
+      statusMsg('syncipnotset-text'.i18n(), loading: false);
       return;
     }
-    statusMsg('Shutting down WSL...', loading: true);
+    statusMsg('${'shuttingdownwsl-text'.i18n()}...', loading: true);
     // Shutdown WSL
     await WSLApi().shutdown();
-    statusMsg('Connecting to IP: "$syncIP"...', loading: true);
+    statusMsg('${'connectingtoip-text'.i18n()}: "$syncIP"...', loading: true);
     Dio().download(
         'http://$syncIP:59132/ext4.vhdx', distroLocation + '\\ext4.vhdx',
         onReceiveProgress: (received, total) {
       String rec = (received / 1024 / 1024).toStringAsFixed(2);
       String tot = (total / 1024 / 1024).toStringAsFixed(2);
-      statusMsg('Downloading $distroName, $rec MB / $tot MB', loading: true);
+      statusMsg('${'downloading-text'.i18n()} $distroName, $rec MB / $tot MB',
+          loading: true);
       if (received == total) {
-        statusMsg('Downloaded $distroName');
+        statusMsg('${'downloaded-text'.i18n()} $distroName');
       }
     }).catchError((e) {
-      statusMsg('Error downloading $distroName', loading: false);
+      statusMsg('${'errordownloading-text'.i18n()} $distroName',
+          loading: false);
     });
   }
 }

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:localization/localization.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
@@ -25,9 +26,6 @@ void main() async {
   if (privacyMode != null && privacyMode) {
     plausible.enabled = false;
   }
-
-  // Enable analytics
-  plausible.event();
 }
 
 class MyApp extends StatelessWidget {
@@ -35,6 +33,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LocalJsonLocalization.delegate.directories = ['lib/i18n'];
+
     return Builder(
       builder: (BuildContext context) {
         bool darkMode = SystemTheme.isDarkMode;
@@ -54,6 +54,29 @@ class MyApp extends StatelessWidget {
           );
         }
         return FluentApp(
+          localeResolutionCallback: (locale, supportedLocales) {
+            if (locale == null) {
+              return const Locale('en', '');
+            }
+            language = locale.toLanguageTag();
+            if (supportedLocales.contains(locale)) {
+              return locale;
+            }
+            Locale lang = Locale(locale.languageCode, '');
+            if (supportedLocales.contains(lang)) {
+              return lang;
+            }
+
+            // default language
+            return const Locale('en', '');
+          },
+          localizationsDelegates: [
+            LocalJsonLocalization.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en', ''), // English, no country code
+            Locale('de', ''), // English, no country code
+          ],
           title: 'WSL2 Distro Manager by Bostrot',
           theme: themeData,
           home: MyHomePage(
