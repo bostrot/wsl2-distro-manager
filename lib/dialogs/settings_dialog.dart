@@ -144,14 +144,14 @@ Column settingsColumn(
       SizedBox(
         width: MediaQuery.of(context).size.width,
         child: Builder(builder: (childcontext) {
-          List<DropDownButtonItem> actions = [];
+          List<MenuFlyoutItem> actions = [];
           List<String>? quickSettingsTitles =
               prefs.getStringList("quickSettingsTitles");
           List<String>? quickSettingsContents =
               prefs.getStringList("quickSettingsContents");
           if (quickSettingsContents != null && quickSettingsTitles != null) {
             for (int i = 0; i < quickSettingsTitles.length; i++) {
-              actions.add(DropDownButtonItem(
+              actions.add(MenuFlyoutItem(
                 leading: const MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: Padding(
@@ -159,7 +159,7 @@ Column settingsColumn(
                     child: Icon(FluentIcons.play),
                   ),
                 ),
-                onTap: () async {
+                onPressed: () async {
                   plausible.event(page: 'use_action');
                   setState(() {
                     cmds = '';
@@ -170,7 +170,7 @@ Column settingsColumn(
                     cmds = quickSettingsContents[i];
                   });
                 },
-                title: MouseRegion(
+                text: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: Text(quickSettingsTitles[i])),
               ));
