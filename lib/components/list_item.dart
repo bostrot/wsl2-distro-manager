@@ -128,11 +128,20 @@ class _ListItemState extends State<ListItem> {
         ]),
         trailing: MouseRegion(
           cursor: SystemMouseCursors.click,
-          child: IconButton(
-              icon: const Icon(FluentIcons.chevron_down),
-              onPressed: () => setState(() {
-                    showBar = !showBar;
-                  })),
+          child: Listener(
+            onPointerDown: (PointerDownEvent event) => setState(() {
+              showBar = !showBar;
+            }),
+            child: Row(
+              children: [
+                Text(WSLApi().getSize(widget.item) ?? ''),
+                const SizedBox(width: 12.0),
+                !showBar
+                    ? const Icon(FluentIcons.chevron_down, size: 14.0)
+                    : const Icon(FluentIcons.chevron_up, size: 14.0),
+              ],
+            ),
+          ),
         ));
   }
 

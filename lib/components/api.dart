@@ -68,6 +68,29 @@ class App {
 
 /// WSL API
 class WSLApi {
+  /// Get distro size
+  String? getSize(String distroName) {
+    String? distroLocation = prefs.getString('Path_' + distroName);
+    if (distroLocation == null) {
+      return null;
+    }
+    distroLocation += '\\ext4.vhdx';
+    distroLocation = distroLocation.replaceAll('/', '\\');
+    // Get size of distro
+    try {
+      File file = File(distroLocation);
+      int byteSize = file.lengthSync();
+      if (byteSize == 0) {
+        file = File(defaultPath + distroLocation);
+        byteSize = file.lengthSync();
+      }
+      double size = byteSize / 1024 / 1024 / 1024; // Convert to GB
+      return 'Size: ' + size.toStringAsFixed(2) + ' GB';
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Create directory
   void mkRootDir() async {
     //await Process.run('help', []);
@@ -215,6 +238,7 @@ class WSLApi {
     if (location == '') {
       location = defaultPath;
     }
+
     String exportRes =
         await export(distribution, location + distribution + '.tar');
     String importRes = await import(
