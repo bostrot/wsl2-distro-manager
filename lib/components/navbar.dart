@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:bitsdojo_window_flutter3/bitsdojo_window.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 
 Widget navbar(ThemeData themeData, {bool back = false, context}) {
