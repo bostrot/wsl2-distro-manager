@@ -8,21 +8,21 @@ build:
     - wget https://github.com/cli/cli/releases/download/v2.4.0/gh_2.4.0_linux_amd64.deb
     - dpkg -i gh_2.4.0_linux_amd64.deb
     # get version from pubspec
-    - VERSION_NUM=$(cat pubspec.yaml | grep -o -P '(?<=version: ).*(?= #)')
+    - "VERSION_NUM=$(cat pubspec.yaml | grep -o -P '(?<=version: ).*(?= #)')"
     # copy files
     - cp ./windows-dlls/* ./build/windows/runner/Release
     - cd ./build/windows/runner/Release
     - mv wsl2distromanager.msix ../wsl2distromanager-v$VERSION_NUM-signed-installer.msix
     - zip -r wsl2-distro-manager-v$VERSION_NUM.zip .
     # check tag already exists
-    - if [ "$(echo $(gh release view --json tagName) | sed -e 's/{"tagName":"\(.*\)"}/\1/')" != "v$VERSION_NUM" ]; \
-      then \
-      gh release create v$VERSION_NUM \
-        wsl2-distro-manager-v$VERSION_NUM.zip \
-        ../wsl2distromanager-v$VERSION_NUM-signed-installer.msix \
-        --title v$VERSION_NUM \
-        --generate-notes \
-        --notes "This is an automated release."; \
+    - if [ "$(echo $(gh release view --json tagName) | sed -e 's/{"tagName":"\(.*\)"}/\1/')" != "v$VERSION_NUM" ];
+      then
+      gh release create v$VERSION_NUM
+        wsl2-distro-manager-v$VERSION_NUM.zip
+        ../wsl2distromanager-v$VERSION_NUM-signed-installer.msix
+        --title v$VERSION_NUM
+        --generate-notes
+        --notes "This is an automated release.";
       fi
   tags:
     - docker
