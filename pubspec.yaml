@@ -33,6 +33,7 @@ dependencies:
       url: https://github.com/bufan22/bitsdojo_window.git
       path: bitsdojo_window
       ref: master
+      
   plausible_analytics: ^0.1.4
   shared_preferences: ^2.0.13
   shelf_static: ^1.1.0
