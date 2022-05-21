@@ -156,6 +156,7 @@ class SettingsPageState extends State<SettingsPage> {
       children: [
         settingsWidget(context,
             title: 'defaultdistrolocation-text'.i18n(),
+            name: 'Default Distro Location',
             tooltip: 'distropath-text'.i18n(),
             suffix: IconButton(
               icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
@@ -261,14 +262,18 @@ class SettingsPageState extends State<SettingsPage> {
 
   Widget settingsWidget(
     BuildContext context, {
-    title = '',
-    tooltip = '',
-    suffix = 0,
-    placeholder = '',
-    checkbox = false,
+    String title = '',
+    String name = '',
+    String tooltip = '',
+    dynamic suffix = 0,
+    String placeholder = '',
+    bool checkbox = false,
   }) {
-    if (_settings[title] == null) {
-      _settings[title] = TextEditingController(text: '');
+    if (name.isEmpty) {
+      name = title;
+    }
+    if (_settings[name] == null) {
+      _settings[name] = TextEditingController(text: '');
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,17 +285,17 @@ class SettingsPageState extends State<SettingsPage> {
             message: tooltip,
             child: checkbox
                 ? Checkbox(
-                    checked: _settings[title]!.text == 'true',
+                    checked: _settings[name]!.text == 'true',
                     onChanged: (value) {
                       if (value != null) {
-                        _settings[title]!.text = value ? 'true' : 'false';
+                        _settings[name]!.text = value ? 'true' : 'false';
                         setState(() {
                           _settings = _settings;
                         });
                       }
                     })
                 : TextBox(
-                    controller: _settings[title],
+                    controller: _settings[name],
                     placeholder: placeholder,
                     suffix: suffix != 0 ? suffix : Container(),
                   ),
