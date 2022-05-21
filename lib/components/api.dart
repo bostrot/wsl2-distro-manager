@@ -37,9 +37,6 @@ class App {
         var latest = response.data[0];
         String tagName = latest['tag_name'];
 
-        // TODO: change version to PackageInfo once it works with Windows
-        /* PackageInfo packageInfo = await PackageInfo.fromPlatform();
-        String version = packageInfo.buildNumber; */
         if (versionToDouble(tagName) > versionToDouble(version)) {
           return latest['assets'][0]['browser_download_url'];
         }
