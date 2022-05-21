@@ -27,12 +27,12 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           statusMsg('copyinginstance-text'.i18n([item]), loading: true);
           await api.copy(item, inputText);
           // Copy settings
-          String? startPath = prefs.getString('StartPath_' + item) ?? '';
-          String? startName = prefs.getString('StartUser_' + item) ?? '';
-          prefs.setString('StartPath_' + inputText, startPath);
-          prefs.setString('StartUser_' + inputText, startName);
+          String? startPath = prefs.getString('StartPath_$item') ?? '';
+          String? startName = prefs.getString('StartUser_$item') ?? '';
+          prefs.setString('StartPath_$inputText', startPath);
+          prefs.setString('StartUser_$inputText', startName);
           // Save distro path
-          prefs.setString('Path_' + inputText, defaultPath + inputText);
+          prefs.setString('Path_$inputText', defaultPath + inputText);
           statusMsg(
               'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
               loading: false);

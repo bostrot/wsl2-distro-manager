@@ -50,14 +50,14 @@ dialog({
         actions: [
           submitText != ''
               ? Button(
-                  child: Text(submitText),
                   style: submitStyle,
                   onPressed: () {
                     Navigator.pop(context);
                     if (onSubmit != null) {
                       onSubmit(controller.text);
                     }
-                  })
+                  },
+                  child: Text(submitText))
               : Container(),
           Button(
               child: Text(cancelText == '' ? 'cancel-text'.i18n() : cancelText),

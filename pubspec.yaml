@@ -27,6 +27,7 @@ dependencies:
   plausible_analytics: ^0.2.1
   shared_preferences: ^2.0.13
   shelf_static: ^1.1.0
+  shelf: ^1.3.0
 
 dev_dependencies:
   flutter_test:
