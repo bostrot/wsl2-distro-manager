@@ -25,7 +25,8 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
       onSubmit: (inputText) async {
         if (inputText.length > 0) {
           statusMsg('copyinginstance-text'.i18n([item]), loading: true);
-          await api.copy(item, inputText);
+          final String path = prefs.getString('SaveLocation') ?? defaultPath;
+          await api.copy(item, inputText, location: path);
           // Copy settings
           String? startPath = prefs.getString('StartPath_$item') ?? '';
           String? startName = prefs.getString('StartUser_$item') ?? '';
