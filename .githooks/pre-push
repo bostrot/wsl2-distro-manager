@@ -1,0 +1,21 @@
+#!/bin/bash
+#
+# This hook will build the application before pushing
+
+# Get version number
+version=$(cat pubspec.yaml | grep -o -P '(?<=version: ).*(?= # Current version)')
+
+# Append to pubspec.yaml
+if ! grep -q msix_config "pubspec.yaml"; then
+    cat ./certs/pubspec.yaml >> pubspec.yaml
+fi
+
+# Replace msix_version in pubspec.yaml with the version number
+sed -i "s/msix_version: .*\.0/msix_version: $version\.0/g" pubspec.yaml
+
+# Commit the changes
+git add build
+git commit -m "Update version number to $version"
+
+# Remove the msix_config from pubspec.yaml
+sed -i '/^# start git-block-ignore/,/^# end git-block-ignore/{/^123/!d}' pubspec2.yaml
