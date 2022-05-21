@@ -10,7 +10,8 @@ import 'package:wsl2distromanager/components/helpers.dart';
 /// @param context: context
 /// @param api: WSLApi
 /// @param statusMsg: Function(String, {bool loading})
-createDialog(context, Function(String, {bool loading}) statusMsg) {
+createDialog(
+    context, Function mountedFn, Function(String, {bool loading}) statusMsg) {
   WSLApi api = WSLApi();
   final autoSuggestBox = TextEditingController();
   final locationController = TextEditingController();
@@ -42,6 +43,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
           Button(
             onPressed: () async {
               await createInstance(
+                  mountedFn,
                   nameController,
                   statusMsg,
                   locationController,
@@ -59,6 +61,7 @@ createDialog(context, Function(String, {bool loading}) statusMsg) {
 }
 
 Future<void> createInstance(
+    Function mountedFn,
     TextEditingController nameController,
     Function(String, {bool loading}) statusMsg,
     TextEditingController locationController,
@@ -75,7 +78,7 @@ Future<void> createInstance(
     String location = locationController.text;
     if (location == '') {
       location = prefs.getString("SaveLocation") ?? defaultPath;
-      location += '/' + name;
+      location += '/$name';
     }
     var result = await api.create(
         name, autoSuggestBox.text, location, (String msg) => statusMsg(msg));
@@ -100,23 +103,35 @@ Future<void> createInstance(
           }
         }
         if (success) {
-          prefs.setString('StartPath_' + name, '/home/$user');
-          prefs.setString('StartUser_' + name, user);
+          prefs.setString('StartPath_$name', '/home/$user');
+          prefs.setString('StartUser_$name', user);
+          bool mounted = mountedFn();
+          if (!mounted) {
+            return;
+          }
           Navigator.pop(context);
 
           statusMsg('createdinstance-text'.i18n());
         } else {
+          bool mounted = mountedFn();
+          if (!mounted) {
+            return;
+          }
           Navigator.pop(context);
           statusMsg('createdinstancenouser-text'.i18n());
         }
       } else {
+        bool mounted = mountedFn();
+        if (!mounted) {
+          return;
+        }
         if (Navigator.canPop(context)) {
           Navigator.pop(context);
         }
         // Install fake systemctl
         if (autoSuggestBox.text.contains('Turnkey')) {
           // Set first start variable
-          prefs.setBool('TurnkeyFirstStart_' + name, true);
+          prefs.setBool('TurnkeyFirstStart_$name', true);
           statusMsg('installingfakesystemd-text'.i18n(), loading: true);
           WSLApi().execCmds(
               name,
@@ -133,9 +148,9 @@ Future<void> createInstance(
         }
       }
       // Save distro label
-      prefs.setString('DistroName_' + name, label);
+      prefs.setString('DistroName_$name', label);
       // Save distro path
-      prefs.setString('Path_' + name, location);
+      prefs.setString('Path_$name', location);
     }
     // Download distro check
   } else {

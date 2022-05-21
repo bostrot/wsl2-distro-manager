@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'constants.dart';
 import 'helpers.dart';
-// import 'package:package_info_plus/package_info_plus.dart';
 
 class Instances {
   List<String> running = [];
@@ -37,9 +36,6 @@ class App {
         var latest = response.data[0];
         String tagName = latest['tag_name'];
 
-        // TODO: change version to PackageInfo once it works with Windows
-        /* PackageInfo packageInfo = await PackageInfo.fromPlatform();
-        String version = packageInfo.buildNumber; */
         if (versionToDouble(tagName) > versionToDouble(version)) {
           return latest['assets'][0]['browser_download_url'];
         }
@@ -71,7 +67,7 @@ class App {
 class WSLApi {
   /// Get distro size
   String? getSize(String distroName) {
-    String? distroLocation = prefs.getString('Path_' + distroName);
+    String? distroLocation = prefs.getString('Path_$distroName');
     if (distroLocation == null) {
       return null;
     }
@@ -86,7 +82,7 @@ class WSLApi {
         byteSize = file.lengthSync();
       }
       double size = byteSize / 1024 / 1024 / 1024; // Convert to GB
-      return '${'size-text'.i18n()}: ' + size.toStringAsFixed(2) + ' GB';
+      return '${'size-text'.i18n()}: ${size.toStringAsFixed(2)} GB';
     } catch (e) {
       return null;
     }
@@ -240,11 +236,10 @@ class WSLApi {
       location = defaultPath;
     }
 
-    String exportRes =
-        await export(distribution, location + distribution + '.tar');
-    String importRes = await import(
-        newName, location + newName, location + distribution + '.tar');
-    return exportRes + ' ' + importRes;
+    String exportRes = await export(distribution, '$location$distribution.tar');
+    String importRes =
+        await import(newName, location + newName, '$location$distribution.tar');
+    return '$exportRes $importRes';
   }
 
   /// Export a WSL distro by name
@@ -387,7 +382,7 @@ class WSLApi {
   Future<String> import(
       String distribution, String installLocation, String filename) async {
     if (installLocation == '') {
-      installLocation = defaultPath + '/' + distribution;
+      installLocation = '$defaultPath/$distribution';
     }
     ProcessResult results = await Process.run(
         'wsl', ['--import', distribution, installLocation, filename]);
@@ -407,7 +402,7 @@ class WSLApi {
 
     // Download
     String downloadPath = '';
-    downloadPath = defaultPath + 'distros\\' + filename + '.tar.gz';
+    downloadPath = '${defaultPath}distros\\$filename.tar.gz';
     if (distroRootfsLinks[filename] != null &&
         !(await File(downloadPath).exists())) {
       String url = distroRootfsLinks[filename]!;

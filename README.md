@@ -59,7 +59,6 @@ Fairly simple. Download the latest release from the releases Page and start wsl2
 * Select rootfs from storage
 * and more but I am tired of writing already ... Feel free to open a PR.
 
-
 ## What works
 
 - [x] Starting the program. YAY!
@@ -72,6 +71,7 @@ Fairly simple. Download the latest release from the releases Page and start wsl2
 - [X] Create WSL
 - [X] Download WSL
 - [X] Select rootfs from storage
+- [X] Use turnkey/LXC images as base
 
 ## FAQ
 
@@ -89,7 +89,23 @@ You need more help but the FAQ did not help?
 
 Contact me on Telegram [@bostrot_bot](https://t.me/bostrot_bot).
 
+Or just open an issue here.
+
 ## Stuff
+
+### Create signed msix package
+
+(Only for maintainers with build certificate)
+
+To create a signed msix package set the .githooks directory as your git hooks directory:
+
+  git config --local core.hooksPath .githooks/
+
+Then it will update version numbers, build sign and commit everything with the push. This will take the configuration from the file `certs/pubspec.yaml` and replace the version (`xxx` in the pubspec.yaml) with the current version from the running pubspec file.
+
+You can also sign it manually by adding the msix config to the end of the pubspec.yaml file and then run `flutter pub run msix:create`
+
+
 
 ```
 This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)

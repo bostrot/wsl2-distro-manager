@@ -13,7 +13,7 @@ git add lib/components/constants.dart
 
 # Append to pubspec.yaml
 if ! grep -q msix_config "pubspec.yaml"; then
-    cat ./certs/pubspec.yaml >> pubspec.yaml
+    cat ./certs/msix_config.yaml >> pubspec.yaml
 fi
 
 # Replace msix_version in pubspec.yaml with the version number

@@ -13,10 +13,10 @@ class SettingsPage extends StatefulWidget {
   final ThemeData themeData;
 
   @override
-  _SettingsPageState createState() => _SettingsPageState();
+  SettingsPageState createState() => SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class SettingsPageState extends State<SettingsPage> {
   Map<String, TextEditingController> _settings =
       <String, TextEditingController>{};
 
@@ -72,20 +72,19 @@ class _SettingsPageState extends State<SettingsPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Button(
-                    child: Text('editwslconfig-text'.i18n()),
                     style: ButtonStyle(
                         padding: ButtonState.all(const EdgeInsets.only(
                             left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
                     onPressed: () {
                       WSLApi().editConfig();
-                    }),
+                    },
+                    child: Text('editwslconfig-text'.i18n())),
                 const SizedBox(
                   width: 10.0,
                 ),
                 Row(
                   children: [
                     Button(
-                        child: Text('stopwsl-text'.i18n()),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
@@ -95,12 +94,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: () {
                           WSLApi().restart();
                           Navigator.pop(context);
-                        }),
+                        },
+                        child: Text('stopwsl-text'.i18n())),
                     const SizedBox(
                       width: 10.0,
                     ),
                     Button(
-                        child: Text('save-text'.i18n()),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
@@ -124,8 +123,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           }
 
                           // Distro location setting
-                          if (_settings['Default Distro Location']
-                              .toString()
+                          if (_settings['Default Distro Location']!
+                              .text
                               .isNotEmpty) {
                             prefs.setString("SaveLocation",
                                 _settings['Default Distro Location']!.text);
@@ -139,7 +138,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           });
                           WSLApi().writeConfig(config);
                           Navigator.pop(context);
-                        }),
+                        },
+                        child: Text('save-text'.i18n())),
                   ],
                 ),
               ],
@@ -156,6 +156,7 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         settingsWidget(context,
             title: 'defaultdistrolocation-text'.i18n(),
+            name: 'Default Distro Location',
             tooltip: 'distropath-text'.i18n(),
             suffix: IconButton(
               icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
@@ -261,14 +262,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget settingsWidget(
     BuildContext context, {
-    title = '',
-    tooltip = '',
-    suffix = 0,
-    placeholder = '',
-    checkbox = false,
+    String title = '',
+    String name = '',
+    String tooltip = '',
+    dynamic suffix = 0,
+    String placeholder = '',
+    bool checkbox = false,
   }) {
-    if (_settings[title] == null) {
-      _settings[title] = TextEditingController(text: '');
+    if (name.isEmpty) {
+      name = title;
+    }
+    if (_settings[name] == null) {
+      _settings[name] = TextEditingController(text: '');
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,17 +285,17 @@ class _SettingsPageState extends State<SettingsPage> {
             message: tooltip,
             child: checkbox
                 ? Checkbox(
-                    checked: _settings[title]!.text == 'true',
+                    checked: _settings[name]!.text == 'true',
                     onChanged: (value) {
                       if (value != null) {
-                        _settings[title]!.text = value ? 'true' : 'false';
+                        _settings[name]!.text = value ? 'true' : 'false';
                         setState(() {
                           _settings = _settings;
                         });
                       }
                     })
                 : TextBox(
-                    controller: _settings[title],
+                    controller: _settings[name],
                     placeholder: placeholder,
                     suffix: suffix != 0 ? suffix : Container(),
                   ),

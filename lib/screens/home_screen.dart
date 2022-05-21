@@ -144,7 +144,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   statusLeading ? const Icon(FluentIcons.info) : const Text(''),
               trailing: loading
                   ? const SizedBox(
-                      child: ProgressRing(), width: 20.0, height: 20.0)
+                      width: 20.0, height: 20.0, child: ProgressRing())
                   : IconButton(
                       icon: const Icon(FluentIcons.chrome_close),
                       onPressed: () {
@@ -198,7 +198,7 @@ class _MyHomePageState extends State<MyHomePage> {
             icon: const Icon(FluentIcons.add),
             title: Text('addinstance-text'.i18n()),
             onTap: () {
-              createDialog(context, statusMsg);
+              createDialog(context, () => mounted, statusMsg);
             },
           ),
         ],

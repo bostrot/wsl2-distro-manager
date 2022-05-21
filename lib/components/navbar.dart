@@ -32,7 +32,7 @@ Widget navbar(ThemeData themeData, {bool back = false, context}) {
                         : Container(),
                     const Padding(
                       padding: EdgeInsets.only(left: 8.0),
-                      child: Text('WSL Manager ' + currentVersion),
+                      child: Text('WSL Manager $currentVersion'),
                     ),
                   ],
                 ),

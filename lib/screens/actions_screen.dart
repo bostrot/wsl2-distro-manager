@@ -11,10 +11,10 @@ class QuickPage extends StatefulWidget {
   final ThemeData themeData;
 
   @override
-  _QuickPageState createState() => _QuickPageState();
+  QuickPageState createState() => QuickPageState();
 }
 
-class _QuickPageState extends State<QuickPage> {
+class QuickPageState extends State<QuickPage> {
   List<Widget> quickSettings = [];
   String lineNumbers = '';
   bool showInput = false;

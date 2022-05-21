@@ -19,7 +19,7 @@ class Sync {
   /// @param {String} distroName
   /// @param {Function} statusMsg
   Sync.instance(this.distroName, this.statusMsg) {
-    String? distroLocation = prefs.getString('Path_' + distroName);
+    String? distroLocation = prefs.getString('Path_$distroName');
     if (distroLocation == null) {
       statusMsg('distronotfound-text'.i18n(), loading: false);
       return;
@@ -30,7 +30,7 @@ class Sync {
   /// Check if distro has path in settings
   /// @param {String} distroName
   bool hasPath(String distroName) {
-    String? distroLocation = prefs.getString('Path_' + distroName);
+    String? distroLocation = prefs.getString('Path_$distroName');
     if (distroLocation == null) {
       return false;
     }
@@ -41,7 +41,7 @@ class Sync {
   void startServer() async {
     // Get path for distro filesystem
     // Serve filesystem file
-    var handler = createFileHandler(distroLocation + '\\ext4.vhdx',
+    var handler = createFileHandler('$distroLocation\\ext4.vhdx',
         contentType: "application/octet-stream");
     // Listen on network
     try {
@@ -69,7 +69,7 @@ class Sync {
     await WSLApi().shutdown();
     statusMsg('${'connectingtoip-text'.i18n()}: "$syncIP"...', loading: true);
     Dio().download(
-        'http://$syncIP:59132/ext4.vhdx', distroLocation + '\\ext4.vhdx',
+        'http://$syncIP:59132/ext4.vhdx', '$distroLocation\\ext4.vhdx',
         onReceiveProgress: (received, total) {
       String rec = (received / 1024 / 1024).toStringAsFixed(2);
       String tot = (total / 1024 / 1024).toStringAsFixed(2);
