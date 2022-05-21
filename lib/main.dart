@@ -75,7 +75,8 @@ class MyApp extends StatelessWidget {
           ],
           supportedLocales: const [
             Locale('en', ''), // English, no country code
-            Locale('de', ''), // English, no country code
+            Locale('de', ''), // German, no country code
+            Locale('pt', ''), // Portuguese, no country code
           ],
           title: 'WSL2 Distro Manager by Bostrot',
           theme: themeData,
