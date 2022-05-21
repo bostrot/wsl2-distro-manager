@@ -99,7 +99,7 @@
     "addinstance-text": "Eine Instanz hinzufügen",
     "editwslconfig-text": ".wslconfig direkt bearbeiten",
     "stopwsl-text": "WSL stoppen",
-    "defaultdistrolocation-text": "Standardort der Distribution",
+    "defaultdistrolocation-text": "Standardspeicherort der Distribution",
     "distropath-text": "Pfad zum standardmäßigen Speichern kopierter Distributionen",
     "syncipaddress-text": "IP-Adresse des Synchronisierungsziels",
     "repofordistro-text": "Zusätzliches Repo für Distros",

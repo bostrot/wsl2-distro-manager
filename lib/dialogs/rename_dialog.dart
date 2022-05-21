@@ -19,7 +19,7 @@ renameDialog(context, item, Function(String, {bool loading}) statusMsg) {
       onSubmit: (inputText) {
         statusMsg('renaminginstance-text'.i18n([distroLabel(item), inputText]),
             loading: true);
-        prefs.setString('DistroName_' + item, inputText);
+        prefs.setString('DistroName_$item', inputText);
         statusMsg('renamedinstance-text'.i18n([distroLabel(item), inputText]));
       });
 }

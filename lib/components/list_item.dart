@@ -96,10 +96,8 @@ class _ListItemState extends State<ListItem> {
               child: SizedBox(
                   width: MediaQuery.of(context).size.width,
                   child: isRunning(widget.item, widget.running)
-                      ? (Text(distroLabel(widget.item) +
-                          ' (' +
-                          'running-text'.i18n() +
-                          ')'))
+                      ? (Text(
+                          '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
                       : Text(distroLabel(widget.item)))),
         ), // running here
         leading: Row(children: [
@@ -158,12 +156,12 @@ class _ListItemState extends State<ListItem> {
 
   void startInstance() {
     plausible.event(name: "wsl_started");
-    String? startPath = prefs.getString('StartPath_' + widget.item) ?? '';
-    String? startName = prefs.getString('StartUser_' + widget.item) ?? '';
+    String? startPath = prefs.getString('StartPath_${widget.item}') ?? '';
+    String? startName = prefs.getString('StartUser_${widget.item}') ?? '';
     String startCmd = '';
-    if (prefs.getBool('TurnkeyFirstStart_' + widget.item) ?? false) {
+    if (prefs.getBool('TurnkeyFirstStart_${widget.item}') ?? false) {
       startCmd = 'turnkey-init';
-      prefs.setBool('TurnkeyFirstStart_' + widget.item, false);
+      prefs.setBool('TurnkeyFirstStart_${widget.item}', false);
     }
     // Normal start
     WSLApi().start(widget.item,
@@ -202,7 +200,7 @@ class Bar extends StatelessWidget {
                   onPressed: () {
                     plausible.event(name: "wsl_explorer");
                     String? path =
-                        prefs.getString('StartPath_' + widget.item) ?? '';
+                        prefs.getString('StartPath_${widget.item}') ?? '';
                     WSLApi().startExplorer(widget.item, path: path);
                   },
                 ),
@@ -219,7 +217,7 @@ class Bar extends StatelessWidget {
                     plausible.event(name: "wsl_vscode");
                     // Get path
                     String? path =
-                        prefs.getString('StartPath_' + widget.item) ?? '';
+                        prefs.getString('StartPath_${widget.item}') ?? '';
                     WSLApi().startVSCode(widget.item, path: path);
                   },
                 ),

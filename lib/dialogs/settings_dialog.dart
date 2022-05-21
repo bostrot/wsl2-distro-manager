@@ -37,9 +37,9 @@ settingsDialog(
     context, item, Function(String, {bool loading}) statusMsg) async {
   var title = 'settings-text'.i18n();
   final pathController = TextEditingController();
-  pathController.text = prefs.getString('StartPath_' + item) ?? '';
+  pathController.text = prefs.getString('StartPath_$item') ?? '';
   final userController = TextEditingController();
-  userController.text = prefs.getString('StartUser_' + item) ?? '';
+  userController.text = prefs.getString('StartUser_$item') ?? '';
   plausible.event(page: title.split(' ')[0].toLowerCase());
   bool isSyncing = false;
   String ip = await WSLApi().execCmdAsRoot(item, 'hostname --all-ip-addresses');
@@ -86,8 +86,8 @@ settingsDialog(
           Button(
               child: Text('save-text'.i18n()),
               onPressed: () {
-                prefs.setString('StartPath_' + item, pathController.text);
-                prefs.setString('StartUser_' + item, userController.text);
+                prefs.setString('StartPath_$item', pathController.text);
+                prefs.setString('StartUser_$item', userController.text);
                 Navigator.pop(context);
               }),
         ],

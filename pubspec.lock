@@ -22,43 +22,49 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.8.2"
-  bitsdojo_window:
+  bitsdojo_window_flutter3:
     dependency: "direct main"
     description:
-      path: bitsdojo_window
-      ref: master
-      resolved-ref: "73984019864ac83053bd47d0a8f5e524bffba32b"
-      url: "https://github.com/bufan22/bitsdojo_window.git"
+      path: "."
+      ref: HEAD
+      resolved-ref: "327c3de16f8c2d6f8f54428387986e5d7fe5f882"
+      url: "https://github.com/bostrot/bitsdojo_window_flutter3.git"
     source: git
     version: "0.1.1+1"
   bitsdojo_window_linux:
     dependency: transitive
     description:
-      name: bitsdojo_window_linux
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "."
+      ref: master
+      resolved-ref: cfc5b10c9c4fc93457d983df0025fa8b6a7577b9
+      url: "https://github.com/aryan-more/bitsdojo_window_linux.git"
+    source: git
     version: "0.1.1"
   bitsdojo_window_macos:
     dependency: transitive
     description:
-      name: bitsdojo_window_macos
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "."
+      ref: master
+      resolved-ref: "2a686dae019b18d2f69440f8fa704ebe67763ede"
+      url: "https://github.com/aryan-more/bitsdojo_window_macos.git"
+    source: git
     version: "0.1.0"
   bitsdojo_window_platform_interface:
     dependency: transitive
     description:
-      name: bitsdojo_window_platform_interface
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "."
+      ref: master
+      resolved-ref: "77984f088595f292f5a98bd18e63b39a32ba0ff5"
+      url: "https://github.com/aryan-more/bitsdojo_window_platform_interface.git"
+    source: git
     version: "0.1.0"
   bitsdojo_window_windows:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: bitsdojo_window_windows
+      path: "."
       ref: master
-      resolved-ref: "73984019864ac83053bd47d0a8f5e524bffba32b"
-      url: "https://github.com/bufan22/bitsdojo_window"
+      resolved-ref: b49883d2d4df2c228f26438076ece3e82247edb0
+      url: "https://github.com/bostrot/bitsdojo_window_windows.git"
     source: git
     version: "0.1.0"
   boolean_selector:
@@ -109,7 +115,7 @@ packages:
       name: collection
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.15.0"
+    version: "1.16.0"
   convert:
     dependency: transitive
     description:
@@ -151,7 +157,7 @@ packages:
       name: fake_async
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.2.0"
+    version: "1.3.0"
   ffi:
     dependency: transitive
     description:
@@ -179,7 +185,7 @@ packages:
       name: fluent_ui
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.11.1"
+    version: "3.12.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -191,7 +197,7 @@ packages:
       name: flutter_lints
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.4"
+    version: "2.0.1"
   flutter_localizations:
     dependency: "direct main"
     description: flutter
@@ -255,14 +261,14 @@ packages:
       name: js
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.6.3"
+    version: "0.6.4"
   lints:
     dependency: transitive
     description:
       name: lints
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.1"
+    version: "2.0.0"
   localization:
     dependency: "direct main"
     description:
@@ -283,7 +289,7 @@ packages:
       name: material_color_utilities
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.1.3"
+    version: "0.1.4"
   meta:
     dependency: transitive
     description:
@@ -360,7 +366,7 @@ packages:
       name: path
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.8.0"
+    version: "1.8.1"
   path_provider_linux:
     dependency: transitive
     description:
@@ -388,7 +394,7 @@ packages:
       name: petitparser
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "4.4.0"
+    version: "5.0.0"
   platform:
     dependency: transitive
     description:
@@ -402,7 +408,7 @@ packages:
       name: plausible_analytics
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.1.4"
+    version: "0.2.1"
   plugin_platform_interface:
     dependency: transitive
     description:
@@ -495,12 +501,12 @@ packages:
     source: hosted
     version: "2.1.1"
   shelf:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: shelf
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.2.0"
+    version: "1.3.0"
   shelf_static:
     dependency: "direct main"
     description:
@@ -519,7 +525,7 @@ packages:
       name: source_span
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.8.1"
+    version: "1.8.2"
   stack_trace:
     dependency: transitive
     description:
@@ -568,14 +574,14 @@ packages:
       name: test_api
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.4.8"
+    version: "0.4.9"
   typed_data:
     dependency: transitive
     description:
       name: typed_data
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.3.0"
+    version: "1.3.1"
   universal_io:
     dependency: transitive
     description:
@@ -631,7 +637,7 @@ packages:
       name: url_launcher_web
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.6"
+    version: "2.0.11"
   url_launcher_windows:
     dependency: transitive
     description:
@@ -645,14 +651,14 @@ packages:
       name: vector_math
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.1.1"
+    version: "2.1.2"
   win32:
     dependency: transitive
     description:
       name: win32
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.5.2"
+    version: "2.6.1"
   xdg_directories:
     dependency: transitive
     description:
@@ -666,7 +672,7 @@ packages:
       name: xml
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "5.3.1"
+    version: "5.4.1"
   yaml:
     dependency: transitive
     description:
@@ -675,5 +681,5 @@ packages:
     source: hosted
     version: "3.1.1"
 sdks:
-  dart: ">=2.15.0 <3.0.0"
-  flutter: ">=2.8.0"
+  dart: ">=2.17.0 <3.0.0"
+  flutter: ">=3.0.0"

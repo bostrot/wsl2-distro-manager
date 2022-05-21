@@ -7,7 +7,7 @@ late SharedPreferences prefs;
 /// @param item: distro name
 /// @returns String
 String distroLabel(String item) {
-  String? distroName = prefs.getString('DistroName_' + item);
+  String? distroName = prefs.getString('DistroName_$item');
   if (distroName == null || distroName == '') {
     distroName = item;
   }

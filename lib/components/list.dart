@@ -15,10 +15,10 @@ class DistroList extends StatefulWidget {
   final Function(String, {bool loading}) statusMsg;
 
   @override
-  _DistroListState createState() => _DistroListState();
+  DistroListState createState() => DistroListState();
 }
 
-class _DistroListState extends State<DistroList> {
+class DistroListState extends State<DistroList> {
   Map<String, bool> hover = {};
   bool isSyncing = false;
 

@@ -26,8 +26,8 @@
     "cancel-text": "Abbrechen",
     "create-text": "Erstellen",
     "creatinginstance-text": "Instanz wird erstellt. Dies kann eine Weile dauern...",
-    "createinstance-text": "FERTIG: Instanz erstellt",
-    "createinstancenuser-text": "WARNUNG: Instanz erstellt, aber Benutzer konnte nicht erstellt werden",
+    "createdinstance-text": "FERTIG: Instanz erstellt",
+    "createdinstancenouser-text": "WARNUNG: Instanz erstellt, aber Benutzer konnte nicht erstellt werden",
     "installingfakesystemd-text": "Fake-Systemd wird installiert",
     "entername-text": "Bitte geben Sie einen Namen für die neue Instanz ein",
     "name-text": "Name",
@@ -43,12 +43,10 @@
     "optionalusername-text": "(Optionaler) Benutzername",
     "optionaluser-text": "(Optionaler) Benutzer",
     "size-text": "Größe",
-
     "deleteinstancequestion-text": "Instanz %s endgültig löschen?",
     "deleteinstancebody-text": "Wenn Sie diese Distribution löschen, können Sie sie nicht wiederherstellen. Möchten Sie sie löschen?",
     "deletedinstance-text": "FERTIG: Instanz %s gelöscht",
     "delete-text": "Löschen",
-
     "createdby-text": "Entwickelt von Bostrot",
     "visitgithub-text": "GitHub besuchen",
     "changelog-text": "Änderungsprotokoll",
@@ -65,16 +63,13 @@
     "privacy-text": "Datenschutz",
     "ok-text": "OK",
     "close-text": "Schließen",
-
     "wslnotinstalled-text": "WSL ist nicht installiert",
     "wslnotinstalledbody-text": "Sie können es mit folgendem Befehl im Terminal installieren:",
     "wslinstallhint-text": "Hinweis: Sie können auf den obigen Befehl klicken, um es zu installieren",
     "wslinstallinfo-text": "(Denken Sie daran, dass Sie Ihr System neu starten müssen, um die Installation abzuschließen.)",
-
     "renameinfo-text": "Warnung: Das Umbenennen ändert nur die Bezeichnung der Distribution in dieser Anwendung.\n\nLassen Sie dies für den Standardnamen leer.",
     "renaminginstance-text": "Instanz %s0 wird in %s1 umbenannt",
-    "renameinstance-text": "FERTIG: Instanz %s0 in %s1 umbenannt",
-
+    "renamedinstance-text": "FERTIG: Instanz %s0 in %s1 umbenannt",
     "save-text": "Speichern",
     "startuser-text": "Benutzer starten",
     "startdirectorypath-text": "Startverzeichnispfad",
@@ -88,16 +83,13 @@
     "download-text": "Herunterladen",
     "downloadoverride-text": "Vom Netzwerk herunterladen/überschreiben",
     "ports-text": "ports",
-
     "syncfromserver-text": "'%s' vom Server synchronisieren",
     "syncwarning-text": "Warnung: Durch die Synchronisierung wird WSL heruntergefahren und die Distribution %s vollständig überschrieben! Es gibt keine Möglichkeit, umzukehren! Ein Backup wird empfohlen.\n\nSind Sie sicher, dass Sie fortfahren möchten?",
     "yesoverride-text": "Ja, synchronisieren (überschreiben)",
-
     "settingname-text": "Name der Einstellung",
     "yourcodehere-text": "Ihr Code hier",
     "addquickaction-text": "Eine schnelle Aktion hinzufügen",
     "addquickactioninfo-text": "Fügen Sie eine Schnelleinstellung hinzu und Sie werden sie hier sehen.",
-
     "newversion-text": "Eine neue Version verfügbar",
     "downloadnow-text": "Jetzt herunterladen",
     "orcheck-text": "oder überprüfe die",
@@ -105,10 +97,9 @@
     "about-text": "Über diese App",
     "managequickactions-text": "Schnellaktionen verwalten",
     "addinstance-text": "Eine Instanz hinzufügen",
-
     "editwslconfig-text": ".wslconfig direkt bearbeiten",
     "stopwsl-text": "WSL stoppen",
-    "defaultdistrolocation-text": "Standardort der Distribution",
+    "defaultdistrolocation-text": "Standardspeicherort der Distribution",
     "distropath-text": "Pfad zum standardmäßigen Speichern kopierter Distributionen",
     "syncipaddress-text": "IP-Adresse des Synchronisierungsziels",
     "repofordistro-text": "Zusätzliches Repo für Distros",

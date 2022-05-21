@@ -43,12 +43,10 @@
     "optionalusername-text": "(Optional) username",
     "optionaluser-text": "(Optional) user",
     "size-text": "Size",
-
     "deleteinstancequestion-text": "Delete instance %s permanently?",
     "deleteinstancebody-text": "If you delete this Distro you won't be able to recover it. Do you want to delete it?",
     "deletedinstance-text": "DONE: Deleted instance %s",
     "delete-text": "Delete",
-
     "createdby-text": "Created by Bostrot",
     "visitgithub-text": "Visit GitHub",
     "changelog-text": "Changelog",
@@ -65,16 +63,13 @@
     "privacy-text": "Privacy",
     "ok-text": "OK",
     "close-text": "Close",
-
     "wslnotinstalled-text": "WSL is not installed",
     "wslnotinstalledbody-text": "You can install it with following command in the Terminal:",
     "wslinstallhint-text": "Hint: you can click the above command to install it",
     "wslinstallinfo-text": "(Keep in mind that you need to restart your system to complete the install.)",
-
     "renameinfo-text": "Warning: Renaming will only change the label of the distro in this application.\n\nLeave this empty for the default name.",
     "renaminginstance-text": "Renaming instance %s0 to %s1",
     "renamedinstance-text": "DONE: Renamed instance %s0 to %s1",
-
     "save-text": "Save",
     "startuser-text": "Start user",
     "startdirectorypath-text": "Start directory path",
@@ -88,16 +83,13 @@
     "download-text": "Download",
     "downloadoverride-text": "Download/Override from network",
     "ports-text": "ports",
-
     "syncfromserver-text": "Sync '%s' from server",
     "syncwarning-text": "Warning: Syncing will shutdown WSL and override the distro %s completely! There is no way to turn back! A backup is advised.\n\nAre you sure you want to continue?",
     "yesoverride-text": "Yes, sync (override)",
-
     "settingname-text": "Name of setting",
     "yourcodehere-text": "Your code here",
     "addquickaction-text": "Add a Quick Action",
     "addquickactioninfo-text": "Add a quick setting and you will see it here.",
-
     "newversion-text": "A new version available",
     "downloadnow-text": "Download now",
     "orcheck-text": "or check the",
@@ -105,7 +97,6 @@
     "about-text": "About this app",
     "managequickactions-text": "Manage Quick Actions",
     "addinstance-text": "Add an Instance",
-
     "editwslconfig-text": "Edit .wslconfig directly",
     "stopwsl-text": "Stop WSL",
     "defaultdistrolocation-text": "Default Distro Location",
