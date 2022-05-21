@@ -89,9 +89,13 @@ class WSLApi {
   }
 
   /// Create directory
-  void mkRootDir() async {
-    //await Process.run('help', []);
-    await Process.start('cmd.exe', ['/c', 'mkdir', defaultPath]);
+  void mkRootDir({String path = defaultPath}) async {
+    // Create directory
+    Directory dir = Directory(path);
+    if (dir.existsSync() == true) {
+      return;
+    }
+    dir.create(recursive: true);
   }
 
   /// Install WSL
@@ -235,10 +239,24 @@ class WSLApi {
     if (location == '') {
       location = defaultPath;
     }
+    final String last = location[location.length - 1];
+    if (last != '/' && last != '\\') {
+      location = '$location\\';
+    }
 
+    // Try to create directory
+    mkRootDir(path: location);
+
+    // Copy
     String exportRes = await export(distribution, '$location$distribution.tar');
     String importRes =
         await import(newName, location + newName, '$location$distribution.tar');
+
+    // Cleanup, delete file
+    File file = File('$location$distribution.tar');
+    if (file.existsSync()) {
+      file.deleteSync();
+    }
     return '$exportRes $importRes';
   }
 
@@ -247,9 +265,10 @@ class WSLApi {
   /// @param location: String
   /// @return Future<String>
   Future<String> export(String distribution, String location) async {
-    ProcessResult results =
-        await Process.run('wsl', ['--export', distribution, location]);
-    return results.stdout;
+    ProcessResult results = await Process.run(
+        'wsl', ['--export', distribution, location],
+        stdoutEncoding: null);
+    return utf8Convert(results.stdout);
   }
 
   /// Remove a WSL distro by name
@@ -385,8 +404,9 @@ class WSLApi {
       installLocation = '$defaultPath/$distribution';
     }
     ProcessResult results = await Process.run(
-        'wsl', ['--import', distribution, installLocation, filename]);
-    return results.stdout;
+        'wsl', ['--import', distribution, installLocation, filename],
+        stdoutEncoding: null);
+    return utf8Convert(results.stdout);
   }
 
   /// Import a WSL distro by name
@@ -399,6 +419,7 @@ class WSLApi {
     if (installPath == '') {
       installPath = defaultPath + distribution;
     }
+    mkRootDir(path: installPath);
 
     // Download
     String downloadPath = '';

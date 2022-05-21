@@ -26,7 +26,12 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
         if (inputText.length > 0) {
           statusMsg('copyinginstance-text'.i18n([item]), loading: true);
           final String path = prefs.getString('SaveLocation') ?? defaultPath;
-          await api.copy(item, inputText, location: path);
+          String results = await api.copy(item, inputText, location: path);
+          // Error catching
+          if (results != ' ') {
+            statusMsg(results, loading: false);
+            return;
+          }
           // Copy settings
           String? startPath = prefs.getString('StartPath_$item') ?? '';
           String? startName = prefs.getString('StartUser_$item') ?? '';
