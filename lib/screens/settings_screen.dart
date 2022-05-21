@@ -123,8 +123,8 @@ class SettingsPageState extends State<SettingsPage> {
                           }
 
                           // Distro location setting
-                          if (_settings['Default Distro Location']
-                              .toString()
+                          if (_settings['Default Distro Location']!
+                              .text
                               .isNotEmpty) {
                             prefs.setString("SaveLocation",
                                 _settings['Default Distro Location']!.text);
