@@ -18,7 +18,7 @@ build:
       then
       gh release create v$VERSION_NUM
         wsl2-distro-manager-v$VERSION_NUM.zip
-        ../wsl2distromanager-v$VERSION_NUM-signed-installer.msix
+        ../wsl2-distro-manager-v$VERSION_NUM-signed-installer.msix
         --title v$VERSION_NUM
         --generate-notes
         --notes "This is an automated release.";
