@@ -83,6 +83,26 @@ Turnkey instances can be inited with `turnkey-init` in console. This will let yo
 
 As systemd is not officially supported in WSL (yet) [fake_systemd](https://github.com/bostrot/fake-systemd) is a custom fork from @kvaps specifically for WSL so that Turnkey services will actually startup when opening the instance.
 
+## Contribute
+
+You are very welcome to contribute to this project in order to make it better.
+
+### Docs
+
+Currently only the WSL API is documented with dart doc. You can find the documentation [here](https://bostrot.github.io/wsl2-distro-manager/api/index.html).
+
+### Code contributions
+
+If you have made a code contribution feel free to open a PR and/or an issue.
+
+### Language contributions
+
+Localizations are saved in `/lib/i18n/` as json files. New languages can be added either directly in the appropriate json file (e.g. `en.json`) or via the localizations [windows/mac application](https://github.com/Flutterando/localization/releases) which provides a GUI.
+
+As of some restrictions with fluent_ui package currently it is easier not to use the country code in the file name so instead of `en_US.json` just `en.json`.
+
+Feel free to publish a PR :)
+
 ## Help
 
 You need more help but the FAQ did not help? 
