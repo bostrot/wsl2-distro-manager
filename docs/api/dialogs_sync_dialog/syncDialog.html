@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the syncDialog function from the sync_dialog library, for the Dart programming language.">
+  <title>syncDialog function - sync_dialog library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../"
+      data-using-base-href="false">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <button id="sidenav-left-toggle" type="button">&nbsp;</button>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../dialogs_sync_dialog/dialogs_sync_dialog-library.html">sync_dialog</a></li>
+    <li class="self-crumb">syncDialog function</li>
+  </ol>
+  <div class="self-name">syncDialog</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<main>
+
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">syncDialog</span> function 
+    <a href="https://dart.dev/null-safety" class="feature feature-null-safety" title="Supports the null safety language feature.">Null safety</a>
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype">dynamic</span>
+<span class="name ">syncDialog</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="syncDialog-param-context"><span class="type-annotation">dynamic</span> <span class="parameter-name">context</span>, </span></li>
+<li><span class="parameter" id="syncDialog-param-item"><span class="type-annotation">dynamic</span> <span class="parameter-name">item</span>, </span></li>
+<li><span class="parameter" id="syncDialog-param-statusMsg"><span class="type-annotation">dynamic</span> <span class="parameter-name">statusMsg</span>(<ol class="parameter-list"><li><span class="parameter" id="param-"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>, </span></li>
+<li><span class="parameter" id="param-loading">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/bool-class.html">bool</a></span> <span class="parameter-name">loading</span>}</span></li>
+</ol>
+)</span></li>
+</ol>)
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Sync Dialog
+@param context: context
+@param item: distro name
+@param statusMsg: Function(String, {bool loading})</p>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">syncDialog(context, item, Function(String, {bool loading}) statusMsg) {
+  dialog(
+      context: context,
+      item: item,
+      statusMsg: statusMsg,
+      title: &#39;syncfromserver-text&#39;.i18n([distroLabel(item)]),
+      body: &#39;syncwarning-text&#39;.i18n([item]),
+      submitText: &#39;yesoverride-text&#39;.i18n(),
+      submitInput: false,
+      submitStyle: ButtonStyle(
+        backgroundColor: ButtonState.all(Colors.red),
+        foregroundColor: ButtonState.all(Colors.white),
+      ),
+      onSubmit: (inputText) {
+        Sync sync = Sync.instance(item, statusMsg);
+        sync.download();
+      });
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../dialogs_sync_dialog/dialogs_sync_dialog-library.html">sync_dialog</a></li>
+  <li class="self-crumb">syncDialog function</li>
+</ol>
+
+
+    <h5>sync_dialog library</h5>
+    <ol>
+
+
+
+
+
+  <li class="section-title"><a href="../dialogs_sync_dialog/dialogs_sync_dialog-library.html#functions">Functions</a></li>
+  <li><a href="../dialogs_sync_dialog/syncDialog.html">syncDialog</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.3.1
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/script.js?v1"></script>
+
+
+
+</body>
+
+</html>
+

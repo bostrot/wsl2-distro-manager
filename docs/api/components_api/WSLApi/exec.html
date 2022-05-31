@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the exec method from the WSLApi class, for the Dart programming language.">
+  <title>exec method - WSLApi class - api library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../../static-assets/styles.css?v1">
+  <link rel="icon" href="../../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../../"
+      data-using-base-href="false">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <button id="sidenav-left-toggle" type="button">&nbsp;</button>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../../index.html">wsl2distromanager</a></li>
+    <li><a href="../../components_api/components_api-library.html">api</a></li>
+    <li><a href="../../components_api/WSLApi-class.html">WSLApi</a></li>
+    <li class="self-crumb">exec method</li>
+  </ol>
+  <div class="self-name">exec</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<main>
+
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-method">exec</span> method 
+    <a href="https://dart.dev/null-safety" class="feature feature-null-safety" title="Supports the null safety language feature.">Null safety</a>
+</h1></div>
+
+    <section class="multi-line-signature">
+      
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/int-class.html">int</a></span>&gt;</span></span>&gt;</span></span>
+<span class="name ">exec</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="exec-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span></li>
+<li><span class="parameter" id="exec-param-cmds"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span> <span class="parameter-name">cmds</span></span></li>
+</ol>)
+
+      
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Executes a command in a WSL distro. passwd will open a shell
+@param distribution: String
+@param cmd: List<string>
+@return Future&lt;List<int>&gt;</int></string></p>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">Future&lt;List&lt;int&gt;&gt; exec(String distribution, List&lt;String&gt; cmds) async {
+  List&lt;String&gt; args;
+  List&lt;int&gt; processes = [];
+  int exitCode;
+  for (String cmd in cmds) {
+    if (cmd.contains(&#39;passwd&#39;)) {
+      args = [&#39;wsl&#39;, &#39;-d&#39;, distribution];
+      cmd.split(&#39; &#39;).forEach((String arg) {
+        args.add(arg);
+      });
+      Process result = await Process.start(&#39;start&#39;, args,
+          mode: ProcessStartMode.normal, runInShell: true);
+      exitCode = await result.exitCode;
+      processes.add(exitCode);
+    } else {
+      args = [&#39;-d&#39;, distribution];
+      cmd.split(&#39; &#39;).forEach((String arg) {
+        args.add(arg);
+      });
+      ProcessResult result =
+          await Process.run(&#39;wsl&#39;, args, runInShell: false);
+      exitCode = result.exitCode;
+      processes.add(exitCode);
+    }
+  }
+  return processes;
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../../index.html">wsl2distromanager</a></li>
+  <li><a href="../../components_api/components_api-library.html">api</a></li>
+  <li><a href="../../components_api/WSLApi-class.html">WSLApi</a></li>
+  <li class="self-crumb">exec method</li>
+</ol>
+
+
+    <h5>WSLApi class</h5>
+    <ol>
+
+        <li class="section-title"><a href="../../components_api/WSLApi-class.html#constructors">Constructors</a></li>
+          <li><a href="../../components_api/WSLApi/WSLApi.html">WSLApi</a></li>
+
+
+    <li class="section-title">
+      <a href="../../components_api/WSLApi-class.html#instance-properties">Properties</a>
+    </li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/hashCode.html">hashCode</a></li>
+    <li><a href="../../components_api/WSLApi/resultQueue.html">resultQueue</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></li>
+
+    <li class="section-title"><a href="../../components_api/WSLApi-class.html#instance-methods">Methods</a></li>
+    <li><a href="../../components_api/WSLApi/copy.html">copy</a></li>
+    <li><a href="../../components_api/WSLApi/create.html">create</a></li>
+    <li><a href="../../components_api/WSLApi/editConfig.html">editConfig</a></li>
+    <li><a href="../../components_api/WSLApi/editDistroConfig.html">editDistroConfig</a></li>
+    <li><a href="../../components_api/WSLApi/exec.html">exec</a></li>
+    <li><a href="../../components_api/WSLApi/execCmdAsRoot.html">execCmdAsRoot</a></li>
+    <li><a href="../../components_api/WSLApi/execCmds.html">execCmds</a></li>
+    <li><a href="../../components_api/WSLApi/export.html">export</a></li>
+    <li><a href="../../components_api/WSLApi/getCurrentOutput.html">getCurrentOutput</a></li>
+    <li><a href="../../components_api/WSLApi/getDownloadable.html">getDownloadable</a></li>
+    <li><a href="../../components_api/WSLApi/getSize.html">getSize</a></li>
+    <li><a href="../../components_api/WSLApi/import.html">import</a></li>
+    <li><a href="../../components_api/WSLApi/install.html">install</a></li>
+    <li><a href="../../components_api/WSLApi/installWSL.html">installWSL</a></li>
+    <li><a href="../../components_api/WSLApi/list.html">list</a></li>
+    <li><a href="../../components_api/WSLApi/listRunning.html">listRunning</a></li>
+    <li><a href="../../components_api/WSLApi/mkRootDir.html">mkRootDir</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></li>
+    <li><a href="../../components_api/WSLApi/openBashrc.html">openBashrc</a></li>
+    <li><a href="../../components_api/WSLApi/readConfig.html">readConfig</a></li>
+    <li><a href="../../components_api/WSLApi/remove.html">remove</a></li>
+    <li><a href="../../components_api/WSLApi/restart.html">restart</a></li>
+    <li><a href="../../components_api/WSLApi/shutdown.html">shutdown</a></li>
+    <li><a href="../../components_api/WSLApi/start.html">start</a></li>
+    <li><a href="../../components_api/WSLApi/startExplorer.html">startExplorer</a></li>
+    <li><a href="../../components_api/WSLApi/startVSCode.html">startVSCode</a></li>
+    <li><a href="../../components_api/WSLApi/stop.html">stop</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/toString.html">toString</a></li>
+    <li><a href="../../components_api/WSLApi/utf8Convert.html">utf8Convert</a></li>
+    <li><a href="../../components_api/WSLApi/writeConfig.html">writeConfig</a></li>
+
+    <li class="section-title inherited"><a href="../../components_api/WSLApi-class.html#operators">Operators</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/operator_equals.html">operator ==</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.3.1
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../../static-assets/highlight.pack.js?v1"></script>
+<script src="../../static-assets/script.js?v1"></script>
+
+
+
+</body>
+
+</html>
+

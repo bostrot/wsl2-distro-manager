@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the createDialog function from the create_dialog library, for the Dart programming language.">
+  <title>createDialog function - create_dialog library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../"
+      data-using-base-href="false">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <button id="sidenav-left-toggle" type="button">&nbsp;</button>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></li>
+    <li class="self-crumb">createDialog function</li>
+  </ol>
+  <div class="self-name">createDialog</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<main>
+
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">createDialog</span> function 
+    <a href="https://dart.dev/null-safety" class="feature feature-null-safety" title="Supports the null safety language feature.">Null safety</a>
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype">dynamic</span>
+<span class="name ">createDialog</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="createDialog-param-context"><span class="type-annotation">dynamic</span> <span class="parameter-name">context</span>, </span></li>
+<li><span class="parameter" id="createDialog-param-mountedFn"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/Function-class.html">Function</a></span> <span class="parameter-name">mountedFn</span>, </span></li>
+<li><span class="parameter" id="createDialog-param-statusMsg"><span class="type-annotation">dynamic</span> <span class="parameter-name">statusMsg</span>(<ol class="parameter-list"><li><span class="parameter" id="param-"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>, </span></li>
+<li><span class="parameter" id="param-loading">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/bool-class.html">bool</a></span> <span class="parameter-name">loading</span>}</span></li>
+</ol>
+)</span></li>
+</ol>)
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Rename Dialog
+@param context: context
+@param api: WSLApi
+@param statusMsg: Function(String, {bool loading})</p>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">createDialog(
+    context, Function mountedFn, Function(String, {bool loading}) statusMsg) {
+  WSLApi api = WSLApi();
+  final autoSuggestBox = TextEditingController();
+  final locationController = TextEditingController();
+  final nameController = TextEditingController();
+  final userController = TextEditingController();
+  plausible.event(page: &#39;create&#39;);
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return ContentDialog(
+        constraints: const BoxConstraints(maxHeight: 450.0, maxWidth: 400.0),
+        title: Text(&#39;createnewinstance-text&#39;.i18n()),
+        content: SingleChildScrollView(
+          child: CreateWidget(
+              nameController: nameController,
+              api: api,
+              autoSuggestBox: autoSuggestBox,
+              locationController: locationController,
+              userController: userController,
+              statusMsg: statusMsg),
+        ),
+        actions: [
+          Button(
+              child: Text(&#39;cancel-text&#39;.i18n()),
+              onPressed: () async {
+                Navigator.pop(context);
+              }),
+          Button(
+            onPressed: () async {
+              await createInstance(
+                  mountedFn,
+                  nameController,
+                  statusMsg,
+                  locationController,
+                  api,
+                  autoSuggestBox,
+                  userController,
+                  context);
+            },
+            child: Text(&#39;create-text&#39;.i18n()),
+          ),
+        ],
+      );
+    },
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></li>
+  <li class="self-crumb">createDialog function</li>
+</ol>
+
+
+    <h5>create_dialog library</h5>
+    <ol>
+  <li class="section-title"><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html#classes">Classes</a></li>
+  <li><a href="../dialogs_create_dialog/CreateWidget-class.html">CreateWidget</a></li>
+
+
+
+
+
+  <li class="section-title"><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html#functions">Functions</a></li>
+  <li><a href="../dialogs_create_dialog/createDialog.html">createDialog</a></li>
+  <li><a href="../dialogs_create_dialog/createInstance.html">createInstance</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.3.1
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/script.js?v1"></script>
+
+
+
+</body>
+
+</html>
+

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the distroList function from the list library, for the Dart programming language.">
+  <title>distroList function - list library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../"
+      data-using-base-href="false">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <button id="sidenav-left-toggle" type="button">&nbsp;</button>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../components_list/components_list-library.html">list</a></li>
+    <li class="self-crumb">distroList function</li>
+  </ol>
+  <div class="self-name">distroList</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<main>
+
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">distroList</span> function 
+    <a href="https://dart.dev/null-safety" class="feature feature-null-safety" title="Supports the null safety language feature.">Null safety</a>
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/widgets/FutureBuilder-class.html">FutureBuilder</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../components_api/Instances-class.html">Instances</a></span>&gt;</span></span>
+<span class="name ">distroList</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="distroList-param-api"><span class="type-annotation"><a href="../components_api/WSLApi-class.html">WSLApi</a></span> <span class="parameter-name">api</span>, </span></li>
+<li><span class="parameter" id="distroList-param-statusMsg"><span class="type-annotation">dynamic</span> <span class="parameter-name">statusMsg</span>(<ol class="parameter-list"><li><span class="parameter" id="param-"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>, </span></li>
+<li><span class="parameter" id="param-loading">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/bool-class.html">bool</a></span> <span class="parameter-name">loading</span>}</span></li>
+</ol>
+), </span></li>
+<li><span class="parameter" id="distroList-param-hover"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/Map-class.html">Map</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>, <span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/bool-class.html">bool</a></span>&gt;</span></span> <span class="parameter-name">hover</span></span></li>
+</ol>)
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">FutureBuilder&lt;Instances&gt; distroList(WSLApi api,
+    Function(String, {bool loading}) statusMsg, Map&lt;String, bool&gt; hover) {
+  &#47;&#47; List as FutureBuilder with WSLApi
+  return FutureBuilder&lt;Instances&gt;(
+    future: api.list(),
+    builder: (context, snapshot) {
+      &#47;&#47; Update every 20 seconds
+      if (snapshot.hasData) {
+        List&lt;Widget&gt; newList = [];
+        List&lt;String&gt; list = snapshot.data?.all ?? [];
+        List&lt;String&gt; running = snapshot.data?.running ?? [];
+        &#47;&#47; Check if there are distros
+        if (list.isEmpty) {
+          return Expanded(
+            child: Center(
+              child: Text(&#39;noinstancesfound-text&#39;.i18n()),
+            ),
+          );
+        }
+        &#47;&#47; Check if WSL is installed
+        if (list[0] == &#39;wslNotInstalled&#39;) {
+          return const InstallDialog();
+        }
+        for (String item in list) {
+          newList.add(
+              ListItem(item: item, statusMsg: statusMsg, running: running));
+        }
+        return Expanded(
+          child: ListView.custom(
+            childrenDelegate: SliverChildListDelegate(newList),
+          ),
+        );
+      } else if (snapshot.hasError) {
+        return Text(&#39;${snapshot.error}&#39;);
+      }
+
+      &#47;&#47; By default, show a loading spinner.
+      return const Center(child: ProgressRing());
+    },
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../components_list/components_list-library.html">list</a></li>
+  <li class="self-crumb">distroList function</li>
+</ol>
+
+
+    <h5>list library</h5>
+    <ol>
+  <li class="section-title"><a href="../components_list/components_list-library.html#classes">Classes</a></li>
+  <li><a href="../components_list/DistroList-class.html">DistroList</a></li>
+  <li><a href="../components_list/DistroListState-class.html">DistroListState</a></li>
+
+
+
+
+
+  <li class="section-title"><a href="../components_list/components_list-library.html#functions">Functions</a></li>
+  <li><a href="../components_list/distroList.html">distroList</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.3.1
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/script.js?v1"></script>
+
+
+
+</body>
+
+</html>
+

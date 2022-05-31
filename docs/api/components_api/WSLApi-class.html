@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the WSLApi class from the api library, for the Dart programming language.">
+  <title>WSLApi class - api library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../"
+      data-using-base-href="false">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <button id="sidenav-left-toggle" type="button">&nbsp;</button>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../components_api/components_api-library.html">api</a></li>
+    <li class="self-crumb">WSLApi class</li>
+  </ol>
+  <div class="self-name">WSLApi</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<main>
+
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-class">WSLApi</span> class 
+    <a href="https://dart.dev/null-safety" class="feature feature-null-safety" title="Supports the null safety language feature.">Null safety</a>
+ 
+</h1></div>
+
+    
+<section class="desc markdown">
+  <p>WSL API</p>
+</section>
+
+
+
+    
+  <section class="summary offset-anchor" id="constructors">
+    <h2>Constructors</h2>
+
+    <dl class="constructor-summary-list">
+        <dt id="WSLApi" class="callable">
+          <span class="name"><a href="../components_api/WSLApi/WSLApi.html">WSLApi</a></span><span class="signature">()</span>
+        </dt>
+        <dd>
+          
+        </dd>
+    </dl>
+  </section>
+
+    <section class="summary offset-anchor" id="instance-properties">
+      <h2>Properties</h2>
+
+      <dl class="properties">
+        <dt id="hashCode" class="property inherited">
+  <span class="name"><a href="https://api.flutter.dev/flutter/dart-core/Object/hashCode.html">hashCode</a></span>
+  <span class="signature">&#8594; <a href="https://api.flutter.dev/flutter/dart-core/int-class.html">int</a></span> 
+
+</dt>
+<dd class="inherited">
+  The hash code for this object.
+  <div class="features">read-only, inherited</div>
+
+</dd>
+
+        <dt id="resultQueue" class="property">
+  <span class="name"><a href="../components_api/WSLApi/resultQueue.html">resultQueue</a></span>
+  <span class="signature">&#8596; <a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span> 
+
+</dt>
+<dd>
+  
+  <div class="features">read / write</div>
+
+</dd>
+
+        <dt id="runtimeType" class="property inherited">
+  <span class="name"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></span>
+  <span class="signature">&#8594; <a href="https://api.flutter.dev/flutter/dart-core/Type-class.html">Type</a></span> 
+
+</dt>
+<dd class="inherited">
+  A representation of the runtime type of the object.
+  <div class="features">read-only, inherited</div>
+
+</dd>
+
+      </dl>
+    </section>
+
+    
+  <section
+      class="summary offset-anchor"
+      id="instance-methods">
+    <h2>Methods</h2>
+    <dl class="callables">
+        <dt id="copy" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/copy.html">copy</a></span><span class="signature">(<wbr><span class="parameter" id="copy-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="copy-param-newName"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">newName</span>, </span><span class="parameter" id="copy-param-location">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">location</span> = <span class="default-value">defaultPath</span>}</span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Copy a WSL distro by name
+@param distribution: String
+@param newName: String
+@param location: String (optional)
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="create" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/create.html">create</a></span><span class="signature">(<wbr><span class="parameter" id="create-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="create-param-filename"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">filename</span>, </span><span class="parameter" id="create-param-installPath"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">installPath</span>, </span><span class="parameter" id="create-param-status"><span class="type-annotation">dynamic</span> <span class="parameter-name">status</span>(<span class="parameter" id="param-"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span></span>)</span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Import a WSL distro by name
+@param distribution: String
+@param installPath: String distro name or tar file
+@param filename: String
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="editConfig" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/editConfig.html">editConfig</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Open wslconfig file
+  
+
+</dd>
+
+        <dt id="editDistroConfig" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/editDistroConfig.html">editDistroConfig</a></span><span class="signature">(<wbr><span class="parameter" id="editDistroConfig-param-distroname"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distroname</span></span>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Open distro config file
+  
+
+</dd>
+
+        <dt id="exec" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/exec.html">exec</a></span><span class="signature">(<wbr><span class="parameter" id="exec-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="exec-param-cmds"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span> <span class="parameter-name">cmds</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/int-class.html">int</a></span>&gt;</span></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Executes a command in a WSL distro. passwd will open a shell
+@param distribution: String
+@param cmd: List<string>
+@return Future&lt;List<int>&gt;</int></string>
+  
+
+</dd>
+
+        <dt id="execCmdAsRoot" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/execCmdAsRoot.html">execCmdAsRoot</a></span><span class="signature">(<wbr><span class="parameter" id="execCmdAsRoot-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="execCmdAsRoot-param-cmd"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">cmd</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Executes a command in a WSL distro and returns the output
+@param distribution: String
+@param cmd: String
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="execCmds" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/execCmds.html">execCmds</a></span><span class="signature">(<wbr><span class="parameter" id="execCmds-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="execCmds-param-cmds"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span> <span class="parameter-name">cmds</span>, </span><span class="parameter" id="execCmds-param-onMsg">{<span>required</span> <span class="type-annotation">dynamic</span> <span class="parameter-name">onMsg</span>(<span class="parameter" id="param-"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span></span>), </span><span class="parameter" id="execCmds-param-onDone"><span>required</span> <span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/Function-class.html">Function</a></span> <span class="parameter-name">onDone</span>}</span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/int-class.html">int</a></span>&gt;</span></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Executes a command list in a WSL distro
+@param distribution: String
+@param cmd: List<string>
+@return Future&lt;List<int>&gt;</int></string>
+  
+
+</dd>
+
+        <dt id="export" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/export.html">export</a></span><span class="signature">(<wbr><span class="parameter" id="export-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="export-param-location"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">location</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Export a WSL distro by name
+@param distribution: String
+@param location: String
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="getCurrentOutput" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/getCurrentOutput.html">getCurrentOutput</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Get the current cached output
+@return String
+  
+
+</dd>
+
+        <dt id="getDownloadable" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/getDownloadable.html">getDownloadable</a></span><span class="signature">(<wbr><span class="parameter" id="getDownloadable-param-repo"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">repo</span>, </span><span class="parameter" id="getDownloadable-param-onError"><span class="type-annotation">dynamic</span> <span class="parameter-name">onError</span>(<span class="parameter" id="param-"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span></span>)</span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Returns list of downloadable WSL distros
+@return Future&lt;List<string>&gt;</string>
+  
+
+</dd>
+
+        <dt id="getSize" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/getSize.html">getSize</a></span><span class="signature">(<wbr><span class="parameter" id="getSize-param-distroName"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distroName</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a>?</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Get distro size
+  
+
+</dd>
+
+        <dt id="import" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/import.html">import</a></span><span class="signature">(<wbr><span class="parameter" id="import-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="import-param-installLocation"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">installLocation</span>, </span><span class="parameter" id="import-param-filename"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">filename</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Import a WSL distro by name
+@param distribution: String
+@param installLocation: String
+@param filename: String
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="install" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/install.html">install</a></span><span class="signature">(<wbr><span class="parameter" id="install-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Install a WSL distro by name
+@param distribution: String
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="installWSL" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/installWSL.html">installWSL</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Install WSL
+  
+
+</dd>
+
+        <dt id="list" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/list.html">list</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../components_api/Instances-class.html">Instances</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Returns list of WSL distros
+@return Future<instances></instances>
+  
+
+</dd>
+
+        <dt id="listRunning" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/listRunning.html">listRunning</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Returns list of WSL distros
+@return Future&lt;List<string>&gt;</string>
+  
+
+</dd>
+
+        <dt id="mkRootDir" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/mkRootDir.html">mkRootDir</a></span><span class="signature">(<wbr><span class="parameter" id="mkRootDir-param-path">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">path</span> = <span class="default-value">defaultPath</span>}</span>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Create directory
+  
+
+</dd>
+
+        <dt id="noSuchMethod" class="callable inherited">
+  <span class="name"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></span><span class="signature">(<wbr><span class="parameter" id="noSuchMethod-param-invocation"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/Invocation-class.html">Invocation</a></span> <span class="parameter-name">invocation</span></span>)
+    <span class="returntype parameter">&#8594; dynamic</span>
+  </span>
+  
+
+</dt>
+<dd class="inherited">
+  Invoked when a non-existent method or property is accessed.
+  <div class="features">inherited</div>
+
+</dd>
+
+        <dt id="openBashrc" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/openBashrc.html">openBashrc</a></span><span class="signature">(<wbr><span class="parameter" id="openBashrc-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Open bashrc with notepad from WSL
+@param distribution: String
+  
+
+</dd>
+
+        <dt id="readConfig" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/readConfig.html">readConfig</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/Map-class.html">Map</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>, <span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Read wslconfig file
+@return Future&lt;Map&lt;String, String&gt;&gt;
+  
+
+</dd>
+
+        <dt id="remove" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/remove.html">remove</a></span><span class="signature">(<wbr><span class="parameter" id="remove-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Remove a WSL distro by name
+@param distribution: String
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="restart" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/restart.html">restart</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Restart WSL
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="shutdown" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/shutdown.html">shutdown</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Shutdown WSL
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="start" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/start.html">start</a></span><span class="signature">(<wbr><span class="parameter" id="start-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="start-param-startPath">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">startPath</span> = <span class="default-value">&#39;&#39;</span>, </span><span class="parameter" id="start-param-startUser"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">startUser</span> = <span class="default-value">&#39;&#39;</span>, </span><span class="parameter" id="start-param-startCmd"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">startCmd</span> = <span class="default-value">&#39;&#39;</span>}</span>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Start a WSL distro by name
+@param distribution: String
+@param startPath: String (optional) Defaults to root ('/')
+  
+
+</dd>
+
+        <dt id="startExplorer" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/startExplorer.html">startExplorer</a></span><span class="signature">(<wbr><span class="parameter" id="startExplorer-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="startExplorer-param-path">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">path</span> = <span class="default-value">&#39;&#39;</span>}</span>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Start Explorer
+@param distribution: String
+  
+
+</dd>
+
+        <dt id="startVSCode" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/startVSCode.html">startVSCode</a></span><span class="signature">(<wbr><span class="parameter" id="startVSCode-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span>, </span><span class="parameter" id="startVSCode-param-path">{<span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">path</span> = <span class="default-value">&#39;&#39;</span>}</span>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Start VSCode
+@param distribution: String
+  
+
+</dd>
+
+        <dt id="stop" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/stop.html">stop</a></span><span class="signature">(<wbr><span class="parameter" id="stop-param-distribution"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">distribution</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>&gt;</span></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Stop a WSL distro by name
+@param distribution: String
+@return Future<string></string>
+  
+
+</dd>
+
+        <dt id="toString" class="callable inherited">
+  <span class="name"><a href="https://api.flutter.dev/flutter/dart-core/Object/toString.html">toString</a></span><span class="signature">(<wbr>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>
+  </span>
+  
+
+</dt>
+<dd class="inherited">
+  A string representation of this object.
+  <div class="features">inherited</div>
+
+</dd>
+
+        <dt id="utf8Convert" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/utf8Convert.html">utf8Convert</a></span><span class="signature">(<wbr><span class="parameter" id="utf8Convert-param-bytes"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://api.flutter.dev/flutter/dart-core/int-class.html">int</a></span>&gt;</span></span> <span class="parameter-name">bytes</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span>
+  </span>
+  
+
+</dt>
+<dd>
+  Convert bytes to human readable string while removing non-ascii characters
+@param bytes: List<int>
+@return String</int>
+  
+
+</dd>
+
+        <dt id="writeConfig" class="callable">
+  <span class="name"><a href="../components_api/WSLApi/writeConfig.html">writeConfig</a></span><span class="signature">(<wbr><span class="parameter" id="writeConfig-param-text"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/String-class.html">String</a></span> <span class="parameter-name">text</span></span>)
+    <span class="returntype parameter">&#8594; void</span>
+  </span>
+  
+
+</dt>
+<dd>
+  Write wslconfig file
+  
+
+</dd>
+
+    </dl>
+  </section>
+    
+  <section
+      class="summary offset-anchor inherited"
+      id="operators">
+    <h2>Operators</h2>
+    <dl class="callables">
+        <dt id="operator ==" class="callable inherited">
+  <span class="name"><a href="https://api.flutter.dev/flutter/dart-core/Object/operator_equals.html">operator ==</a></span><span class="signature">(<wbr><span class="parameter" id="==-param-other"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/Object-class.html">Object</a></span> <span class="parameter-name">other</span></span>)
+    <span class="returntype parameter">&#8594; <a href="https://api.flutter.dev/flutter/dart-core/bool-class.html">bool</a></span>
+  </span>
+  
+
+</dt>
+<dd class="inherited">
+  The equality operator.
+  <div class="features">inherited</div>
+
+</dd>
+
+    </dl>
+  </section>
+    
+    
+    
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../components_api/components_api-library.html">api</a></li>
+  <li class="self-crumb">WSLApi class</li>
+</ol>
+
+
+    <h5>api library</h5>
+    <ol>
+  <li class="section-title"><a href="../components_api/components_api-library.html#classes">Classes</a></li>
+  <li><a href="../components_api/App-class.html">App</a></li>
+  <li><a href="../components_api/Instances-class.html">Instances</a></li>
+  <li><a href="../components_api/WSLApi-class.html">WSLApi</a></li>
+
+
+
+
+
+
+
+
+</ol>
+
+  </div>
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+    <ol>
+
+        <li class="section-title"><a href="../components_api/WSLApi-class.html#constructors">Constructors</a></li>
+          <li><a href="../components_api/WSLApi/WSLApi.html">WSLApi</a></li>
+
+
+    <li class="section-title">
+      <a href="../components_api/WSLApi-class.html#instance-properties">Properties</a>
+    </li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/hashCode.html">hashCode</a></li>
+    <li><a href="../components_api/WSLApi/resultQueue.html">resultQueue</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></li>
+
+    <li class="section-title"><a href="../components_api/WSLApi-class.html#instance-methods">Methods</a></li>
+    <li><a href="../components_api/WSLApi/copy.html">copy</a></li>
+    <li><a href="../components_api/WSLApi/create.html">create</a></li>
+    <li><a href="../components_api/WSLApi/editConfig.html">editConfig</a></li>
+    <li><a href="../components_api/WSLApi/editDistroConfig.html">editDistroConfig</a></li>
+    <li><a href="../components_api/WSLApi/exec.html">exec</a></li>
+    <li><a href="../components_api/WSLApi/execCmdAsRoot.html">execCmdAsRoot</a></li>
+    <li><a href="../components_api/WSLApi/execCmds.html">execCmds</a></li>
+    <li><a href="../components_api/WSLApi/export.html">export</a></li>
+    <li><a href="../components_api/WSLApi/getCurrentOutput.html">getCurrentOutput</a></li>
+    <li><a href="../components_api/WSLApi/getDownloadable.html">getDownloadable</a></li>
+    <li><a href="../components_api/WSLApi/getSize.html">getSize</a></li>
+    <li><a href="../components_api/WSLApi/import.html">import</a></li>
+    <li><a href="../components_api/WSLApi/install.html">install</a></li>
+    <li><a href="../components_api/WSLApi/installWSL.html">installWSL</a></li>
+    <li><a href="../components_api/WSLApi/list.html">list</a></li>
+    <li><a href="../components_api/WSLApi/listRunning.html">listRunning</a></li>
+    <li><a href="../components_api/WSLApi/mkRootDir.html">mkRootDir</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></li>
+    <li><a href="../components_api/WSLApi/openBashrc.html">openBashrc</a></li>
+    <li><a href="../components_api/WSLApi/readConfig.html">readConfig</a></li>
+    <li><a href="../components_api/WSLApi/remove.html">remove</a></li>
+    <li><a href="../components_api/WSLApi/restart.html">restart</a></li>
+    <li><a href="../components_api/WSLApi/shutdown.html">shutdown</a></li>
+    <li><a href="../components_api/WSLApi/start.html">start</a></li>
+    <li><a href="../components_api/WSLApi/startExplorer.html">startExplorer</a></li>
+    <li><a href="../components_api/WSLApi/startVSCode.html">startVSCode</a></li>
+    <li><a href="../components_api/WSLApi/stop.html">stop</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/toString.html">toString</a></li>
+    <li><a href="../components_api/WSLApi/utf8Convert.html">utf8Convert</a></li>
+    <li><a href="../components_api/WSLApi/writeConfig.html">writeConfig</a></li>
+
+    <li class="section-title inherited"><a href="../components_api/WSLApi-class.html#operators">Operators</a></li>
+    <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/operator_equals.html">operator ==</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.3.1
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/script.js?v1"></script>
+
+
+
+</body>
+
+</html>
+
