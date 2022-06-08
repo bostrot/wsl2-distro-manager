@@ -61,6 +61,23 @@ class App {
     }
     return '';
   }
+
+  /// Get list of distros from Repo
+  /// @return Future<Map<String, String>>
+  Future<Map<String, String>> getDistroLinks() async {
+    try {
+      var response = await Dio().get(gitRepoLink);
+      if (response.data.length > 0) {
+        var jsonData = json.decode(response.data);
+        Map<String, String> distros = jsonData;
+        return distros;
+      }
+    } catch (e) {
+      // ignored
+    }
+    // Default list
+    return distroRootfsLinks;
+  }
 }
 
 /// WSL API
