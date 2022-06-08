@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert' show Utf8Decoder, json, utf8;
+import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'constants.dart';
 import 'helpers.dart';
+import 'package:http/http.dart' as http;
+import 'package:async/async.dart';
 
 class Instances {
   List<String> running = [];
@@ -66,10 +69,14 @@ class App {
   /// @return Future<Map<String, String>>
   Future<Map<String, String>> getDistroLinks() async {
     try {
+      var dio = Dio();
       var response = await Dio().get(gitRepoLink);
-      if (response.data.length > 0) {
-        var jsonData = json.decode(response.data);
-        Map<String, String> distros = jsonData;
+      if (response.statusCode != null && response.statusCode! < 300) {
+        var jsonData = jsonDecode(response.data);
+        Map<String, String> distros = {};
+        jsonData.forEach((key, value) {
+          distros.addAll({key: value});
+        });
         return distros;
       }
     } catch (e) {
@@ -446,12 +453,66 @@ class WSLApi {
       String url = distroRootfsLinks[filename]!;
       // Download file
       try {
-        Dio dio = Dio();
-        await dio.download(url, downloadPath,
-            onReceiveProgress: (int count, int total) {
-          status('Step 1: Downloading distro: '
-              '${(count / total * 100).toStringAsFixed(0)}%');
+        // Download file as a stream
+        List<List<int>> chunks = [];
+        int downloaded = 0;
+
+        var httpClient = http.Client();
+        // set buffer size to 10MB
+        var request = http.Request('GET', Uri.parse(url));
+        var response = httpClient.send(request);
+
+        response.asStream().listen((http.StreamedResponse r) async {
+          final reader = ChunkedStreamReader(r.stream);
+          try {
+            int chunkSize = 16 * 1024;
+            Uint8List buffer;
+            do {
+              buffer = await reader.readBytes(chunkSize);
+              // Do something with the buffer
+              chunks.add(buffer);
+              downloaded += buffer.length;
+            } while (buffer.length == chunkSize);
+            // Write file
+            File file = File(downloadPath);
+            final Uint8List bytes = Uint8List(r.contentLength!);
+            int offset = 0;
+            for (List<int> chunk in chunks) {
+              bytes.setRange(offset, offset + chunk.length, chunk);
+              offset += chunk.length;
+            }
+            await file.writeAsBytes(bytes);
+            status('Downloaded $filename');
+          } catch (e) {
+            print(e);
+          } finally {
+            reader.cancel();
+          }
+
+          // r.stream.listen((List<int> chunk) {
+          //   chunks.add(chunk);
+          //   downloaded += chunk.length;
+          //   status('Downloading $filename (${downloaded ~/ 1024 ~/ 1024} MB)');
+          // }, onDone: () async {
+          //   // Write file
+          //   File file = File(downloadPath);
+          //   final Uint8List bytes = Uint8List(r.contentLength!);
+          //   int offset = 0;
+          //   for (List<int> chunk in chunks) {
+          //     bytes.setRange(offset, offset + chunk.length, chunk);
+          //     offset += chunk.length;
+          //   }
+          //   await file.writeAsBytes(bytes);
+          //   status('Downloaded $filename');
+          // });
         });
+
+        // Dio dio = Dio();
+        // await dio.download(url, downloadPath,
+        //     onReceiveProgress: (int count, int total) {
+        //   status('Step 1: Downloading distro: '
+        //       '${(count / total * 100).toStringAsFixed(0)}%');
+        // });
       } catch (error) {
         status('Error downloading: $error');
       }
@@ -517,6 +578,9 @@ class WSLApi {
   /// @return Future<List<String>>
   Future<List<String>> getDownloadable(
       String repo, Function(String) onError) async {
+    // Get list of distros from git
+    distroRootfsLinks = await App().getDistroLinks();
+    // Get list of distros from custom repo link and try to format
     try {
       await Dio().get(repo).then((value) => {
             value.data.split('\n').forEach((line) {
