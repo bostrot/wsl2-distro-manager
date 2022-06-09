@@ -14,11 +14,11 @@ build:
     - mv wsl2distromanager.msix ../wsl2-distro-manager-v$VERSION_NUM-signed-installer.msix
     - zip -r wsl2-distro-manager-v$VERSION_NUM.zip .
     # check tag already exists
+    # ../wsl2-distro-manager-v$VERSION_NUM-signed-installer.msix
     - if [ "$(echo $(gh release view --json tagName) | sed -e 's/{"tagName":"\(.*\)"}/\1/')" != "v$VERSION_NUM" ];
       then
       gh release create v$VERSION_NUM
         wsl2-distro-manager-v$VERSION_NUM.zip
-        ../wsl2-distro-manager-v$VERSION_NUM-signed-installer.msix
         --title v$VERSION_NUM
         --generate-notes
         --notes "This is an automated release.";
