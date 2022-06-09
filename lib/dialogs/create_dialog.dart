@@ -80,12 +80,12 @@ Future<void> createInstance(
       location = prefs.getString("SaveLocation") ?? defaultPath;
       location += '/$name';
     }
-
+    Navigator.of(context, rootNavigator: true).pop();
     await api.create(
         name, autoSuggestBox.text, location, (String msg) => statusMsg(msg),
         (result) async {
       if (result.exitCode != 0) {
-        statusMsg(result.stdout);
+        statusMsg(WSLApi().utf8Convert(result.stdout));
       } else {
         String user = userController.text;
         if (user != '') {
@@ -111,7 +111,6 @@ Future<void> createInstance(
             if (!mounted) {
               return;
             }
-            Navigator.pop(context);
 
             statusMsg('createdinstance-text'.i18n());
           } else {
@@ -119,7 +118,6 @@ Future<void> createInstance(
             if (!mounted) {
               return;
             }
-            Navigator.pop(context);
             statusMsg('createdinstancenouser-text'.i18n());
           }
         } else {
@@ -127,9 +125,7 @@ Future<void> createInstance(
           if (!mounted) {
             return;
           }
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          }
+
           // Install fake systemctl
           if (autoSuggestBox.text.contains('Turnkey')) {
             // Set first start variable
