@@ -69,7 +69,6 @@ class App {
   /// @return Future<Map<String, String>>
   Future<Map<String, String>> getDistroLinks() async {
     try {
-      var dio = Dio();
       var response = await Dio().get(gitRepoLink);
       if (response.statusCode != null && response.statusCode! < 300) {
         var jsonData = jsonDecode(response.data);
@@ -77,6 +76,7 @@ class App {
         jsonData.forEach((key, value) {
           distros.addAll({key: value});
         });
+        distroRootfsLinks = distros;
         return distros;
       }
     } catch (e) {
@@ -448,20 +448,24 @@ class WSLApi {
     // Download
     String downloadPath = '';
     downloadPath = '${defaultPath}distros\\$filename.tar.gz';
-    if (distroRootfsLinks[filename] != null &&
-        !(await File(downloadPath).exists())) {
+    bool fileExists = await File(downloadPath).exists();
+    if (distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
 
       // Download file
       try {
         // Download file as a stream
-        List<List<int>> chunks = [];
-        int downloaded = 0;
+        // List<List<int>> chunks = [];
+        int offset = 0;
 
         var httpClient = http.Client();
+
         // set buffer size to 10MB
         var request = http.Request('GET', Uri.parse(url));
         var response = httpClient.send(request);
+
+        // Open file
+        File file = File('$downloadPath.tmp');
 
         response.asStream().listen((http.StreamedResponse r) async {
           final reader = ChunkedStreamReader(r.stream);
@@ -470,22 +474,17 @@ class WSLApi {
             Uint8List buffer;
             do {
               buffer = await reader.readBytes(chunkSize);
-              chunks.add(buffer);
-              downloaded += buffer.length;
+              // chunks.add(buffer);
+              offset += buffer.length;
               status('${'downloading-text'.i18n()}: $filename, '
-                  '(${downloaded ~/ 1024 ~/ 1024}MB'
-                  ' - ${(downloaded / size * 100).toStringAsFixed(0)}%)');
+                  '(${offset ~/ 1024 ~/ 1024}MB'
+                  ' - ${(offset / size * 100).toStringAsFixed(0)}%)');
+              // Write buffer directly to disk and clear chunks
+              await file.writeAsBytes(buffer, mode: FileMode.append);
             } while (buffer.length == chunkSize);
-            // Write file
-            File file = File(downloadPath);
-            final Uint8List bytes = Uint8List(r.contentLength!);
-            int offset = 0;
-            for (List<int> chunk in chunks) {
-              bytes.setRange(offset, offset + chunk.length, chunk);
-              offset += chunk.length;
-            }
-            await file.writeAsBytes(bytes);
 
+            // Rename file
+            await file.rename(downloadPath);
             status('${'downloaded-text'.i18n()}: $filename');
 
             // Create
@@ -506,6 +505,9 @@ class WSLApi {
     // Downloaded or extracted
     if (distroRootfsLinks[filename] == null) {
       downloadPath = filename;
+    }
+
+    if (fileExists) {
       // Create
       ProcessResult results = await Process.run(
           'wsl', ['--import', distribution, installPath, downloadPath]);

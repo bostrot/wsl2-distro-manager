@@ -76,14 +76,16 @@ class Sync {
     // Download file
     try {
       // Download file as a stream
-      List<List<int>> chunks = [];
-      int downloaded = 0;
+      int offset = 0;
 
       var httpClient = http.Client();
       // set buffer size to 10MB
       var request =
           http.Request('GET', Uri.parse('http://$syncIP:59132/ext4.vhdx'));
       var response = httpClient.send(request);
+
+      // Open file
+      File file = File('$distroLocation\\ext4.vhdx.tmp');
 
       response.asStream().listen((http.StreamedResponse r) async {
         final reader = ChunkedStreamReader(r.stream);
@@ -92,25 +94,20 @@ class Sync {
           Uint8List buffer;
           do {
             buffer = await reader.readBytes(chunkSize);
-            chunks.add(buffer);
-            downloaded += buffer.length;
+            offset += buffer.length;
             statusMsg(
                 '${'downloading-text'.i18n()} $distroName, '
-                '(${downloaded ~/ 1024 ~/ 1024}MB'
-                ' - ${(downloaded / size * 100).toStringAsFixed(0)}%)',
+                '(${offset ~/ 1024 ~/ 1024}MB'
+                ' - ${(offset / size * 100).toStringAsFixed(0)}%)',
                 loading: true);
+            // Write buffer directly to disk and clear chunks
+            await file.writeAsBytes(buffer, mode: FileMode.append);
           } while (buffer.length == chunkSize);
-          // Write file
-          File file = File('$distroLocation\\ext4.vhdx');
-          final Uint8List bytes = Uint8List(r.contentLength!);
-          int offset = 0;
-          for (List<int> chunk in chunks) {
-            bytes.setRange(offset, offset + chunk.length, chunk);
-            offset += chunk.length;
-          }
-          await file.writeAsBytes(bytes);
 
           statusMsg('${'downloaded-text'.i18n()} $distroName');
+
+          // Rename file
+          await file.rename('$distroLocation\\ext4.vhdx');
         } catch (e) {
           statusMsg('${'errordownloading-text'.i18n()} $distroName',
               loading: false);
