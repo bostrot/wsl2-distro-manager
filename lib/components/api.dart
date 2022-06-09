@@ -439,7 +439,7 @@ class WSLApi {
   /// @param filename: String
   /// @return Future<String>
   Future<dynamic> create(String distribution, String filename,
-      String installPath, Function(String) status) async {
+      String installPath, Function(String) status, Function callback) async {
     if (installPath == '') {
       installPath = defaultPath + distribution;
     }
@@ -451,6 +451,7 @@ class WSLApi {
     if (distroRootfsLinks[filename] != null &&
         !(await File(downloadPath).exists())) {
       String url = distroRootfsLinks[filename]!;
+
       // Download file
       try {
         // Download file as a stream
@@ -464,14 +465,16 @@ class WSLApi {
 
         response.asStream().listen((http.StreamedResponse r) async {
           final reader = ChunkedStreamReader(r.stream);
+          int size = r.contentLength!;
           try {
-            int chunkSize = 16 * 1024;
             Uint8List buffer;
             do {
               buffer = await reader.readBytes(chunkSize);
-              // Do something with the buffer
               chunks.add(buffer);
               downloaded += buffer.length;
+              status('${'downloading-text'.i18n()}: $filename, '
+                  '(${downloaded ~/ 1024 ~/ 1024}MB'
+                  ' - ${(downloaded / size * 100).toStringAsFixed(0)}%)');
             } while (buffer.length == chunkSize);
             // Write file
             File file = File(downloadPath);
@@ -482,51 +485,34 @@ class WSLApi {
               offset += chunk.length;
             }
             await file.writeAsBytes(bytes);
-            status('Downloaded $filename');
+
+            status('${'downloaded-text'.i18n()}: $filename');
+
+            // Create
+            status('creatinginstance-text'.i18n());
+            ProcessResult results = await Process.run(
+                'wsl', ['--import', distribution, installPath, downloadPath]);
+            callback(results);
           } catch (e) {
             print(e);
           } finally {
             reader.cancel();
           }
-
-          // r.stream.listen((List<int> chunk) {
-          //   chunks.add(chunk);
-          //   downloaded += chunk.length;
-          //   status('Downloading $filename (${downloaded ~/ 1024 ~/ 1024} MB)');
-          // }, onDone: () async {
-          //   // Write file
-          //   File file = File(downloadPath);
-          //   final Uint8List bytes = Uint8List(r.contentLength!);
-          //   int offset = 0;
-          //   for (List<int> chunk in chunks) {
-          //     bytes.setRange(offset, offset + chunk.length, chunk);
-          //     offset += chunk.length;
-          //   }
-          //   await file.writeAsBytes(bytes);
-          //   status('Downloaded $filename');
-          // });
         });
-
-        // Dio dio = Dio();
-        // await dio.download(url, downloadPath,
-        //     onReceiveProgress: (int count, int total) {
-        //   status('Step 1: Downloading distro: '
-        //       '${(count / total * 100).toStringAsFixed(0)}%');
-        // });
       } catch (error) {
-        status('Error downloading: $error');
+        status('${'errordownloading-text'.i18n()}: $filename: $error');
       }
     }
-
     // Downloaded or extracted
     if (distroRootfsLinks[filename] == null) {
       downloadPath = filename;
+      // Create
+      ProcessResult results = await Process.run(
+          'wsl', ['--import', distribution, installPath, downloadPath]);
+      callback(results);
     }
 
-    // Create
-    ProcessResult results = await Process.run(
-        'wsl', ['--import', distribution, installPath, downloadPath]);
-    return results;
+    return null;
   }
 
   /// Returns list of WSL distros
