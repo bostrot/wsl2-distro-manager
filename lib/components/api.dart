@@ -490,10 +490,11 @@ class WSLApi {
             // Create
             status('creatinginstance-text'.i18n());
             ProcessResult results = await Process.run(
-                'wsl', ['--import', distribution, installPath, downloadPath]);
+                'wsl', ['--import', distribution, installPath, downloadPath],
+                stdoutEncoding: null);
             callback(results);
           } catch (e) {
-            print(e);
+            status('${'errordownloading-text'.i18n()}: $filename: $e');
           } finally {
             reader.cancel();
           }
@@ -502,15 +503,16 @@ class WSLApi {
         status('${'errordownloading-text'.i18n()}: $filename: $error');
       }
     }
-    // Downloaded or extracted
+    // Downloaded or extracted; probably imported
     if (distroRootfsLinks[filename] == null) {
       downloadPath = filename;
     }
 
     if (fileExists) {
-      // Create
+      // Create from local file
       ProcessResult results = await Process.run(
-          'wsl', ['--import', distribution, installPath, downloadPath]);
+          'wsl', ['--import', distribution, installPath, downloadPath],
+          stdoutEncoding: null);
       callback(results);
     }
 
