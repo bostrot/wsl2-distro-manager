@@ -80,78 +80,77 @@ Future<void> createInstance(
       location = prefs.getString("SaveLocation") ?? defaultPath;
       location += '/$name';
     }
-    var result = await api.create(
-        name, autoSuggestBox.text, location, (String msg) => statusMsg(msg));
-    if (result.exitCode != 0) {
-      statusMsg(result.stdout);
-    } else {
-      String user = userController.text;
-      if (user != '') {
-        List<int> processes = await api.exec(name, [
-          'apt-get update',
-          'apt-get install -y sudo',
-          'useradd -m -s /bin/bash -G sudo $user',
-          'passwd $user',
-          'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo',
-          'echo -e \'[user]\ndefault = $user\' > /etc/wsl.conf',
-        ]);
-        bool success = true;
-        for (dynamic process in processes) {
-          if (process != 0) {
-            success = false;
-            break;
-          }
-        }
-        if (success) {
-          prefs.setString('StartPath_$name', '/home/$user');
-          prefs.setString('StartUser_$name', user);
-          bool mounted = mountedFn();
-          if (!mounted) {
-            return;
-          }
-          Navigator.pop(context);
-
-          statusMsg('createdinstance-text'.i18n());
-        } else {
-          bool mounted = mountedFn();
-          if (!mounted) {
-            return;
-          }
-          Navigator.pop(context);
-          statusMsg('createdinstancenouser-text'.i18n());
-        }
+    Navigator.of(context, rootNavigator: true).pop();
+    await api.create(
+        name, autoSuggestBox.text, location, (String msg) => statusMsg(msg),
+        (result) async {
+      if (result.exitCode != 0) {
+        statusMsg(WSLApi().utf8Convert(result.stdout));
       } else {
-        bool mounted = mountedFn();
-        if (!mounted) {
-          return;
-        }
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-        }
-        // Install fake systemctl
-        if (autoSuggestBox.text.contains('Turnkey')) {
-          // Set first start variable
-          prefs.setBool('TurnkeyFirstStart_$name', true);
-          statusMsg('installingfakesystemd-text'.i18n(), loading: true);
-          WSLApi().execCmds(
-              name,
-              [
-                'wget https://raw.githubusercontent.com/bostrot/'
-                    'fake-systemd/master/systemctl -O /usr/bin/systemctl',
-                'chmod +x /usr/bin/systemctl',
-                '/usr/bin/systemctl',
-              ],
-              onMsg: (output) => null,
-              onDone: () => statusMsg('createdinstance-text'.i18n()));
+        String user = userController.text;
+        if (user != '') {
+          List<int> processes = await api.exec(name, [
+            'apt-get update',
+            'apt-get install -y sudo',
+            'useradd -m -s /bin/bash -G sudo $user',
+            'passwd $user',
+            'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo',
+            'echo -e \'[user]\ndefault = $user\' > /etc/wsl.conf',
+          ]);
+          bool success = true;
+          for (dynamic process in processes) {
+            if (process != 0) {
+              success = false;
+              break;
+            }
+          }
+          if (success) {
+            prefs.setString('StartPath_$name', '/home/$user');
+            prefs.setString('StartUser_$name', user);
+            bool mounted = mountedFn();
+            if (!mounted) {
+              return;
+            }
+
+            statusMsg('createdinstance-text'.i18n());
+          } else {
+            bool mounted = mountedFn();
+            if (!mounted) {
+              return;
+            }
+            statusMsg('createdinstancenouser-text'.i18n());
+          }
         } else {
-          statusMsg('createdinstance-text'.i18n());
+          bool mounted = mountedFn();
+          if (!mounted) {
+            return;
+          }
+
+          // Install fake systemctl
+          if (autoSuggestBox.text.contains('Turnkey')) {
+            // Set first start variable
+            prefs.setBool('TurnkeyFirstStart_$name', true);
+            statusMsg('installingfakesystemd-text'.i18n(), loading: true);
+            WSLApi().execCmds(
+                name,
+                [
+                  'wget https://raw.githubusercontent.com/bostrot/'
+                      'fake-systemd/master/systemctl -O /usr/bin/systemctl',
+                  'chmod +x /usr/bin/systemctl',
+                  '/usr/bin/systemctl',
+                ],
+                onMsg: (output) => null,
+                onDone: () => statusMsg('createdinstance-text'.i18n()));
+          } else {
+            statusMsg('createdinstance-text'.i18n());
+          }
         }
+        // Save distro label
+        prefs.setString('DistroName_$name', label);
+        // Save distro path
+        prefs.setString('Path_$name', location);
       }
-      // Save distro label
-      prefs.setString('DistroName_$name', label);
-      // Save distro path
-      prefs.setString('Path_$name', location);
-    }
+    });
     // Download distro check
   } else {
     statusMsg('entername-text'.i18n());

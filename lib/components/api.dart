@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert' show Utf8Decoder, json, utf8;
+import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'constants.dart';
 import 'helpers.dart';
+import 'package:http/http.dart' as http;
+import 'package:async/async.dart';
 
 class Instances {
   List<String> running = [];
@@ -60,6 +63,27 @@ class App {
       // ignored
     }
     return '';
+  }
+
+  /// Get list of distros from Repo
+  /// @return Future<Map<String, String>>
+  Future<Map<String, String>> getDistroLinks() async {
+    try {
+      var response = await Dio().get(gitRepoLink);
+      if (response.statusCode != null && response.statusCode! < 300) {
+        var jsonData = jsonDecode(response.data);
+        Map<String, String> distros = {};
+        jsonData.forEach((key, value) {
+          distros.addAll({key: value});
+        });
+        distroRootfsLinks = distros;
+        return distros;
+      }
+    } catch (e) {
+      // ignored
+    }
+    // Default list
+    return distroRootfsLinks;
   }
 }
 
@@ -415,7 +439,7 @@ class WSLApi {
   /// @param filename: String
   /// @return Future<String>
   Future<dynamic> create(String distribution, String filename,
-      String installPath, Function(String) status) async {
+      String installPath, Function(String) status, Function callback) async {
     if (installPath == '') {
       installPath = defaultPath + distribution;
     }
@@ -424,31 +448,75 @@ class WSLApi {
     // Download
     String downloadPath = '';
     downloadPath = '${defaultPath}distros\\$filename.tar.gz';
-    if (distroRootfsLinks[filename] != null &&
-        !(await File(downloadPath).exists())) {
+    bool fileExists = await File(downloadPath).exists();
+    if (distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
+
       // Download file
       try {
-        Dio dio = Dio();
-        await dio.download(url, downloadPath,
-            onReceiveProgress: (int count, int total) {
-          status('Step 1: Downloading distro: '
-              '${(count / total * 100).toStringAsFixed(0)}%');
+        // Download file as a stream
+        // List<List<int>> chunks = [];
+        int offset = 0;
+
+        var httpClient = http.Client();
+
+        // set buffer size to 10MB
+        var request = http.Request('GET', Uri.parse(url));
+        var response = httpClient.send(request);
+
+        // Open file
+        File file = File('$downloadPath.tmp');
+
+        response.asStream().listen((http.StreamedResponse r) async {
+          final reader = ChunkedStreamReader(r.stream);
+          int size = r.contentLength!;
+          try {
+            Uint8List buffer;
+            do {
+              buffer = await reader.readBytes(chunkSize);
+              // chunks.add(buffer);
+              offset += buffer.length;
+              status('${'downloading-text'.i18n()}: $filename, '
+                  '(${offset ~/ 1024 ~/ 1024}MB'
+                  ' - ${(offset / size * 100).toStringAsFixed(0)}%)');
+              // Write buffer directly to disk and clear chunks
+              await file.writeAsBytes(buffer, mode: FileMode.append);
+            } while (buffer.length == chunkSize);
+
+            // Rename file
+            await file.rename(downloadPath);
+            status('${'downloaded-text'.i18n()}: $filename');
+
+            // Create
+            status('creatinginstance-text'.i18n());
+            ProcessResult results = await Process.run(
+                'wsl', ['--import', distribution, installPath, downloadPath],
+                stdoutEncoding: null);
+            callback(results);
+          } catch (e) {
+            status('${'errordownloading-text'.i18n()}: $filename: $e');
+          } finally {
+            reader.cancel();
+          }
         });
       } catch (error) {
-        status('Error downloading: $error');
+        status('${'errordownloading-text'.i18n()}: $filename: $error');
       }
     }
-
-    // Downloaded or extracted
+    // Downloaded or extracted; probably imported
     if (distroRootfsLinks[filename] == null) {
       downloadPath = filename;
     }
 
-    // Create
-    ProcessResult results = await Process.run(
-        'wsl', ['--import', distribution, installPath, downloadPath]);
-    return results;
+    if (fileExists) {
+      // Create from local file
+      ProcessResult results = await Process.run(
+          'wsl', ['--import', distribution, installPath, downloadPath],
+          stdoutEncoding: null);
+      callback(results);
+    }
+
+    return null;
   }
 
   /// Returns list of WSL distros
@@ -500,6 +568,9 @@ class WSLApi {
   /// @return Future<List<String>>
   Future<List<String>> getDownloadable(
       String repo, Function(String) onError) async {
+    // Get list of distros from git
+    distroRootfsLinks = await App().getDistroLinks();
+    // Get list of distros from custom repo link and try to format
     try {
       await Dio().get(repo).then((value) => {
             value.data.split('\n').forEach((line) {

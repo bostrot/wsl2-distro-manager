@@ -1,8 +1,8 @@
-const String currentVersion = "1.3.1";
+const String currentVersion = "1.3.2";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros\\';
-
+const int chunkSize = 512 * 1024;
 const String updateUrl =
     'https://api.github.com/repos/bostrot/wsl2-distro-manager/releases';
 
@@ -11,6 +11,9 @@ const String motdUrl =
 
 const String defaultRepoLink =
     'http://ftp.halifax.rwth-aachen.de/turnkeylinux/images/proxmox/';
+
+const String gitRepoLink =
+    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/adjusted_repos/images.json';
 
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
 Map<String, String> distroRootfsLinks = {
