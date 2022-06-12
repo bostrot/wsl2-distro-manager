@@ -2,7 +2,7 @@ const String currentVersion = "1.3.2";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros\\';
-const int chunkSize = 512 * 1024;
+const int chunkSize = 16 * 1024;
 const String updateUrl =
     'https://api.github.com/repos/bostrot/wsl2-distro-manager/releases';
 

@@ -494,13 +494,13 @@ class WSLApi {
                 stdoutEncoding: null);
             callback(results);
           } catch (e) {
-            status('${'errordownloading-text'.i18n()}: $filename: $e');
+            status('1: ${'errordownloading-text'.i18n()}: $filename: $e');
           } finally {
             reader.cancel();
           }
         });
       } catch (error) {
-        status('${'errordownloading-text'.i18n()}: $filename: $error');
+        status('2: ${'errordownloading-text'.i18n()}: $filename: $error');
       }
     }
     // Downloaded or extracted; probably imported
