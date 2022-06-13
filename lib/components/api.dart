@@ -87,8 +87,17 @@ class App {
   }
 }
 
+bool inited = false;
+
 /// WSL API
 class WSLApi {
+  WSLApi() {
+    if (!inited) {
+      inited = true;
+      App().getDistroLinks();
+    }
+  }
+
   /// Get distro size
   String? getSize(String distroName) {
     String? distroLocation = prefs.getString('Path_$distroName');

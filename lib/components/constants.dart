@@ -13,7 +13,7 @@ const String defaultRepoLink =
     'http://ftp.halifax.rwth-aachen.de/turnkeylinux/images/proxmox/';
 
 const String gitRepoLink =
-    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/adjusted_repos/images.json';
+    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/images.json';
 
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
 Map<String, String> distroRootfsLinks = {
