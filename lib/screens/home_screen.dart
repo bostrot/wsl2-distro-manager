@@ -37,9 +37,12 @@ class _MyHomePageState extends State<MyHomePage> {
   void enableAnalytics() async {
     String platform = Platform.operatingSystemVersion;
     String exec = Platform.resolvedExecutable.toString();
+    if (exec.contains("9891PhantomDevs.WSL2Manager")) {
+      exec = "store";
+    } else {
+      exec = "git";
+    }
     try {
-      List<String> tmpSplitted = exec.split('.');
-      exec = tmpSplitted[tmpSplitted.length - 1];
       if (int.parse(platform.split('Build ')[1].split(')')[0]) >= 22000) {
         platform = platform
             .replaceAll('Windows 10', 'Windows 11')
@@ -47,7 +50,6 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } catch (e) {
       // Empty path
-      exec = '';
     }
 
     // Enable analytics
