@@ -1,4 +1,4 @@
-const String currentVersion = "1.3.2";
+const String currentVersion = "1.3.3";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros\\';
