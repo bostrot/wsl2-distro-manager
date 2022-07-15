@@ -28,9 +28,6 @@ or
 
 Enable Flutter Desktop `flutter config --enable-windows-desktop` (https://flutter.dev/desktop)
 
-As there are problems with bitsdojo_window with the new flutter versions it is easier for now to use an old release candidate:
-
-  flutter channel flutter-2.8-candidate.20
   flutter upgrade
 
 Run with `flutter run -d windows` and build with `flutter build windows`
