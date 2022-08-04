@@ -44,3 +44,5 @@ git commit -m "Update version number to $version"
 
 # Remove the msix_config from pubspec.yaml
 sed -i '/^# start git-block-ignore/,/^# end git-block-ignore/{/^123/!d}' pubspec.yaml
+
+git push --no-verify
