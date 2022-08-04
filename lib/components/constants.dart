@@ -15,6 +15,8 @@ const String defaultRepoLink =
 const String gitRepoLink =
     'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/images.json';
 
+String explorerPath = '\\\\wsl.localhost';
+
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
 Map<String, String> distroRootfsLinks = {
   'Ubuntu 21.04':

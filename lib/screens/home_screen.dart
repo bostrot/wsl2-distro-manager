@@ -42,14 +42,22 @@ class _MyHomePageState extends State<MyHomePage> {
     } else {
       exec = "git";
     }
+    var tmpPlatform = platform;
+    int? build;
     try {
       if (int.parse(platform.split('Build ')[1].split(')')[0]) >= 22000) {
-        platform = platform
+        tmpPlatform = platform
             .replaceAll('Windows 10', 'Windows 11')
             .replaceAll('10.0', '11.0');
       }
+      build = int.tryParse(platform.split('Build ')[1].split(')')[0]);
+      if (build != null && build < 21354) {
+        explorerPath = "\\\\wsl\$";
+      }
     } catch (e) {
       // Empty path
+    } finally {
+      platform = tmpPlatform;
     }
 
     // Enable analytics

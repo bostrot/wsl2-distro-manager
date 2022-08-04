@@ -253,7 +253,7 @@ class WSLApi {
   /// Start Explorer
   /// @param distribution: String
   void startExplorer(String distribution, {String path = ''}) async {
-    String fullPath = '\\\\wsl.localhost\\$distribution';
+    String fullPath = '$explorerPath\\$distribution';
     if (path != '') {
       path = path.replaceAll('/', '\\');
       fullPath += path;
