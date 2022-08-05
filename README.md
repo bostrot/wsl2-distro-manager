@@ -1,12 +1,15 @@
-<a title="Made with Fluent Design" href="https://github.com/bdlukaa/fluent_ui">
-  <img
-    src="https://img.shields.io/badge/fluent-design-blue?style=flat-square&color=7A7574&labelColor=0078D7"
-  />
-</a>
 
-# WSL Distro Manager
+![Jenkins](https://img.shields.io/jenkins/build?jobUrl=https%3A%2F%2Fjenkins.aachen.dev%2Fjob%2Fwsl2-distro-manager&style=for-the-badge)
+![GitHub Release Date](https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
+![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/bostrot/wsl2-distro-manager?style=for-the-badge)
+![GitHub](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
 
+
+# [WSL Distro Manager](https://github.com/bostrot/wsl2-distro-manager)
 A quick way to manage your WSL instances with a GUI.
+
+Made with Flutter and [fluent_ui](https://github.com/bdlukaa/fluent_ui) based on Windows design guidelines.
 
 ![Preview with Darkmode](https://user-images.githubusercontent.com/7342321/161707979-f4c3091f-3f24-475e-87d4-0157caafab2a.png)
 
