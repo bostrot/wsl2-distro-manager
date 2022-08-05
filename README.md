@@ -122,10 +122,4 @@ Then it will update version numbers, build sign and commit everything with the p
 
 You can also sign it manually by adding the msix config to the end of the pubspec.yaml file and then run `flutter pub run msix:create`
 
-
-
-```
 This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)
-
-Sign package for Windows Store: flutter build windows && flutter pub run msix:create
-```
