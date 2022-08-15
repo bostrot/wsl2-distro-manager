@@ -72,34 +72,29 @@ class _ListItemState extends State<ListItem> {
     );
   }
 
-  ListTile listTile(BuildContext context) {
-    return ListTile(
-        shape: showBar
-            ? const RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(8.0),
-                  topRight: Radius.circular(8.0),
+  TappableListTile listTile(BuildContext context) {
+    return TappableListTile(
+        onTap: () => setState(() {
+              showBar = !showBar;
+            }),
+        shape: ButtonState.all<RoundedRectangleBorder>(
+          showBar
+              ? const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(8.0),
+                    topRight: Radius.circular(8.0),
+                  ),
+                )
+              : const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(8.0)),
                 ),
-              )
-            : const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8.0)),
-              ),
-        tileColor: hovered
-            ? themeData.activeColor.withOpacity(0.1)
-            : themeData.activeColor.withOpacity(0.05),
-        title: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Listener(
-              onPointerDown: (PointerDownEvent e) => setState(() {
-                    showBar = !showBar;
-                  }),
-              child: SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  child: isRunning(widget.item, widget.running)
-                      ? (Text(
-                          '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
-                      : Text(distroLabel(widget.item)))),
-        ), // running here
+        ),
+        title: SizedBox(
+            width: MediaQuery.of(context).size.width,
+            child: isRunning(widget.item, widget.running)
+                ? (Text(
+                    '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
+                : Text(distroLabel(widget.item))), // running here
         leading: Row(children: [
           Tooltip(
             message: 'start-text'.i18n(),
@@ -180,9 +175,8 @@ class Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-          color: themeData.activeColor.withOpacity(0.05),
-          borderRadius: const BorderRadius.only(
+      decoration: const BoxDecoration(
+          borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(5.0),
               bottomRight: Radius.circular(5.0))),
       child: Padding(

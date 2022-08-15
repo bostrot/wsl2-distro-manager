@@ -1,14 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/theme.dart';
 
 class QuickPage extends StatefulWidget {
-  const QuickPage({Key? key, required this.themeData}) : super(key: key);
-
-  final ThemeData themeData;
+  const QuickPage({Key? key}) : super(key: key);
 
   @override
   QuickPageState createState() => QuickPageState();
@@ -52,74 +51,77 @@ class QuickPageState extends State<QuickPage> {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationView(
-      content: Stack(
-        children: [
-          !showInput
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 20.0),
-                  child: SingleChildScrollView(
-                      child: Padding(
+    return Navbar(
+      title: title,
+      child: NavigationView(
+        content: Stack(
+          children: [
+            !showInput
+                ? Padding(
                     padding: const EdgeInsets.only(top: 20.0),
-                    child: quickSettingsListBuilder(),
-                  )),
-                )
-              : Container(),
-          Positioned(
-            right: 20.0,
-            bottom: 20.0,
-            child: Column(
-              children: [
-                showInput
-                    ? SizedBox(
-                        width: MediaQuery.of(context).size.width - 40.0,
-                        height: 35.0,
-                        child: TextBox(
-                          controller: nameController,
-                          placeholder: 'settingname-text'.i18n(),
-                        ),
-                      )
-                    : Container(),
-                showInput
-                    ? const SizedBox(
-                        height: 10.0,
-                      )
-                    : Container(),
-                showInput
-                    ? SizedBox(
-                        width: MediaQuery.of(context).size.width - 40.0,
-                        child: TextBox(
-                          controller: contentController,
-                          scrollController: scrollController,
-                          prefix: Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Text(
-                              lineNumbers,
-                              style: TextStyle(
-                                  color:
-                                      themeData.activeColor.withOpacity(0.5)),
-                            ),
+                    child: SingleChildScrollView(
+                        child: Padding(
+                      padding: const EdgeInsets.only(top: 20.0),
+                      child: quickSettingsListBuilder(),
+                    )),
+                  )
+                : Container(),
+            Positioned(
+              right: 20.0,
+              bottom: 20.0,
+              child: Column(
+                children: [
+                  showInput
+                      ? SizedBox(
+                          width: MediaQuery.of(context).size.width - 40.0,
+                          height: 35.0,
+                          child: TextBox(
+                            controller: nameController,
+                            placeholder: 'settingname-text'.i18n(),
                           ),
-                          minLines: lineNum,
-                          maxLines: lineNum,
-                          placeholder:
-                              '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
-                        ),
-                      )
-                    : Container(),
-                //const SizedBox(height: 10.0),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width - 40.0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: bottomButtonRow(),
+                        )
+                      : Container(),
+                  showInput
+                      ? const SizedBox(
+                          height: 10.0,
+                        )
+                      : Container(),
+                  showInput
+                      ? SizedBox(
+                          width: MediaQuery.of(context).size.width - 40.0,
+                          child: TextBox(
+                            controller: contentController,
+                            scrollController: scrollController,
+                            prefix: Padding(
+                              padding: const EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                lineNumbers,
+                                style: TextStyle(
+                                    color:
+                                        themeData.activeColor.withOpacity(0.5)),
+                              ),
+                            ),
+                            minLines: lineNum,
+                            maxLines: lineNum,
+                            placeholder:
+                                '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
+                          ),
+                        )
+                      : Container(),
+                  //const SizedBox(height: 10.0),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width - 40.0,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: bottomButtonRow(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          navbar(widget.themeData, back: true, context: context),
-        ],
+            //TODO: navbar(widget.themeData, back: true, context: context),
+          ],
+        ),
       ),
     );
   }

@@ -23,9 +23,11 @@ class DistroListState extends State<DistroList> {
   bool isSyncing = false;
 
   void syncing(var item) {
-    setState(() {
-      isSyncing = item;
-    });
+    if (mounted) {
+      setState(() {
+        isSyncing = item;
+      });
+    }
   }
 
   @override
@@ -38,7 +40,10 @@ class DistroListState extends State<DistroList> {
   void reloadEvery5Seconds() async {
     for (;;) {
       await Future.delayed(const Duration(seconds: 5));
-      setState(() {});
+      // Check if state disposed
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
