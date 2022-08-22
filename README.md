@@ -21,7 +21,7 @@ You can get it [here](https://wslmanager.bostrot.com/l/wsl-manager).
 
 or
 
-This app is available on the [Windows Store](https://www.microsoft.com/store/productId/9NWS9K95NMJB).
+This app is available on the [Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB).
 
 or 
 
