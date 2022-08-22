@@ -17,7 +17,7 @@ Made with Flutter and [fluent_ui](https://github.com/bdlukaa/fluent_ui) based on
 
 ## Install
 
-You can get it [here](https://bostrot.gumroad.com/l/wsl-manager).
+You can get it [here](https://wslmanager.bostrot.com/l/wsl-manager).
 
 or
 
