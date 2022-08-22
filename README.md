@@ -17,6 +17,10 @@ Made with Flutter and [fluent_ui](https://github.com/bdlukaa/fluent_ui) based on
 
 ## Install
 
+You can get it on [Gumroad](https://bostrot.gumroad.com/l/wsl-manager).
+
+or
+
 This app is available on the [Windows Store](https://www.microsoft.com/store/productId/9NWS9K95NMJB).
 
 or 
