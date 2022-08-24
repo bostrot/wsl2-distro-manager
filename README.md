@@ -17,11 +17,11 @@ Made with Flutter and [fluent_ui](https://github.com/bdlukaa/fluent_ui) based on
 
 ## Install
 
-You can get it [here](https://wslmanager.bostrot.com/l/wsl-manager).
+You can get it [here](https://wslmanager.bostrot.com/l/wsl-manager) for $4.99.
 
 or
 
-This app is available on the [Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
+this app is available on the [Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
 
 or 
 
