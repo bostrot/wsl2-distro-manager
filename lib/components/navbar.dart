@@ -1,5 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/widgets.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -8,8 +7,6 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
-import 'package:wsl2distromanager/screens/actions_screen.dart';
-import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/theme.dart';
 import 'constants.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
@@ -30,6 +27,7 @@ class Navbar extends StatefulWidget {
 bool hasPushed = false;
 
 class _NavbarState extends State<Navbar> {
+  bool customTheme = false;
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -37,7 +35,7 @@ class _NavbarState extends State<Navbar> {
       builder: (context, _) {
         final appTheme = context.watch<AppTheme>();
         return FluentApp(
-          themeMode: appTheme.mode,
+          themeMode: !customTheme ? ThemeMode.system : appTheme.mode,
           debugShowCheckedModeBanner: false,
           color: appTheme.color,
           darkTheme: ThemeData(
@@ -142,6 +140,7 @@ class _NavbarState extends State<Navbar> {
                             content: const Text('Dark Mode'),
                             checked: FluentTheme.of(context).brightness.isDark,
                             onChanged: (v) {
+                              customTheme = true;
                               if (v) {
                                 appTheme.mode = ThemeMode.dark;
                               } else {

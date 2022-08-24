@@ -108,7 +108,7 @@ Column settingsColumn(
     children: [
       Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
-        child: Text('save-text'.i18n()),
+        child: Text('startdirectorypath-text'.i18n()),
       ),
       Tooltip(
         message: 'startdirectorypath-text'.i18n(),

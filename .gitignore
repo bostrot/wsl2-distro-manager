@@ -4,6 +4,7 @@ Ubuntu*
 /distros/
 /certs/
 *.secret
+macos/
 
 # Miscellaneous
 *.class

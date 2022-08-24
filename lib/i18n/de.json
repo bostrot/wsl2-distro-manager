@@ -72,7 +72,7 @@
     "renaminginstance-text": "Instanz %s0 wird in %s1 umbenannt",
     "renamedinstance-text": "FERTIG: Instanz %s0 in %s1 umbenannt",
     "save-text": "Speichern",
-    "startuser-text": "Benutzer starten",
+    "startuser-text": "Standardbenutzer",
     "startdirectorypath-text": "Startverzeichnispfad",
     "wsldefaultuser-text": "(Optional) Zu verwendender WSL-Standardbenutzer",
     "emptyfieldsfordefault-text": "(leeren Sie die Felder, um die Standardwerte zu verwenden)",

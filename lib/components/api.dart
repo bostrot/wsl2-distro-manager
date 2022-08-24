@@ -255,7 +255,7 @@ class WSLApi {
       path = path.replaceAll('/', '\\');
       fullPath += path;
     }
-    Process.start('start', ['explorer.exe', fullPath],
+    await Process.start('start', ['explorer.exe', fullPath],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 

@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 class QuickPage extends StatefulWidget {
   const QuickPage({Key? key}) : super(key: key);
@@ -98,9 +99,8 @@ class QuickPageState extends State<QuickPage> {
                               padding: const EdgeInsets.only(left: 8.0),
                               child: Text(
                                 lineNumbers,
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  // TODO: Make this themeable
+                                style: TextStyle(
+                                  color: AppTheme().color.normal,
                                 ),
                               ),
                             ),
@@ -140,86 +140,110 @@ class QuickPageState extends State<QuickPage> {
                 onPressed: () {
                   Navigator.pushReplacementNamed(context, '/');
                 },
-                child: Text('back-text'.i18n())),
-        showInput
-            ? Button(
-                style: ButtonStyle(
-                    padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
-                        top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
-                onPressed: () {
-                  setState(() {
-                    showInput = false;
-                  });
-                },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(FluentIcons.chrome_close),
+                    const Icon(FluentIcons.chrome_back),
                     const SizedBox(
                       width: 10.0,
                     ),
-                    Text('close-text'.i18n()),
+                    Text('back-text'.i18n()),
                   ],
                 ),
-              )
-            : Container(),
-        Button(
-          style: ButtonStyle(
-              padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
-                  top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
-          onPressed: () {
-            if (!showInput) {
-              setState(() {
-                showInput = true;
-              });
-            } else if (nameController.text.isNotEmpty &&
-                contentController.text.isNotEmpty) {
-              plausible.event(page: 'add_action');
-
-              // Load data
-              List<String>? titles = prefs.getStringList('quickSettingsTitles');
-              titles ??= [];
-              List<String>? contents =
-                  prefs.getStringList('quickSettingsContents');
-              contents ??= [];
-
-              // Override if already exists
-              if (titles.contains(nameController.text)) {
-                int pos = titles.indexOf(nameController.text);
-                titles.removeAt(pos);
-                contents.removeAt(pos);
-              }
-
-              // Add title to list
-              titles.add(nameController.text);
-              prefs.setStringList('quickSettingsTitles', titles);
-
-              // Add content to list
-              contents.add(contentController.text);
-              prefs.setStringList('quickSettingsContents', contents);
-
-              setState(() {
-                showInput = false;
-              });
-            } else {
-              // Error
-            }
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              showInput
-                  ? Text('save-text'.i18n())
-                  : Text('addquickaction-text'.i18n()),
-              const SizedBox(
-                width: 10.0,
               ),
-              Icon(
-                showInput ? FluentIcons.save : FluentIcons.settings_add,
-                size: 15.0,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            showInput
+                ? Button(
+                    style: ButtonStyle(
+                        padding: ButtonState.all<EdgeInsets>(
+                            const EdgeInsets.only(
+                                top: 8.0,
+                                bottom: 8.0,
+                                left: 20.0,
+                                right: 20.0))),
+                    onPressed: () {
+                      setState(() {
+                        showInput = false;
+                      });
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(FluentIcons.chrome_close),
+                        const SizedBox(
+                          width: 10.0,
+                        ),
+                        Text('close-text'.i18n()),
+                      ],
+                    ),
+                  )
+                : Container(),
+            const SizedBox(
+              width: 10.0,
+            ),
+            Button(
+              style: ButtonStyle(
+                  padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
+                      top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
+              onPressed: () {
+                if (!showInput) {
+                  setState(() {
+                    showInput = true;
+                  });
+                } else if (nameController.text.isNotEmpty &&
+                    contentController.text.isNotEmpty) {
+                  plausible.event(page: 'add_action');
+
+                  // Load data
+                  List<String>? titles =
+                      prefs.getStringList('quickSettingsTitles');
+                  titles ??= [];
+                  List<String>? contents =
+                      prefs.getStringList('quickSettingsContents');
+                  contents ??= [];
+
+                  // Override if already exists
+                  if (titles.contains(nameController.text)) {
+                    int pos = titles.indexOf(nameController.text);
+                    titles.removeAt(pos);
+                    contents.removeAt(pos);
+                  }
+
+                  // Add title to list
+                  titles.add(nameController.text);
+                  prefs.setStringList('quickSettingsTitles', titles);
+
+                  // Add content to list
+                  contents.add(contentController.text);
+                  prefs.setStringList('quickSettingsContents', contents);
+
+                  setState(() {
+                    showInput = false;
+                  });
+                } else {
+                  // Error
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  showInput
+                      ? Text('save-text'.i18n())
+                      : Text('addquickaction-text'.i18n()),
+                  const SizedBox(
+                    width: 10.0,
+                  ),
+                  Icon(
+                    showInput ? FluentIcons.save : FluentIcons.settings_add,
+                    size: 15.0,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );

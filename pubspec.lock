@@ -134,6 +134,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "5.0.1"
+  file_utils:
+    dependency: transitive
+    description:
+      name: file_utils
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.1"
   fluent_ui:
     dependency: "direct main"
     description:
@@ -189,6 +196,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "7.2.0"
+  globbing:
+    dependency: transitive
+    description:
+      name: globbing
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.0"
   http:
     dependency: transitive
     description:
@@ -530,6 +544,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.1.0"
+  system_info2:
+    dependency: "direct main"
+    description:
+      name: system_info2
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.0.4"
   system_theme:
     dependency: "direct main"
     description:
