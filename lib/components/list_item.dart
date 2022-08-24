@@ -1,7 +1,5 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/api.dart';
-import 'package:wsl2distromanager/components/theme.dart';
-
 import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -57,94 +55,48 @@ class _ListItemState extends State<ListItem> {
         },
         child: Padding(
           padding: const EdgeInsets.only(left: 12.0, right: 12.0),
-          child: Column(
-            children: [
-              listTile(context),
-              showBar
-                  ? Bar(
-                      widget: widget,
-                    )
-                  : Container(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  ListTile listTile(BuildContext context) {
-    return ListTile(
-        shape: showBar
-            ? const RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(8.0),
-                  topRight: Radius.circular(8.0),
-                ),
-              )
-            : const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8.0)),
-              ),
-        tileColor: hovered
-            ? themeData.activeColor.withOpacity(0.1)
-            : themeData.activeColor.withOpacity(0.05),
-        title: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Listener(
-              onPointerDown: (PointerDownEvent e) => setState(() {
-                    showBar = !showBar;
-                  }),
-              child: SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  child: isRunning(widget.item, widget.running)
-                      ? (Text(
-                          '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
-                      : Text(distroLabel(widget.item)))),
-        ), // running here
-        leading: Row(children: [
-          Tooltip(
-            message: 'start-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                icon: const Icon(FluentIcons.play),
-                onPressed: () {
-                  startInstance();
-                },
-              ),
-            ),
-          ),
-          isRunning(widget.item, widget.running)
-              ? Tooltip(
-                  message: 'stop-text'.i18n(),
+          child: Expander(
+              leading: Row(children: [
+                Tooltip(
+                  message: 'start-text'.i18n(),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
-                      icon: const Icon(FluentIcons.stop),
+                      icon: const Icon(FluentIcons.play),
                       onPressed: () {
-                        stopInstance();
+                        startInstance();
                       },
                     ),
                   ),
-                )
-              : const Text(''),
-        ]),
-        trailing: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Listener(
-            onPointerDown: (PointerDownEvent event) => setState(() {
-              showBar = !showBar;
-            }),
-            child: Row(
-              children: [
-                Text(WSLApi().getSize(widget.item) ?? ''),
-                const SizedBox(width: 12.0),
-                !showBar
-                    ? const Icon(FluentIcons.chevron_down, size: 14.0)
-                    : const Icon(FluentIcons.chevron_up, size: 14.0),
-              ],
-            ),
-          ),
-        ));
+                ),
+                isRunning(widget.item, widget.running)
+                    ? Tooltip(
+                        message: 'stop-text'.i18n(),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.stop),
+                            onPressed: () {
+                              stopInstance();
+                            },
+                          ),
+                        ),
+                      )
+                    : const Text(''),
+              ]),
+              header: ListTile(
+                  title: SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: isRunning(widget.item, widget.running)
+                          ? (Text(
+                              '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
+                          : Text(distroLabel(widget.item)))),
+              content: Bar(
+                widget: widget,
+              )),
+        ),
+      ),
+    );
   }
 
   void stopInstance() {
@@ -180,97 +132,93 @@ class Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-          color: themeData.activeColor.withOpacity(0.05),
-          borderRadius: const BorderRadius.only(
+      decoration: const BoxDecoration(
+          borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(5.0),
               bottomRight: Radius.circular(5.0))),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 8.0, right: 12.0, bottom: 8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Tooltip(
-              message: 'openwithexplorer-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                  icon: const Icon(FluentIcons.open_folder_horizontal,
-                      size: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Tooltip(
+            message: 'openwithexplorer-text'.i18n(),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                icon:
+                    const Icon(FluentIcons.open_folder_horizontal, size: 16.0),
+                onPressed: () {
+                  plausible.event(name: "wsl_explorer");
+                  String? path =
+                      prefs.getString('StartPath_${widget.item}') ?? '';
+                  WSLApi().startExplorer(widget.item, path: path);
+                },
+              ),
+            ),
+          ),
+          Tooltip(
+            message: 'openwithvscode-text'.i18n(),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                icon: const Icon(FluentIcons.visual_studio_for_windows,
+                    size: 16.0),
+                onPressed: () {
+                  plausible.event(name: "wsl_vscode");
+                  // Get path
+                  String? path =
+                      prefs.getString('StartPath_${widget.item}') ?? '';
+                  WSLApi().startVSCode(widget.item, path: path);
+                },
+              ),
+            ),
+          ),
+          Tooltip(
+            message: 'copy-text'.i18n(),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                icon: const Icon(FluentIcons.copy, size: 16.0),
+                onPressed: () {
+                  copyDialog(context, widget.item, widget.statusMsg);
+                },
+              ),
+            ),
+          ),
+          Tooltip(
+            message: 'rename-text'.i18n(),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                icon: const Icon(FluentIcons.rename, size: 16.0),
+                onPressed: () {
+                  renameDialog(context, widget.item, widget.statusMsg);
+                },
+              ),
+            ),
+          ),
+          Tooltip(
+            message: 'delete-text'.i18n(),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                  icon: const Icon(FluentIcons.delete, size: 16.0),
                   onPressed: () {
-                    plausible.event(name: "wsl_explorer");
-                    String? path =
-                        prefs.getString('StartPath_${widget.item}') ?? '';
-                    WSLApi().startExplorer(widget.item, path: path);
-                  },
-                ),
-              ),
+                    deleteDialog(context, widget.item, widget.statusMsg);
+                  }),
             ),
-            Tooltip(
-              message: 'openwithvscode-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                  icon: const Icon(FluentIcons.visual_studio_for_windows,
-                      size: 16.0),
+          ),
+          Tooltip(
+            message: 'settings-text'.i18n(),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                  icon: const Icon(FluentIcons.settings, size: 16.0),
                   onPressed: () {
-                    plausible.event(name: "wsl_vscode");
-                    // Get path
-                    String? path =
-                        prefs.getString('StartPath_${widget.item}') ?? '';
-                    WSLApi().startVSCode(widget.item, path: path);
-                  },
-                ),
-              ),
+                    settingsDialog(context, widget.item, widget.statusMsg);
+                  }),
             ),
-            Tooltip(
-              message: 'copy-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                  icon: const Icon(FluentIcons.copy, size: 16.0),
-                  onPressed: () {
-                    copyDialog(context, widget.item, widget.statusMsg);
-                  },
-                ),
-              ),
-            ),
-            Tooltip(
-              message: 'rename-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                  icon: const Icon(FluentIcons.rename, size: 16.0),
-                  onPressed: () {
-                    renameDialog(context, widget.item, widget.statusMsg);
-                  },
-                ),
-              ),
-            ),
-            Tooltip(
-              message: 'delete-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                    icon: const Icon(FluentIcons.delete, size: 16.0),
-                    onPressed: () {
-                      deleteDialog(context, widget.item, widget.statusMsg);
-                    }),
-              ),
-            ),
-            Tooltip(
-              message: 'settings-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                    icon: const Icon(FluentIcons.settings, size: 16.0),
-                    onPressed: () {
-                      settingsDialog(context, widget.item, widget.statusMsg);
-                    }),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

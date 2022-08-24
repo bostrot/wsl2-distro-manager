@@ -1,13 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'constants.dart';
 import 'helpers.dart';
-import 'package:http/http.dart' as http;
-import 'package:async/async.dart';
 
 class Instances {
   List<String> running = [];
@@ -258,7 +255,7 @@ class WSLApi {
       path = path.replaceAll('/', '\\');
       fullPath += path;
     }
-    Process.start('start', ['explorer.exe', fullPath],
+    await Process.start('start', ['explorer.exe', fullPath],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 

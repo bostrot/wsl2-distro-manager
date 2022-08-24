@@ -1,14 +1,14 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 class QuickPage extends StatefulWidget {
-  const QuickPage({Key? key, required this.themeData}) : super(key: key);
-
-  final ThemeData themeData;
+  const QuickPage({Key? key}) : super(key: key);
 
   @override
   QuickPageState createState() => QuickPageState();
@@ -52,74 +52,79 @@ class QuickPageState extends State<QuickPage> {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationView(
-      content: Stack(
-        children: [
-          !showInput
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 20.0),
-                  child: SingleChildScrollView(
-                      child: Padding(
+    return Navbar(
+      title: title,
+      child: NavigationView(
+        content: Stack(
+          children: [
+            !showInput
+                ? Padding(
                     padding: const EdgeInsets.only(top: 20.0),
-                    child: quickSettingsListBuilder(),
-                  )),
-                )
-              : Container(),
-          Positioned(
-            right: 20.0,
-            bottom: 20.0,
-            child: Column(
-              children: [
-                showInput
-                    ? SizedBox(
-                        width: MediaQuery.of(context).size.width - 40.0,
-                        height: 35.0,
-                        child: TextBox(
-                          controller: nameController,
-                          placeholder: 'settingname-text'.i18n(),
-                        ),
-                      )
-                    : Container(),
-                showInput
-                    ? const SizedBox(
-                        height: 10.0,
-                      )
-                    : Container(),
-                showInput
-                    ? SizedBox(
-                        width: MediaQuery.of(context).size.width - 40.0,
-                        child: TextBox(
-                          controller: contentController,
-                          scrollController: scrollController,
-                          prefix: Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Text(
-                              lineNumbers,
-                              style: TextStyle(
-                                  color:
-                                      themeData.activeColor.withOpacity(0.5)),
-                            ),
+                    child: SingleChildScrollView(
+                        child: Padding(
+                      padding: const EdgeInsets.only(top: 20.0),
+                      child: quickSettingsListBuilder(),
+                    )),
+                  )
+                : Container(),
+            Positioned(
+              left: 20.0,
+              right: 20.0,
+              bottom: 10.0,
+              child: Column(
+                children: [
+                  showInput
+                      ? SizedBox(
+                          width: MediaQuery.of(context).size.width - 40.0,
+                          height: 35.0,
+                          child: TextBox(
+                            controller: nameController,
+                            placeholder: 'settingname-text'.i18n(),
                           ),
-                          minLines: lineNum,
-                          maxLines: lineNum,
-                          placeholder:
-                              '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
-                        ),
-                      )
-                    : Container(),
-                //const SizedBox(height: 10.0),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width - 40.0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: bottomButtonRow(),
+                        )
+                      : Container(),
+                  showInput
+                      ? const SizedBox(
+                          height: 10.0,
+                        )
+                      : Container(),
+                  showInput
+                      ? SizedBox(
+                          height: MediaQuery.of(context).size.height - 170.0,
+                          width: MediaQuery.of(context).size.width - 40.0,
+                          child: TextBox(
+                            controller: contentController,
+                            scrollController: scrollController,
+                            prefix: Padding(
+                              padding: const EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                lineNumbers,
+                                style: TextStyle(
+                                  color: AppTheme().color.normal,
+                                ),
+                              ),
+                            ),
+                            minLines: lineNum,
+                            maxLines: lineNum,
+                            placeholder:
+                                '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
+                          ),
+                        )
+                      : Container(),
+                  //const SizedBox(height: 10.0),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width - 40.0,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: bottomButtonRow(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          navbar(widget.themeData, back: true, context: context),
-        ],
+            //TODO: navbar(widget.themeData, back: true, context: context),
+          ],
+        ),
       ),
     );
   }
@@ -130,84 +135,115 @@ class QuickPageState extends State<QuickPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         showInput
-            ? Button(
-                style: ButtonStyle(
-                    padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
-                        top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
+            ? Container()
+            : Button(
                 onPressed: () {
-                  setState(() {
-                    showInput = false;
-                  });
+                  Navigator.pushReplacementNamed(context, '/');
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(FluentIcons.chrome_close),
+                    const Icon(FluentIcons.chrome_back),
                     const SizedBox(
                       width: 10.0,
                     ),
-                    Text('close-text'.i18n()),
+                    Text('back-text'.i18n()),
                   ],
                 ),
-              )
-            : Container(),
-        Button(
-          style: ButtonStyle(
-              padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
-                  top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
-          onPressed: () {
-            if (!showInput) {
-              setState(() {
-                showInput = true;
-              });
-            } else if (nameController.text.isNotEmpty &&
-                contentController.text.isNotEmpty) {
-              plausible.event(page: 'add_action');
-
-              // Load data
-              List<String>? titles = prefs.getStringList('quickSettingsTitles');
-              titles ??= [];
-              List<String>? contents =
-                  prefs.getStringList('quickSettingsContents');
-              contents ??= [];
-
-              // Override if already exists
-              if (titles.contains(nameController.text)) {
-                int pos = titles.indexOf(nameController.text);
-                titles.removeAt(pos);
-                contents.removeAt(pos);
-              }
-
-              // Add title to list
-              titles.add(nameController.text);
-              prefs.setStringList('quickSettingsTitles', titles);
-
-              // Add content to list
-              contents.add(contentController.text);
-              prefs.setStringList('quickSettingsContents', contents);
-
-              setState(() {
-                showInput = false;
-              });
-            } else {
-              // Error
-            }
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              showInput
-                  ? Text('save-text'.i18n())
-                  : Text('addquickaction-text'.i18n()),
-              const SizedBox(
-                width: 10.0,
               ),
-              Icon(
-                showInput ? FluentIcons.save : FluentIcons.settings_add,
-                size: 15.0,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            showInput
+                ? Button(
+                    style: ButtonStyle(
+                        padding: ButtonState.all<EdgeInsets>(
+                            const EdgeInsets.only(
+                                top: 8.0,
+                                bottom: 8.0,
+                                left: 20.0,
+                                right: 20.0))),
+                    onPressed: () {
+                      setState(() {
+                        showInput = false;
+                      });
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(FluentIcons.chrome_close),
+                        const SizedBox(
+                          width: 10.0,
+                        ),
+                        Text('close-text'.i18n()),
+                      ],
+                    ),
+                  )
+                : Container(),
+            const SizedBox(
+              width: 10.0,
+            ),
+            Button(
+              style: ButtonStyle(
+                  padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
+                      top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
+              onPressed: () {
+                if (!showInput) {
+                  setState(() {
+                    showInput = true;
+                  });
+                } else if (nameController.text.isNotEmpty &&
+                    contentController.text.isNotEmpty) {
+                  plausible.event(page: 'add_action');
+
+                  // Load data
+                  List<String>? titles =
+                      prefs.getStringList('quickSettingsTitles');
+                  titles ??= [];
+                  List<String>? contents =
+                      prefs.getStringList('quickSettingsContents');
+                  contents ??= [];
+
+                  // Override if already exists
+                  if (titles.contains(nameController.text)) {
+                    int pos = titles.indexOf(nameController.text);
+                    titles.removeAt(pos);
+                    contents.removeAt(pos);
+                  }
+
+                  // Add title to list
+                  titles.add(nameController.text);
+                  prefs.setStringList('quickSettingsTitles', titles);
+
+                  // Add content to list
+                  contents.add(contentController.text);
+                  prefs.setStringList('quickSettingsContents', contents);
+
+                  setState(() {
+                    showInput = false;
+                  });
+                } else {
+                  // Error
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  showInput
+                      ? Text('save-text'.i18n())
+                      : Text('addquickaction-text'.i18n()),
+                  const SizedBox(
+                    width: 10.0,
+                  ),
+                  Icon(
+                    showInput ? FluentIcons.save : FluentIcons.settings_add,
+                    size: 15.0,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
