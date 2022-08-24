@@ -8,12 +8,6 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/api.dart';
 import 'package:wsl2distromanager/components/list.dart';
-import 'package:wsl2distromanager/components/navbar.dart';
-import 'package:wsl2distromanager/components/theme.dart';
-import 'package:wsl2distromanager/dialogs/create_dialog.dart';
-import 'package:wsl2distromanager/dialogs/info_dialog.dart';
-import 'package:wsl2distromanager/screens/actions_screen.dart';
-import 'package:wsl2distromanager/screens/settings_screen.dart';
 
 import 'dart:io';
 
@@ -133,7 +127,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget statusBuilder() {
-    ScrollController scrollController = ScrollController();
     return AnimatedOpacity(
       opacity: status != '' ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 100),

@@ -67,8 +67,9 @@ class QuickPageState extends State<QuickPage> {
                   )
                 : Container(),
             Positioned(
+              left: 20.0,
               right: 20.0,
-              bottom: 20.0,
+              bottom: 10.0,
               child: Column(
                 children: [
                   showInput
@@ -88,6 +89,7 @@ class QuickPageState extends State<QuickPage> {
                       : Container(),
                   showInput
                       ? SizedBox(
+                          height: MediaQuery.of(context).size.height - 170.0,
                           width: MediaQuery.of(context).size.width - 40.0,
                           child: TextBox(
                             controller: contentController,
@@ -96,9 +98,10 @@ class QuickPageState extends State<QuickPage> {
                               padding: const EdgeInsets.only(left: 8.0),
                               child: Text(
                                 lineNumbers,
-                                style: TextStyle(
-                                    color:
-                                        themeData.activeColor.withOpacity(0.5)),
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  // TODO: Make this themeable
+                                ),
                               ),
                             ),
                             minLines: lineNum,
@@ -131,6 +134,13 @@ class QuickPageState extends State<QuickPage> {
       mainAxisSize: MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        showInput
+            ? Container()
+            : Button(
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, '/');
+                },
+                child: Text('back-text'.i18n())),
         showInput
             ? Button(
                 style: ButtonStyle(

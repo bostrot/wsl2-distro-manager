@@ -33,8 +33,7 @@ String cmds = '';
 /// @param context: context
 /// @param item: distro name
 /// @param statusMsg: Function(String, {bool loading})
-settingsDialog(
-    context, item, Function(String, {bool loading}) statusMsg) async {
+settingsDialog(context, item, Function(String, {bool loading}) statusMsg) {
   var title = 'settings-text'.i18n();
   final pathController = TextEditingController();
   pathController.text = prefs.getString('StartPath_$item') ?? '';
@@ -42,15 +41,7 @@ settingsDialog(
   userController.text = prefs.getString('StartUser_$item') ?? '';
   plausible.event(page: title.split(' ')[0].toLowerCase());
   bool isSyncing = false;
-  String ip = await WSLApi().execCmdAsRoot(item, 'hostname --all-ip-addresses');
-  String portsTcp =
-      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/tcp'));
-  String portsUdp =
-      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/udp'));
-  String portsTcp6 =
-      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/tcp6'));
-  String portsUdp6 =
-      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/udp6'));
+
   showDialog(
     context: context,
     builder: (childcontext) {
@@ -61,19 +52,8 @@ settingsDialog(
           return SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(12.0),
-              child: settingsColumn(
-                  pathController,
-                  userController,
-                  context,
-                  item,
-                  statusMsg,
-                  ip,
-                  portsTcp,
-                  portsTcp6,
-                  portsUdp,
-                  portsUdp6,
-                  isSyncing,
-                  setState),
+              child: settingsColumn(pathController, userController, context,
+                  item, statusMsg, isSyncing, setState),
             ),
           );
         }),
@@ -81,19 +61,38 @@ settingsDialog(
           Button(
               child: Text('cancel-text'.i18n()),
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(childcontext);
               }),
           Button(
               child: Text('save-text'.i18n()),
               onPressed: () {
                 prefs.setString('StartPath_$item', pathController.text);
                 prefs.setString('StartUser_$item', userController.text);
-                Navigator.pop(context);
+                Navigator.pop(childcontext);
               }),
         ],
       );
     },
   );
+}
+
+Future<Map<String, String>> getInstanceData(String item) async {
+  String ip = await WSLApi().execCmdAsRoot(item, 'hostname --all-ip-addresses');
+  String portsTcp =
+      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/tcp'));
+  String portsUdp =
+      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/udp'));
+  String portsTcp6 =
+      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/tcp6'));
+  String portsUdp6 =
+      extractPorts(await WSLApi().execCmdAsRoot(item, 'cat /proc/net/udp6'));
+  return {
+    'ip': ip,
+    'portsTcp': portsTcp,
+    'portsUdp': portsUdp,
+    'portsTcp6': portsTcp6,
+    'portsUdp6': portsUdp6,
+  };
 }
 
 Column settingsColumn(
@@ -102,11 +101,6 @@ Column settingsColumn(
     context,
     item,
     Function(String, {bool loading}) statusMsg,
-    String ip,
-    String portsTcp,
-    String portsTcp6,
-    String portsUdp,
-    String portsUdp6,
     bool isSyncing,
     Function setState) {
   return Column(
@@ -206,23 +200,39 @@ Column settingsColumn(
               ),
             )
           : Container(),
-      Container(
-        width: MediaQuery.of(context).size.width,
-        color: themeData.activeColor.withOpacity(0.1),
-        child: Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SelectableText('eth0 IPv4: ${ip.replaceAll('\n', ' ')}'),
-              SelectableText('TCP ${'ports-text'.i18n()}: $portsTcp'),
-              SelectableText('TCP6 ${'ports-text'.i18n()}: $portsTcp6'),
-              SelectableText('UDP ${'ports-text'.i18n()}: $portsUdp'),
-              SelectableText('UDP6 ${'ports-text'.i18n()}: $portsUdp6'),
-            ],
-          ),
-        ),
-      ),
+      FutureBuilder<Map<String, String>>(
+          future: getInstanceData(item),
+          builder: (context, snapshot) {
+            if (snapshot.hasData && snapshot.data != null) {
+              String ip = snapshot.data!["ip"] ?? '';
+              String portsTcp = snapshot.data!["portsTcp"] ?? '';
+              String portsTcp6 = snapshot.data!["portsTcp6"] ?? '';
+              String portsUdp = snapshot.data!["portsUdp"] ?? '';
+              String portsUdp6 = snapshot.data!["portsUdp6"] ?? '';
+              return Container(
+                width: MediaQuery.of(context).size.width,
+                color: themeData.activeColor.withOpacity(0.1),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SelectableText('eth0 IPv4: ${ip.replaceAll('\n', ' ')}'),
+                      SelectableText('TCP ${'ports-text'.i18n()}: $portsTcp'),
+                      SelectableText('TCP6 ${'ports-text'.i18n()}: $portsTcp6'),
+                      SelectableText('UDP ${'ports-text'.i18n()}: $portsUdp'),
+                      SelectableText('UDP6 ${'ports-text'.i18n()}: $portsUdp6'),
+                    ],
+                  ),
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return const Center(
+                child: Text("Could not get Port & IP info."),
+              );
+            }
+            return const Center(child: ProgressRing());
+          }),
       const SizedBox(
         height: 12.0,
       ),

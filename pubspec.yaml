@@ -27,6 +27,7 @@ dependencies:
   window_manager: ^0.2.5
   provider: ^6.0.3
   flutter_acrylic: ^1.0.0+2
+  system_info2: ^2.0.4
 
 dev_dependencies:
   flutter_test:

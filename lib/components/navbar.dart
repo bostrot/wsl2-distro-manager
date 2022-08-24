@@ -36,98 +36,131 @@ class _NavbarState extends State<Navbar> {
       create: (_) => AppTheme(),
       builder: (context, _) {
         final appTheme = context.watch<AppTheme>();
-        return Directionality(
-          textDirection: appTheme.textDirection,
-          child: NavigationPaneTheme(
-              data: NavigationPaneThemeData(
-                backgroundColor: appTheme.windowEffect !=
-                        flutter_acrylic.WindowEffect.disabled
-                    ? Colors.transparent
-                    : null,
-              ),
-              child: NavigationView(
-                pane: NavigationPane(items: [
-                  PaneItemAction(
-                    icon: const Icon(FluentIcons.info),
-                    title: Text('about-text'.i18n()),
-                    onTap: () {
-                      infoDialog(
-                          context, prefs, Notify.message, currentVersion);
-                    },
-                  ),
-                  PaneItemAction(
-                    icon: const Icon(FluentIcons.settings),
-                    title: Text('settings-text'.i18n()),
-                    onTap: () {
-                      if (hasPushed) {
-                        Navigator.pop(context);
-                      }
-                      Navigator.push(
-                          context,
-                          FluentPageRoute(
-                              maintainState: true,
-                              builder: (context) => const SettingsPage()));
-                      hasPushed = true;
-                    },
-                  ),
-                  PaneItemAction(
-                    icon: const Icon(FluentIcons.settings_add),
-                    title: Text('managequickactions-text'.i18n()),
-                    onTap: () {
-                      if (hasPushed) {
-                        Navigator.pop(context);
-                      }
-                      Navigator.push(
-                          context,
-                          FluentPageRoute(
-                              maintainState: true,
-                              builder: (context) => const QuickPage()));
-                      hasPushed = true;
-                    },
-                  ),
-                  PaneItemAction(
-                    icon: const Icon(FluentIcons.add),
-                    title: Text('addinstance-text'.i18n()),
-                    onTap: () {
-                      createDialog(context, () => mounted, Notify.message);
-                    },
-                  ),
-                ]),
-                appBar: NavigationAppBar(
-                  automaticallyImplyLeading: false,
-                  title: () {
-                    return DragToMoveArea(
-                      child: Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 20.0),
-                          child: Text(widget.title),
-                        ),
-                      ),
-                    );
-                  }(),
-                  actions:
-                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                    ToggleSwitch(
-                      content: const Text('Dark Mode'),
-                      checked: FluentTheme.of(context).brightness.isDark,
-                      onChanged: (v) {
-                        if (v) {
-                          setState(() {
-                            appTheme.mode = ThemeMode.dark;
-                          });
-                        } else {
-                          setState(() {
-                            appTheme.mode = ThemeMode.light;
-                          });
-                        }
+        return FluentApp(
+          themeMode: appTheme.mode,
+          debugShowCheckedModeBanner: false,
+          color: appTheme.color,
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            accentColor: appTheme.color,
+            visualDensity: VisualDensity.standard,
+            focusTheme: FocusThemeData(
+              glowFactor: is10footScreen() ? 2.0 : 0.0,
+            ),
+          ),
+          theme: ThemeData(
+            accentColor: appTheme.color,
+            visualDensity: VisualDensity.standard,
+            focusTheme: FocusThemeData(
+              glowFactor: is10footScreen() ? 2.0 : 0.0,
+            ),
+          ),
+          locale: appTheme.locale,
+          localeResolutionCallback: (locale, supportedLocales) {
+            if (locale == null) {
+              return const Locale('en', '');
+            }
+            language = locale.toLanguageTag();
+            if (supportedLocales.contains(locale)) {
+              return locale;
+            }
+            Locale lang = Locale(locale.languageCode, '');
+            if (supportedLocales.contains(lang)) {
+              return lang;
+            }
+
+            // default language
+            return const Locale('en', '');
+          },
+          localizationsDelegates: [
+            LocalJsonLocalization.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en', ''), // English, no country code
+            Locale('de', ''), // German, no country code
+            Locale('pt', ''), // Portuguese, no country code
+          ],
+          builder: (context, child) {
+            return Directionality(
+              textDirection: appTheme.textDirection,
+              child: NavigationPaneTheme(
+                data: NavigationPaneThemeData(
+                  backgroundColor: appTheme.windowEffect !=
+                          flutter_acrylic.WindowEffect.disabled
+                      ? Colors.transparent
+                      : null,
+                ),
+                child: NavigationView(
+                  pane: NavigationPane(items: [
+                    PaneItemAction(
+                      icon: const Icon(FluentIcons.info),
+                      title: Text('about-text'.i18n()),
+                      onTap: () {
+                        infoDialog(
+                            context, prefs, Notify.message, currentVersion);
                       },
                     ),
-                    const WindowButtons(),
+                    PaneItemAction(
+                      icon: const Icon(FluentIcons.settings),
+                      title: Text('settings-text'.i18n()),
+                      onTap: () {
+                        Navigator.popAndPushNamed(context, '/settings');
+                      },
+                    ),
+                    PaneItemAction(
+                      icon: const Icon(FluentIcons.settings_add),
+                      title: Text('managequickactions-text'.i18n()),
+                      onTap: () {
+                        Navigator.popAndPushNamed(context, '/actions');
+                      },
+                    ),
+                    PaneItemAction(
+                      icon: const Icon(FluentIcons.add),
+                      title: Text('addinstance-text'.i18n()),
+                      onTap: () {
+                        createDialog(context, () => mounted, Notify.message);
+                      },
+                    ),
                   ]),
+                  appBar: NavigationAppBar(
+                    automaticallyImplyLeading: false,
+                    title: () {
+                      return DragToMoveArea(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 20.0),
+                            child: Text(widget.title),
+                          ),
+                        ),
+                      );
+                    }(),
+                    actions: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ToggleSwitch(
+                            content: const Text('Dark Mode'),
+                            checked: FluentTheme.of(context).brightness.isDark,
+                            onChanged: (v) {
+                              if (v) {
+                                appTheme.mode = ThemeMode.dark;
+                              } else {
+                                appTheme.mode = ThemeMode.light;
+                              }
+                            },
+                          ),
+                          const WindowButtons(),
+                        ]),
+                  ),
+                  content: child!,
                 ),
-                content: widget.child,
-              )),
+              ),
+            );
+          },
+          initialRoute: '/',
+          routes: {
+            '/': (context) => widget.child,
+          },
         );
       },
     );

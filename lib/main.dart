@@ -6,8 +6,9 @@ import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
-import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/screens/actions_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
+import 'package:wsl2distromanager/screens/settings_screen.dart';
 
 void main() async {
   SystemTheme.accentColor.load();
@@ -50,35 +51,19 @@ class _WSLDistroManagerState extends State<WSLDistroManager> {
   Widget build(BuildContext context) {
     LocalJsonLocalization.delegate.directories = ['lib/i18n'];
 
+    // TODO: figure out why Navigaton Pane throws no verlay widget found
+    // and remove second FluentApp widget
     return FluentApp(
-      localeResolutionCallback: (locale, supportedLocales) {
-        if (locale == null) {
-          return const Locale('en', '');
-        }
-        language = locale.toLanguageTag();
-        if (supportedLocales.contains(locale)) {
-          return locale;
-        }
-        Locale lang = Locale(locale.languageCode, '');
-        if (supportedLocales.contains(lang)) {
-          return lang;
-        }
-
-        // default language
-        return const Locale('en', '');
-      },
-      localizationsDelegates: [
-        LocalJsonLocalization.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en', ''), // English, no country code
-        Locale('de', ''), // German, no country code
-        Locale('pt', ''), // Portuguese, no country code
-      ],
+      debugShowCheckedModeBanner: false,
       home: const Navbar(
         title: "$title $currentVersion",
         child: HomePage(title: 'WSL Distro Manager by Bostrot'),
       ),
+      initialRoute: '/',
+      routes: {
+        '/settings': (context) => const SettingsPage(),
+        '/actions': (context) => const QuickPage(),
+      },
     );
   }
 }

@@ -1,7 +1,5 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/api.dart';
-import 'package:wsl2distromanager/components/theme.dart';
-
 import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -57,89 +55,48 @@ class _ListItemState extends State<ListItem> {
         },
         child: Padding(
           padding: const EdgeInsets.only(left: 12.0, right: 12.0),
-          child: Column(
-            children: [
-              listTile(context),
-              showBar
-                  ? Bar(
-                      widget: widget,
-                    )
-                  : Container(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  TappableListTile listTile(BuildContext context) {
-    return TappableListTile(
-        onTap: () => setState(() {
-              showBar = !showBar;
-            }),
-        shape: ButtonState.all<RoundedRectangleBorder>(
-          showBar
-              ? const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(8.0),
-                    topRight: Radius.circular(8.0),
-                  ),
-                )
-              : const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                ),
-        ),
-        title: SizedBox(
-            width: MediaQuery.of(context).size.width,
-            child: isRunning(widget.item, widget.running)
-                ? (Text(
-                    '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
-                : Text(distroLabel(widget.item))), // running here
-        leading: Row(children: [
-          Tooltip(
-            message: 'start-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                icon: const Icon(FluentIcons.play),
-                onPressed: () {
-                  startInstance();
-                },
-              ),
-            ),
-          ),
-          isRunning(widget.item, widget.running)
-              ? Tooltip(
-                  message: 'stop-text'.i18n(),
+          child: Expander(
+              leading: Row(children: [
+                Tooltip(
+                  message: 'start-text'.i18n(),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
-                      icon: const Icon(FluentIcons.stop),
+                      icon: const Icon(FluentIcons.play),
                       onPressed: () {
-                        stopInstance();
+                        startInstance();
                       },
                     ),
                   ),
-                )
-              : const Text(''),
-        ]),
-        trailing: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Listener(
-            onPointerDown: (PointerDownEvent event) => setState(() {
-              showBar = !showBar;
-            }),
-            child: Row(
-              children: [
-                Text(WSLApi().getSize(widget.item) ?? ''),
-                const SizedBox(width: 12.0),
-                !showBar
-                    ? const Icon(FluentIcons.chevron_down, size: 14.0)
-                    : const Icon(FluentIcons.chevron_up, size: 14.0),
-              ],
-            ),
-          ),
-        ));
+                ),
+                isRunning(widget.item, widget.running)
+                    ? Tooltip(
+                        message: 'stop-text'.i18n(),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.stop),
+                            onPressed: () {
+                              stopInstance();
+                            },
+                          ),
+                        ),
+                      )
+                    : const Text(''),
+              ]),
+              header: ListTile(
+                  title: SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: isRunning(widget.item, widget.running)
+                          ? (Text(
+                              '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
+                          : Text(distroLabel(widget.item)))),
+              content: Bar(
+                widget: widget,
+              )),
+        ),
+      ),
+    );
   }
 
   void stopInstance() {
