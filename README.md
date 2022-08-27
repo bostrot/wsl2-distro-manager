@@ -17,17 +17,13 @@ Made with Flutter and [fluent_ui](https://github.com/bdlukaa/fluent_ui) based on
 
 ## Install
 
-You can get it [here](https://wslmanager.bostrot.com/l/wsl-manager) for $4.99.
+This app is available on the [Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
 
-or
-
-this app is available on the [Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
-
-or 
+\- or -
 
 as a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-manager/releases) page.
 
-or
+\- or -
 
 `winget install Bostrot.WSLManager` (outdated version)
 
@@ -39,20 +35,8 @@ Enable Flutter Desktop `flutter config --enable-windows-desktop` (https://flutte
 
 Run with `flutter run -d windows` and build with `flutter build windows`
 
-## Why
-
-WSL is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.
-
-## How to use
-
-Fairly simple. Download the latest release from the releases Page and start wsl2distromanager.exe
-
 ## Features
 
-* Starting the program. YAY!
-* Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
-* Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey Wordpress)
-* Use your own repository for rootfs' or LXC containers
 * List WSL
 * Copy WSL
 * Delete WSL
@@ -61,21 +45,10 @@ Fairly simple. Download the latest release from the releases Page and start wsl2
 * Create WSL
 * Download WSL
 * Select rootfs from storage
-* and more but I am tired of writing already ... Feel free to open a PR.
-
-## What works
-
-- [x] Starting the program. YAY!
-- [X] Quick Actions
-- [x] List WSL
-- [x] Copy WSL
-- [x] Delete WSL
-- [x] Start WSL
-- [X] Rename WSL
-- [X] Create WSL
-- [X] Download WSL
-- [X] Select rootfs from storage
-- [X] Use turnkey/LXC images as base
+* Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
+* Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey Wordpress)
+* Use your own repository for rootfs' or LXC containers
+* and more...
 
 ## FAQ
 
@@ -91,9 +64,13 @@ As systemd is not officially supported in WSL (yet) [fake_systemd](https://githu
 
 You are very welcome to contribute to this project in order to make it better.
 
+### Missing distributions
+
+If you find any missing distribution that you think should be added please open a [Distro request](https://github.com/bostrot/wsl2-distro-manager/issues/new?assignees=&labels=distro+request&template=distro-request.md&title=Add+a+new+distribution).
+
 ### Docs
 
-Currently only the WSL API is documented with dart doc. You can find the documentation [here](https://bostrot.github.io/wsl2-distro-manager/api/index.html).
+Currently generated API docs are available. You can find the documentation [here](https://bostrot.github.io/wsl2-distro-manager/api/index.html).
 
 ### Code contributions
 
@@ -113,7 +90,7 @@ You need more help but the FAQ did not help?
 
 Contact me on Telegram [@bostrot_bot](https://t.me/bostrot_bot).
 
-Or just open an issue here.
+Or just open an issue [here](https://github.com/bostrot/wsl2-distro-manager/issues).
 
 ## Stuff
 
@@ -128,5 +105,11 @@ To create a signed msix package set the .githooks directory as your git hooks di
 Then it will update version numbers, build sign and commit everything with the push. This will take the configuration from the file `certs/pubspec.yaml` and replace the version (`xxx` in the pubspec.yaml) with the current version from the running pubspec file.
 
 You can also sign it manually by adding the msix config to the end of the pubspec.yaml file and then run `flutter pub run msix:create`
+
+### Why a GUI
+
+WSL is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.
+
+### Other
 
 This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)
