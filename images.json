@@ -22,5 +22,9 @@
   "SLES 12":
       "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles12_rootfs_x64.tar.gz",
   "SLES 15":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles15_rootfs_x64.tar.gz"
+      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles15_rootfs_x64.tar.gz",
+  "Fedora 37":
+      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v1.4.0/fedora-37-x86_64.tar",
+  "Fedora 36":
+      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v1.4.0/fedora-36-x86_64.tar"
 }
