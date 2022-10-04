@@ -7,6 +7,7 @@
     "stopped-text": "stopped",
     "started-text": "started",
     "openwithexplorer-text": "Open with File Explorer",
+    "openwithwt-text": "Open with Windows Terminal",
     "openwithvscode-text": "Open with VS Code",
     "copy-text": "Copy",
     "rename-text": "Rename",
