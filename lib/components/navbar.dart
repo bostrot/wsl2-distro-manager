@@ -92,6 +92,13 @@ class _NavbarState extends State<Navbar> {
                 child: NavigationView(
                   pane: NavigationPane(items: [
                     PaneItemAction(
+                      icon: const Icon(FluentIcons.home),
+                      title: Text('homepage-text'.i18n()),
+                      onTap: () {
+                        Navigator.popAndPushNamed(context, '/');
+                      },
+                    ),
+                    PaneItemAction(
                       icon: const Icon(FluentIcons.info),
                       title: Text('about-text'.i18n()),
                       onTap: () {
