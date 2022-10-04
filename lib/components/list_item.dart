@@ -183,7 +183,7 @@ class Bar extends StatelessWidget {
                   // Get path
                   String? path =
                       prefs.getString('StartPath_${widget.item}') ?? '';
-                  WSLApi().startVSCode(widget.item, path: path);
+                  WSLApi().startVSCode(widget.item);
                 },
               ),
             ),
