@@ -7,6 +7,7 @@
     "stopped-text": "已停止",
     "started-text": "已启动",
     "openwithexplorer-text": "使用文件资源管理器打开",
+    "openwithwt-text": "使用 Windows Terminal 打开",
     "openwithvscode-text": "用 VS Code 打开",
     "copy-text": "复制",
     "rename-text": "重命名",

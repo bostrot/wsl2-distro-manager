@@ -259,6 +259,17 @@ class WSLApi {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
+  /// Start Windows Terminal
+  /// @param distribution: String
+  void startWindowsTerminal(String distribution, {String path = ''}) async {
+    List<String> args = ['wt', 'wsl', '-d', distribution, '--cd', '~'];
+    // if (path != '') {
+    //   args.add(path);
+    // }
+    Process.start('start', args,
+        mode: ProcessStartMode.normal, runInShell: true);
+  }
+
   /// Copy a WSL distro by name
   /// @param distribution: String
   /// @param newName: String

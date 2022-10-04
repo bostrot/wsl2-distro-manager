@@ -156,6 +156,22 @@ class Bar extends StatelessWidget {
             ),
           ),
           Tooltip(
+            message: 'openwithwt-text'.i18n(),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: IconButton(
+                icon:
+                    const Icon(FluentIcons.power_shell, size: 16.0),
+                onPressed: () {
+                  plausible.event(name: "wsl_wt");
+                  String? path =
+                      prefs.getString('StartPath_${widget.item}') ?? '';
+                  WSLApi().startWindowsTerminal(widget.item, path: path);
+                },
+              ),
+            ),
+          ),
+          Tooltip(
             message: 'openwithvscode-text'.i18n(),
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
