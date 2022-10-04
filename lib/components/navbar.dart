@@ -77,6 +77,7 @@ class _NavbarState extends State<Navbar> {
             Locale('en', ''), // English, no country code
             Locale('de', ''), // German, no country code
             Locale('pt', ''), // Portuguese, no country code
+            Locale('zh', ''), // Chinese, no country code
           ],
           builder: (context, child) {
             return Directionality(
