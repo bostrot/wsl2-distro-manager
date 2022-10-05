@@ -52,79 +52,78 @@ class QuickPageState extends State<QuickPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Navbar(
-      title: title,
-      child: NavigationView(
-        content: Stack(
-          children: [
-            !showInput
-                ? Padding(
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: Stack(
+        children: [
+          !showInput
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: SingleChildScrollView(
+                      child: Padding(
                     padding: const EdgeInsets.only(top: 20.0),
-                    child: SingleChildScrollView(
-                        child: Padding(
-                      padding: const EdgeInsets.only(top: 20.0),
-                      child: quickSettingsListBuilder(),
-                    )),
-                  )
-                : Container(),
-            Positioned(
-              left: 20.0,
-              right: 20.0,
-              bottom: 10.0,
-              child: Column(
-                children: [
-                  showInput
-                      ? SizedBox(
-                          width: MediaQuery.of(context).size.width - 40.0,
-                          height: 35.0,
-                          child: TextBox(
-                            controller: nameController,
-                            placeholder: 'settingname-text'.i18n(),
-                          ),
-                        )
-                      : Container(),
-                  showInput
-                      ? const SizedBox(
-                          height: 10.0,
-                        )
-                      : Container(),
-                  showInput
-                      ? SizedBox(
-                          height: MediaQuery.of(context).size.height - 170.0,
-                          width: MediaQuery.of(context).size.width - 40.0,
-                          child: TextBox(
-                            controller: contentController,
-                            scrollController: scrollController,
-                            prefix: Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: Text(
-                                lineNumbers,
-                                style: TextStyle(
-                                  color: AppTheme().color.normal,
-                                ),
+                    child: quickSettingsListBuilder(),
+                  )),
+                )
+              : Container(),
+          Positioned(
+            left: 20.0,
+            right: 20.0,
+            bottom: 10.0,
+            child: Column(
+              children: [
+                showInput
+                    ? SizedBox(
+                        width: MediaQuery.of(context).size.width - 40.0,
+                        height: 35.0,
+                        child: TextBox(
+                          controller: nameController,
+                          placeholder: 'settingname-text'.i18n(),
+                        ),
+                      )
+                    : Container(),
+                showInput
+                    ? const SizedBox(
+                        height: 10.0,
+                      )
+                    : Container(),
+                showInput
+                    ? SizedBox(
+                        height: MediaQuery.of(context).size.height - 170.0,
+                        width: MediaQuery.of(context).size.width - 40.0,
+                        child: TextBox(
+                          controller: contentController,
+                          scrollController: scrollController,
+                          prefix: Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Text(
+                              lineNumbers,
+                              style: TextStyle(
+                                color: AppTheme().color.normal,
                               ),
                             ),
-                            minLines: lineNum,
-                            maxLines: lineNum,
-                            placeholder:
-                                '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
                           ),
-                        )
-                      : Container(),
-                  //const SizedBox(height: 10.0),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width - 40.0,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: bottomButtonRow(),
-                    ),
+                          minLines: lineNum,
+                          maxLines: lineNum,
+                          placeholder:
+                              '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
+                        ),
+                      )
+                    : Container(),
+                //const SizedBox(height: 10.0),
+                SizedBox(
+                  width: MediaQuery.of(context).size.width - 40.0,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: bottomButtonRow(),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            //TODO: navbar(widget.themeData, back: true, context: context),
-          ],
-        ),
+          ),
+          //TODO: navbar(widget.themeData, back: true, context: context),
+        ],
       ),
     );
   }
@@ -273,7 +272,8 @@ class QuickPageState extends State<QuickPage> {
                             : const BorderRadius.only(
                                 topLeft: Radius.circular(8.0),
                                 topRight: Radius.circular(8.0))),
-                    tileColor: themeData.activeColor.withOpacity(0.05),
+                    tileColor: ButtonState.all(
+                        themeData.activeColor.withOpacity(0.05)),
                     leading: IconButton(
                       icon: opened[i] == false
                           ? const Icon(FluentIcons.chevron_down)
