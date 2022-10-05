@@ -29,7 +29,10 @@ flutter pub run msix:create
 
 # Add & commit the changes
 git add -f build/windows/runner/Release/desktop_window_plugin.dll
+git add -f build/windows/runner/Release/flutter_acrylic_plugin.dll
 git add -f build/windows/runner/Release/flutter_windows.dll
+git add -f build/windows/runner/Release/window_manager_plugin.dll
+git add -f build/windows/runner/Release/screen_retriever_plugin.dll
 git add -f build/windows/runner/Release/system_theme_plugin.dll
 git add -f build/windows/runner/Release/url_launcher_windows_plugin.dll
 git add -f build/windows/runner/Release/wsl2distromanager.exe
