@@ -41,61 +41,43 @@ class _ListItemState extends State<ListItem> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8.0),
-      child: MouseRegion(
-        onEnter: (event) {
-          setState(() {
-            hovered = !hovered;
-          });
-        },
-        onExit: (event) {
-          setState(() {
-            hovered = !hovered;
-          });
-        },
-        child: Padding(
-          padding: const EdgeInsets.only(left: 12.0, right: 12.0),
-          child: Expander(
-              leading: Row(children: [
-                Tooltip(
-                  message: 'start-text'.i18n(),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: IconButton(
-                      icon: const Icon(FluentIcons.play),
-                      onPressed: () {
-                        startInstance();
-                      },
-                    ),
-                  ),
+      padding: const EdgeInsets.only(top: 8.0, left: 12.0, right: 12.0),
+      child: Expander(
+          initiallyExpanded: false,
+          leading: Row(children: [
+            Tooltip(
+              message: 'start-text'.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                  icon: const Icon(FluentIcons.play),
+                  onPressed: () {
+                    startInstance();
+                  },
                 ),
-                isRunning(widget.item, widget.running)
-                    ? Tooltip(
-                        message: 'stop-text'.i18n(),
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: IconButton(
-                            icon: const Icon(FluentIcons.stop),
-                            onPressed: () {
-                              stopInstance();
-                            },
-                          ),
-                        ),
-                      )
-                    : const Text(''),
-              ]),
-              header: ListTile(
-                  title: SizedBox(
-                      width: MediaQuery.of(context).size.width,
-                      child: isRunning(widget.item, widget.running)
-                          ? (Text(
-                              '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
-                          : Text(distroLabel(widget.item)))),
-              content: Bar(
-                widget: widget,
-              )),
-        ),
-      ),
+              ),
+            ),
+            isRunning(widget.item, widget.running)
+                ? Tooltip(
+                    message: 'stop-text'.i18n(),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: IconButton(
+                        icon: const Icon(FluentIcons.stop),
+                        onPressed: () {
+                          stopInstance();
+                        },
+                      ),
+                    ),
+                  )
+                : const Text(''),
+          ]),
+          header: isRunning(widget.item, widget.running)
+              ? (Text('${distroLabel(widget.item)} (${'running-text'.i18n()})'))
+              : Text(distroLabel(widget.item)),
+          content: Bar(
+            widget: widget,
+          )),
     );
   }
 
@@ -160,8 +142,7 @@ class Bar extends StatelessWidget {
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               child: IconButton(
-                icon:
-                    const Icon(FluentIcons.power_shell, size: 16.0),
+                icon: const Icon(FluentIcons.power_shell, size: 16.0),
                 onPressed: () {
                   plausible.event(name: "wsl_wt");
                   String? path =
@@ -183,7 +164,7 @@ class Bar extends StatelessWidget {
                   // Get path
                   String? path =
                       prefs.getString('StartPath_${widget.item}') ?? '';
-                  WSLApi().startVSCode(widget.item);
+                  WSLApi().startVSCode(widget.item, path: path);
                 },
               ),
             ),

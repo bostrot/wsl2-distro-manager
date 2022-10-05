@@ -26,26 +26,28 @@ dialog({
       return ContentDialog(
         constraints: const BoxConstraints(maxHeight: 300.0, maxWidth: 400.0),
         title: centerText ? Center(child: Text(title)) : Text(title),
-        content: Column(
-          children: [
-            !bodyIsWidget
-                ? centerText
-                    ? Center(child: Text(body))
-                    : Text(body)
-                : SizedBox(
-                    width: double.infinity,
-                    height: 120.0,
-                    child: SingleChildScrollView(child: bodyAsWidget)),
-            submitInput
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 10.0),
-                    child: TextBox(
-                      controller: controller,
-                      placeholder: item,
-                    ),
-                  )
-                : const Text(''),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              !bodyIsWidget
+                  ? centerText
+                      ? Center(child: Text(body))
+                      : Text(body)
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 120.0,
+                      child: SingleChildScrollView(child: bodyAsWidget)),
+              submitInput
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
+                      child: TextBox(
+                        controller: controller,
+                        placeholder: item,
+                      ),
+                    )
+                  : const Text(''),
+            ],
+          ),
         ),
         actions: [
           submitText != ''

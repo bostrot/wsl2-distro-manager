@@ -2,6 +2,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/oss_licenses.dart';
 import 'base_dialog.dart';
 
 /// Rename Dialog
@@ -113,19 +114,23 @@ class DependencyList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: const [
-        ClickableDependency(name: "desktop_window"),
-        ClickableDependency(name: "fluent_ui"),
-        ClickableDependency(name: "system_theme"),
-        ClickableDependency(name: "file_picker"),
-        ClickableDependency(name: "url_launcher"),
-        ClickableDependency(name: "dio"),
-        ClickableDependency(name: "package_info_plus"),
-        ClickableDependency(name: "bitsdojo_window"),
-        ClickableDependency(name: "plausible_analytics"),
-        ClickableDependency(name: "shared_preferences"),
-        ClickableDependency(name: "shelf_static"),
-      ],
+      children: ossLicenses.asMap().entries.map((entry) {
+        return ClickableText(
+          clickEvent: "license_clicked",
+          onPressed: () {
+            dialog(
+              context: context,
+              item: entry.value.name,
+              statusMsg: (msg, {loading = false}) {},
+              title: entry.value.name,
+              body: entry.value.license ?? 'No License',
+              submitInput: false,
+              centerText: true,
+            );
+          },
+          text: entry.value.name,
+        );
+      }).toList(),
     );
   }
 }

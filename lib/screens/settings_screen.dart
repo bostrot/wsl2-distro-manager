@@ -51,27 +51,36 @@ class SettingsPageState extends State<SettingsPage> {
   //plausible.event(page: 'create');
   @override
   Widget build(BuildContext context) {
-    return Navbar(
-      title: title,
-      child: NavigationView(
-        content: Column(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            // TODO: navbar(widget.themeData, back: true, context: context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
-                child: SizedBox(
-                  child: settingsList(context),
-                ),
-              ),
+    return Column(
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        // TODO: navbar(widget.themeData, back: true, context: context),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
+            child: SizedBox(
+              child: settingsList(context),
             ),
-            Padding(
-              padding: const EdgeInsets.only(
-                  left: 20.0, right: 20.0, bottom: 8.0, top: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(
+              left: 20.0, right: 20.0, bottom: 8.0, top: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Button(
+                  style: ButtonStyle(
+                      padding: ButtonState.all(const EdgeInsets.only(
+                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+                  onPressed: () {
+                    WSLApi().editConfig();
+                  },
+                  child: Text('editwslconfig-text'.i18n())),
+              const SizedBox(
+                width: 10.0,
+              ),
+              Row(
                 children: [
                   Button(
                       style: ButtonStyle(
@@ -81,82 +90,62 @@ class SettingsPageState extends State<SettingsPage> {
                               top: 10.0,
                               bottom: 10.0))),
                       onPressed: () {
-                        WSLApi().editConfig();
+                        WSLApi().restart();
+                        hasPushed = false;
+
+                        Navigator.popAndPushNamed(context, '/');
                       },
-                      child: Text('editwslconfig-text'.i18n())),
+                      child: Text('stopwsl-text'.i18n())),
                   const SizedBox(
                     width: 10.0,
                   ),
-                  Row(
-                    children: [
-                      Button(
-                          style: ButtonStyle(
-                              padding: ButtonState.all(const EdgeInsets.only(
-                                  left: 15.0,
-                                  right: 15.0,
-                                  top: 10.0,
-                                  bottom: 10.0))),
-                          onPressed: () {
-                            WSLApi().restart();
-                            hasPushed = false;
+                  Button(
+                      style: ButtonStyle(
+                          padding: ButtonState.all(const EdgeInsets.only(
+                              left: 15.0,
+                              right: 20.0,
+                              top: 10.0,
+                              bottom: 10.0))),
+                      onPressed: () {
+                        plausible.event(name: "global_settings_saved");
+                        // Sync target ip setting _syncIpTextController
+                        if (_syncIpTextController.text.isNotEmpty) {
+                          prefs.setString("SyncIP", _syncIpTextController.text);
+                        }
 
-                            Navigator.popAndPushNamed(context, '/');
-                          },
-                          child: Text('stopwsl-text'.i18n())),
-                      const SizedBox(
-                        width: 10.0,
-                      ),
-                      Button(
-                          style: ButtonStyle(
-                              padding: ButtonState.all(const EdgeInsets.only(
-                                  left: 15.0,
-                                  right: 20.0,
-                                  top: 10.0,
-                                  bottom: 10.0))),
-                          onPressed: () {
-                            plausible.event(name: "global_settings_saved");
-                            // Sync target ip setting _syncIpTextController
-                            if (_syncIpTextController.text.isNotEmpty) {
-                              prefs.setString(
-                                  "SyncIP", _syncIpTextController.text);
-                            }
+                        // Save repo link
+                        if (_repoTextController.text.isNotEmpty) {
+                          prefs.setString("RepoLink", _repoTextController.text);
+                        } else {
+                          prefs.setString("RepoLink", defaultRepoLink);
+                        }
 
-                            // Save repo link
-                            if (_repoTextController.text.isNotEmpty) {
-                              prefs.setString(
-                                  "RepoLink", _repoTextController.text);
-                            } else {
-                              prefs.setString("RepoLink", defaultRepoLink);
-                            }
+                        // Distro location setting
+                        if (_settings['Default Distro Location']!
+                            .text
+                            .isNotEmpty) {
+                          prefs.setString("SaveLocation",
+                              _settings['Default Distro Location']!.text);
+                        }
+                        String config = '';
+                        _settings.forEach((key, value) {
+                          if (key != 'Default Distro Location' &&
+                              value.text.isNotEmpty) {
+                            config += '$key=${value.text}\n';
+                          }
+                        });
+                        WSLApi().writeConfig(config);
+                        hasPushed = false;
 
-                            // Distro location setting
-                            if (_settings['Default Distro Location']!
-                                .text
-                                .isNotEmpty) {
-                              prefs.setString("SaveLocation",
-                                  _settings['Default Distro Location']!.text);
-                            }
-                            String config = '';
-                            _settings.forEach((key, value) {
-                              if (key != 'Default Distro Location' &&
-                                  value.text.isNotEmpty) {
-                                config += '$key=${value.text}\n';
-                              }
-                            });
-                            WSLApi().writeConfig(config);
-                            hasPushed = false;
-
-                            Navigator.popAndPushNamed(context, '/');
-                          },
-                          child: Text('save-text'.i18n())),
-                    ],
-                  ),
+                        Navigator.popAndPushNamed(context, '/');
+                      },
+                      child: Text('save-text'.i18n())),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 

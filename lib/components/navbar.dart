@@ -5,10 +5,13 @@ import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
+import 'package:wsl2distromanager/screens/actions_screen.dart';
+import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/theme.dart';
-import 'constants.dart';
+
 import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
 
 class Navbar extends StatefulWidget {
@@ -28,6 +31,19 @@ bool hasPushed = false;
 
 class _NavbarState extends State<Navbar> {
   bool customTheme = false;
+  int index = 0;
+
+  static bool locked = false;
+  // Fix for double click on Navigation Pane
+  void lockFor500Ms({required Function onDone}) {
+    if (locked) return;
+    locked = true;
+    onDone();
+    Future.delayed(const Duration(milliseconds: 500), () {
+      locked = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -90,44 +106,82 @@ class _NavbarState extends State<Navbar> {
                       : null,
                 ),
                 child: NavigationView(
-                  pane: NavigationPane(items: [
-                    PaneItemAction(
-                      icon: const Icon(FluentIcons.home),
-                      title: Text('homepage-text'.i18n()),
-                      onTap: () {
-                        Navigator.popAndPushNamed(context, '/');
+                  pane: NavigationPane(
+                      displayMode: PaneDisplayMode.auto,
+                      selected: () {
+                        // Default to first item as we are using popups for the rest
+                        // TODO: integrate settings page
+                        return index;
+                      }(),
+                      onChanged: (value) {
+                        // TODO: integrate settings page
+                        if (value != 0 || value != 2 || value != 3) {
+                          try {
+                            setState(() {
+                              index = value;
+                            });
+                          } catch (e) {
+                            // Ignore
+                          }
+                        }
                       },
-                    ),
-                    PaneItemAction(
-                      icon: const Icon(FluentIcons.info),
-                      title: Text('about-text'.i18n()),
-                      onTap: () {
-                        infoDialog(
-                            context, prefs, Notify.message, currentVersion);
-                      },
-                    ),
-                    PaneItemAction(
-                      icon: const Icon(FluentIcons.settings),
-                      title: Text('settings-text'.i18n()),
-                      onTap: () {
-                        Navigator.popAndPushNamed(context, '/settings');
-                      },
-                    ),
-                    PaneItemAction(
-                      icon: const Icon(FluentIcons.settings_add),
-                      title: Text('managequickactions-text'.i18n()),
-                      onTap: () {
-                        Navigator.popAndPushNamed(context, '/actions');
-                      },
-                    ),
-                    PaneItemAction(
-                      icon: const Icon(FluentIcons.add),
-                      title: Text('addinstance-text'.i18n()),
-                      onTap: () {
-                        createDialog(context, () => mounted, Notify.message);
-                      },
-                    ),
-                  ]),
+                      items: [
+                        PaneItem(
+                          icon: const Icon(FluentIcons.home),
+                          title: Text('homepage-text'.i18n(),
+                              style: TextStyle(
+                                  color: appTheme.mode == ThemeMode.dark
+                                      ? Colors.white
+                                      : Colors.black)),
+                          body: widget.child,
+                        ),
+                        PaneItemAction(
+                          icon: const Icon(FluentIcons.info),
+                          title: Text('about-text'.i18n(),
+                              style: TextStyle(
+                                  color: appTheme.mode == ThemeMode.dark
+                                      ? Colors.white
+                                      : Colors.black)),
+                          onTap: () {
+                            lockFor500Ms(onDone: () {
+                              infoDialog(context, prefs, Notify.message,
+                                  currentVersion);
+                            });
+                          },
+                        ),
+                        PaneItem(
+                          icon: const Icon(FluentIcons.settings),
+                          title: Text('settings-text'.i18n(),
+                              style: TextStyle(
+                                  color: appTheme.mode == ThemeMode.dark
+                                      ? Colors.white
+                                      : Colors.black)),
+                          body: const SettingsPage(),
+                        ),
+                        PaneItem(
+                          icon: const Icon(FluentIcons.settings_add),
+                          title: Text('managequickactions-text'.i18n(),
+                              style: TextStyle(
+                                  color: appTheme.mode == ThemeMode.dark
+                                      ? Colors.white
+                                      : Colors.black)),
+                          body: const QuickPage(),
+                        ),
+                        PaneItemAction(
+                          icon: const Icon(FluentIcons.add),
+                          title: Text('addinstance-text'.i18n(),
+                              style: TextStyle(
+                                  color: appTheme.mode == ThemeMode.dark
+                                      ? Colors.white
+                                      : Colors.black)),
+                          onTap: () {
+                            lockFor500Ms(onDone: () {
+                              createDialog(
+                                  context, () => mounted, Notify.message);
+                            });
+                          },
+                        ),
+                      ]),
                   appBar: NavigationAppBar(
                     automaticallyImplyLeading: false,
                     title: () {
@@ -159,7 +213,6 @@ class _NavbarState extends State<Navbar> {
                           const WindowButtons(),
                         ]),
                   ),
-                  content: child!,
                 ),
               ),
             );
