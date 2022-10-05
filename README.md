@@ -5,6 +5,9 @@
 ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
 
+<p align='center'>
+    English | <a href='./README_zh.md'>简体中文</a>
+</p>
 
 # [WSL Distro Manager](https://github.com/bostrot/wsl2-distro-manager)
 A quick way to manage your WSL instances with a GUI.

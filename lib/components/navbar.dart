@@ -77,6 +77,7 @@ class _NavbarState extends State<Navbar> {
             Locale('en', ''), // English, no country code
             Locale('de', ''), // German, no country code
             Locale('pt', ''), // Portuguese, no country code
+            Locale('zh', ''), // Chinese, no country code
           ],
           builder: (context, child) {
             return Directionality(
@@ -90,6 +91,13 @@ class _NavbarState extends State<Navbar> {
                 ),
                 child: NavigationView(
                   pane: NavigationPane(items: [
+                    PaneItemAction(
+                      icon: const Icon(FluentIcons.home),
+                      title: Text('homepage-text'.i18n()),
+                      onTap: () {
+                        Navigator.popAndPushNamed(context, '/');
+                      },
+                    ),
                     PaneItemAction(
                       icon: const Icon(FluentIcons.info),
                       title: Text('about-text'.i18n()),
