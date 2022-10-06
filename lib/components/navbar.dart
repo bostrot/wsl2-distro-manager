@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
+import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -50,6 +51,13 @@ class _NavbarState extends State<Navbar> {
       create: (_) => AppTheme(),
       builder: (context, _) {
         final appTheme = context.watch<AppTheme>();
+        // Is dark mode
+        var brightness = MediaQuery.of(context).platformBrightness;
+        bool isDarkMode = brightness == Brightness.dark;
+        Color textColor =
+            (!customTheme ? isDarkMode : (appTheme.mode == ThemeMode.dark))
+                ? Colors.white
+                : Colors.black;
         return FluentApp(
           themeMode: !customTheme ? ThemeMode.system : appTheme.mode,
           debugShowCheckedModeBanner: false,
@@ -110,12 +118,12 @@ class _NavbarState extends State<Navbar> {
                       displayMode: PaneDisplayMode.auto,
                       selected: () {
                         // Default to first item as we are using popups for the rest
-                        // TODO: integrate settings page
                         return index;
                       }(),
                       onChanged: (value) {
-                        // TODO: integrate settings page
+                        // Check if popup of page
                         if (value != 0 || value != 2 || value != 3) {
+                          // In case we are out of index
                           try {
                             setState(() {
                               index = value;
@@ -129,19 +137,13 @@ class _NavbarState extends State<Navbar> {
                         PaneItem(
                           icon: const Icon(FluentIcons.home),
                           title: Text('homepage-text'.i18n(),
-                              style: TextStyle(
-                                  color: appTheme.mode == ThemeMode.dark
-                                      ? Colors.white
-                                      : Colors.black)),
+                              style: TextStyle(color: textColor)),
                           body: widget.child,
                         ),
                         PaneItemAction(
                           icon: const Icon(FluentIcons.info),
                           title: Text('about-text'.i18n(),
-                              style: TextStyle(
-                                  color: appTheme.mode == ThemeMode.dark
-                                      ? Colors.white
-                                      : Colors.black)),
+                              style: TextStyle(color: textColor)),
                           onTap: () {
                             lockFor500Ms(onDone: () {
                               infoDialog(context, prefs, Notify.message,
@@ -152,28 +154,19 @@ class _NavbarState extends State<Navbar> {
                         PaneItem(
                           icon: const Icon(FluentIcons.settings),
                           title: Text('settings-text'.i18n(),
-                              style: TextStyle(
-                                  color: appTheme.mode == ThemeMode.dark
-                                      ? Colors.white
-                                      : Colors.black)),
+                              style: TextStyle(color: textColor)),
                           body: const SettingsPage(),
                         ),
                         PaneItem(
                           icon: const Icon(FluentIcons.settings_add),
                           title: Text('managequickactions-text'.i18n(),
-                              style: TextStyle(
-                                  color: appTheme.mode == ThemeMode.dark
-                                      ? Colors.white
-                                      : Colors.black)),
+                              style: TextStyle(color: textColor)),
                           body: const QuickPage(),
                         ),
                         PaneItemAction(
                           icon: const Icon(FluentIcons.add),
                           title: Text('addinstance-text'.i18n(),
-                              style: TextStyle(
-                                  color: appTheme.mode == ThemeMode.dark
-                                      ? Colors.white
-                                      : Colors.black)),
+                              style: TextStyle(color: textColor)),
                           onTap: () {
                             lockFor500Ms(onDone: () {
                               createDialog(
