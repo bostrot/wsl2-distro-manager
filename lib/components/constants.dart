@@ -1,6 +1,6 @@
 const String title = 'WSL Distro Manager by Bostrot';
 
-const String currentVersion = "1.4.1";
+const String currentVersion = "1.4.2";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros\\';
