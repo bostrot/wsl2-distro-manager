@@ -229,16 +229,12 @@ class _CreateWidgetState extends State<CreateWidget> {
               builder: (context, snapshot) {
                 List<AutoSuggestBoxItem<dynamic>> list = [];
                 if (snapshot.hasData) {
-                  list = snapshot.data!
-                      .map((e) => AutoSuggestBoxItem<String>(
-                          value: e,
-                          label: e,
-                          child: Container(
-                              color: Colors.black,
-                              width: double.infinity,
-                              height: double.infinity,
-                              child: Text(e))))
-                      .toList();
+                  for (var i = 0; i < snapshot.data!.length; i++) {
+                    list.add(AutoSuggestBoxItem(
+                      value: snapshot.data![i],
+                      label: snapshot.data![i],
+                    ));
+                  }
                 } else if (snapshot.hasError) {}
                 return AutoSuggestBox(
                   placeholder: 'distroname-text'.i18n(),
