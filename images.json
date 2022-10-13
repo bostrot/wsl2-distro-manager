@@ -1,6 +1,6 @@
 {
   "Ubuntu 22.04":
-      "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.tar.gz",
+      "https://cloud-images.ubuntu.com/releases/22.04/release-20220923/ubuntu-22.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
   "Ubuntu 21.04":
       "https://cloud-images.ubuntu.com/releases/hirsute/release/ubuntu-21.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
   "Ubuntu 20.04":
