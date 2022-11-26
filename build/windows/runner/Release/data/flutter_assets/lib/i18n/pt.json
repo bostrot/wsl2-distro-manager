@@ -119,5 +119,6 @@
     "guiinfo-text": "Booleano para ativar ou desativar o suporte para aplicativos GUI (WSLg) no WSL. Disponível apenas para Windows 11.",
     "consoleinfo-text": "Boolean para ativar uma janela de console de saída que mostra o conteúdo de dmesg ao iniciar uma instância de distribuição WSL 2. Disponível apenas, para Windows 11.",
     "nestedvirtinfo-text": "Booleano para ativar ou desativar a virtualização aninhada, permitindo que outras VMs aninhadas sejam executadas dentro do WSL 2. Disponível apenas para Windows 11.",
-    "vmidleinfo-text": "O número de milissegundos em que uma VM fica ociosa antes de ser encerrada. Disponível apenas para Windows 11."
+    "vmidleinfo-text": "O número de milissegundos em que uma VM fica ociosa antes de ser encerrada. Disponível apenas para Windows 11.",
+    "documentation-text": "Documentação"
 }

@@ -1,10 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 class QuickPage extends StatefulWidget {
@@ -21,7 +18,7 @@ class QuickPageState extends State<QuickPage> {
   ScrollController scrollController = ScrollController();
   TextEditingController nameController = TextEditingController();
   TextEditingController contentController = TextEditingController();
-  int lineNum = 18;
+  int lineNum = 30;
 
   @override
   void initState() {
@@ -31,7 +28,7 @@ class QuickPageState extends State<QuickPage> {
     genLineNumbers(0);
     scrollController.addListener(() {
       lineNumbers = '';
-      int offset = (scrollController.offset ~/ 10);
+      int offset = (scrollController.offset ~/ 12);
       genLineNumbers(offset);
     });
   }
@@ -58,14 +55,7 @@ class QuickPageState extends State<QuickPage> {
       child: Stack(
         children: [
           !showInput
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 20.0),
-                  child: SingleChildScrollView(
-                      child: Padding(
-                    padding: const EdgeInsets.only(top: 20.0),
-                    child: quickSettingsListBuilder(),
-                  )),
-                )
+              ? SingleChildScrollView(child: quickSettingsListBuilder())
               : Container(),
           Positioned(
             left: 20.0,
@@ -88,26 +78,32 @@ class QuickPageState extends State<QuickPage> {
                         height: 10.0,
                       )
                     : Container(),
+                // TODO: Better line numbers
                 showInput
                     ? SizedBox(
-                        height: MediaQuery.of(context).size.height - 170.0,
-                        width: MediaQuery.of(context).size.width - 40.0,
+                        height: MediaQuery.of(context).size.height * 0.72,
+                        width: MediaQuery.of(context).size.width * 0.9,
                         child: TextBox(
                           controller: contentController,
                           scrollController: scrollController,
+                          style: const TextStyle(
+                            fontFamily: 'Consolas',
+                            fontSize: 12.0,
+                          ),
                           prefix: Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
+                            padding: const EdgeInsets.only(left: 8.0, top: 3.0),
                             child: Text(
                               lineNumbers,
                               style: TextStyle(
                                 color: AppTheme().color.normal,
+                                fontFamily: 'Consolas',
+                                fontSize: 12.0,
                               ),
                             ),
                           ),
                           minLines: lineNum,
                           maxLines: lineNum,
-                          placeholder:
-                              '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
+                          placeholder: '# ${'yourcodehere-text'.i18n()}',
                         ),
                       )
                     : Container(),
@@ -265,74 +261,50 @@ class QuickPageState extends State<QuickPage> {
               padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
               child: Column(
                 children: [
-                  ListTile(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: opened[i] == false
-                            ? BorderRadius.circular(8.0)
-                            : const BorderRadius.only(
-                                topLeft: Radius.circular(8.0),
-                                topRight: Radius.circular(8.0))),
-                    tileColor: ButtonState.all(
-                        themeData.activeColor.withOpacity(0.05)),
-                    leading: IconButton(
-                      icon: opened[i] == false
-                          ? const Icon(FluentIcons.chevron_down)
-                          : const Icon(FluentIcons.chevron_up),
-                      onPressed: () {
-                        setState(() {
-                          opened[i] = opened[i] == true ? false : true;
-                        });
-                      },
-                    ),
-                    title: Text(quickSettingsTitles[i]),
-                    // subtitle: Text(quickSettingsContents[i]),
-                    trailing: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(FluentIcons.edit),
-                          onPressed: () {
-                            setState(() {
-                              showInput = true;
-                              nameController.text = quickSettingsTitles[i];
-                              contentController.text = quickSettingsContents[i];
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(FluentIcons.delete),
-                          onPressed: () {
-                            quickSettings.removeAt(i);
-                            quickSettingsTitles.removeAt(i);
-                            quickSettingsContents.removeAt(i);
-                            prefs.setStringList(
-                                'quickSettingsTitles', quickSettingsTitles);
-                            prefs.setStringList(
-                                'quickSettingsContents', quickSettingsContents);
-                            setState(() {
-                              quickSettings = quickSettings;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  opened[i] == true
-                      ? Container(
-                          decoration: BoxDecoration(
-                              color: themeData.activeColor.withOpacity(0.05),
-                              borderRadius: const BorderRadius.only(
-                                  bottomLeft: Radius.circular(8.0),
-                                  bottomRight: Radius.circular(8.0))),
-                          width: MediaQuery.of(context).size.width,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                left: 20.0, right: 20.0, bottom: 4.0),
-                            child: Text(quickSettingsContents[i],
-                                style: TextStyle(
-                                    color: themeData.activeColor
-                                        .withOpacity(0.4))),
-                          ))
-                      : Container(),
+                  Expander(
+                      initiallyExpanded: false,
+                      header: Text(quickSettingsTitles[i]),
+                      // subtitle: Text(quickSettingsContents[i]),
+                      trailing: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(FluentIcons.edit),
+                            onPressed: () {
+                              setState(() {
+                                showInput = true;
+                                nameController.text = quickSettingsTitles[i];
+                                contentController.text =
+                                    quickSettingsContents[i];
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(FluentIcons.delete),
+                            onPressed: () {
+                              quickSettings.removeAt(i);
+                              quickSettingsTitles.removeAt(i);
+                              quickSettingsContents.removeAt(i);
+                              prefs.setStringList(
+                                  'quickSettingsTitles', quickSettingsTitles);
+                              prefs.setStringList('quickSettingsContents',
+                                  quickSettingsContents);
+                              setState(() {
+                                quickSettings = quickSettings;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      content: Opacity(
+                        opacity: 0.7,
+                        child: SizedBox(
+                            width: MediaQuery.of(context).size.width,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 20.0, right: 20.0, bottom: 4.0),
+                              child: Text(quickSettingsContents[i]),
+                            )),
+                      )),
                 ],
               ),
             ));

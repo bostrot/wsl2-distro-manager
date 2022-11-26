@@ -14,7 +14,7 @@ void main() async {
   SystemTheme.accentColor.load();
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Must add this line.
+  // Wait for window to be ready
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = const WindowOptions(
@@ -54,7 +54,7 @@ class _WSLDistroManagerState extends State<WSLDistroManager> {
     // TODO: figure out why Navigaton Pane throws no verlay widget found
     // and remove second FluentApp widget
     return FluentApp(
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: true,
       home: const Navbar(
         title: "$title $currentVersion",
         child: HomePage(title: 'WSL Distro Manager by Bostrot'),

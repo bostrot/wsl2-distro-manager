@@ -164,9 +164,13 @@ class _HomePageState extends State<HomePage> {
           api: api,
           statusMsg: statusMsg,
         ),
-        Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: statusBuilder(),
+        SizedBox(
+          height: status != '' ? 80.0 : 0.0,
+          child: Padding(
+            padding:
+                const EdgeInsets.only(bottom: 10.0, left: 10.0, right: 10.0),
+            child: statusBuilder(),
+          ),
         ),
       ],
     );

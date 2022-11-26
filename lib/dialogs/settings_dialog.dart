@@ -50,11 +50,8 @@ settingsDialog(context, item, Function(String, {bool loading}) statusMsg) {
         title: Text(title),
         content: StatefulBuilder(builder: (BuildContext context, setState) {
           return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: settingsColumn(pathController, userController, context,
-                  item, statusMsg, isSyncing, setState),
-            ),
+            child: settingsColumn(pathController, userController, context, item,
+                statusMsg, isSyncing, setState),
           );
         }),
         actions: [
