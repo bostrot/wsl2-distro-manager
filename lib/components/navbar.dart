@@ -1,12 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
-import 'package:system_theme/system_theme.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
-import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
@@ -171,6 +170,18 @@ class _NavbarState extends State<Navbar> {
                             lockFor500Ms(onDone: () {
                               createDialog(
                                   context, () => mounted, Notify.message);
+                            });
+                          },
+                        ),
+                        // Help button
+                        PaneItemAction(
+                          icon: const Icon(FluentIcons.help),
+                          title: Text('documentation-text'.i18n(),
+                              style: TextStyle(color: textColor)),
+                          onTap: () {
+                            lockFor500Ms(onDone: () {
+                              launchUrlString(
+                                  'https://github.com/bostrot/wsl2-distro-manager/wiki');
                             });
                           },
                         ),
