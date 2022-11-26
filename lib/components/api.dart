@@ -378,7 +378,7 @@ class WSLApi {
     List<int> processes = [];
     Process result = await Process.start(
         'wsl', ['-d', distribution, '-u', 'root'],
-        mode: ProcessStartMode.detachedWithStdio);
+        mode: ProcessStartMode.normal, runInShell: true);
 
     Timer currentWaiter = Timer(const Duration(seconds: 15), () {
       result.kill();
