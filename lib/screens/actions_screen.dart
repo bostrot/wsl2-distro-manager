@@ -1,10 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 class QuickPage extends StatefulWidget {
@@ -21,7 +18,7 @@ class QuickPageState extends State<QuickPage> {
   ScrollController scrollController = ScrollController();
   TextEditingController nameController = TextEditingController();
   TextEditingController contentController = TextEditingController();
-  int lineNum = 18;
+  int lineNum = 30;
 
   @override
   void initState() {
@@ -31,10 +28,16 @@ class QuickPageState extends State<QuickPage> {
     genLineNumbers(0);
     scrollController.addListener(() {
       lineNumbers = '';
-      int offset = (scrollController.offset ~/ 10);
+      int offset = (scrollController.offset ~/ 12);
       genLineNumbers(offset);
     });
   }
+
+  /*
+  TextSelection selection = TextSelection(baseOffset: 0, extentOffset: text.length);
+  List<TextBox> boxes = textPainter.getBoxesForSelection(selection);
+  int numberOfLines = boxes.length;
+   */
 
   void genLineNumbers(int offset) {
     for (int i = 1 + offset; i < lineNum + offset + 1; i++) {
@@ -81,26 +84,32 @@ class QuickPageState extends State<QuickPage> {
                         height: 10.0,
                       )
                     : Container(),
+                // TODO: Better line numbers
                 showInput
                     ? SizedBox(
-                        height: MediaQuery.of(context).size.height - 170.0,
-                        width: MediaQuery.of(context).size.width - 40.0,
+                        height: MediaQuery.of(context).size.height * 0.72,
+                        width: MediaQuery.of(context).size.width * 0.9,
                         child: TextBox(
                           controller: contentController,
                           scrollController: scrollController,
+                          style: const TextStyle(
+                            fontFamily: 'Consolas',
+                            fontSize: 12.0,
+                          ),
                           prefix: Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
+                            padding: const EdgeInsets.only(left: 8.0, top: 3.0),
                             child: Text(
                               lineNumbers,
                               style: TextStyle(
                                 color: AppTheme().color.normal,
+                                fontFamily: 'Consolas',
+                                fontSize: 12.0,
                               ),
                             ),
                           ),
                           minLines: lineNum,
                           maxLines: lineNum,
-                          placeholder:
-                              '#!/bin/bash\n\n# ${'yourcodehere-text'.i18n()}',
+                          placeholder: '# ${'yourcodehere-text'.i18n()}',
                         ),
                       )
                     : Container(),
