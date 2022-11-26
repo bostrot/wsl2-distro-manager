@@ -119,5 +119,6 @@
     "guiinfo-text": "Boolesch, um die Unterstützung für GUI-Anwendungen (WSLg) in WSL ein- oder auszuschalten. Nur verfügbar für Windows 11.",
     "consoleinfo-text": "Boolean zum Einschalten eines Ausgabekonsolenfensters, das den Inhalt von dmesg beim Start einer WSL 2-Distributionsinstanz anzeigt. Nur verfügbar für Windows 11.",
     "nestedvirtinfo-text": "Boolescher Wert zum Ein- oder Ausschalten der verschachtelten Virtualisierung, sodass andere verschachtelte VMs in WSL 2 ausgeführt werden können. Nur für Windows 11 verfügbar.",
-    "vmidleinfo-text": "Die Anzahl der Millisekunden, die eine VM im Leerlauf ist, bevor sie heruntergefahren wird. Nur verfügbar für Windows 11."
+    "vmidleinfo-text": "Die Anzahl der Millisekunden, die eine VM im Leerlauf ist, bevor sie heruntergefahren wird. Nur verfügbar für Windows 11.",
+    "documentation-text": "Dokumentation"
 }
