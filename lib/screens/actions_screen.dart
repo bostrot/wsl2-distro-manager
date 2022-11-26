@@ -58,14 +58,7 @@ class QuickPageState extends State<QuickPage> {
       child: Stack(
         children: [
           !showInput
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 20.0),
-                  child: SingleChildScrollView(
-                      child: Padding(
-                    padding: const EdgeInsets.only(top: 20.0),
-                    child: quickSettingsListBuilder(),
-                  )),
-                )
+              ? SingleChildScrollView(child: quickSettingsListBuilder())
               : Container(),
           Positioned(
             left: 20.0,
@@ -265,74 +258,50 @@ class QuickPageState extends State<QuickPage> {
               padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
               child: Column(
                 children: [
-                  ListTile(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: opened[i] == false
-                            ? BorderRadius.circular(8.0)
-                            : const BorderRadius.only(
-                                topLeft: Radius.circular(8.0),
-                                topRight: Radius.circular(8.0))),
-                    tileColor: ButtonState.all(
-                        themeData.activeColor.withOpacity(0.05)),
-                    leading: IconButton(
-                      icon: opened[i] == false
-                          ? const Icon(FluentIcons.chevron_down)
-                          : const Icon(FluentIcons.chevron_up),
-                      onPressed: () {
-                        setState(() {
-                          opened[i] = opened[i] == true ? false : true;
-                        });
-                      },
-                    ),
-                    title: Text(quickSettingsTitles[i]),
-                    // subtitle: Text(quickSettingsContents[i]),
-                    trailing: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(FluentIcons.edit),
-                          onPressed: () {
-                            setState(() {
-                              showInput = true;
-                              nameController.text = quickSettingsTitles[i];
-                              contentController.text = quickSettingsContents[i];
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(FluentIcons.delete),
-                          onPressed: () {
-                            quickSettings.removeAt(i);
-                            quickSettingsTitles.removeAt(i);
-                            quickSettingsContents.removeAt(i);
-                            prefs.setStringList(
-                                'quickSettingsTitles', quickSettingsTitles);
-                            prefs.setStringList(
-                                'quickSettingsContents', quickSettingsContents);
-                            setState(() {
-                              quickSettings = quickSettings;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  opened[i] == true
-                      ? Container(
-                          decoration: BoxDecoration(
-                              color: themeData.activeColor.withOpacity(0.05),
-                              borderRadius: const BorderRadius.only(
-                                  bottomLeft: Radius.circular(8.0),
-                                  bottomRight: Radius.circular(8.0))),
-                          width: MediaQuery.of(context).size.width,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                left: 20.0, right: 20.0, bottom: 4.0),
-                            child: Text(quickSettingsContents[i],
-                                style: TextStyle(
-                                    color: themeData.activeColor
-                                        .withOpacity(0.4))),
-                          ))
-                      : Container(),
+                  Expander(
+                      initiallyExpanded: false,
+                      header: Text(quickSettingsTitles[i]),
+                      // subtitle: Text(quickSettingsContents[i]),
+                      trailing: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(FluentIcons.edit),
+                            onPressed: () {
+                              setState(() {
+                                showInput = true;
+                                nameController.text = quickSettingsTitles[i];
+                                contentController.text =
+                                    quickSettingsContents[i];
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(FluentIcons.delete),
+                            onPressed: () {
+                              quickSettings.removeAt(i);
+                              quickSettingsTitles.removeAt(i);
+                              quickSettingsContents.removeAt(i);
+                              prefs.setStringList(
+                                  'quickSettingsTitles', quickSettingsTitles);
+                              prefs.setStringList('quickSettingsContents',
+                                  quickSettingsContents);
+                              setState(() {
+                                quickSettings = quickSettings;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      content: Opacity(
+                        opacity: 0.7,
+                        child: SizedBox(
+                            width: MediaQuery.of(context).size.width,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 20.0, right: 20.0, bottom: 4.0),
+                              child: Text(quickSettingsContents[i]),
+                            )),
+                      )),
                 ],
               ),
             ));
