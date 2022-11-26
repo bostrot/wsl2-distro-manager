@@ -26,6 +26,8 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
         if (inputText.length > 0) {
           statusMsg('copyinginstance-text'.i18n([item]), loading: true);
           final String path = prefs.getString('SaveLocation') ?? defaultPath;
+          // Only allow A-Z, a-z, 0-9, and _ in distro names
+          inputText = inputText.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
           String results = await api.copy(item, inputText, location: path);
           // Error catching
           if (results != ' ') {
@@ -35,6 +37,7 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           // Copy settings
           String? startPath = prefs.getString('StartPath_$item') ?? '';
           String? startName = prefs.getString('StartUser_$item') ?? '';
+          prefs.setString('DistroName_$item', inputText);
           prefs.setString('StartPath_$inputText', startPath);
           prefs.setString('StartUser_$inputText', startName);
           // Save distro path
