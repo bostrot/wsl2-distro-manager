@@ -27,7 +27,11 @@ flutter pub run msix:create
 # mkdir -p build/windows/runner/Release
 # cp windows-dlls/*.dll build/windows/runner/Release
 
+# Remove the msix_config from pubspec.yaml
+sed -i '/^# start git-block-ignore/,/^# end git-block-ignore/{/^123/!d}' pubspec.yaml
+
 # Add & commit the changes
+git add -f pubspec.yaml
 git add -f build/windows/runner/Release/desktop_window_plugin.dll
 git add -f build/windows/runner/Release/flutter_acrylic_plugin.dll
 git add -f build/windows/runner/Release/flutter_windows.dll
@@ -44,8 +48,5 @@ git add -f build/windows/runner/Release/data
 # git add -f build/windows/runner/Release/vcruntime140.dll
 
 git commit -m "Update version number to $version"
-
-# Remove the msix_config from pubspec.yaml
-sed -i '/^# start git-block-ignore/,/^# end git-block-ignore/{/^123/!d}' pubspec.yaml
 
 git push --no-verify
