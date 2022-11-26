@@ -147,7 +147,7 @@ packages:
       name: fluent_ui
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "4.0.1"
+    version: "4.0.3+1"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -321,42 +321,14 @@ packages:
       name: package_info_plus
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.4.3+1"
-  package_info_plus_linux:
-    dependency: transitive
-    description:
-      name: package_info_plus_linux
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.0.5"
-  package_info_plus_macos:
-    dependency: transitive
-    description:
-      name: package_info_plus_macos
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.3.0"
+    version: "3.0.2"
   package_info_plus_platform_interface:
     dependency: transitive
     description:
       name: package_info_plus_platform_interface
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.2"
-  package_info_plus_web:
-    dependency: transitive
-    description:
-      name: package_info_plus_web
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.0.6"
-  package_info_plus_windows:
-    dependency: transitive
-    description:
-      name: package_info_plus_windows
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "2.0.0"
+    version: "2.0.1"
   path:
     dependency: transitive
     description:
@@ -680,10 +652,12 @@ packages:
   window_manager:
     dependency: "direct main"
     description:
-      name: window_manager
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.2.6"
+      path: "."
+      ref: "v0.2.7"
+      resolved-ref: "4ffbab1b74c46290f13118bf77bcecb5f8cfdfab"
+      url: "https://github.com/leanflutter/window_manager.git"
+    source: git
+    version: "0.2.7"
   xdg_directories:
     dependency: transitive
     description:
