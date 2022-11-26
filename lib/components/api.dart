@@ -301,6 +301,31 @@ class WSLApi {
     return '$exportRes $importRes';
   }
 
+  /// Copy a WSL distro by name and vhd
+  /// @param distribution: String
+  /// @param newName: String
+  /// @param location: String (optional)
+  /// @return Future<String>
+  Future<String> copyVhd(String vhdPath, String newName,
+      {String location = defaultPath}) async {
+    if (location == '') {
+      location = defaultPath;
+    }
+    final String last = location[location.length - 1];
+    if (last != '/' && last != '\\') {
+      location = '$location\\';
+    }
+
+    // Try to create directory
+    mkRootDir(path: location);
+
+    // Copy
+    String importRes =
+        await import(newName, location + newName, vhdPath, isVhd: true);
+
+    return importRes;
+  }
+
   /// Export a WSL distro by name
   /// @param distribution: String
   /// @param location: String
@@ -353,7 +378,7 @@ class WSLApi {
     List<int> processes = [];
     Process result = await Process.start(
         'wsl', ['-d', distribution, '-u', 'root'],
-        mode: ProcessStartMode.detachedWithStdio);
+        mode: ProcessStartMode.normal, runInShell: true);
 
     Timer currentWaiter = Timer(const Duration(seconds: 15), () {
       result.kill();
@@ -440,13 +465,21 @@ class WSLApi {
   /// @param filename: String
   /// @return Future<String>
   Future<String> import(
-      String distribution, String installLocation, String filename) async {
+      String distribution, String installLocation, String filename,
+      {bool isVhd = false}) async {
     if (installLocation == '') {
       installLocation = '$defaultPath/$distribution';
     }
-    ProcessResult results = await Process.run(
-        'wsl', ['--import', distribution, installLocation, filename],
-        stdoutEncoding: null);
+    ProcessResult results;
+    if (isVhd) {
+      results = await Process.run(
+          'wsl', ['--import', distribution, installLocation, filename, '--vhd'],
+          stdoutEncoding: null);
+    } else {
+      results = await Process.run(
+          'wsl', ['--import', distribution, installLocation, filename],
+          stdoutEncoding: null);
+    }
     return utf8Convert(results.stdout);
   }
 
