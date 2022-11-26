@@ -25,10 +25,22 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
       onSubmit: (inputText) async {
         if (inputText.length > 0) {
           statusMsg('copyinginstance-text'.i18n([item]), loading: true);
+
           final String path = prefs.getString('SaveLocation') ?? defaultPath;
           // Only allow A-Z, a-z, 0-9, and _ in distro names
           inputText = inputText.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
-          String results = await api.copy(item, inputText, location: path);
+          String results;
+          // Check if old distro has path
+          String? oldDistroPath = prefs.getString('Path_$item');
+          if (oldDistroPath != null && oldDistroPath.isNotEmpty) {
+            // Copy vhd
+            results = await api.copyVhd('$oldDistroPath\\ext4.vhdx', inputText,
+                location: path);
+          } else {
+            // Export and import copy
+            results = await api.copy(item, inputText, location: path);
+          }
+
           // Error catching
           if (results != ' ') {
             statusMsg(results, loading: false);
