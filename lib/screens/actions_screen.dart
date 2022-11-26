@@ -33,12 +33,6 @@ class QuickPageState extends State<QuickPage> {
     });
   }
 
-  /*
-  TextSelection selection = TextSelection(baseOffset: 0, extentOffset: text.length);
-  List<TextBox> boxes = textPainter.getBoxesForSelection(selection);
-  int numberOfLines = boxes.length;
-   */
-
   void genLineNumbers(int offset) {
     for (int i = 1 + offset; i < lineNum + offset + 1; i++) {
       lineNumbers += i.toString();
