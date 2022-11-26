@@ -24,7 +24,7 @@ dialog({
     context: context,
     builder: (context) {
       return ContentDialog(
-        constraints: const BoxConstraints(maxHeight: 300.0, maxWidth: 400.0),
+        constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 500.0),
         title: centerText ? Center(child: Text(title)) : Text(title),
         content: SingleChildScrollView(
           child: Column(
