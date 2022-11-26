@@ -55,7 +55,6 @@ class _ConsoleState extends State<Console> {
               padding: const EdgeInsets.all(8.0),
               child: SelectableText(
                 output,
-                style: TextStyle(color: themeData.activeColor.withOpacity(0.5)),
               ),
             ))));
   }
