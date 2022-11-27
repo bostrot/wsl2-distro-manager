@@ -13,8 +13,8 @@ e.g. Ubuntu
 **Distribution versions**
 e.g. 20.04, 20.10
 
-**Link to wsl rootfs (leave empty if unknown)**
-e.g. https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-wsl.rootfs.tar.gz
+**Link to wsl rootfs .tar.gz file or vhdx**
+e.g. somewebsite/ubuntu-amd64-wsl.rootfs.tar.gz
 
 **Additional context**
 Add any other context about the request here.
