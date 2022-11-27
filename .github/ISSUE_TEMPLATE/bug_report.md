@@ -26,6 +26,7 @@ If applicable, add screenshots to help explain your problem.
 **Desktop (please complete the following information):**
  - OS: [e.g. Windows 11 Pro Insider Preview Build 22471]
  - Version [e.g. v0.4.0]
+ - WSL Version [wsl --version]
  - Source [e.g. GitHub releases, GitHub master, Windows Store]
 
 **Additional context**
