@@ -1,0 +1,48 @@
+# Add 'source' label to any change to src files within the source dir EXCEPT for the docs sub-folder
+source:
+- any: ['lib/**/*', 'windows/**/*', '!lib/i18n/*']
+
+translation:
+- any: ['lib/i18n/*']
+
+dependency:
+- any: ['pubspec.yaml']
+
+release:
+- any: ['build/windows/runner/Release/**/*']
+
+docs:
+- any: ['docs/**/*']
+
+dlls:
+- any: ['windows-dlls/**/']
+
+assets:
+- any: ['assets/**/*']
+
+test:
+- any: ['test/**/*']
+
+distros:
+- any: ['images.json']
+
+motd:
+- any: ['motd.json']
+
+winget:
+- any: ['manifests/**/*']
+
+github:
+- any: ['.github']
+
+githooks:
+- any: ['.githooks']
+
+community:
+- any: ['CODE_OF_CONDUCT.md', 'CONTRIBUTING.md']
+
+license:
+- any: ['LICENSE']
+
+readme:
+- any: ['README.md', 'README_zh.md']

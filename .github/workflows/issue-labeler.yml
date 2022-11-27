@@ -1,0 +1,14 @@
+name: issue-automation
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  automate-issues-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: andymckay/labeler@1.0.4
+        with:
+          add-labels: "needs label"
+          ignore-if-labeled: true
