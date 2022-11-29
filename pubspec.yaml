@@ -36,7 +36,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  msix: ^3.6.0
+  msix: ^3.7.0
   flutter_lints: ^2.0.1
   flutter_oss_licenses: ^2.0.1
 
