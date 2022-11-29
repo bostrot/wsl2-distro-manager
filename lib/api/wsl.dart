@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
-import 'constants.dart';
-import 'helpers.dart';
+import '../components/constants.dart';
+import '../components/helpers.dart';
 
 class Instances {
   List<String> running = [];
