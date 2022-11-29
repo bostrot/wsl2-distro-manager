@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_static/shelf_static.dart';
-import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'helpers.dart';
 
 class Sync {

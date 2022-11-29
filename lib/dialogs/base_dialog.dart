@@ -5,7 +5,6 @@ import 'package:wsl2distromanager/components/analytics.dart';
 dialog({
   required BuildContext context,
   required item,
-  required Function statusMsg,
   Function? onSubmit,
   bool bodyIsWidget = false,
   Widget bodyAsWidget = const Text(''),

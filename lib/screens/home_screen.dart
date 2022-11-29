@@ -6,7 +6,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/list.dart';
 
 import 'dart:io';
