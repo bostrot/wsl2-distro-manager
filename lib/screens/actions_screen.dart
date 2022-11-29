@@ -289,17 +289,17 @@ class QuickPageState extends State<QuickPage> {
     return Builder(
       builder: (context) {
         List<QuickActionItem> quickActions = QuickAction().getFromPrefs();
-          quickSettings = [];
+        quickSettings = [];
         for (int i = 0; i < quickActions.length; i++) {
-            if (opened[i] == null) {
-              opened[i] = false;
-            }
-            quickSettings.add(Padding(
-              padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
-              child: Column(
-                children: [
-                  Expander(
-                      initiallyExpanded: false,
+          if (opened[i] == null) {
+            opened[i] = false;
+          }
+          quickSettings.add(Padding(
+            padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
+            child: Column(
+              children: [
+                Expander(
+                    initiallyExpanded: false,
                     header: RichText(
                       text: TextSpan(children: [
                         TextSpan(
@@ -317,49 +317,46 @@ class QuickPageState extends State<QuickPage> {
                         ),
                       ]),
                     ),
-                      trailing: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(FluentIcons.edit),
-                            onPressed: () {
-                              setState(() {
-                                showInput = true;
+                    trailing: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(FluentIcons.edit),
+                          onPressed: () {
+                            setState(() {
+                              showInput = true;
                               nameController.text = quickActions[i].name;
                               contentController.text = quickActions[i].content;
-                              });
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(FluentIcons.delete),
-                            onPressed: () {
-                              quickSettings.removeAt(i);
-                              quickSettingsTitles.removeAt(i);
-                              quickSettingsContents.removeAt(i);
-                              prefs.setStringList(
-                                  'quickSettingsTitles', quickSettingsTitles);
-                              prefs.setStringList('quickSettingsContents',
-                                  quickSettingsContents);
-                              setState(() {
-                                quickSettings = quickSettings;
-                              });
-                            },
-                          ),
-                        ],
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(FluentIcons.delete),
+                          onPressed: () {
+                            // Open remove dialog
+                            deleteQaDialog(context, quickActions[i],
+                                () => setState(() {}));
+                          },
+                        ),
+                      ],
+                    ),
+                    content: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: SingleChildScrollView(
+                        child: Opacity(
+                          opacity: 0.7,
+                          child: SizedBox(
+                              width: MediaQuery.of(context).size.width,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 20.0, right: 20.0, bottom: 4.0),
+                                child: SelectableText(quickActions[i].content),
+                              )),
+                        ),
                       ),
-                      content: Opacity(
-                        opacity: 0.7,
-                        child: SizedBox(
-                            width: MediaQuery.of(context).size.width,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 20.0, right: 20.0, bottom: 4.0),
-                              child: Text(quickSettingsContents[i]),
-                            )),
-                      )),
-                ],
-              ),
-            ));
-          }
+                    )),
+              ],
+            ),
+          ));
         }
         if (quickSettings.isNotEmpty) {
           return Column(children: quickSettings);
