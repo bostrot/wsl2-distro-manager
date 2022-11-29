@@ -17,6 +17,11 @@ const String defaultRepoLink =
 const String gitRepoLink =
     'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/images.json';
 
+String gitApiScriptsLink =
+    'https://api.github.com/repos/bostrot/wsl-scripts/contents/scripts';
+String repoScripts =
+    'https://raw.githubusercontent.com/bostrot/wsl-scripts/main/scripts/';
+
 String explorerPath = '\\\\wsl.localhost';
 
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server

@@ -1,8 +1,14 @@
+import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/dialogs/delete_dialog_qa.dart';
+import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
+import 'package:wsl2distromanager/api/quick_actions.dart';
 
 class QuickPage extends StatefulWidget {
   const QuickPage({Key? key}) : super(key: key);
@@ -54,9 +60,7 @@ class QuickPageState extends State<QuickPage> {
       height: double.infinity,
       child: Stack(
         children: [
-          !showInput
-              ? SingleChildScrollView(child: quickSettingsListBuilder())
-              : Container(),
+          !showInput ? communityActionsBtn() : Container(),
           Positioned(
             left: 20.0,
             right: 20.0,
@@ -119,6 +123,43 @@ class QuickPageState extends State<QuickPage> {
             ),
           ),
           //TODO: navbar(widget.themeData, back: true, context: context),
+        ],
+      ),
+    );
+  }
+
+  Padding communityActionsBtn() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Column(
+        children: [
+          !showInput
+              ? Button(
+                  style: ButtonStyle(
+                      padding: ButtonState.all<EdgeInsets>(
+                          const EdgeInsets.only(
+                              top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
+                  onPressed: () {
+                    // Open qa_dialog
+                    communityDialog(
+                        context,
+                        () => setState(
+                              () {},
+                            ));
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(FluentIcons.cloud_download),
+                      const SizedBox(
+                        width: 10.0,
+                      ),
+                      Text('addcommunityactions-text'.i18n()),
+                    ],
+                  ),
+                )
+              : Container(),
+          SingleChildScrollView(child: quickSettingsListBuilder()),
         ],
       ),
     );
@@ -247,13 +288,9 @@ class QuickPageState extends State<QuickPage> {
   Builder quickSettingsListBuilder() {
     return Builder(
       builder: (context) {
-        List<String>? quickSettingsTitles =
-            prefs.getStringList('quickSettingsTitles');
-        List<String>? quickSettingsContents =
-            prefs.getStringList('quickSettingsContents');
-        if (quickSettingsTitles != null && quickSettingsContents != null) {
+        List<QuickActionItem> quickActions = QuickAction().getFromPrefs();
           quickSettings = [];
-          for (int i = 0; i < quickSettingsTitles.length; i++) {
+        for (int i = 0; i < quickActions.length; i++) {
             if (opened[i] == null) {
               opened[i] = false;
             }
@@ -263,8 +300,23 @@ class QuickPageState extends State<QuickPage> {
                 children: [
                   Expander(
                       initiallyExpanded: false,
-                      header: Text(quickSettingsTitles[i]),
-                      // subtitle: Text(quickSettingsContents[i]),
+                    header: RichText(
+                      text: TextSpan(children: [
+                        TextSpan(
+                          text: quickActions[i].name,
+                        ),
+                        TextSpan(
+                          text: ' [v${quickActions[i].version}] ',
+                        ),
+                        TextSpan(
+                          text: '(by ${quickActions[i].author})',
+                          style: TextStyle(
+                            fontSize: 13.0,
+                            color: themeData.accentColor,
+                          ),
+                        ),
+                      ]),
+                    ),
                       trailing: Row(
                         children: [
                           IconButton(
@@ -272,9 +324,8 @@ class QuickPageState extends State<QuickPage> {
                             onPressed: () {
                               setState(() {
                                 showInput = true;
-                                nameController.text = quickSettingsTitles[i];
-                                contentController.text =
-                                    quickSettingsContents[i];
+                              nameController.text = quickActions[i].name;
+                              contentController.text = quickActions[i].content;
                               });
                             },
                           ),
