@@ -35,6 +35,5 @@ class _HoverableState extends State<Hoverable> {
           opacity: isHovering ? 0.5 : 1,
           child: widget.child,
         ));
-    ;
   }
 }
