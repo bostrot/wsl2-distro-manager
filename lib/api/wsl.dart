@@ -372,12 +372,13 @@ class WSLApi {
   Future<List<int>> execCmds(
     String distribution,
     List<String> cmds, {
+    String? user,
     required Function(String) onMsg,
     required Function onDone,
   }) async {
     List<int> processes = [];
     Process result = await Process.start(
-        'wsl', ['-d', distribution, '-u', 'root'],
+        'wsl', ['-d', distribution, '-u', user ?? 'root'],
         mode: ProcessStartMode.normal, runInShell: true);
 
     Timer currentWaiter = Timer(const Duration(seconds: 15), () {
@@ -398,6 +399,28 @@ class WSLApi {
         onDone();
       });
     });
+
+    // Log output to file
+    result.stdin.writeln('script -B /tmp/currentsessionlog -f');
+    // Start windows with output
+    await Process.start(
+        'wsl',
+        [
+          '-d',
+          distribution,
+          '-u',
+          user ?? 'root',
+          'tail',
+          '-n',
+          '+1',
+          '-f',
+          '/tmp/currentsessionlog'
+        ],
+        mode: ProcessStartMode.detached,
+        runInShell: true);
+
+    // Delay to allow tail to start
+    await Future.delayed(const Duration(milliseconds: 500));
 
     for (var cmd in cmds) {
       result.stdin.writeln(cmd);
