@@ -1,10 +1,8 @@
 import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/delete_dialog_qa.dart';
-import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
@@ -294,6 +292,12 @@ class QuickPageState extends State<QuickPage> {
           if (opened[i] == null) {
             opened[i] = false;
           }
+          final version = quickActions[i].version.isNotEmpty
+              ? quickActions[i].version
+              : '0.0.0';
+          final author = quickActions[i].author.isNotEmpty
+              ? quickActions[i].author
+              : 'you';
           quickSettings.add(Padding(
             padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
             child: Column(
@@ -304,12 +308,18 @@ class QuickPageState extends State<QuickPage> {
                       text: TextSpan(children: [
                         TextSpan(
                           text: quickActions[i].name,
+                          style: TextStyle(
+                            color: themeData.activeColor,
+                          ),
                         ),
                         TextSpan(
-                          text: ' [v${quickActions[i].version}] ',
+                          text: ' [v$version] ',
+                          style: TextStyle(
+                            color: themeData.inactiveBackgroundColor,
+                          ),
                         ),
                         TextSpan(
-                          text: '(by ${quickActions[i].author})',
+                          text: '(by $author)',
                           style: TextStyle(
                             fontSize: 13.0,
                             color: themeData.accentColor,
