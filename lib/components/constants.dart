@@ -25,6 +25,10 @@ String repoScripts =
 
 String explorerPath = '\\\\wsl.localhost';
 
+// Wiki links
+const String wikiDocker =
+    'https://github.com/bostrot/wsl2-distro-manager/wiki/Features#docker-images';
+
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
 Map<String, String> distroRootfsLinks = {
   'Ubuntu 22.04':
