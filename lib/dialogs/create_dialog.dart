@@ -1,12 +1,15 @@
 import 'dart:io';
 
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/dialogs/dialogs.dart';
 
 /// Rename Dialog
 /// @param context: context
@@ -76,16 +79,64 @@ Future<void> createInstance(
   // Replace all special characters with _
   String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
   if (name != '') {
+    String distroName = autoSuggestBox.text;
+
+    // Set paths
     statusMsg('creatinginstance-text'.i18n(), loading: true);
     String location = locationController.text;
     if (location == '') {
       location = prefs.getString("SaveLocation") ?? defaultPath;
       location += '/$name';
     }
-    Navigator.of(context, rootNavigator: true).pop();
-    ProcessResult result = await api.create(
-        name, autoSuggestBox.text, location, (String msg) => statusMsg(msg));
 
+    // Check if docker image
+    bool isDockerImage = false;
+    if (distroName.startsWith('dockerhub:')) {
+      isDockerImage = true;
+      // Remove prefix
+      distroName = autoSuggestBox.text.split('dockerhub:')[1];
+      // Get tag
+      String? image = distroName.split(':')[0];
+      String? tag = distroName.split(':')[1];
+
+      bool isDownloaded = false;
+      // Check if image already downloaded
+      if (await DockerImage().isDownloaded(image, tag: tag)) {
+        isDownloaded = true;
+        // Set distropath with distroName
+        distroName = DockerImage().filename(image, tag);
+      }
+
+      // Check if image exists
+      if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
+        // Download image
+        statusMsg('${'downloading-text'.i18n()}...');
+        await DockerImage().getRootfs(image, tag: tag,
+            progress: (current, total, currentStep, totalStep) {
+          String progressInMB = (currentStep / 1024 / 1024).toStringAsFixed(2);
+          String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
+          String percentage =
+              (currentStep / totalStep * 100).toStringAsFixed(0);
+          statusMsg('${'downloading-text'.i18n()}'
+              ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB/$totalInMB MB)');
+        });
+        statusMsg('downloaded-text'.i18n());
+        // Set distropath with distroName
+        distroName = DockerImage().filename(image, tag);
+      } else if (!isDownloaded) {
+        statusMsg('distronotfound-text'.i18n());
+        return;
+      }
+    }
+
+    Navigator.of(context, rootNavigator: true).pop();
+
+    // Create instance
+    ProcessResult result = await api.create(
+        name, distroName, location, (String msg) => statusMsg(msg),
+        image: isDockerImage);
+
+    // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
       statusMsg(WSLApi().utf8Convert(result.stdout));
     } else {
@@ -129,7 +180,7 @@ Future<void> createInstance(
         }
 
         // Install fake systemctl
-        if (autoSuggestBox.text.contains('Turnkey')) {
+        if (distroName.contains('Turnkey')) {
           // Set first start variable
           prefs.setBool('TurnkeyFirstStart_$name', true);
           statusMsg('installingfakesystemd-text'.i18n(), loading: true);
@@ -182,6 +233,7 @@ class CreateWidget extends StatefulWidget {
 
 class _CreateWidgetState extends State<CreateWidget> {
   bool turnkey = false;
+  bool docker = false;
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -202,7 +254,7 @@ class _CreateWidgetState extends State<CreateWidget> {
             controller: widget.nameController,
             placeholder: 'name-text'.i18n(),
             suffix: IconButton(
-              icon: const Icon(FluentIcons.chrome_close, size: 15.0),
+              icon: const Icon(FluentIcons.chrome_close, size: 11.0),
               onPressed: () {
                 widget.nameController.clear();
               },
@@ -240,6 +292,41 @@ class _CreateWidgetState extends State<CreateWidget> {
                   placeholder: 'distroname-text'.i18n(),
                   controller: widget.autoSuggestBox,
                   items: list,
+                  noResultsFoundBuilder: (context) =>
+                      Builder(builder: (context) {
+                    String text = 'noresultsfound-text'.i18n();
+                    if (docker) {
+                      text = widget.autoSuggestBox.text;
+                      String image = text;
+                      String tag = 'latest';
+                      bool error = false;
+                      try {
+                        image = text.split(':')[1];
+                      } catch (e) {
+                        text = 'Check the image name and tag';
+                        error = true;
+                      }
+                      try {
+                        tag = text.split(':')[2];
+                      } catch (e) {
+                        // ignore
+                      }
+                      if (!error) {
+                        text = 'Docker Image: $image:$tag';
+                      }
+                    } else {
+                      text = 'No results found';
+                    }
+                    return Container(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Text(
+                        text,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
+                    );
+                  }),
                   onChanged: (String value, TextChangedReason reason) {
                     if (value.contains('Turnkey')) {
                       if (!turnkey) {
@@ -247,12 +334,19 @@ class _CreateWidgetState extends State<CreateWidget> {
                           turnkey = true;
                         });
                       }
+                    } else if (turnkey) {
+                      setState(() {
+                        turnkey = false;
+                      });
+                    }
+                    if (value.startsWith('dockerhub:')) {
+                      setState(() {
+                        docker = true;
+                      });
                     } else {
-                      if (turnkey) {
-                        setState(() {
-                          turnkey = false;
-                        });
-                      }
+                      setState(() {
+                        docker = false;
+                      });
                     }
                   },
                   trailingIcon: IconButton(
@@ -274,6 +368,11 @@ class _CreateWidgetState extends State<CreateWidget> {
                   ),
                 );
               }),
+        ),
+        ClickableUrl(
+          clickEvent: 'docker_wiki_clicked',
+          url: wikiDocker,
+          text: 'usedistrofromdockerhub-text'.i18n(),
         ),
         Container(
           height: 10.0,
@@ -309,17 +408,17 @@ class _CreateWidgetState extends State<CreateWidget> {
             ? Text('turnkeywarning-text'.i18n(),
                 style: const TextStyle(fontStyle: FontStyle.italic))
             : Container(),
-        !turnkey
+        !turnkey && !docker
             ? Text(
                 '${'createuser-text'.i18n()}:',
               )
             : Container(),
-        !turnkey
+        !turnkey && !docker
             ? Container(
                 height: 5.0,
               )
             : Container(),
-        !turnkey
+        !turnkey && !docker
             ? Tooltip(
                 message: 'optionalusername-text'.i18n(),
                 child: TextBox(
