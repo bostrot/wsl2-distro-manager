@@ -7,8 +7,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 /// Sync Dialog
 /// @param context: context
 /// @param item: distro name
-/// @param statusMsg: Function(String, {bool loading})
-syncDialog(context, item, Function(String, {bool loading}) statusMsg) {
+syncDialog(context, item) {
   dialog(
       context: context,
       item: item,
@@ -21,7 +20,7 @@ syncDialog(context, item, Function(String, {bool loading}) statusMsg) {
         foregroundColor: ButtonState.all(Colors.white),
       ),
       onSubmit: (inputText) {
-        Sync sync = Sync.instance(item, statusMsg);
+        Sync sync = Sync.instance(item);
         sync.download();
       });
 }

@@ -5,10 +5,10 @@ import 'package:localization/localization.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_static/shelf_static.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'helpers.dart';
 
 class Sync {
-  late Function(String, {bool loading}) statusMsg;
   late String distroName;
   late String distroLocation;
   static late HttpServer server;
@@ -17,11 +17,11 @@ class Sync {
 
   /// Constructor
   /// @param {String} distroName
-  /// @param {Function} statusMsg
-  Sync.instance(this.distroName, this.statusMsg) {
+  /// @param {Function} Notify.message
+  Sync.instance(this.distroName) {
     String? distroLocation = prefs.getString('Path_$distroName');
     if (distroLocation == null) {
-      statusMsg('distronotfound-text'.i18n(), loading: false);
+      Notify.message('distronotfound-text'.i18n(), loading: false);
       return;
     }
     this.distroLocation = distroLocation.replaceAll('/', '\\');
@@ -61,29 +61,31 @@ class Sync {
     // Get path for distro filesystem
     String? syncIP = prefs.getString('SyncIP');
     if (syncIP == null) {
-      statusMsg('syncipnotset-text'.i18n(), loading: false);
+      Notify.message('syncipnotset-text'.i18n(), loading: false);
       return;
     }
-    statusMsg('${'shuttingdownwsl-text'.i18n()}...', loading: true);
+    Notify.message('${'shuttingdownwsl-text'.i18n()}...', loading: true);
     // Shutdown WSL
     await WSLApi().shutdown();
-    statusMsg('${'connectingtoip-text'.i18n()}: "$syncIP"...', loading: true);
+    Notify.message('${'connectingtoip-text'.i18n()}: "$syncIP"...',
+        loading: true);
     Dio().download(
         'http://$syncIP:59132/ext4.vhdx', '$distroLocation\\ext4.vhdx.tmp',
         onReceiveProgress: (received, total) {
       String rec = (received / 1024 / 1024).toStringAsFixed(2);
       String tot = (total / 1024 / 1024).toStringAsFixed(2);
-      statusMsg('${'downloading-text'.i18n()} $distroName, $rec MB / $tot MB',
+      Notify.message(
+          '${'downloading-text'.i18n()} $distroName, $rec MB / $tot MB',
           loading: true);
       if (received == total) {
-        statusMsg('${'downloaded-text'.i18n()} $distroName');
+        Notify.message('${'downloaded-text'.i18n()} $distroName');
         File oldFile = File('$distroLocation\\ext4.vhdx');
         oldFile.rename('$distroLocation\\ext4.vhdx.old');
         File file = File('$distroLocation\\ext4.vhdx.tmp');
         file.rename('$distroLocation\\ext4.vhdx');
       }
     }).catchError((e) {
-      statusMsg('${'errordownloading-text'.i18n()} $distroName',
+      Notify.message('${'errordownloading-text'.i18n()} $distroName',
           loading: false);
     });
   }
