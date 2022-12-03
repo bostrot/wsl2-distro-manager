@@ -131,5 +131,7 @@
     "interop-text": "Interop",
     "showdockershort-text": "Show Docker",
     "showdockerlong-text": "Show Docker distributions",
-    "sponsor-text": "Sponsor this project"
+    "sponsor-text": "Sponsor this project",
+    "usedistrofromdockerhub-text": "Hint: You can use an image from Docker Hub (e.g. dockerhub:ubuntu:latest)",
+    "noresultsfound-text": "No results found"
 }
