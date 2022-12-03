@@ -124,5 +124,7 @@
     "addcommunityactions-text": "Community Actions hinzufügen",
     "done-text": "Fertig",
     "search-text": "Suche",
-    "shareyourquickaction-text": "Teilen Sie Ihre Schnellaktionen"
+    "shareyourquickaction-text": "Teilen Sie Ihre Schnellaktionen",
+    "usedistrofromdockerhub-text": "Tipp: Sie können ein Image von DockerHub verwenden (z.B. dockerhub:ubuntu:latest)",
+    "noresultsfound-text": "Keine Ergebnisse gefunden"
 }

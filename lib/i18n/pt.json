@@ -124,5 +124,7 @@
     "addcommunityactions-text": "Adicionar ações da comunidade",
     "done-text": "Feito",
     "search-text": "Procurar",
-    "shareyourquickaction-text": "Compartilhe sua ação rápida"
+    "shareyourquickaction-text": "Compartilhe sua ação rápida",
+    "usedistrofromdockerhub-text": "Use uma distribuição do Docker Hub (exemplo: dockerhub:ubuntu:latest)",
+    "noresultsfound-text": "Nenhum resultado encontrado"
 }

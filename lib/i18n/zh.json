@@ -124,5 +124,7 @@
     "addcommunityactions-text": "添加社区快速操作",
     "done-text": "完成",
     "search-text": "搜索",
-    "shareyourquickaction-text": "分享你的快速操作"
+    "shareyourquickaction-text": "分享你的快速操作",
+    "usedistrofromdockerhub-text": "使用 Docker Hub 中的发行版 (例如: dockerhub:ubuntu:latest)",
+    "noresultsfound-text": "没有找到结果"
 }
