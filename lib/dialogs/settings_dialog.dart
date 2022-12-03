@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/console.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/sync.dart';
 import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/sync_dialog.dart';
@@ -32,8 +33,7 @@ String cmds = '';
 /// Rename Dialog
 /// @param context: context
 /// @param item: distro name
-/// @param statusMsg: Function(String, {bool loading})
-settingsDialog(context, item, Function(String, {bool loading}) statusMsg) {
+settingsDialog(context, item) {
   var title = 'settings-text'.i18n();
   final pathController = TextEditingController();
   pathController.text = prefs.getString('StartPath_$item') ?? '';
@@ -51,7 +51,7 @@ settingsDialog(context, item, Function(String, {bool loading}) statusMsg) {
         content: StatefulBuilder(builder: (BuildContext context, setState) {
           return SingleChildScrollView(
             child: settingsColumn(pathController, userController, context, item,
-                statusMsg, isSyncing, setState),
+                isSyncing, setState),
           );
         }),
         actions: [
@@ -97,7 +97,6 @@ Column settingsColumn(
     TextEditingController userController,
     context,
     item,
-    Function(String, {bool loading}) statusMsg,
     bool isSyncing,
     Function setState) {
   return Column(
@@ -250,15 +249,15 @@ Column settingsColumn(
                       ]),
                   onPressed: () {
                     plausible.event(name: "network_uploaded");
-                    Sync sync = Sync.instance(item, statusMsg);
+                    Sync sync = Sync.instance(item);
                     if (!isSyncing) {
                       isSyncing = true;
                       sync.startServer();
-                      statusMsg('startedserving-text'.i18n([item]));
+                      Notify.message('startedserving-text'.i18n([item]));
                     } else {
                       isSyncing = false;
                       sync.stopServer();
-                      statusMsg('stoppedserving-text'.i18n([item]));
+                      Notify.message('stoppedserving-text'.i18n([item]));
                     }
                   },
                 ),
@@ -283,7 +282,7 @@ Column settingsColumn(
                       ]),
                   onPressed: () {
                     plausible.event(name: "network_downloaded");
-                    syncDialog(context, item, statusMsg);
+                    syncDialog(context, item);
                   },
                 ),
               ),

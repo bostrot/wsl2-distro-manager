@@ -7,7 +7,6 @@ import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 /// Community Dialog
 /// @param context: context
 /// @param api: WSLApi
-/// @param statusMsg: Function(String, {bool loading})
 void communityDialog(context, Function callback) {
   // Global Key
   final GlobalKey<QaListState> qaKey = GlobalKey<QaListState>();

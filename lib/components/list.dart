@@ -8,11 +8,9 @@ import 'list_item.dart';
 import 'helpers.dart';
 
 class DistroList extends StatefulWidget {
-  const DistroList({Key? key, required this.api, required this.statusMsg})
-      : super(key: key);
+  const DistroList({Key? key, required this.api}) : super(key: key);
 
   final WSLApi api;
-  final Function(String, {bool loading}) statusMsg;
 
   @override
   DistroListState createState() => DistroListState();

@@ -8,15 +8,13 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 
 /// Rename Dialog
 /// @param context: context
 /// @param api: WSLApi
-/// @param statusMsg: Function(String, {bool loading})
-createDialog(
-    context, Function mountedFn, Function(String, {bool loading}) statusMsg) {
+createDialog(context, Function mountedFn) {
   WSLApi api = WSLApi();
   final autoSuggestBox = TextEditingController();
   final locationController = TextEditingController();
@@ -32,12 +30,12 @@ createDialog(
         title: Text('createnewinstance-text'.i18n()),
         content: SingleChildScrollView(
           child: CreateWidget(
-              nameController: nameController,
-              api: api,
-              autoSuggestBox: autoSuggestBox,
-              locationController: locationController,
-              userController: userController,
-              statusMsg: statusMsg),
+            nameController: nameController,
+            api: api,
+            autoSuggestBox: autoSuggestBox,
+            locationController: locationController,
+            userController: userController,
+          ),
         ),
         actions: [
           Button(
@@ -50,7 +48,6 @@ createDialog(
               await createInstance(
                   mountedFn,
                   nameController,
-                  statusMsg,
                   locationController,
                   api,
                   autoSuggestBox,
@@ -68,7 +65,6 @@ createDialog(
 Future<void> createInstance(
     Function mountedFn,
     TextEditingController nameController,
-    Function(String, {bool loading}) statusMsg,
     TextEditingController locationController,
     WSLApi api,
     TextEditingController autoSuggestBox,
@@ -82,7 +78,7 @@ Future<void> createInstance(
     String distroName = autoSuggestBox.text;
 
     // Set paths
-    statusMsg('creatinginstance-text'.i18n(), loading: true);
+    Notify.message('creatinginstance-text'.i18n(), loading: true);
     String location = locationController.text;
     if (location == '') {
       location = prefs.getString("SaveLocation") ?? defaultPath;
@@ -110,21 +106,21 @@ Future<void> createInstance(
       // Check if image exists
       if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
         // Download image
-        statusMsg('${'downloading-text'.i18n()}...');
+        Notify.message('${'downloading-text'.i18n()}...');
         await DockerImage().getRootfs(image, tag: tag,
             progress: (current, total, currentStep, totalStep) {
           String progressInMB = (currentStep / 1024 / 1024).toStringAsFixed(2);
           String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
           String percentage =
               (currentStep / totalStep * 100).toStringAsFixed(0);
-          statusMsg('${'downloading-text'.i18n()}'
+          Notify.message('${'downloading-text'.i18n()}'
               ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB/$totalInMB MB)');
         });
-        statusMsg('downloaded-text'.i18n());
+        Notify.message('downloaded-text'.i18n());
         // Set distropath with distroName
         distroName = DockerImage().filename(image, tag);
       } else if (!isDownloaded) {
-        statusMsg('distronotfound-text'.i18n());
+        Notify.message('distronotfound-text'.i18n());
         return;
       }
     }
@@ -133,12 +129,12 @@ Future<void> createInstance(
 
     // Create instance
     ProcessResult result = await api.create(
-        name, distroName, location, (String msg) => statusMsg(msg),
+        name, distroName, location, (String msg) => Notify.message(msg),
         image: isDockerImage);
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
-      statusMsg(WSLApi().utf8Convert(result.stdout));
+      Notify.message(WSLApi().utf8Convert(result.stdout));
     } else {
       String user = userController.text;
       if (user != '') {
@@ -165,13 +161,13 @@ Future<void> createInstance(
             return;
           }
 
-          statusMsg('createdinstance-text'.i18n());
+          Notify.message('createdinstance-text'.i18n());
         } else {
           bool mounted = mountedFn();
           if (!mounted) {
             return;
           }
-          statusMsg('createdinstancenouser-text'.i18n());
+          Notify.message('createdinstancenouser-text'.i18n());
         }
       } else {
         bool mounted = mountedFn();
@@ -183,7 +179,7 @@ Future<void> createInstance(
         if (distroName.contains('Turnkey')) {
           // Set first start variable
           prefs.setBool('TurnkeyFirstStart_$name', true);
-          statusMsg('installingfakesystemd-text'.i18n(), loading: true);
+          Notify.message('installingfakesystemd-text'.i18n(), loading: true);
           WSLApi().execCmds(
               name,
               [
@@ -193,9 +189,9 @@ Future<void> createInstance(
                 '/usr/bin/systemctl',
               ],
               onMsg: (output) => null,
-              onDone: () => statusMsg('createdinstance-text'.i18n()));
+              onDone: () => Notify.message('createdinstance-text'.i18n()));
         } else {
-          statusMsg('createdinstance-text'.i18n());
+          Notify.message('createdinstance-text'.i18n());
         }
       }
       // Save distro label
@@ -205,7 +201,7 @@ Future<void> createInstance(
     }
     // Download distro check
   } else {
-    statusMsg('entername-text'.i18n());
+    Notify.message('entername-text'.i18n());
   }
 }
 
@@ -217,7 +213,6 @@ class CreateWidget extends StatefulWidget {
     required this.autoSuggestBox,
     required this.locationController,
     required this.userController,
-    required this.statusMsg,
   }) : super(key: key);
 
   final TextEditingController nameController;
@@ -225,7 +220,6 @@ class CreateWidget extends StatefulWidget {
   final TextEditingController autoSuggestBox;
   final TextEditingController locationController;
   final TextEditingController userController;
-  final Function(String, {bool loading}) statusMsg;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -277,7 +271,7 @@ class _CreateWidgetState extends State<CreateWidget> {
                   (prefs.getString('RepoLink') ??
                       'http://ftp.halifax.rwth-aachen.de/'
                           'turnkeylinux/images/proxmox/'),
-                  (e) => widget.statusMsg(e)),
+                  (e) => Notify.message(e)),
               builder: (context, snapshot) {
                 List<AutoSuggestBoxItem<dynamic>> list = [];
                 if (snapshot.hasData) {

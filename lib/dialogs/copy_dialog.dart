@@ -1,6 +1,7 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -10,8 +11,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 /// @param context: context
 /// @param item: distro name
 /// @param api: WSLApi
-/// @param statusMsg: Function(String, {bool loading})
-copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
+copyDialog(context, item) {
   WSLApi api = WSLApi();
   plausible.event(page: 'copy');
   dialog(
@@ -23,7 +23,7 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {
         if (inputText.length > 0) {
-          statusMsg('copyinginstance-text'.i18n([item]), loading: true);
+          Notify.message('copyinginstance-text'.i18n([item]), loading: true);
 
           final String path = prefs.getString('SaveLocation') ?? defaultPath;
           // Only allow A-Z, a-z, 0-9, and _ in distro names
@@ -42,7 +42,7 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
 
           // Error catching
           if (results != ' ') {
-            statusMsg(results, loading: false);
+            Notify.message(results, loading: false);
             return;
           }
           // Copy settings
@@ -53,11 +53,11 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           prefs.setString('StartUser_$inputText', startName);
           // Save distro path
           prefs.setString('Path_$inputText', defaultPath + inputText);
-          statusMsg(
+          Notify.message(
               'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
               loading: false);
         } else {
-          statusMsg('errorentername-text'.i18n(), loading: false);
+          Notify.message('errorentername-text'.i18n(), loading: false);
         }
       });
 }

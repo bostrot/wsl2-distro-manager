@@ -1,21 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 
 class ListItem extends StatefulWidget {
-  const ListItem(
-      {Key? key,
-      required this.item,
-      required this.statusMsg,
-      required this.running})
+  const ListItem({Key? key, required this.item, required this.running})
       : super(key: key);
   final List<String> running;
   final String item;
-  final Function(String, {bool loading}) statusMsg;
   @override
   State<ListItem> createState() => _ListItemState();
 }
@@ -85,8 +81,7 @@ class _ListItemState extends State<ListItem> {
   void stopInstance() {
     plausible.event(name: "wsl_stopped");
     WSLApi().stop(widget.item);
-    widget.statusMsg('${widget.item} ${'stopped-text'.i18n()}.',
-        loading: false);
+    Notify.message('${widget.item} ${'stopped-text'.i18n()}.', loading: false);
   }
 
   void startInstance() {
@@ -103,7 +98,7 @@ class _ListItemState extends State<ListItem> {
         startPath: startPath, startUser: startName, startCmd: startCmd);
 
     Future.delayed(const Duration(milliseconds: 500),
-        widget.statusMsg('${widget.item} ${'started-text'.i18n()}.'));
+        Notify.message('${widget.item} ${'started-text'.i18n()}.'));
   }
 }
 
@@ -233,7 +228,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                     icon: const Icon(FluentIcons.copy, size: 16.0),
                     onPressed: () {
-                      copyDialog(context, widget.item, widget.statusMsg);
+                      copyDialog(context, widget.item);
                     },
                   ),
                 ),
@@ -245,7 +240,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                     icon: const Icon(FluentIcons.rename, size: 16.0),
                     onPressed: () {
-                      renameDialog(context, widget.item, widget.statusMsg);
+                      renameDialog(context, widget.item);
                     },
                   ),
                 ),
@@ -257,7 +252,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                       icon: const Icon(FluentIcons.delete, size: 16.0),
                       onPressed: () {
-                        deleteDialog(context, widget.item, widget.statusMsg);
+                        deleteDialog(context, widget.item);
                       }),
                 ),
               ),
@@ -268,7 +263,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                       icon: const Icon(FluentIcons.settings, size: 16.0),
                       onPressed: () {
-                        settingsDialog(context, widget.item, widget.statusMsg);
+                        settingsDialog(context, widget.item);
                       }),
                 ),
               ),
