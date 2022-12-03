@@ -30,6 +30,8 @@ dependencies:
   system_info2: ^3.0.1
   yaml: ^3.1.1
   archive: ^3.3.5
+  chunked_downloader:
+    path: ../chunked_downloader
 
 dev_dependencies:
   flutter_test:
