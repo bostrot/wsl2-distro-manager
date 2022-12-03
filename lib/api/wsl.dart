@@ -602,7 +602,8 @@ class WSLApi {
   /// @param filename: String
   /// @return Future<String>
   Future<dynamic> create(String distribution, String filename,
-      String installPath, Function(String) status) async {
+      String installPath, Function(String) status,
+      {bool image = false}) async {
     if (installPath == '') {
       installPath = defaultPath + distribution;
     }
@@ -612,14 +613,14 @@ class WSLApi {
     String downloadPath = '';
     downloadPath = '${defaultPath}distros\\$filename.tar.gz';
     bool fileExists = await File(downloadPath).exists();
-    if (distroRootfsLinks[filename] != null && !fileExists) {
+    if (!image && distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
       // Download file
       try {
         Dio dio = Dio();
         await dio.download(url, '$downloadPath.tmp',
             onReceiveProgress: (int count, int total) {
-          status('Step 1: Downloading distro: '
+          status('${'downloading-text'.i18n()}'
               '${(count / total * 100).toStringAsFixed(0)}%');
         });
         File file = File('$downloadPath.tmp');
@@ -631,7 +632,7 @@ class WSLApi {
     }
 
     // Downloaded or extracted
-    if (distroRootfsLinks[filename] == null) {
+    if (!image && distroRootfsLinks[filename] == null) {
       downloadPath = filename;
     }
 
