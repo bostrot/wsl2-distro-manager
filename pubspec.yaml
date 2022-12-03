@@ -33,6 +33,7 @@ dependencies:
   system_info2: ^2.0.4
   yaml: ^3.1.1
   archive: ^3.3.5
+  async: ^2.9.0
   chunked_downloader:
     path: ../chunked_downloader
 
