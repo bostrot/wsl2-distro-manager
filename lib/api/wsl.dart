@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
+import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import '../components/constants.dart';
 import '../components/helpers.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -611,24 +613,29 @@ class WSLApi {
 
     // Download
     String downloadPath = '';
+    String savedDir = '${defaultPath}distros';
+    String nameExt = '$filename.tar.gz';
     downloadPath = '${defaultPath}distros\\$filename.tar.gz';
     bool fileExists = await File(downloadPath).exists();
     if (!image && distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
       // Download file
-      try {
-        Dio dio = Dio();
-        await dio.download(url, '$downloadPath.tmp',
-            onReceiveProgress: (int count, int total) {
-          status('${'downloading-text'.i18n()}'
-              '${(count / total * 100).toStringAsFixed(0)}%');
-        });
-        File file = File('$downloadPath.tmp');
-        file.rename(downloadPath);
-        status('${'downloaded-text'.i18n()} $filename');
-      } catch (error) {
-        status('${'errordownloading-text'.i18n()} $filename');
-      }
+      ChunkedDownloader(
+        url: url,
+        fileName: nameExt,
+        savedDir: savedDir,
+        onProgress: (int count, int total, double speed) {
+          Notify.message('${'downloading-text'.i18n()} '
+              '${(count / total * 100).toStringAsFixed(0)}% '
+              '(${(speed / ~1024 / ~1024).toStringAsFixed(2)} MB/s)');
+        },
+        onDone: ((file) {
+          Notify.message('${'downloaded-text'.i18n()} $filename');
+        }),
+        onError: (error) {
+          Notify.message('${'errordownloading-text'.i18n()} $filename');
+        },
+      ).start();
     }
 
     // Downloaded or extracted

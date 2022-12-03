@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -69,24 +70,24 @@ class Sync {
     await WSLApi().shutdown();
     Notify.message('${'connectingtoip-text'.i18n()}: "$syncIP"...',
         loading: true);
-    Dio().download(
-        'http://$syncIP:59132/ext4.vhdx', '$distroLocation\\ext4.vhdx.tmp',
-        onReceiveProgress: (received, total) {
-      String rec = (received / 1024 / 1024).toStringAsFixed(2);
-      String tot = (total / 1024 / 1024).toStringAsFixed(2);
-      Notify.message(
-          '${'downloading-text'.i18n()} $distroName, $rec MB / $tot MB',
-          loading: true);
-      if (received == total) {
+
+    // Download file
+    ChunkedDownloader(
+      url: 'http://$syncIP:59132/ext4.vhdx',
+      fileName: '$distroLocation\\ext4.vhdx.tmp',
+      savedDir: '',
+      onProgress: (int count, int total, double speed) {
+        Notify.message('${'downloading-text'.i18n()} '
+            '${(count / total * 100).toStringAsFixed(0)}% '
+            '(${(speed / ~1024 / ~1024).toStringAsFixed(2)} MB/s)');
+      },
+      onDone: ((file) {
         Notify.message('${'downloaded-text'.i18n()} $distroName');
-        File oldFile = File('$distroLocation\\ext4.vhdx');
-        oldFile.rename('$distroLocation\\ext4.vhdx.old');
-        File file = File('$distroLocation\\ext4.vhdx.tmp');
-        file.rename('$distroLocation\\ext4.vhdx');
-      }
-    }).catchError((e) {
-      Notify.message('${'errordownloading-text'.i18n()} $distroName',
-          loading: false);
-    });
+      }),
+      onError: (error) {
+        Notify.message('${'errordownloading-text'.i18n()} $distroName');
+        throw Exception('Download failed');
+      },
+    ).start();
   }
 }
