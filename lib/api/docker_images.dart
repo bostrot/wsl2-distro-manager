@@ -6,10 +6,13 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
+import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 
 class Manifests {
   List<Manifest> manifests = [];
@@ -153,15 +156,23 @@ class DockerImage {
   /// @result {bool} success
   Future<bool> _downloadBlob(String image, String token, String digest,
       String file, ProgressCallback progressCallback) async {
-    Response<dynamic> response = await Dio().download(
-        '$registryUrl/v2/$image/blobs/$digest', file,
-        options: Options(headers: {
-          'Authorization': 'Bearer $token',
-        }),
-        onReceiveProgress: ((count, total) => progressCallback(count, total)));
-    if (response.statusCode != 200) {
-      throw Exception('Download failed');
-    }
+    ChunkedDownloader(
+      url: '$registryUrl/v2/$image/blobs/$digest',
+      fileName: file,
+      savedDir: '',
+      onProgress: (int count, int total, double speed) {
+        Notify.message('${'downloading-text'.i18n()} '
+            '${(count / total * 100).toStringAsFixed(0)}% '
+            '(${(speed / ~1024 / ~1024).toStringAsFixed(2)} MB/s)');
+      },
+      onDone: ((file) {
+        Notify.message('${'downloaded-text'.i18n()} $filename');
+      }),
+      onError: (error) {
+        Notify.message('${'errordownloading-text'.i18n()} $filename');
+        throw Exception('Download failed');
+      },
+    ).start();
     return true;
   }
 
