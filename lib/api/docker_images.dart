@@ -1,9 +1,7 @@
 /// API to download docker images from DockerHub and extract them
 /// into a rootfs.
 
-import 'dart:convert';
 import 'dart:io';
-
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:chunked_downloader/chunked_downloader.dart';
@@ -156,23 +154,30 @@ class DockerImage {
   /// @result {bool} success
   Future<bool> _downloadBlob(String image, String token, String digest,
       String file, ProgressCallback progressCallback) async {
+    // Create directory if not exists
+    if (Directory(file).parent.existsSync() == false) {
+      Directory(file).parent.createSync(recursive: true);
+    }
+    bool done = false;
     ChunkedDownloader(
       url: '$registryUrl/v2/$image/blobs/$digest',
-      fileName: file,
-      savedDir: '',
+      saveFilePath: file,
+      headers: {'Authorization': 'Bearer $token'},
       onProgress: (int count, int total, double speed) {
-        Notify.message('${'downloading-text'.i18n()} '
-            '${(count / total * 100).toStringAsFixed(0)}% '
-            '(${(speed / ~1024 / ~1024).toStringAsFixed(2)} MB/s)');
+        progressCallback(count, total);
       },
       onDone: ((file) {
-        Notify.message('${'downloaded-text'.i18n()} $filename');
+        progressCallback(1, 1);
+        done = true;
       }),
       onError: (error) {
-        Notify.message('${'errordownloading-text'.i18n()} $filename');
+        Notify.message('${'errordownloading-text'.i18n()} $image');
         throw Exception('Download failed');
       },
     ).start();
+    while (!done) {
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
     return true;
   }
 
@@ -190,6 +195,9 @@ class DockerImage {
     final manifestData = await _getManifest(image, token, tag ?? 'latest');
     ImageManifest imageManifest;
 
+    // TODO: When the manifest is in hand, the client must verify the signature to ensure the names and layers are valid.
+
+    // Multiple architectures per tag
     if (manifestData['manifests'] != null) {
       // Get manifest
       final data = Manifests.fromMap(manifestData);
@@ -206,10 +214,12 @@ class DockerImage {
       }
       imageManifest =
           ImageManifest.fromMap(await _getManifest(image, token, digest));
+
       final config = imageManifest.config.digest;
       await _downloadBlob(
           image, token, config, '$path/config.json', (p0, p1) {});
     } else {
+      // Single architecture
       imageManifest = ImageManifest.fromMap(manifestData);
     }
 
@@ -239,34 +249,80 @@ class DockerImage {
       {String? tag, required TotalProgressCallback progress}) async {
     final distroPath = prefs.getString("SaveLocation") ?? defaultPath;
 
+    // Add library to image name
+    if (image.split('/').length == 1) {
+      image = 'library/$image';
+    }
+
     // Replace special chars
-    final filename =
-        '${image.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}_${tag ?? 'latest'}';
-    final path = '$distroPath/tmp/$filename';
+    final file = filename(image, tag);
+    final path = '$distroPath/tmp/$file';
     var layers = 0;
+    bool done = false;
     await _download(image, path, (current, total, currentStep, totalStep) {
       layers = total;
       if (kDebugMode) {
         print('${current + 1}/$total');
       }
       progress(current, total, currentStep, totalStep);
+      if (current + 1 == total && currentStep == totalStep) {
+        done = true;
+      }
     }, tag: tag);
 
-    // Put layers into single tar file
-    final outputStream =
-        OutputFileStream('$distroPath/distros/$filename.tar.gz');
-    for (var i = 0; i < layers; i++) {
-      final inputStream = InputFileStream('$path/layer_$i.tar.gz');
-      outputStream.writeInputStream(inputStream);
-      inputStream.close();
+    // Wait for download to finish
+    while (!done) {
+      await Future.delayed(const Duration(milliseconds: 500));
     }
-    outputStream.close();
+
+    // Extract layers
+    // Write the compressed tar file to disk.
+    int retry = 0;
+    while (retry < 2) {
+      try {
+        Archive outputArchive = Archive();
+        for (var i = 0; i < layers; i++) {
+          if (kDebugMode) {
+            print('Extracting layer $i of $layers');
+          }
+          progress(i, layers, 0, 100);
+          // Read archives layers
+          final bytes = await File('$path/layer_$i.tar.gz').readAsBytes();
+          final gzip = GZipDecoder().decodeBytes(bytes);
+          final archive = TarDecoder().decodeBytes(gzip);
+          for (final file in archive) {
+            if (file.isFile) {
+              outputArchive.addFile(file);
+            }
+          }
+        }
+
+        final tarData = TarEncoder().encode(outputArchive);
+        final gzData = GZipEncoder().encode(tarData);
+
+        if (gzData != null) {
+          final fp = File('$distroPath/distros/$file.tar.gz');
+          await fp.writeAsBytes(gzData);
+        } else {}
+      } catch (e) {
+        retry++;
+        await Future.delayed(const Duration(seconds: 1));
+        if (kDebugMode) {
+          print('Retrying $retry');
+        }
+      }
+    }
+
+    // Notify.message('creatinginstance-text'.i18n());
+
     // Check if tar file is created
-    if (!File('$distroPath/distros/$filename.tar.gz').existsSync()) {
+    if (!File('$distroPath/distros/$file.tar.gz').existsSync()) {
       throw Exception('Tar file is not created');
     }
+    // Wait for tar file to be created
+    await Future.delayed(const Duration(seconds: 1));
     // Cleanup
-    Directory(path).deleteSync(recursive: true);
+    await Directory(path).delete(recursive: true);
     return true;
   }
 
@@ -305,7 +361,7 @@ class DockerImage {
   /// Check if image is already downloaded
   /// @param {String} image
   /// @result {bool} isDownloaded
-  Future<bool> isDownloaded(String image, {String tag = 'latest'}) async {
+  Future<bool> isDownloaded(String image, {String? tag = 'latest'}) async {
     final distroPath = prefs.getString("SaveLocation") ?? defaultPath;
     // Replace special chars
     return File('$distroPath/distros/${filename(image, tag)}.tar.gz')
