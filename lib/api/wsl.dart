@@ -622,8 +622,7 @@ class WSLApi {
       // Download file
       ChunkedDownloader(
         url: url,
-        fileName: nameExt,
-        savedDir: savedDir,
+        saveFilePath: '$savedDir\\$nameExt',
         onProgress: (int count, int total, double speed) {
           Notify.message('${'downloading-text'.i18n()} '
               '${(count / total * 100).toStringAsFixed(0)}% '

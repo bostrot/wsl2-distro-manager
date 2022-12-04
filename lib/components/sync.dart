@@ -74,8 +74,7 @@ class Sync {
     // Download file
     ChunkedDownloader(
       url: 'http://$syncIP:59132/ext4.vhdx',
-      fileName: '$distroLocation\\ext4.vhdx.tmp',
-      savedDir: '',
+      saveFilePath: '$distroLocation\\ext4.vhdx.tmp',
       onProgress: (int count, int total, double speed) {
         Notify.message('${'downloading-text'.i18n()} '
             '${(count / total * 100).toStringAsFixed(0)}% '
