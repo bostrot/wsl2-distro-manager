@@ -50,15 +50,11 @@ class DistroListState extends State<DistroList> {
 
   @override
   Widget build(BuildContext context) {
-    return distroList(widget.api, widget.statusMsg, hover, showDocker);
+    return distroList(widget.api, hover, showDocker);
   }
 }
 
-FutureBuilder<Instances> distroList(
-    WSLApi api,
-    Function(String, {bool loading}) statusMsg,
-    Map<String, bool> hover,
-    bool showDocker) {
+FutureBuilder<Instances> distroList(WSLApi api, Map<String, bool> hover, bool showDocker) {
   // List as FutureBuilder with WSLApi
   return FutureBuilder<Instances>(
     future: api.list(showDocker),
@@ -81,8 +77,7 @@ FutureBuilder<Instances> distroList(
           return const InstallDialog();
         }
         for (String item in list) {
-          newList.add(
-              ListItem(item: item, statusMsg: statusMsg, running: running));
+          newList.add(ListItem(item: item, running: running));
         }
         return Expanded(
           child: ListView.custom(
