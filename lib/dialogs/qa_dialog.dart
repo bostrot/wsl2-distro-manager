@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -8,13 +9,13 @@ import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 /// @param context: context
 /// @param api: WSLApi
 /// @param statusMsg: Function(String, {bool loading})
-void communityDialog(context, Function callback) {
+void communityDialog(BuildContext context, Function callback) {
   // Global Key
   final GlobalKey<QaListState> qaKey = GlobalKey<QaListState>();
   plausible.event(page: 'open_community_dialog');
   showDialog(
     context: context,
-    builder: (context) {
+    builder: (BuildContext context) {
       return ContentDialog(
         content: SizedBox(
           height: MediaQuery.of(context).size.height,
@@ -44,6 +45,14 @@ void communityDialog(context, Function callback) {
             onPressed: () async {
               // Download selected
               await qaKey.currentState?.download();
+              try {
+                // ignore: use_build_context_synchronously
+                Navigator.pop(context);
+              } catch (err) {
+                if (kDebugMode) {
+                  print(err);
+                }
+              }
               callback();
               // Navigator.pop(context);
             },
