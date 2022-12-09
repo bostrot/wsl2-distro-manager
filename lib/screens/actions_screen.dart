@@ -82,27 +82,10 @@ class QuickPageState extends State<QuickPage> {
                 // TODO: Better line numbers
                 showInput
                     ? CodeEditor(
-                          scrollController: scrollController,
-                          style: const TextStyle(
-                            fontFamily: 'Consolas',
-                            fontSize: 12.0,
-                          ),
-                          prefix: Padding(
-                            padding: const EdgeInsets.only(left: 8.0, top: 3.0),
-                            child: Text(
-                              lineNumbers,
-                              style: TextStyle(
-                                color: AppTheme().color.normal,
-                                fontFamily: 'Consolas',
-                                fontSize: 12.0,
-                              ),
-                            ),
-                          ),
-                          minLines: lineNum,
-                          maxLines: lineNum,
-                          placeholder: '# ${'yourcodehere-text'.i18n()}',
-                        ),
-                      )
+                        contentController: contentController,
+                        scrollController: scrollController,
+                        lineNumbers: lineNumbers,
+                        lineNum: lineNum)
                     : Container(),
                 //const SizedBox(height: 10.0),
                 SizedBox(
@@ -115,7 +98,6 @@ class QuickPageState extends State<QuickPage> {
               ],
             ),
           ),
-          //TODO: navbar(widget.themeData, back: true, context: context),
         ],
       ),
     );
@@ -152,7 +134,8 @@ class QuickPageState extends State<QuickPage> {
                   ),
                 )
               : Container(),
-          SingleChildScrollView(child: quickSettingsListBuilder()),
+          Flexible(
+              child: SingleChildScrollView(child: quickSettingsListBuilder())),
         ],
       ),
     );
@@ -161,25 +144,8 @@ class QuickPageState extends State<QuickPage> {
   Row bottomButtonRow() {
     return Row(
       mainAxisSize: MainAxisSize.max,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        showInput
-            ? Container()
-            : Button(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/');
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(FluentIcons.chrome_back),
-                    const SizedBox(
-                      width: 10.0,
-                    ),
-                    Text('back-text'.i18n()),
-                  ],
-                ),
-              ),
         Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -375,6 +341,51 @@ class QuickPageState extends State<QuickPage> {
           );
         }
       },
+    );
+  }
+}
+
+class CodeEditor extends StatelessWidget {
+  const CodeEditor({
+    Key? key,
+    required this.contentController,
+    required this.scrollController,
+    required this.lineNumbers,
+    required this.lineNum,
+  }) : super(key: key);
+
+  final TextEditingController contentController;
+  final ScrollController scrollController;
+  final String lineNumbers;
+  final int lineNum;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.72,
+      width: MediaQuery.of(context).size.width * 0.9,
+      child: TextBox(
+        controller: contentController,
+        scrollController: scrollController,
+        style: const TextStyle(
+          fontFamily: 'Consolas',
+          fontSize: 12.0,
+        ),
+        prefix: Padding(
+          padding: const EdgeInsets.only(left: 8.0, top: 3.0),
+          child: Text(
+            lineNumbers,
+            style: TextStyle(
+              color: AppTheme().color.normal,
+              fontFamily: 'Consolas',
+              fontSize: 12.0,
+            ),
+          ),
+        ),
+        minLines: lineNum,
+        maxLines: lineNum,
+        placeholder: '# ${'yourcodehere-text'.i18n()}',
+      ),
     );
   }
 }
