@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 class Console extends StatefulWidget {
   const Console(
@@ -48,7 +48,7 @@ class _ConsoleState extends State<Console> {
   @override
   Widget build(BuildContext context) {
     return Container(
-        color: themeData.activeColor.withOpacity(0.1),
+        color: AppTheme().color.withOpacity(0.1),
         height: 100.0,
         width: double.infinity,
         child: SingleChildScrollView(

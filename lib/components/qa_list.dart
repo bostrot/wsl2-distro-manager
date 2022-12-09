@@ -5,7 +5,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/hoverable.dart';
-import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 /// Community Quick Actions List
 class QaList extends StatefulWidget {
@@ -126,7 +126,7 @@ class QaListState extends State<QaList> {
                   return Hoverable(
                     child: ListTile(
                       tileColor: ButtonState.all(selectedList.contains(data)
-                          ? themeData.inactiveBackgroundColor.withOpacity(0.5)
+                          ? AppTheme().color.withOpacity(0.5)
                           : Colors.transparent),
                       title: Text(data.name),
                       subtitle: Text(data.description),

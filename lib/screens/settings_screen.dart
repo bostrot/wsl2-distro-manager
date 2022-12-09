@@ -7,7 +7,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:system_info2/system_info2.dart';
-import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 enum SettingsType { bool, text, size }
 
@@ -343,7 +343,7 @@ class SettingsPageState extends State<SettingsPage> {
                               //divisions: 1,
                               value: size,
                               style: SliderThemeData(
-                                labelBackgroundColor: themeData.disabledColor,
+                                labelBackgroundColor: AppTheme().color,
                               ),
                               onChanged: (value) {
                                 setState(() {

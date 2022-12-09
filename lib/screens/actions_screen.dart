@@ -1,4 +1,3 @@
-import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/delete_dialog_qa.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
@@ -82,11 +81,7 @@ class QuickPageState extends State<QuickPage> {
                     : Container(),
                 // TODO: Better line numbers
                 showInput
-                    ? SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.72,
-                        width: MediaQuery.of(context).size.width * 0.9,
-                        child: TextBox(
-                          controller: contentController,
+                    ? CodeEditor(
                           scrollController: scrollController,
                           style: const TextStyle(
                             fontFamily: 'Consolas',
@@ -309,20 +304,20 @@ class QuickPageState extends State<QuickPage> {
                         TextSpan(
                           text: quickActions[i].name,
                           style: TextStyle(
-                            color: themeData.activeColor,
+                            color: AppTheme().textColor,
                           ),
                         ),
                         TextSpan(
                           text: ' [v$version] ',
                           style: TextStyle(
-                            color: themeData.inactiveBackgroundColor,
+                            color: AppTheme().textColor.withOpacity(0.5),
                           ),
                         ),
                         TextSpan(
                           text: '(by $author)',
                           style: TextStyle(
                             fontSize: 13.0,
-                            color: themeData.accentColor,
+                            color: AppTheme().color,
                           ),
                         ),
                       ]),

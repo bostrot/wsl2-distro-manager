@@ -5,8 +5,8 @@ import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/console.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/sync.dart';
-import 'package:wsl2distromanager/components/theme.dart';
 import 'package:wsl2distromanager/dialogs/sync_dialog.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 String extractPorts(String portRaw) {
   List<String> portsRaw = portRaw.split('\n');
@@ -208,7 +208,7 @@ Column settingsColumn(
               String portsUdp6 = snapshot.data!["portsUdp6"] ?? '';
               return Container(
                 width: MediaQuery.of(context).size.width,
-                color: themeData.activeColor.withOpacity(0.1),
+                color: AppTheme().color.withOpacity(0.1),
                 child: Padding(
                   padding: const EdgeInsets.all(4.0),
                   child: Column(

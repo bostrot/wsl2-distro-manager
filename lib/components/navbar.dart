@@ -32,7 +32,7 @@ bool hasPushed = false;
 class _NavbarState extends State<Navbar> {
   bool customTheme = false;
   int index = 0;
-
+  static bool firstStart = true;
   static bool locked = false;
   // Fix for double click on Navigation Pane
   void lockFor500Ms({required Function onDone}) {
@@ -57,6 +57,15 @@ class _NavbarState extends State<Navbar> {
             (!customTheme ? isDarkMode : (appTheme.mode == ThemeMode.dark))
                 ? Colors.white
                 : Colors.black;
+        if (firstStart) {
+          firstStart = false;
+          // Set theme
+          if ((!customTheme && isDarkMode) || appTheme.mode == ThemeMode.dark) {
+            AppTheme.themeMode = ThemeMode.dark;
+          } else {
+            AppTheme.themeMode = ThemeMode.light;
+          }
+        }
         return FluentApp(
           themeMode: !customTheme ? ThemeMode.system : appTheme.mode,
           debugShowCheckedModeBanner: false,
