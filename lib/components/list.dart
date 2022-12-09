@@ -90,7 +90,10 @@ FutureBuilder<Instances> distroList(WSLApi api,
       }
 
       // By default, show a loading spinner.
-      return const Center(child: ProgressRing());
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20.0),
+        child: Center(child: ProgressRing()),
+      );
     },
   );
 }
