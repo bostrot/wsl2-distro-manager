@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:wsl2distromanager/components/api.dart';
-import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 class Console extends StatefulWidget {
   const Console(
@@ -22,7 +23,9 @@ class _ConsoleState extends State<Console> {
 
   @override
   void initState() {
-    WSLApi().execCmds(widget.item, widget.cmds.split('\n'), onMsg: (msg) {
+    String? user = prefs.getString('StartUser_${widget.item}');
+    WSLApi().execCmds(widget.item, widget.cmds.split('\n'), user: user,
+        onMsg: (msg) {
       try {
         setState(() {
           output += msg;
@@ -45,7 +48,7 @@ class _ConsoleState extends State<Console> {
   @override
   Widget build(BuildContext context) {
     return Container(
-        color: themeData.activeColor.withOpacity(0.1),
+        color: AppTheme().color.withOpacity(0.1),
         height: 100.0,
         width: double.infinity,
         child: SingleChildScrollView(

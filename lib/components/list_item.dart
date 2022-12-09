@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
-import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -119,101 +120,159 @@ class Bar extends StatelessWidget {
               bottomLeft: Radius.circular(5.0),
               bottomRight: Radius.circular(5.0))),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Tooltip(
-            message: 'openwithexplorer-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                icon:
-                    const Icon(FluentIcons.open_folder_horizontal, size: 16.0),
-                onPressed: () {
-                  plausible.event(name: "wsl_explorer");
-                  String? path =
-                      prefs.getString('StartPath_${widget.item}') ?? '';
-                  WSLApi().startExplorer(widget.item, path: path);
-                },
+          Builder(builder: (childcontext) {
+            List<MenuFlyoutItem> actions = [];
+            List<String>? quickSettingsTitles =
+                prefs.getStringList("quickSettingsTitles");
+            List<String>? quickSettingsContents =
+                prefs.getStringList("quickSettingsContents");
+            String? user = prefs.getString('StartUser_${widget.item}');
+            if (quickSettingsContents != null && quickSettingsTitles != null) {
+              for (int i = 0; i < quickSettingsTitles.length; i++) {
+                actions.add(MenuFlyoutItem(
+                  leading: const MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(FluentIcons.play),
+                    ),
+                  ),
+                  onPressed: () async {
+                    WSLApi().execCmds(
+                        widget.item, quickSettingsContents[i].split('\n'),
+                        user: user, onMsg: (msg) {
+                      if (kDebugMode) {
+                        print(msg);
+                      }
+                    }, onDone: () {
+                      if (kDebugMode) {
+                        print('done');
+                      }
+                    });
+                  },
+                  text: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Text(quickSettingsTitles[i])),
+                ));
+              }
+            }
+            return actions.isNotEmpty
+                ? MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: DropDownButton(
+                      buttonStyle: ButtonStyle(
+                          padding: ButtonState.all(const EdgeInsets.only(
+                              left: 15.0,
+                              right: 15.0,
+                              top: 10.0,
+                              bottom: 10.0))),
+                      leading: const Icon(FluentIcons.code),
+                      title: Text('runquickaction-text'.i18n()),
+                      items: actions,
+                    ),
+                  )
+                : const SizedBox();
+          }),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Tooltip(
+                message: 'openwithexplorer-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.open_folder_horizontal,
+                        size: 16.0),
+                    onPressed: () {
+                      plausible.event(name: "wsl_explorer");
+                      String? path =
+                          prefs.getString('StartPath_${widget.item}') ?? '';
+                      WSLApi().startExplorer(widget.item, path: path);
+                    },
+                  ),
+                ),
               ),
-            ),
-          ),
-          Tooltip(
-            message: 'openwithwt-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                icon: const Icon(FluentIcons.power_shell, size: 16.0),
-                onPressed: () {
-                  plausible.event(name: "wsl_wt");
-                  String? path =
-                      prefs.getString('StartPath_${widget.item}') ?? '';
-                  WSLApi().startWindowsTerminal(widget.item, path: path);
-                },
+              Tooltip(
+                message: 'openwithwt-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.power_shell, size: 16.0),
+                    onPressed: () {
+                      plausible.event(name: "wsl_wt");
+                      String? path =
+                          prefs.getString('StartPath_${widget.item}') ?? '';
+                      WSLApi().startWindowsTerminal(widget.item, path: path);
+                    },
+                  ),
+                ),
               ),
-            ),
-          ),
-          Tooltip(
-            message: 'openwithvscode-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                icon: const Icon(FluentIcons.visual_studio_for_windows,
-                    size: 16.0),
-                onPressed: () {
-                  plausible.event(name: "wsl_vscode");
-                  // Get path
-                  String? path =
-                      prefs.getString('StartPath_${widget.item}') ?? '';
-                  WSLApi().startVSCode(widget.item, path: path);
-                },
+              Tooltip(
+                message: 'openwithvscode-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.visual_studio_for_windows,
+                        size: 16.0),
+                    onPressed: () {
+                      plausible.event(name: "wsl_vscode");
+                      // Get path
+                      String? path =
+                          prefs.getString('StartPath_${widget.item}') ?? '';
+                      WSLApi().startVSCode(widget.item, path: path);
+                    },
+                  ),
+                ),
               ),
-            ),
-          ),
-          Tooltip(
-            message: 'copy-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                icon: const Icon(FluentIcons.copy, size: 16.0),
-                onPressed: () {
-                  copyDialog(context, widget.item, widget.statusMsg);
-                },
+              Tooltip(
+                message: 'copy-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.copy, size: 16.0),
+                    onPressed: () {
+                      copyDialog(context, widget.item, widget.statusMsg);
+                    },
+                  ),
+                ),
               ),
-            ),
-          ),
-          Tooltip(
-            message: 'rename-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                icon: const Icon(FluentIcons.rename, size: 16.0),
-                onPressed: () {
-                  renameDialog(context, widget.item, widget.statusMsg);
-                },
+              Tooltip(
+                message: 'rename-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.rename, size: 16.0),
+                    onPressed: () {
+                      renameDialog(context, widget.item, widget.statusMsg);
+                    },
+                  ),
+                ),
               ),
-            ),
-          ),
-          Tooltip(
-            message: 'delete-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                  icon: const Icon(FluentIcons.delete, size: 16.0),
-                  onPressed: () {
-                    deleteDialog(context, widget.item, widget.statusMsg);
-                  }),
-            ),
-          ),
-          Tooltip(
-            message: 'settings-text'.i18n(),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: IconButton(
-                  icon: const Icon(FluentIcons.settings, size: 16.0),
-                  onPressed: () {
-                    settingsDialog(context, widget.item, widget.statusMsg);
-                  }),
-            ),
+              Tooltip(
+                message: 'delete-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                      icon: const Icon(FluentIcons.delete, size: 16.0),
+                      onPressed: () {
+                        deleteDialog(context, widget.item, widget.statusMsg);
+                      }),
+                ),
+              ),
+              Tooltip(
+                message: 'settings-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                      icon: const Icon(FluentIcons.settings, size: 16.0),
+                      onPressed: () {
+                        settingsDialog(context, widget.item, widget.statusMsg);
+                      }),
+                ),
+              ),
+            ],
           ),
         ],
       ),

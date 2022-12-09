@@ -5,7 +5,11 @@ import 'package:flutter_acrylic/flutter_acrylic.dart';
 
 enum NavigationIndicators { sticky, end }
 
+class ThemeModeManager {}
+
 class AppTheme extends ChangeNotifier {
+  static var themeMode = ThemeMode.system;
+
   AccentColor _color = systemAccentColor;
   AccentColor get color => _color;
   set color(AccentColor color) {
@@ -13,10 +17,18 @@ class AppTheme extends ChangeNotifier {
     notifyListeners();
   }
 
+  Color _textColor = systemTextColor;
+  Color get textColor => _textColor;
+  set textColor(Color color) {
+    _textColor = textColor;
+    notifyListeners();
+  }
+
   ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
   set mode(ThemeMode mode) {
     _mode = mode;
+    themeMode = mode;
     notifyListeners();
   }
 
@@ -84,4 +96,8 @@ AccentColor get systemAccentColor {
     });
   }
   return Colors.blue;
+}
+
+Color get systemTextColor {
+  return AppTheme.themeMode == ThemeMode.dark ? Colors.white : Colors.black;
 }

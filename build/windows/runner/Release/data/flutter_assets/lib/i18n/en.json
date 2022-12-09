@@ -120,5 +120,8 @@
     "consoleinfo-text": "Boolean to turn on an output console Window that shows the contents of dmesg upon start of a WSL 2 distro instance. Only available ,for Windows 11.",
     "nestedvirtinfo-text": "Boolean to turn on or off nested virtualization, enabling other nested VMs to run inside WSL 2. Only available for Windows 11.",
     "vmidleinfo-text": "The number of milliseconds that a VM is idle, before it is shut down. Only available for Windows 11.",
-    "documentation-text": "Documentation"
+    "documentation-text": "Documentation",
+    "addcommunityactions-text": "Add Community Actions",
+    "search-text": "Search",
+    "shareyourquickaction-text": "Share your Quick Action"
 }

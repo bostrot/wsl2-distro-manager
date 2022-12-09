@@ -6,10 +6,12 @@ import 'package:wsl2distromanager/components/notify.dart';
 
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/list.dart';
 
 import 'dart:io';
+
+import 'package:wsl2distromanager/theme.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key, required this.title}) : super(key: key);
@@ -59,8 +61,7 @@ class _HomePageState extends State<HomePage> {
       'app_version': currentVersion,
       'app_platform': platform,
       'app_locale': language,
-      'app_theme':
-          'none' // TODO: fix : themeData.brightness.toString().replaceAll('Brightness.', ''),
+      'app_theme': AppTheme.themeMode == ThemeMode.dark ? 'dark' : 'light',
     });
   }
 
@@ -110,6 +111,9 @@ class _HomePageState extends State<HomePage> {
     bool leadingIcon = true,
     Widget widget = const Text(''),
   }) {
+    if (!mounted) {
+      return;
+    }
     if (useWidget) {
       setState(() {
         status = 'WIDGET';

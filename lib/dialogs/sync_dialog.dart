@@ -12,7 +12,6 @@ syncDialog(context, item, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
       item: item,
-      statusMsg: statusMsg,
       title: 'syncfromserver-text'.i18n([distroLabel(item)]),
       body: 'syncwarning-text'.i18n([item]),
       submitText: 'yesoverride-text'.i18n(),

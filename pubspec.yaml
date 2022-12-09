@@ -2,7 +2,7 @@ name: wsl2distromanager
 description: A GUI to quickly manage your WSL instances.
 
 publish_to: 'none'
-version: 1.4.4 # Current version
+version: 1.5.0 # Current version
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
@@ -14,7 +14,7 @@ dependencies:
     sdk: flutter
   localization: ^2.1.0
   desktop_window: ^0.4.0
-  fluent_ui: ^4.0.3+1
+  fluent_ui: ^4.1.0
   system_theme: ^2.0.0
   file_picker: ^5.0.1
   url_launcher: ^6.1.6
@@ -31,11 +31,12 @@ dependencies:
   provider: ^6.0.3
   flutter_acrylic: ^1.0.0+2
   system_info2: ^2.0.4
+  yaml: ^3.1.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  msix: ^3.6.0
+  msix: ^3.7.0
   flutter_lints: ^2.0.1
   flutter_oss_licenses: ^2.0.1
 

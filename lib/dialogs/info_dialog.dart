@@ -48,7 +48,6 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                       dialog(
                         context: context,
                         item: 'dependencies-text'.i18n(),
-                        statusMsg: statusMsg,
                         title: 'dependencies-text'.i18n(),
                         body: "",
                         bodyIsWidget: true,
@@ -70,7 +69,6 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                         dialog(
                             context: context,
                             item: 'allow-text'.i18n(),
-                            statusMsg: statusMsg,
                             title: 'usagedata-text'.i18n(),
                             body: 'usagedatawarning-text'.i18n([privacyStatus]),
                             submitText: 'donotshare-text'.i18n(),
@@ -121,7 +119,6 @@ class DependencyList extends StatelessWidget {
             dialog(
               context: context,
               item: entry.value.name,
-              statusMsg: (msg, {loading = false}) {},
               title: entry.value.name,
               body: entry.value.license ?? 'No License',
               submitInput: false,

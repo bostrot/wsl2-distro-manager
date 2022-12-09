@@ -120,5 +120,9 @@
     "consoleinfo-text": "用于打开输出控制台窗口的布尔值，该窗口在 WSL 2 发行版实例启动时显示 dmesg 的内容。仅适用于 Windows 11。",
     "nestedvirtinfo-text": "用于打开或关闭嵌套虚拟化的布尔值，使其他嵌套虚拟机能够在 WSL 2 中运行。仅适用于 Windows 11。",
     "vmidleinfo-text": "VM 在关闭之前处于空闲状态的毫秒数。仅适用于 Windows 11。",
-    "documentation-text": "文档"
+    "documentation-text": "文档",
+    "addcommunityactions-text": "添加社区快速操作",
+    "done-text": "完成",
+    "search-text": "搜索",
+    "shareyourquickaction-text": "分享你的快速操作"
 }

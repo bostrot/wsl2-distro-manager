@@ -2,12 +2,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:system_info2/system_info2.dart';
-import 'package:wsl2distromanager/components/theme.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 enum SettingsType { bool, text, size }
 
@@ -44,18 +44,17 @@ class SettingsPageState extends State<SettingsPage> {
     if (repoLink != null && repoLink != '') {
       _repoTextController.text = repoLink;
     }
+    if (!mounted) return;
     setState(() {
       _settings = _settings;
     });
   }
 
-  //plausible.event(page: 'create');
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.max,
       children: [
-        // TODO: navbar(widget.themeData, back: true, context: context),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
@@ -343,7 +342,7 @@ class SettingsPageState extends State<SettingsPage> {
                               //divisions: 1,
                               value: size,
                               style: SliderThemeData(
-                                labelBackgroundColor: themeData.disabledColor,
+                                labelBackgroundColor: AppTheme().color,
                               ),
                               onChanged: (value) {
                                 setState(() {

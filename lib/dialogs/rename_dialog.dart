@@ -11,7 +11,6 @@ renameDialog(context, item, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
       item: item,
-      statusMsg: statusMsg,
       title: '${'rename-text'.i18n()} \'${distroLabel(item)}\'',
       body: 'renameinfo-text'.i18n(),
       submitText: 'Rename',

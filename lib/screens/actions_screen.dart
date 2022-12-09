@@ -1,8 +1,11 @@
+import 'package:wsl2distromanager/dialogs/delete_dialog_qa.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
+import 'package:wsl2distromanager/api/quick_actions.dart';
 
 class QuickPage extends StatefulWidget {
   const QuickPage({Key? key}) : super(key: key);
@@ -54,9 +57,7 @@ class QuickPageState extends State<QuickPage> {
       height: double.infinity,
       child: Stack(
         children: [
-          !showInput
-              ? SingleChildScrollView(child: quickSettingsListBuilder())
-              : Container(),
+          !showInput ? communityActionsBtn() : Container(),
           Positioned(
             left: 20.0,
             right: 20.0,
@@ -80,32 +81,11 @@ class QuickPageState extends State<QuickPage> {
                     : Container(),
                 // TODO: Better line numbers
                 showInput
-                    ? SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.72,
-                        width: MediaQuery.of(context).size.width * 0.9,
-                        child: TextBox(
-                          controller: contentController,
-                          scrollController: scrollController,
-                          style: const TextStyle(
-                            fontFamily: 'Consolas',
-                            fontSize: 12.0,
-                          ),
-                          prefix: Padding(
-                            padding: const EdgeInsets.only(left: 8.0, top: 3.0),
-                            child: Text(
-                              lineNumbers,
-                              style: TextStyle(
-                                color: AppTheme().color.normal,
-                                fontFamily: 'Consolas',
-                                fontSize: 12.0,
-                              ),
-                            ),
-                          ),
-                          minLines: lineNum,
-                          maxLines: lineNum,
-                          placeholder: '# ${'yourcodehere-text'.i18n()}',
-                        ),
-                      )
+                    ? CodeEditor(
+                        contentController: contentController,
+                        scrollController: scrollController,
+                        lineNumbers: lineNumbers,
+                        lineNum: lineNum)
                     : Container(),
                 //const SizedBox(height: 10.0),
                 SizedBox(
@@ -118,7 +98,44 @@ class QuickPageState extends State<QuickPage> {
               ],
             ),
           ),
-          //TODO: navbar(widget.themeData, back: true, context: context),
+        ],
+      ),
+    );
+  }
+
+  Padding communityActionsBtn() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Column(
+        children: [
+          !showInput
+              ? Button(
+                  style: ButtonStyle(
+                      padding: ButtonState.all<EdgeInsets>(
+                          const EdgeInsets.only(
+                              top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
+                  onPressed: () {
+                    // Open qa_dialog
+                    communityDialog(
+                        context,
+                        () => setState(
+                              () {},
+                            ));
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(FluentIcons.cloud_download),
+                      const SizedBox(
+                        width: 10.0,
+                      ),
+                      Text('addcommunityactions-text'.i18n()),
+                    ],
+                  ),
+                )
+              : Container(),
+          Flexible(
+              child: SingleChildScrollView(child: quickSettingsListBuilder())),
         ],
       ),
     );
@@ -127,25 +144,8 @@ class QuickPageState extends State<QuickPage> {
   Row bottomButtonRow() {
     return Row(
       mainAxisSize: MainAxisSize.max,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        showInput
-            ? Container()
-            : Button(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/');
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(FluentIcons.chrome_back),
-                    const SizedBox(
-                      width: 10.0,
-                    ),
-                    Text('back-text'.i18n()),
-                  ],
-                ),
-              ),
         Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -247,68 +247,87 @@ class QuickPageState extends State<QuickPage> {
   Builder quickSettingsListBuilder() {
     return Builder(
       builder: (context) {
-        List<String>? quickSettingsTitles =
-            prefs.getStringList('quickSettingsTitles');
-        List<String>? quickSettingsContents =
-            prefs.getStringList('quickSettingsContents');
-        if (quickSettingsTitles != null && quickSettingsContents != null) {
-          quickSettings = [];
-          for (int i = 0; i < quickSettingsTitles.length; i++) {
-            if (opened[i] == null) {
-              opened[i] = false;
-            }
-            quickSettings.add(Padding(
-              padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
-              child: Column(
-                children: [
-                  Expander(
-                      initiallyExpanded: false,
-                      header: Text(quickSettingsTitles[i]),
-                      // subtitle: Text(quickSettingsContents[i]),
-                      trailing: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(FluentIcons.edit),
-                            onPressed: () {
-                              setState(() {
-                                showInput = true;
-                                nameController.text = quickSettingsTitles[i];
-                                contentController.text =
-                                    quickSettingsContents[i];
-                              });
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(FluentIcons.delete),
-                            onPressed: () {
-                              quickSettings.removeAt(i);
-                              quickSettingsTitles.removeAt(i);
-                              quickSettingsContents.removeAt(i);
-                              prefs.setStringList(
-                                  'quickSettingsTitles', quickSettingsTitles);
-                              prefs.setStringList('quickSettingsContents',
-                                  quickSettingsContents);
-                              setState(() {
-                                quickSettings = quickSettings;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      content: Opacity(
-                        opacity: 0.7,
-                        child: SizedBox(
-                            width: MediaQuery.of(context).size.width,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 20.0, right: 20.0, bottom: 4.0),
-                              child: Text(quickSettingsContents[i]),
-                            )),
-                      )),
-                ],
-              ),
-            ));
+        List<QuickActionItem> quickActions = QuickAction().getFromPrefs();
+        quickSettings = [];
+        for (int i = 0; i < quickActions.length; i++) {
+          if (opened[i] == null) {
+            opened[i] = false;
           }
+          final version = quickActions[i].version.isNotEmpty
+              ? quickActions[i].version
+              : '0.0.0';
+          final author = quickActions[i].author.isNotEmpty
+              ? quickActions[i].author
+              : 'you';
+          quickSettings.add(Padding(
+            padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
+            child: Column(
+              children: [
+                Expander(
+                    initiallyExpanded: false,
+                    header: RichText(
+                      text: TextSpan(children: [
+                        TextSpan(
+                          text: quickActions[i].name,
+                          style: TextStyle(
+                            color: AppTheme().textColor,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' [v$version] ',
+                          style: TextStyle(
+                            color: AppTheme().textColor.withOpacity(0.5),
+                          ),
+                        ),
+                        TextSpan(
+                          text: '(by $author)',
+                          style: TextStyle(
+                            fontSize: 13.0,
+                            color: AppTheme().color,
+                          ),
+                        ),
+                      ]),
+                    ),
+                    trailing: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(FluentIcons.edit),
+                          onPressed: () {
+                            setState(() {
+                              showInput = true;
+                              nameController.text = quickActions[i].name;
+                              contentController.text = quickActions[i].content;
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(FluentIcons.delete),
+                          onPressed: () {
+                            // Open remove dialog
+                            deleteQaDialog(context, quickActions[i],
+                                () => setState(() {}));
+                          },
+                        ),
+                      ],
+                    ),
+                    content: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: SingleChildScrollView(
+                        child: Opacity(
+                          opacity: 0.7,
+                          child: SizedBox(
+                              width: MediaQuery.of(context).size.width,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 20.0, right: 20.0, bottom: 4.0),
+                                child: SelectableText(quickActions[i].content),
+                              )),
+                        ),
+                      ),
+                    )),
+              ],
+            ),
+          ));
         }
         if (quickSettings.isNotEmpty) {
           return Column(children: quickSettings);
@@ -322,6 +341,51 @@ class QuickPageState extends State<QuickPage> {
           );
         }
       },
+    );
+  }
+}
+
+class CodeEditor extends StatelessWidget {
+  const CodeEditor({
+    Key? key,
+    required this.contentController,
+    required this.scrollController,
+    required this.lineNumbers,
+    required this.lineNum,
+  }) : super(key: key);
+
+  final TextEditingController contentController;
+  final ScrollController scrollController;
+  final String lineNumbers;
+  final int lineNum;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.72,
+      width: MediaQuery.of(context).size.width * 0.9,
+      child: TextBox(
+        controller: contentController,
+        scrollController: scrollController,
+        style: const TextStyle(
+          fontFamily: 'Consolas',
+          fontSize: 12.0,
+        ),
+        prefix: Padding(
+          padding: const EdgeInsets.only(left: 8.0, top: 3.0),
+          child: Text(
+            lineNumbers,
+            style: TextStyle(
+              color: AppTheme().color.normal,
+              fontFamily: 'Consolas',
+              fontSize: 12.0,
+            ),
+          ),
+        ),
+        minLines: lineNum,
+        maxLines: lineNum,
+        placeholder: '# ${'yourcodehere-text'.i18n()}',
+      ),
     );
   }
 }

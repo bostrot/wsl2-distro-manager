@@ -1,6 +1,6 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-import 'package:wsl2distromanager/components/api.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -17,7 +17,6 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
   dialog(
       context: context,
       item: item,
-      statusMsg: statusMsg,
       title: '${'copy-text'.i18n()} \'$item\'',
       body: 'copyinstance-text'.i18n([distroLabel(item)]),
       submitText: 'copy-text'.i18n(),

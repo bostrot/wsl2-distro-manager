@@ -1,6 +1,6 @@
 const String title = 'WSL Distro Manager by Bostrot';
 
-const String currentVersion = "1.4.4";
+const String currentVersion = "1.5.0";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros\\';
@@ -16,6 +16,11 @@ const String defaultRepoLink =
 
 const String gitRepoLink =
     'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/images.json';
+
+String gitApiScriptsLink =
+    'https://api.github.com/repos/bostrot/wsl-scripts/contents/scripts';
+String repoScripts =
+    'https://raw.githubusercontent.com/bostrot/wsl-scripts/main/scripts/';
 
 String explorerPath = '\\\\wsl.localhost';
 
