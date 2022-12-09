@@ -5,6 +5,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/hoverable.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 /// Community Quick Actions List
@@ -48,10 +49,10 @@ class QaListState extends State<QaList> {
         QuickAction.addToPrefs(item);
       }
     } catch (err) {
-      // Do nothing
       if (kDebugMode) {
         print(err);
       }
+      Notify.message('errordownloading-text'.i18n());
     }
   }
 
