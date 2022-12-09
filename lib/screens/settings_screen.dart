@@ -44,18 +44,17 @@ class SettingsPageState extends State<SettingsPage> {
     if (repoLink != null && repoLink != '') {
       _repoTextController.text = repoLink;
     }
+    if (!mounted) return;
     setState(() {
       _settings = _settings;
     });
   }
 
-  //plausible.event(page: 'create');
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.max,
       children: [
-        // TODO: navbar(widget.themeData, back: true, context: context),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),

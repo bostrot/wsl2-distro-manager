@@ -111,6 +111,9 @@ class _HomePageState extends State<HomePage> {
     bool leadingIcon = true,
     Widget widget = const Text(''),
   }) {
+    if (!mounted) {
+      return;
+    }
     if (useWidget) {
       setState(() {
         status = 'WIDGET';
