@@ -7,8 +7,15 @@ jobs:
   publish:
     runs-on: windows-latest
     steps:
+      - name: Get version
+        id: get_version
+        run: |
+          $VERSION="$("$github.event.release.name" -replace '^.*v').0"
+          "APP_VER=$VERSION" >> $env:GITHUB_OUTPUT
+        shell: pwsh
       - uses: vedantmgoyal2009/winget-releaser@v1
         with:
           identifier: Bostrot.WSLManager
-          installers-regex: '\.msix$' # Only .exe files
+          version: ${{ steps.get_version.outputs.APP_VER }}
+          installers-regex: "wsl2distromanager.msix$"
           token: ${{ secrets.WINGET_TOKEN }}
