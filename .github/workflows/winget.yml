@@ -14,8 +14,8 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          $VERSION="${{ github.event.release.name }}" -replace '^.*v'
-          "APP_VER=${{ version || inputs.version }}.0" >> $env:GITHUB_OUTPUT
+          $VERSION="${{ github.event.release.name || inputs.version }}" -replace '^.*v'
+          "APP_VER=$VERSION.0" >> $env:GITHUB_OUTPUT
           echo VERSION:$VERSION
           echo APP_VER:$APP_VER
         shell: pwsh
