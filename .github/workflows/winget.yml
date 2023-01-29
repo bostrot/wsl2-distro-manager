@@ -12,9 +12,17 @@ jobs:
   publish:
     runs-on: windows-latest
     steps:
+      - name: Get version
+        id: get-version
+        run: |
+          echo 1: ${{ inputs.ref_name }}
+          echo 2: ${{ github.event.release.tag_name }}
+          echo 3: ${{ github.ref_name }}
+          echo 4: ${{ github.event.release.tag_name || inputs.ref_name || github.ref_name }}
+        shell: pwsh
       - uses: vedantmgoyal2009/winget-releaser@v1
         with:
           identifier: Bostrot.WSLManager
-          version: ${{ (github.event.release.tag_name || inputs.ref_name) || github.ref_name }}
+          version: ${{ github.event.release.tag_name || inputs.ref_name || github.ref_name }}
           installers-regex: '\.msix$' # Only .exe files
           token: ${{ secrets.WINGET_TOKEN }}
