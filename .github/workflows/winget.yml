@@ -3,6 +3,11 @@ on:
   release:
     types: [released]
   workflow_dispatch:
+    inputs:
+      ref_name:
+        description: "Reference (branch or tag) to use"
+        default: $(git describe --tags $(git rev-list --tags --max-count=1))
+
 jobs:
   publish:
     runs-on: windows-latest
