@@ -15,6 +15,6 @@ jobs:
       - uses: vedantmgoyal2009/winget-releaser@v1
         with:
           identifier: Bostrot.WSLManager
-          version: ${{ github.event.release.tag_name || github.ref_name }}.0
+          version: ${{ (github.event.release.tag_name || inputs.ref_name) || github.ref_name }}
           installers-regex: '\.msix$' # Only .exe files
           token: ${{ secrets.WINGET_TOKEN }}
