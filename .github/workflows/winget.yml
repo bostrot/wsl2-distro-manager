@@ -10,7 +10,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          $VERSION="$("$github.event.release.name" -replace '^.*v').0"
+          $VERSION="$("${github.event.release.name}" -replace '^.*v').0"
           "APP_VER=$VERSION" >> $env:GITHUB_OUTPUT
         shell: pwsh
       - uses: vedantmgoyal2009/winget-releaser@v1
