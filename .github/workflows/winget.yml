@@ -2,6 +2,10 @@ name: Publish to WinGet
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. v1.5.0)'  
 
 jobs:
   publish:
@@ -10,12 +14,14 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          $VERSION="$("${github.event.release.name}" -replace '^.*v').0"
-          "APP_VER=$VERSION" >> $env:GITHUB_OUTPUT
+          $VERSION="${{ github.event.release.name }}" -replace '^.*v'
+          "APP_VER=${{ version || inputs.version }}.0" >> $env:GITHUB_OUTPUT
+          echo VERSION:$VERSION
+          echo APP_VER:$APP_VER
         shell: pwsh
       - uses: vedantmgoyal2009/winget-releaser@v1
         with:
           identifier: Bostrot.WSLManager
           version: ${{ steps.get_version.outputs.APP_VER }}
-          installers-regex: "wsl2distromanager.msix$"
+          installers-regex: '.(msi|msix|appx)(bundle){0,1}$'
           token: ${{ secrets.WINGET_TOKEN }}
