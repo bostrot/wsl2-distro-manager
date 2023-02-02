@@ -112,123 +112,7 @@ class _NavbarState extends State<Navbar> {
             Locale('zh', ''), // Chinese, no country code
           ],
           builder: (context, child) {
-            return Directionality(
-              textDirection: appTheme.textDirection,
-              child: NavigationPaneTheme(
-                data: NavigationPaneThemeData(
-                  backgroundColor: appTheme.windowEffect !=
-                          flutter_acrylic.WindowEffect.disabled
-                      ? Colors.transparent
-                      : null,
-                ),
-                child: NavigationView(
-                  pane: NavigationPane(
-                      displayMode: PaneDisplayMode.auto,
-                      selected: () {
-                        // Default to first item as we are using popups for the rest
-                        return index;
-                      }(),
-                      onChanged: (value) {
-                        // Check if popup of page
-                        if (value != 0 || value != 2 || value != 3) {
-                          // In case we are out of index
-                          try {
-                            setState(() {
-                              index = value;
-                            });
-                          } catch (e) {
-                            // Ignore
-                          }
-                        }
-                      },
-                      items: [
-                        PaneItem(
-                          icon: const Icon(FluentIcons.home),
-                          title: Text('homepage-text'.i18n(),
-                              style: TextStyle(color: textColor)),
-                          body: widget.child,
-                        ),
-                        PaneItemAction(
-                          icon: const Icon(FluentIcons.info),
-                          title: Text('about-text'.i18n(),
-                              style: TextStyle(color: textColor)),
-                          onTap: () {
-                            lockFor500Ms(onDone: () {
-                              infoDialog(context, prefs, Notify.message,
-                                  currentVersion);
-                            });
-                          },
-                        ),
-                        PaneItem(
-                          icon: const Icon(FluentIcons.settings),
-                          title: Text('settings-text'.i18n(),
-                              style: TextStyle(color: textColor)),
-                          body: const SettingsPage(),
-                        ),
-                        PaneItem(
-                          icon: const Icon(FluentIcons.settings_add),
-                          title: Text('managequickactions-text'.i18n(),
-                              style: TextStyle(color: textColor)),
-                          body: const QuickPage(),
-                        ),
-                        PaneItemAction(
-                          icon: const Icon(FluentIcons.add),
-                          title: Text('addinstance-text'.i18n(),
-                              style: TextStyle(color: textColor)),
-                          onTap: () {
-                            lockFor500Ms(onDone: () {
-                              createDialog(
-                                  context, () => mounted, Notify.message);
-                            });
-                          },
-                        ),
-                        // Help button
-                        PaneItemAction(
-                          icon: const Icon(FluentIcons.help),
-                          title: Text('documentation-text'.i18n(),
-                              style: TextStyle(color: textColor)),
-                          onTap: () {
-                            lockFor500Ms(onDone: () {
-                              launchUrlString(
-                                  'https://github.com/bostrot/wsl2-distro-manager/wiki');
-                            });
-                          },
-                        ),
-                      ]),
-                  appBar: NavigationAppBar(
-                    automaticallyImplyLeading: false,
-                    title: () {
-                      return DragToMoveArea(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 20.0),
-                            child: Text(widget.title),
-                          ),
-                        ),
-                      );
-                    }(),
-                    actions: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          ToggleSwitch(
-                            content: const Text('Dark Mode'),
-                            checked: FluentTheme.of(context).brightness.isDark,
-                            onChanged: (v) {
-                              customTheme = true;
-                              if (v) {
-                                appTheme.mode = ThemeMode.dark;
-                              } else {
-                                appTheme.mode = ThemeMode.light;
-                              }
-                            },
-                          ),
-                          const WindowButtons(),
-                        ]),
-                  ),
-                ),
-              ),
-            );
+            return navWidget(appTheme, textColor, context);
           },
           initialRoute: '/',
           routes: {
@@ -236,6 +120,126 @@ class _NavbarState extends State<Navbar> {
           },
         );
       },
+    );
+  }
+
+  Directionality navWidget(
+      AppTheme appTheme, Color textColor, BuildContext context) {
+    return Directionality(
+      textDirection: appTheme.textDirection,
+      child: NavigationPaneTheme(
+        data: NavigationPaneThemeData(
+          backgroundColor:
+              appTheme.windowEffect != flutter_acrylic.WindowEffect.disabled
+                  ? Colors.transparent
+                  : null,
+        ),
+        child: NavigationView(
+          pane: NavigationPane(
+              displayMode: PaneDisplayMode.auto,
+              selected: () {
+                // Default to first item as we are using popups for the rest
+                return index;
+              }(),
+              onChanged: (value) {
+                // Check if popup of page
+                if (value != 0 || value != 2 || value != 3) {
+                  // In case we are out of index
+                  try {
+                    setState(() {
+                      index = value;
+                    });
+                  } catch (e) {
+                    // Ignore
+                  }
+                }
+              },
+              items: [
+                PaneItem(
+                  icon: const Icon(FluentIcons.home),
+                  title: Text('homepage-text'.i18n(),
+                      style: TextStyle(color: textColor)),
+                  body: widget.child,
+                ),
+                PaneItemAction(
+                  icon: const Icon(FluentIcons.info),
+                  title: Text('about-text'.i18n(),
+                      style: TextStyle(color: textColor)),
+                  onTap: () {
+                    lockFor500Ms(onDone: () {
+                      infoDialog(
+                          context, prefs, Notify.message, currentVersion);
+                    });
+                  },
+                ),
+                PaneItem(
+                  icon: const Icon(FluentIcons.settings),
+                  title: Text('settings-text'.i18n(),
+                      style: TextStyle(color: textColor)),
+                  body: const SettingsPage(),
+                ),
+                PaneItem(
+                  icon: const Icon(FluentIcons.settings_add),
+                  title: Text('managequickactions-text'.i18n(),
+                      style: TextStyle(color: textColor)),
+                  body: const QuickPage(),
+                ),
+                PaneItemAction(
+                  icon: const Icon(FluentIcons.add),
+                  title: Text('addinstance-text'.i18n(),
+                      style: TextStyle(color: textColor)),
+                  onTap: () {
+                    lockFor500Ms(onDone: () {
+                      createDialog(context, () => mounted, Notify.message);
+                    });
+                  },
+                ),
+                // Help button
+                PaneItemAction(
+                  icon: const Icon(FluentIcons.help),
+                  title: Text('documentation-text'.i18n(),
+                      style: TextStyle(color: textColor)),
+                  onTap: () {
+                    lockFor500Ms(onDone: () {
+                      launchUrlString(
+                          'https://github.com/bostrot/wsl2-distro-manager/wiki');
+                    });
+                  },
+                ),
+              ]),
+          appBar: NavigationAppBar(
+            automaticallyImplyLeading: false,
+            title: () {
+              return DragToMoveArea(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 20.0),
+                    child: Text(widget.title),
+                  ),
+                ),
+              );
+            }(),
+            actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              ToggleSwitch(
+                content: const Text('Dark Mode'),
+                checked: FluentTheme.of(context).brightness.isDark,
+                onChanged: (v) {
+                  // Notify settings page to save unsaved changes
+
+                  customTheme = true;
+                  if (v) {
+                    appTheme.mode = ThemeMode.dark;
+                  } else {
+                    appTheme.mode = ThemeMode.light;
+                  }
+                },
+              ),
+              const WindowButtons(),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
