@@ -14,8 +14,8 @@ dependencies:
     sdk: flutter
   localization: ^2.1.0
   desktop_window: ^0.4.0
-  fluent_ui: ^4.1.0
-  system_theme: ^2.0.0
+  fluent_ui: ^4.2.0
+  system_theme: ^2.1.0
   file_picker: ^5.0.1
   url_launcher: ^6.1.6
   dio: ^4.0.6
@@ -24,13 +24,10 @@ dependencies:
   shared_preferences: ^2.0.15
   shelf_static: ^1.1.1
   shelf: ^1.4.0
-  window_manager:
-    git:
-      url: https://github.com/leanflutter/window_manager.git
-      ref: v0.2.7
+  window_manager: ^0.3.0
   provider: ^6.0.3
   flutter_acrylic: ^1.0.0+2
-  system_info2: ^2.0.4
+  system_info2: ^3.0.1
   yaml: ^3.1.1
 
 dev_dependencies:
