@@ -47,6 +47,6 @@ git add -f build/windows/runner/Release/data
 # git add -f build/windows/runner/Release/vcruntime140_1.dll
 # git add -f build/windows/runner/Release/vcruntime140.dll
 
-git commit -m "Update version number to $version"
+git commit -s -m "Update version number to $version"
 
 git push --no-verify

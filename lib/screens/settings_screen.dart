@@ -24,11 +24,21 @@ class SettingsPageState extends State<SettingsPage> {
 
   final TextEditingController _syncIpTextController = TextEditingController();
   final TextEditingController _repoTextController = TextEditingController();
+  BuildContext? currentContext;
 
   @override
   void initState() {
     super.initState();
     readData();
+  }
+
+  @override
+  void dispose() {
+    // Save settings
+    if (currentContext != null) {
+      saveSettings(currentContext!, dispose: true);
+    }
+    super.dispose();
   }
 
   void readData() async {
@@ -52,6 +62,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    currentContext = context;
     return Column(
       mainAxisSize: MainAxisSize.max,
       children: [
@@ -107,37 +118,7 @@ class SettingsPageState extends State<SettingsPage> {
                               top: 10.0,
                               bottom: 10.0))),
                       onPressed: () {
-                        plausible.event(name: "global_settings_saved");
-                        // Sync target ip setting _syncIpTextController
-                        if (_syncIpTextController.text.isNotEmpty) {
-                          prefs.setString("SyncIP", _syncIpTextController.text);
-                        }
-
-                        // Save repo link
-                        if (_repoTextController.text.isNotEmpty) {
-                          prefs.setString("RepoLink", _repoTextController.text);
-                        } else {
-                          prefs.setString("RepoLink", defaultRepoLink);
-                        }
-
-                        // Distro location setting
-                        if (_settings['Default Distro Location']!
-                            .text
-                            .isNotEmpty) {
-                          prefs.setString("SaveLocation",
-                              _settings['Default Distro Location']!.text);
-                        }
-                        String config = '';
-                        _settings.forEach((key, value) {
-                          if (key != 'Default Distro Location' &&
-                              value.text.isNotEmpty) {
-                            config += '$key=${value.text}\n';
-                          }
-                        });
-                        WSLApi().writeConfig(config);
-                        hasPushed = false;
-
-                        Navigator.popAndPushNamed(context, '/');
+                        saveSettings(context);
                       },
                       child: Text('save-text'.i18n())),
                 ],
@@ -147,6 +128,39 @@ class SettingsPageState extends State<SettingsPage> {
         ),
       ],
     );
+  }
+
+  void saveSettings(BuildContext context, {bool dispose = false}) {
+    plausible.event(name: "global_settings_saved");
+    // Sync target ip setting _syncIpTextController
+    if (_syncIpTextController.text.isNotEmpty) {
+      prefs.setString("SyncIP", _syncIpTextController.text);
+    }
+
+    // Save repo link
+    if (_repoTextController.text.isNotEmpty) {
+      prefs.setString("RepoLink", _repoTextController.text);
+    } else {
+      prefs.setString("RepoLink", defaultRepoLink);
+    }
+
+    // Distro location setting
+    if (_settings['Default Distro Location']!.text.isNotEmpty) {
+      prefs.setString(
+          "SaveLocation", _settings['Default Distro Location']!.text);
+    }
+    String config = '';
+    _settings.forEach((key, value) {
+      if (key != 'Default Distro Location' && value.text.isNotEmpty) {
+        config += '$key=${value.text}\n';
+      }
+    });
+    WSLApi().writeConfig(config);
+    hasPushed = false;
+
+    if (!dispose) {
+      Navigator.popAndPushNamed(context, '/');
+    }
   }
 
   Widget settingsList(BuildContext context) {
