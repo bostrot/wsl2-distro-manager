@@ -1,4 +1,4 @@
-name: Checks
+name: SonarQube Check
 on:
   push:
     branches:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Sonar Check
+    name: SonarQube Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
