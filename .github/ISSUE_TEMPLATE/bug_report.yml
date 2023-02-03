@@ -41,7 +41,7 @@ body:
       examples:
         - **Windows Version**: Windows 11 Pro Insider Preview Build 22471
         - **WSL Distro Manager Version**: v1.5.0
-        - **WSL Version**: v1.0.0.0 [wsl --status]
+        - **WSL Version**: v1.0.0.0 [wsl --version]
         - **Source**: GitHub releases, GitHub master, Windows Store
     value: |
         - Windows Version:
