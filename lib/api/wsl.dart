@@ -431,6 +431,48 @@ class WSLApi {
     return processes;
   }
 
+  /// Executes a command list in a WSL distro and open a terminal
+  /// @param distribution: String
+  /// @param cmd: List<String>
+  /// @return Future<List<int>>
+  Future<Process> runCmds(
+    String distribution,
+    List<String> cmds, {
+    String? user,
+  }) async {
+    // Write commands to /tmp/cmds
+    Process fileProcess = await Process.start(
+        'wsl', ['-d', distribution, '-u', user ?? 'root'],
+        mode: ProcessStartMode.normal, runInShell: true);
+
+    fileProcess.stdin.writeln('echo "#!/bin/bash" > /tmp/wdmcmds');
+    for (var cmd in cmds) {
+      cmd = cmd.replaceAll('"', '\\"');
+      fileProcess.stdin.writeln('echo "$cmd" >> /tmp/wdmcmds');
+    }
+    var waitCmd = 'read -n1 -r -p \\"\n\nDone running the action. '
+        'Press any key to exit...\\" key';
+    fileProcess.stdin.writeln('echo "$waitCmd" >> /tmp/wdmcmds');
+
+    // Wait for commands to be written
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Execute commands in /tmp/cmds
+    List<String> args = [
+      '-d',
+      distribution,
+      '-u',
+      user ?? 'root',
+      '/bin/bash',
+      '/tmp/wdmcmds'
+    ];
+
+    Process results = await Process.start('wsl', args,
+        runInShell: true, mode: ProcessStartMode.detached);
+
+    return results;
+  }
+
   /// Executes a command in a WSL distro and returns the output
   /// @param distribution: String
   /// @param cmd: String
