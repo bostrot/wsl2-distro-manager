@@ -297,10 +297,10 @@ packages:
     dependency: transitive
     description:
       name: macos_window_utils
-      sha256: ece6315199f84931d7e32869aa3d8d4d2a82e6f4416ed292f9cf9345b0105feb
+      sha256: "0ff6c40c67e2dd93f696b2333dfc04f830a8c4b93edabc841bd1d87e3ac48935"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.2"
+    version: "1.0.1"
   matcher:
     dependency: transitive
     description:
@@ -758,10 +758,10 @@ packages:
     dependency: transitive
     description:
       name: xml
-      sha256: "979ee37d622dec6365e2efa4d906c37470995871fe9ae080d967e192d88286b5"
+      sha256: ac0e3f4bf00ba2708c33fbabbbe766300e509f8c82dbd4ab6525039813f7e2fb
       url: "https://pub.dev"
     source: hosted
-    version: "6.2.2"
+    version: "6.1.0"
   yaml:
     dependency: "direct main"
     description:
@@ -772,4 +772,4 @@ packages:
     version: "3.1.1"
 sdks:
   dart: ">=2.18.5 <3.0.0"
-  flutter: ">=3.7.0"
+  flutter: ">=3.0.0"
