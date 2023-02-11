@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import '../components/constants.dart';
 import '../components/helpers.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class Instances {
   List<String> running = [];
@@ -375,6 +377,7 @@ class WSLApi {
     String? user,
     required Function(String) onMsg,
     required Function onDone,
+    bool showOutput = true,
   }) async {
     List<int> processes = [];
     Process result = await Process.start(
@@ -416,7 +419,7 @@ class WSLApi {
           '-f',
           '/tmp/currentsessionlog'
         ],
-        mode: ProcessStartMode.detached,
+        mode: showOutput ? ProcessStartMode.detached : ProcessStartMode.normal,
         runInShell: true);
 
     // Delay to allow tail to start
@@ -655,5 +658,25 @@ class WSLApi {
       i++;
     }
     return utf8.decode(utf8Lines);
+  }
+
+  /// Change setting in wsl.conf with key and value
+  /// @param key: String
+  /// @param value: String
+  /// @return Future<boolean>
+  Future<bool> setSetting(
+      String distro, String parent, String key, String value) async {
+    // Read trigger script from assets
+    String script = await rootBundle.loadString('assets/scripts/settings.bash');
+    script = script.replaceAll(RegExp(r'^#.*\n', multiLine: true), '');
+    script = script.replaceAll('PARENT', parent);
+    script = script.replaceAll('KEY', key);
+    script = script.replaceAll('VALUE', value);
+    List<String> scriptLines = script.split('\n');
+
+    // Execute trigger script
+    await execCmds(distro, scriptLines,
+        onMsg: (msg) {}, onDone: () {}, showOutput: false);
+    return true;
   }
 }
