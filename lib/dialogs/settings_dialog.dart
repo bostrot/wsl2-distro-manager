@@ -132,58 +132,9 @@ Column settingsColumn(
       const SizedBox(
         height: 8.0,
       ),
-      SizedBox(
-        width: MediaQuery.of(context).size.width,
-        child: Builder(builder: (childcontext) {
-          List<MenuFlyoutItem> actions = [];
-          List<String>? quickSettingsTitles =
-              prefs.getStringList("quickSettingsTitles");
-          List<String>? quickSettingsContents =
-              prefs.getStringList("quickSettingsContents");
-          if (quickSettingsContents != null && quickSettingsTitles != null) {
-            for (int i = 0; i < quickSettingsTitles.length; i++) {
-              actions.add(MenuFlyoutItem(
-                leading: const MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Icon(FluentIcons.play),
-                  ),
-                ),
-                onPressed: () async {
-                  plausible.event(page: 'use_action');
-                  setState(() {
-                    cmds = '';
-                  });
-                  await Future.delayed(const Duration(milliseconds: 500));
-                  // Add new
-                  setState(() {
-                    cmds = quickSettingsContents[i];
-                  });
-                },
-                text: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Text(quickSettingsTitles[i])),
-              ));
-            }
-          }
-          return actions.isNotEmpty
-              ? MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: DropDownButton(
-                    buttonStyle: ButtonStyle(
-                        padding: ButtonState.all(const EdgeInsets.only(
-                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                    leading: const Icon(FluentIcons.code),
-                    title: Text('runquickaction-text'.i18n()),
-                    items: actions,
-                  ),
-                )
-              : const SizedBox();
-        }),
-      ),
+      wslSettings(item, setState),
       const SizedBox(
-        height: 12.0,
+        height: 8.0,
       ),
       cmds.isNotEmpty
           ? Padding(
@@ -290,5 +241,117 @@ Column settingsColumn(
             )
           : Container(),
     ],
+  );
+}
+
+// ToggleSwitch for enabling systemd
+Widget wslSettings(item, Function setState) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('wslsettings-text'.i18n()),
+      const SizedBox(
+        height: 8.0,
+      ),
+      Expander(
+        header: Text('boot-text'.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, "boot", "systemd"),
+            settingText(item, setState, "boot", "command"),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8.0),
+      Expander(
+        header: Text('automount-text'.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, "automount", "enabled"),
+            settingSwitch(item, setState, "automount", "mountFsTab"),
+            settingText(item, setState, "automount", "root"),
+            settingText(item, setState, "automount", "options"),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8.0),
+      Expander(
+        header: Text('network-text'.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, "network", "generateHosts"),
+            settingSwitch(item, setState, "network", "generateResolvConf"),
+            settingText(item, setState, "network", "hostname"),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8.0),
+      Expander(
+        header: Text('interop-text'.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, "interop", "enabled"),
+            settingSwitch(item, setState, "interop", "appendWindowsPath"),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+Widget settingSwitch(item, Function setState, String parent, String setting) {
+  final name = setting.uppercaseFirst();
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Row(
+      children: [
+        ToggleSwitch(
+          checked: prefs.getBool('$item-$setting') ?? false,
+          onChanged: (value) {
+            prefs.setBool('$item-$setting', value);
+            setState(() {});
+            // Execute command in WSL
+            WSLApi().setSetting(item, parent, setting, value.toString());
+          },
+        ),
+        const SizedBox(
+          width: 8.0,
+        ),
+        Text(name),
+      ],
+    ),
+  );
+}
+
+Widget settingText(item, Function setState, String parent, String setting) {
+  final name = setting.uppercaseFirst();
+  final controller =
+      TextEditingController(text: prefs.getString('$item-$setting') ?? "");
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("$name:"),
+        const SizedBox(
+          width: 8.0,
+        ),
+        SizedBox(
+          width: 300.0,
+          child: TextBox(
+            controller: controller,
+            onChanged: (value) {
+              prefs.setString('$item-$setting', value);
+              // Execute command in WSL
+              WSLApi().setSetting(item, parent, setting, value);
+            },
+          ),
+        ),
+      ],
+    ),
   );
 }
