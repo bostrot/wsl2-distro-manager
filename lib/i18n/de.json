@@ -124,5 +124,10 @@
     "addcommunityactions-text": "Community Actions hinzufügen",
     "done-text": "Fertig",
     "search-text": "Suche",
-    "shareyourquickaction-text": "Teilen Sie Ihre Schnellaktionen"
+    "shareyourquickaction-text": "Teilen Sie Ihre Schnellaktionen",
+    "wslsettings-text": "WSL-Einstellungen",
+    "boot-text": "Boot",
+    "automount-text": "Automount",
+    "network-text": "Netzwerk",
+    "interop-text": "Interop"
 }
