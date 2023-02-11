@@ -41,6 +41,7 @@ flutter:
   uses-material-design: true
   assets:
     - lib/i18n/
+    - assets/scripts/settings.bash
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
