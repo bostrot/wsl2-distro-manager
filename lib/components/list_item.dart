@@ -123,6 +123,7 @@ class Bar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Builder(builder: (childcontext) {
+            // Quick actions
             List<MenuFlyoutItem> actions = [];
             List<String>? quickSettingsTitles =
                 prefs.getStringList("quickSettingsTitles");
@@ -140,17 +141,9 @@ class Bar extends StatelessWidget {
                     ),
                   ),
                   onPressed: () async {
-                    WSLApi().execCmds(
+                    WSLApi().runCmds(
                         widget.item, quickSettingsContents[i].split('\n'),
-                        user: user, onMsg: (msg) {
-                      if (kDebugMode) {
-                        print(msg);
-                      }
-                    }, onDone: () {
-                      if (kDebugMode) {
-                        print('done');
-                      }
-                    });
+                        user: user);
                   },
                   text: MouseRegion(
                       cursor: SystemMouseCursors.click,
