@@ -124,5 +124,10 @@
     "addcommunityactions-text": "添加社区快速操作",
     "done-text": "完成",
     "search-text": "搜索",
-    "shareyourquickaction-text": "分享你的快速操作"
+    "shareyourquickaction-text": "分享你的快速操作",
+    "wslsettings-text": "WSL 设置",
+    "boot-text": "启动",
+    "automount-text": "自动挂载",
+    "network-text": "网络",
+    "interop-text": "互操作性"
 }
