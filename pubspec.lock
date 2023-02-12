@@ -5,10 +5,10 @@ packages:
     dependency: "direct main"
     description:
       name: archive
-      sha256: ed7cc591a948744994714375caf9a2ce89e1d82e8243997c8a2994d57181c212
+      sha256: d6347d54a2d8028e0437e3c099f66fdb8ae02c4720c1e7534c9f24c10351f85d
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.5"
+    version: "3.3.6"
   args:
     dependency: transitive
     description:
@@ -44,9 +44,10 @@ packages:
   chunked_downloader:
     dependency: "direct main"
     description:
-      path: "../chunked_downloader"
-      relative: true
-    source: path
+      name: chunked_downloader
+      sha256: "7fe3a37a0c7fb1d41f3f922c30937fdccae2647b6f6f71778bffcf4823048754"
+      url: "https://pub.dev"
+    source: hosted
     version: "0.0.2"
   cli_util:
     dependency: transitive
