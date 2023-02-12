@@ -630,6 +630,8 @@ class WSLApi {
     return results;
   }
 
+  var lastDistroList = Instances([], []);
+
   /// Returns list of WSL distros
   /// @return Future<Instances>
   Future<Instances> list(bool showDocker) async {
@@ -643,6 +645,9 @@ class WSLApi {
       wslInstalled = false;
     }
     if (wslInstalled) {
+      if (output.contains('ERROR_FILE_NOT_FOUND')) {
+        return lastDistroList;
+      }
       output.split('\n').forEach((line) {
         var dockerfilter = showDocker
             ? true
@@ -654,6 +659,7 @@ class WSLApi {
         }
       });
       List<String> running = await listRunning();
+      lastDistroList = Instances(list, running);
       return Instances(list, running);
     } else {
       return Instances(['wslNotInstalled'], []);
