@@ -4,13 +4,10 @@
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
-import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/notify.dart';
 
 class Manifests {
   List<Manifest> manifests = [];
@@ -154,29 +151,14 @@ class DockerImage {
   /// @result {bool} success
   Future<bool> _downloadBlob(String image, String token, String digest,
       String file, ProgressCallback progressCallback) async {
-    // Create directory if not exists
-    if (Directory(file).parent.existsSync() == false) {
-      Directory(file).parent.createSync(recursive: true);
-    }
-    bool done = false;
-    ChunkedDownloader(
-      url: '$registryUrl/v2/$image/blobs/$digest',
-      saveFilePath: file,
-      headers: {'Authorization': 'Bearer $token'},
-      onProgress: (int count, int total, double speed) {
-        progressCallback(count, total);
-      },
-      onDone: ((file) {
-        progressCallback(1, 1);
-        done = true;
-      }),
-      onError: (error) {
-        Notify.message('${'errordownloading-text'.i18n()} $image');
-        throw Exception('Download failed');
-      },
-    ).start();
-    while (!done) {
-      await Future.delayed(const Duration(milliseconds: 500));
+    Response<dynamic> response = await Dio().download(
+        '$registryUrl/v2/$image/blobs/$digest', file,
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+        }),
+        onReceiveProgress: ((count, total) => progressCallback(count, total)));
+    if (response.statusCode != 200) {
+      throw Exception('Download failed');
     }
     return true;
   }
