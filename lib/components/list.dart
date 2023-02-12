@@ -21,6 +21,7 @@ class DistroList extends StatefulWidget {
 class DistroListState extends State<DistroList> {
   Map<String, bool> hover = {};
   bool isSyncing = false;
+  bool showDocker = false;
 
   void syncing(var item) {
     if (mounted) {
@@ -33,6 +34,8 @@ class DistroListState extends State<DistroList> {
   @override
   void initState() {
     initPrefs();
+    // Get shared prefs for showing docker containers
+    showDocker = prefs.getBool('showDocker') ?? false;
     reloadEvery5Seconds();
     super.initState();
   }
@@ -49,15 +52,18 @@ class DistroListState extends State<DistroList> {
 
   @override
   Widget build(BuildContext context) {
-    return distroList(widget.api, widget.statusMsg, hover);
+    return distroList(widget.api, widget.statusMsg, hover, showDocker);
   }
 }
 
-FutureBuilder<Instances> distroList(WSLApi api,
-    Function(String, {bool loading}) statusMsg, Map<String, bool> hover) {
+FutureBuilder<Instances> distroList(
+    WSLApi api,
+    Function(String, {bool loading}) statusMsg,
+    Map<String, bool> hover,
+    bool showDocker) {
   // List as FutureBuilder with WSLApi
   return FutureBuilder<Instances>(
-    future: api.list(),
+    future: api.list(showDocker),
     builder: (context, snapshot) {
       // Update every 20 seconds
       if (snapshot.hasData) {
