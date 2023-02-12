@@ -272,6 +272,8 @@ class CreateWidget extends StatefulWidget {
 class _CreateWidgetState extends State<CreateWidget> {
   bool turnkey = false;
   bool docker = false;
+  FocusNode node = FocusNode();
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -323,6 +325,10 @@ class _CreateWidgetState extends State<CreateWidget> {
                     list.add(AutoSuggestBoxItem(
                       value: snapshot.data![i],
                       label: snapshot.data![i],
+                      child: TextFieldTapRegion(
+                        onTapInside: (event) => node.requestFocus(),
+                        child: Text(snapshot.data![i]),
+                      ),
                     ));
                   }
                 } else if (snapshot.hasError) {}
