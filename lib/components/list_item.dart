@@ -150,12 +150,6 @@ class Bar extends StatelessWidget {
                 ? MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: DropDownButton(
-                      buttonStyle: ButtonStyle(
-                          padding: ButtonState.all(const EdgeInsets.only(
-                              left: 15.0,
-                              right: 15.0,
-                              top: 10.0,
-                              bottom: 10.0))),
                       leading: const Icon(FluentIcons.code),
                       title: Text('runquickaction-text'.i18n()),
                       items: actions,

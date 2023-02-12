@@ -621,7 +621,7 @@ class WSLApi {
         await dio.download(url, '$downloadPath.tmp',
             onReceiveProgress: (int count, int total) {
           status('${'downloading-text'.i18n()}'
-              '${(count / total * 100).toStringAsFixed(0)}%');
+              ' ${(count / total * 100).toStringAsFixed(0)}%');
         });
         File file = File('$downloadPath.tmp');
         file.rename(downloadPath);

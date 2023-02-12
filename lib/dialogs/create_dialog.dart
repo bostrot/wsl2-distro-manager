@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:localization/localization.dart';
@@ -10,6 +11,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 /// Rename Dialog
 /// @param context: context
@@ -169,8 +171,6 @@ Future<void> createInstance(
       }
     }
 
-    Navigator.of(context, rootNavigator: true).pop();
-
     // Create instance
     result = await api.create(
         name, distroName, location, (String msg) => Notify.message(msg),
@@ -327,7 +327,12 @@ class _CreateWidgetState extends State<CreateWidget> {
                       label: snapshot.data![i],
                       child: TextFieldTapRegion(
                         onTapInside: (event) => node.requestFocus(),
-                        child: Text(snapshot.data![i]),
+                        child: SizedBox(
+                            width: double.infinity,
+                            height: 20.0,
+                            child: Text(
+                              snapshot.data![i],
+                            )),
                       ),
                     ));
                   }
