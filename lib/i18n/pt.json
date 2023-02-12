@@ -130,6 +130,7 @@
     "automount-text": "Automount",
     "network-text": "Rede",
     "interop-text": "Interop",
-    "showdockershort-text": "Mostrar Docker", 
-    "showdockerlong-text": "Mostrar distribuições do Docker"
+    "showdockershort-text": "Mostrar Docker",
+    "showdockerlong-text": "Mostrar distribuições do Docker",
+    "sponsor-text": "Patrocine este projeto"
 }
