@@ -15,17 +15,20 @@ const String defaultRepoLink =
     'http://ftp.halifax.rwth-aachen.de/turnkeylinux/images/proxmox/';
 
 const String gitRepoLink =
-    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/images.json';
+    'https://rawcdn.githack.com/bostrot/wsl2-distro-manager/main/images.json';
 
 String gitApiScriptsLink =
     'https://api.github.com/repos/bostrot/wsl-scripts/contents/scripts';
+
 String repoScripts =
-    'https://raw.githubusercontent.com/bostrot/wsl-scripts/main/scripts/';
+    'https://rawcdn.githack.com/bostrot/wsl-scripts/main/scripts/';
 
 String explorerPath = '\\\\wsl.localhost';
 
 // https://docs.microsoft.com/en-us/windows/wsl/install-on-server
 Map<String, String> distroRootfsLinks = {
+  'Ubuntu 22.04':
+      'https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-root.tar.xz',
   'Ubuntu 21.04':
       'https://cloud-images.ubuntu.com/releases/hirsute/release/ubuntu-21.04-server-cloudimg-amd64-wsl.rootfs.tar.gz',
   'Ubuntu 20.04':

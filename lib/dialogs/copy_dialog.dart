@@ -29,9 +29,12 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           // Only allow A-Z, a-z, 0-9, and _ in distro names
           inputText = inputText.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
           String results;
+
           // Check if old distro has path
           String? oldDistroPath = prefs.getString('Path_$item');
           if (oldDistroPath != null && oldDistroPath.isNotEmpty) {
+            // Stop distro
+            await api.stop(item);
             // Copy vhd
             results = await api.copyVhd('$oldDistroPath\\ext4.vhdx', inputText,
                 location: path);
@@ -41,18 +44,20 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           }
 
           // Error catching
-          if (results != ' ') {
+          if (results.contains('Error')) {
             statusMsg(results, loading: false);
+            return;
           }
           // Copy settings
           String? startPath = prefs.getString('StartPath_$item') ?? '';
           String? startName = prefs.getString('StartUser_$item') ?? '';
-          prefs.setString('DistroName_$item', inputText);
+          prefs.setString('DistroName_$inputText', inputText);
           prefs.setString('StartPath_$inputText', startPath);
           prefs.setString('StartUser_$inputText', startName);
           // Save distro path
-          prefs.setString('Path_$inputText', defaultPath + inputText);
-          statusMsg('donecopyinginstance-text'.i18n([item, inputText]),
+          prefs.setString('Path_$inputText', '$path\\$inputText');
+          statusMsg(
+              'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
               loading: false);
         } else {
           statusMsg('errorentername-text'.i18n(), loading: false);

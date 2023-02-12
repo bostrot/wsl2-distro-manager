@@ -130,5 +130,6 @@
     "network-text": "Network",
     "interop-text": "Interop",
     "showdockershort-text": "Show Docker",
-    "showdockerlong-text": "Show Docker distributions"
+    "showdockerlong-text": "Show Docker distributions",
+    "sponsor-text": "Sponsor this project"
 }
