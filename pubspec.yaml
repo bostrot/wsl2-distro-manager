@@ -14,7 +14,7 @@ dependencies:
     sdk: flutter
   localization: ^2.1.0
   desktop_window: ^0.4.0
-  fluent_ui: ^4.2.0
+  fluent_ui: ^4.3.0
   system_theme: ^2.1.0
   file_picker: ^5.0.1
   url_launcher: ^6.1.6
