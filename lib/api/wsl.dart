@@ -210,6 +210,38 @@ class WSLApi {
     file.writeAsStringSync('[wsl2]\n\n$text');
   }
 
+  /// Set wslconfig setting
+  /// @param parent: String
+  /// @param key: String
+  /// @param value: String
+  void setConfig(String parent, String key, String value) async {
+    File file =
+        File('C:\\Users\\${Platform.environment['USERNAME']}\\.wslconfig');
+    if (!file.existsSync()) {
+      file.createSync();
+    }
+    String text = file.readAsStringSync();
+
+    // Check if parent exists
+    if (text.contains('[$parent]')) {
+      // Check if key exists with regeex
+      RegExp regex = RegExp('$key[ ]*=');
+      if (regex.hasMatch(text)) {
+        // Replace key value
+        text = text.replaceAll(RegExp('$key[ ]*=(.*)'), '$key = $value');
+      } else {
+        // Add key value
+        text = text.replaceAll('[$parent]', '[$parent]\n$key = $value');
+      }
+    } else {
+      // Add parent and key value
+      text += '\n[$parent]\n$key = $value';
+    }
+
+    // Write to file
+    file.writeAsStringSync(text);
+  }
+
   /// Read wslconfig file
   /// @return Future<Map<String, String>>
   Future<Map<String, String>> readConfig() async {
@@ -431,6 +463,48 @@ class WSLApi {
     return processes;
   }
 
+  /// Executes a command list in a WSL distro and open a terminal
+  /// @param distribution: String
+  /// @param cmd: List<String>
+  /// @return Future<List<int>>
+  Future<Process> runCmds(
+    String distribution,
+    List<String> cmds, {
+    String? user,
+  }) async {
+    // Write commands to /tmp/cmds
+    Process fileProcess = await Process.start(
+        'wsl', ['-d', distribution, '-u', user ?? 'root'],
+        mode: ProcessStartMode.normal, runInShell: true);
+
+    fileProcess.stdin.writeln('echo "#!/bin/bash" > /tmp/wdmcmds');
+    for (var cmd in cmds) {
+      cmd = cmd.replaceAll('"', '\\"');
+      fileProcess.stdin.writeln('echo "$cmd" >> /tmp/wdmcmds');
+    }
+    var waitCmd = 'read -n1 -r -p \\"\n\nDone running the action. '
+        'Press any key to exit...\\" key';
+    fileProcess.stdin.writeln('echo "$waitCmd" >> /tmp/wdmcmds');
+
+    // Wait for commands to be written
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Execute commands in /tmp/cmds
+    List<String> args = [
+      '-d',
+      distribution,
+      '-u',
+      user ?? 'root',
+      '/bin/bash',
+      '/tmp/wdmcmds'
+    ];
+
+    Process results = await Process.start('wsl', args,
+        runInShell: true, mode: ProcessStartMode.detached);
+
+    return results;
+  }
+
   /// Executes a command in a WSL distro and returns the output
   /// @param distribution: String
   /// @param cmd: String
@@ -558,7 +632,7 @@ class WSLApi {
 
   /// Returns list of WSL distros
   /// @return Future<Instances>
-  Future<Instances> list() async {
+  Future<Instances> list(bool showDocker) async {
     ProcessResult results =
         await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
@@ -570,10 +644,12 @@ class WSLApi {
     }
     if (wslInstalled) {
       output.split('\n').forEach((line) {
+        var dockerfilter = showDocker
+            ? true
+            : (!line.startsWith('docker-desktop-data') &&
+                !line.startsWith('docker-desktop'));
         // Filter out docker data
-        if (line != '' &&
-            !line.startsWith('docker-desktop-data') &&
-            !line.startsWith('docker-desktop')) {
+        if (line != '' && dockerfilter) {
           list.add(line);
         }
       });

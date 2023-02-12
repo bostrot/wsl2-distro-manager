@@ -24,6 +24,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   final TextEditingController _syncIpTextController = TextEditingController();
   final TextEditingController _repoTextController = TextEditingController();
+  bool showDocker = false;
   BuildContext? currentContext;
 
   @override
@@ -54,6 +55,7 @@ class SettingsPageState extends State<SettingsPage> {
     if (repoLink != null && repoLink != '') {
       _repoTextController.text = repoLink;
     }
+    showDocker = prefs.getBool('showDocker') ?? false;
     if (!mounted) return;
     setState(() {
       _settings = _settings;
@@ -149,13 +151,11 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString(
           "SaveLocation", _settings['Default Distro Location']!.text);
     }
-    String config = '';
     _settings.forEach((key, value) {
       if (key != 'Default Distro Location' && value.text.isNotEmpty) {
-        config += '$key=${value.text}\n';
+        WSLApi().setConfig('wsl2', key, value.text);
       }
     });
-    WSLApi().writeConfig(config);
     hasPushed = false;
 
     if (!dispose) {
@@ -184,6 +184,37 @@ class SettingsPageState extends State<SettingsPage> {
               },
             ),
             placeholder: prefs.getString("SaveLocation") ?? defaultPath),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Expander(
+              header: Text('showdockershort-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              content: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+                child: Row(
+                  children: [
+                    Tooltip(
+                        message: 'showdockershort-text'.i18n(),
+                        child: ToggleSwitch(
+                          checked: showDocker,
+                          onChanged: (value) {
+                            setState(() {
+                              showDocker = value;
+                              prefs.setBool('showDocker', value);
+                            });
+                          },
+                        )),
+                    const SizedBox(
+                      width: 10.0,
+                    ),
+                    Text('showdockerlong-text'.i18n()),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ]),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
