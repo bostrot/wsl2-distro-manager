@@ -1,30 +1,16 @@
 {
-  "Ubuntu 22.04":
-      "https://cloud-images.ubuntu.com/releases/22.04/release-20220923/ubuntu-22.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
-  "Ubuntu 21.04":
-      "https://cloud-images.ubuntu.com/releases/hirsute/release/ubuntu-21.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
-  "Ubuntu 20.04":
-      "https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
-  "Ubuntu 19.04":
-      "https://cloud-images.ubuntu.com/releases/disco/release/ubuntu-19.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
-  "Ubuntu 18.04":
-      "https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
-  "Ubuntu 16.04":
-      "https://cloud-images.ubuntu.com/releases/xenial/release/ubuntu-16.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
-  "Alpine":
-      "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz",
-  "Debian":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/debian_rootfs_x64.tar.gz",
-  "Kali Linux":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/kalilinux_rootfs_x64.tar.gz",
-  "OpenSUSE":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/opensuse_rootfs_x64.tar.gz",
-  "SLES 12":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles12_rootfs_x64.tar.gz",
-  "SLES 15":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles15_rootfs_x64.tar.gz",
-  "Fedora 37":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v1.4.0/fedora-37-x86_64.tar",
-  "Fedora 36":
-      "https://github.com/bostrot/wsl2-distro-manager/releases/download/v1.4.0/fedora-36-x86_64.tar"
+    "Ubuntu 22.04": "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-root.tar.xz",
+    "Ubuntu 21.04": "https://cloud-images.ubuntu.com/releases/hirsute/release/ubuntu-21.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
+    "Ubuntu 20.04": "https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
+    "Ubuntu 19.04": "https://cloud-images.ubuntu.com/releases/disco/release/ubuntu-19.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
+    "Ubuntu 18.04": "https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
+    "Ubuntu 16.04": "https://cloud-images.ubuntu.com/releases/xenial/release/ubuntu-16.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
+    "Alpine": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz",
+    "Debian": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/debian_rootfs_x64.tar.gz",
+    "Kali Linux": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/kalilinux_rootfs_x64.tar.gz",
+    "OpenSUSE": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/opensuse_rootfs_x64.tar.gz",
+    "SLES 12": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles12_rootfs_x64.tar.gz",
+    "SLES 15": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles15_rootfs_x64.tar.gz",
+    "Fedora 37": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v1.4.0/fedora-37-x86_64.tar",
+    "Fedora 36": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v1.4.0/fedora-36-x86_64.tar"
 }

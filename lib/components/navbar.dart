@@ -112,7 +112,7 @@ class _NavbarState extends State<Navbar> {
             Locale('zh', ''), // Chinese, no country code
           ],
           builder: (context, child) {
-            return navWidget(appTheme, textColor, context);
+            return navWidget(appTheme, textColor, context, isDarkMode);
           },
           initialRoute: '/',
           routes: {
@@ -123,8 +123,8 @@ class _NavbarState extends State<Navbar> {
     );
   }
 
-  Directionality navWidget(
-      AppTheme appTheme, Color textColor, BuildContext context) {
+  Directionality navWidget(AppTheme appTheme, Color textColor,
+      BuildContext context, bool isDarkMode) {
     return Directionality(
       textDirection: appTheme.textDirection,
       child: NavigationPaneTheme(
@@ -203,6 +203,23 @@ class _NavbarState extends State<Navbar> {
                     lockFor500Ms(onDone: () {
                       launchUrlString(
                           'https://github.com/bostrot/wsl2-distro-manager/wiki');
+                    });
+                  },
+                ),
+                // Sponsor button
+                PaneItemAction(
+                  icon: appTheme.mode == ThemeMode.dark
+                      ? const Icon(FluentIcons.heart)
+                      : const Icon(FluentIcons.heart_fill),
+                  title: Text('sponsor-text'.i18n(),
+                      // Dark mode color red otherwise white
+                      style: TextStyle(
+                          color: appTheme.mode == ThemeMode.dark
+                              ? textColor
+                              : Colors.red)),
+                  onTap: () {
+                    lockFor500Ms(onDone: () {
+                      launchUrlString('https://github.com/sponsors/bostrot');
                     });
                   },
                 ),
