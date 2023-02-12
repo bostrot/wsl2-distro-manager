@@ -43,7 +43,6 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           // Error catching
           if (results != ' ') {
             statusMsg(results, loading: false);
-            return;
           }
           // Copy settings
           String? startPath = prefs.getString('StartPath_$item') ?? '';
@@ -53,8 +52,7 @@ copyDialog(context, item, Function(String, {bool loading}) statusMsg) {
           prefs.setString('StartUser_$inputText', startName);
           // Save distro path
           prefs.setString('Path_$inputText', defaultPath + inputText);
-          statusMsg(
-              'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
+          statusMsg('donecopyinginstance-text'.i18n([item, inputText]),
               loading: false);
         } else {
           statusMsg('errorentername-text'.i18n(), loading: false);
