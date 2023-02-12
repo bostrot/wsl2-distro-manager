@@ -166,8 +166,7 @@ class _NavbarState extends State<Navbar> {
                       style: TextStyle(color: textColor)),
                   onTap: () {
                     lockFor500Ms(onDone: () {
-                      infoDialog(
-                          context, prefs, Notify.message, currentVersion);
+                      infoDialog(context, prefs, currentVersion);
                     });
                   },
                 ),
@@ -189,7 +188,7 @@ class _NavbarState extends State<Navbar> {
                       style: TextStyle(color: textColor)),
                   onTap: () {
                     lockFor500Ms(onDone: () {
-                      createDialog(context, () => mounted, Notify.message);
+                      createDialog(context, () => mounted);
                     });
                   },
                 ),

@@ -131,7 +131,6 @@ Future<void> createInstance(
         image: isDockerImage);
 
     // Check if docker image
-    bool isDockerImage = false;
     if (distroName.startsWith('dockerhub:')) {
       isDockerImage = true;
       // Remove prefix
@@ -173,7 +172,7 @@ Future<void> createInstance(
     Navigator.of(context, rootNavigator: true).pop();
 
     // Create instance
-    ProcessResult result = await api.create(
+    result = await api.create(
         name, distroName, location, (String msg) => Notify.message(msg),
         image: isDockerImage);
 
@@ -408,11 +407,11 @@ class _CreateWidgetState extends State<CreateWidget> {
                 );
               }),
         ),
-        ClickableUrl(
-          clickEvent: 'docker_wiki_clicked',
-          url: wikiDocker,
-          text: 'usedistrofromdockerhub-text'.i18n(),
-        ),
+        // ClickableUrl(
+        //   clickEvent: 'docker_wiki_clicked',
+        //   url: wikiDocker,
+        //   text: 'usedistrofromdockerhub-text'.i18n(),
+        // ),
         Container(
           height: 10.0,
         ),
