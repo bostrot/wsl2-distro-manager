@@ -210,6 +210,38 @@ class WSLApi {
     file.writeAsStringSync('[wsl2]\n\n$text');
   }
 
+  /// Set wslconfig setting
+  /// @param parent: String
+  /// @param key: String
+  /// @param value: String
+  void setConfig(String parent, String key, String value) async {
+    File file =
+        File('C:\\Users\\${Platform.environment['USERNAME']}\\.wslconfig');
+    if (!file.existsSync()) {
+      file.createSync();
+    }
+    String text = file.readAsStringSync();
+
+    // Check if parent exists
+    if (text.contains('[$parent]')) {
+      // Check if key exists with regeex
+      RegExp regex = RegExp('$key[ ]*=');
+      if (regex.hasMatch(text)) {
+        // Replace key value
+        text = text.replaceAll(RegExp('$key[ ]*=(.*)'), '$key = $value');
+      } else {
+        // Add key value
+        text = text.replaceAll('[$parent]', '[$parent]\n$key = $value');
+      }
+    } else {
+      // Add parent and key value
+      text += '\n[$parent]\n$key = $value';
+    }
+
+    // Write to file
+    file.writeAsStringSync(text);
+  }
+
   /// Read wslconfig file
   /// @return Future<Map<String, String>>
   Future<Map<String, String>> readConfig() async {

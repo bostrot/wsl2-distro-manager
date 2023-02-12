@@ -151,13 +151,11 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString(
           "SaveLocation", _settings['Default Distro Location']!.text);
     }
-    String config = '';
     _settings.forEach((key, value) {
       if (key != 'Default Distro Location' && value.text.isNotEmpty) {
-        config += '$key=${value.text}\n';
+        WSLApi().setConfig('wsl2', key, value.text);
       }
     });
-    WSLApi().writeConfig(config);
     hasPushed = false;
 
     if (!dispose) {
