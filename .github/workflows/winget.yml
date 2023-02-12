@@ -19,7 +19,7 @@ jobs:
           echo VERSION:$VERSION
           echo APP_VER:$APP_VER
         shell: pwsh
-      - uses: vedantmgoyal2009/winget-releaser@v1
+      - uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: Bostrot.WSLManager
           version: ${{ steps.get_version.outputs.APP_VER }}
