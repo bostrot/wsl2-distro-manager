@@ -353,10 +353,23 @@ class WSLApi {
     // Try to create directory
     mkRootDir(path: location);
 
-    // Copy
-    String importRes =
-        await import(newName, location + newName, vhdPath, isVhd: true);
+    // Copy path to new location
+    File file = File(vhdPath);
+    if (file.existsSync()) {
+      file.copySync('$vhdPath.copy.vhdx');
+    } else {
+      return 'File not found';
+    }
 
+    String importRes = await import(
+        newName, location + newName, '$vhdPath.copy.vhdx',
+        isVhd: true);
+
+    // Cleanup, delete file
+    File file2 = File('$vhdPath.copy.vhdx');
+    if (file2.existsSync()) {
+      file2.deleteSync();
+    }
     return importRes;
   }
 
