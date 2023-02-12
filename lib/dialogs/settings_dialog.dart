@@ -39,7 +39,7 @@ settingsDialog(context, item) {
   pathController.text = prefs.getString('StartPath_$item') ?? '';
   final userController = TextEditingController();
   userController.text = prefs.getString('StartUser_$item') ?? '';
-  plausible.event(page: title.split(' ')[0].toLowerCase());
+  plausible.event(page: 'settings_dialog');
   bool isSyncing = false;
 
   showDialog(

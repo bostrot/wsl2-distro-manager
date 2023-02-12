@@ -18,7 +18,7 @@ dialog({
   Function? onCancel,
 }) {
   final controller = TextEditingController();
-  plausible.event(page: title.split(' ')[0].toLowerCase());
+  plausible.event(page: 'base_dialog');
   showDialog(
     context: context,
     builder: (context) {
