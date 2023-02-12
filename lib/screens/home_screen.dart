@@ -166,7 +166,6 @@ class _HomePageState extends State<HomePage> {
       children: <Widget>[
         DistroList(
           api: api,
-          statusMsg: statusMsg,
         ),
         SizedBox(
           height: status != '' ? 80.0 : 0.0,

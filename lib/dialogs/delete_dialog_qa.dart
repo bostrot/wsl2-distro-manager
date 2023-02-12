@@ -7,7 +7,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// QuickActions Delete Dialog
 /// @param context: context
 /// @param {QuickActionItem} item: QuickActionItem
-/// @param {Function(String, {bool loading})} statusMsg: status message
 deleteQaDialog(context, QuickActionItem item, Function callback) {
   plausible.event(page: 'delete_qa');
   dialog(

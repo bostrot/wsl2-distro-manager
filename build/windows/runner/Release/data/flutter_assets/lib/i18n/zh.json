@@ -129,5 +129,10 @@
     "boot-text": "启动",
     "automount-text": "自动挂载",
     "network-text": "网络",
-    "interop-text": "互操作性"
+    "interop-text": "互操作性",
+    "showdockershort-text": "显示 Docker",
+    "showdockerlong-text": "显示 Docker 发行版",
+    "sponsor-text": "赞助",
+    "usedistrofromdockerhub-text": "使用 Docker Hub 中的发行版 (例如: dockerhub:ubuntu:latest)",
+    "noresultsfound-text": "没有找到结果"
 }

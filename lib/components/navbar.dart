@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
@@ -167,8 +166,7 @@ class _NavbarState extends State<Navbar> {
                       style: TextStyle(color: textColor)),
                   onTap: () {
                     lockFor500Ms(onDone: () {
-                      infoDialog(
-                          context, prefs, Notify.message, currentVersion);
+                      infoDialog(context, prefs, currentVersion);
                     });
                   },
                 ),
@@ -190,7 +188,7 @@ class _NavbarState extends State<Navbar> {
                       style: TextStyle(color: textColor)),
                   onTap: () {
                     lockFor500Ms(onDone: () {
-                      createDialog(context, () => mounted, Notify.message);
+                      createDialog(context, () => mounted);
                     });
                   },
                 ),

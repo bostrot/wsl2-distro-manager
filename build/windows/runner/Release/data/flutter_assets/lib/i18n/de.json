@@ -129,5 +129,10 @@
     "boot-text": "Boot",
     "automount-text": "Automount",
     "network-text": "Netzwerk",
-    "interop-text": "Interop"
+    "interop-text": "Interop",
+    "showdockershort-text": "Docker anzeigen",
+    "showdockerlong-text": "Docker Distributionen anzeigen",
+    "sponsor-text": "Projekt unterstützen",
+    "usedistrofromdockerhub-text": "Tipp: Sie können ein Image von DockerHub verwenden (z.B. dockerhub:ubuntu:latest)",
+    "noresultsfound-text": "Keine Ergebnisse gefunden"
 }

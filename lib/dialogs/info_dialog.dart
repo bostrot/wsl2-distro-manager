@@ -2,14 +2,13 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/oss_licenses.dart';
 import 'base_dialog.dart';
 
 /// Rename Dialog
 /// @param context: context
-/// @param statusMsg: Function(String, {bool loading})
-infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
-    currentVersion) {
+infoDialog(context, prefs, currentVersion) {
   plausible.event(page: 'info');
 
   showDialog(
@@ -84,7 +83,7 @@ infoDialog(context, prefs, Function(String, {bool loading}) statusMsg,
                               plausible.event(name: "privacy_on");
                               prefs.setBool('privacyMode', true);
                               plausible.enabled = false;
-                              statusMsg('privacymodeenabled-text'.i18n());
+                              Notify.message('privacymodeenabled-text'.i18n());
                             });
                       },
                       text: 'privacy-text'.i18n()),

@@ -130,7 +130,9 @@
     "automount-text": "Automount",
     "network-text": "Rede",
     "interop-text": "Interop",
+    "sponsor-text": "Patrocine este projeto",
     "showdockershort-text": "Mostrar Docker",
     "showdockerlong-text": "Mostrar distribuições do Docker",
-    "sponsor-text": "Patrocine este projeto"
+    "usedistrofromdockerhub-text": "Use uma distribuição do Docker Hub (exemplo: dockerhub:ubuntu:latest)",
+    "noresultsfound-text": "Nenhum resultado encontrado"
 }
