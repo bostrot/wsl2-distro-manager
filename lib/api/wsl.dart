@@ -600,7 +600,7 @@ class WSLApi {
 
   /// Returns list of WSL distros
   /// @return Future<Instances>
-  Future<Instances> list() async {
+  Future<Instances> list(bool showDocker) async {
     ProcessResult results =
         await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
@@ -612,10 +612,12 @@ class WSLApi {
     }
     if (wslInstalled) {
       output.split('\n').forEach((line) {
+        var dockerfilter = showDocker
+            ? true
+            : (!line.startsWith('docker-desktop-data') &&
+                !line.startsWith('docker-desktop'));
         // Filter out docker data
-        if (line != '' &&
-            !line.startsWith('docker-desktop-data') &&
-            !line.startsWith('docker-desktop')) {
+        if (line != '' && dockerfilter) {
           list.add(line);
         }
       });

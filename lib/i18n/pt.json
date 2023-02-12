@@ -129,5 +129,7 @@
     "boot-text": "Boot",
     "automount-text": "Automount",
     "network-text": "Rede",
-    "interop-text": "Interop"
+    "interop-text": "Interop",
+    "showdockershort-text": "Mostrar Docker", 
+    "showdockerlong-text": "Mostrar distribuições do Docker"
 }
