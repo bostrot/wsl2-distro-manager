@@ -30,6 +30,10 @@ as a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-
 
 `winget install Bostrot.WSLManager` (outdated version)
 
+\- or -
+
+`choco install wsl2-distro-manager` (maintained by [@mikeee](https://github.com/mikeee/ChocoPackages))
+
 ## Build
 
 Enable Flutter Desktop `flutter config --enable-windows-desktop` (https://flutter.dev/desktop)
