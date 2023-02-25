@@ -1,0 +1,54 @@
+$pattern = "version: (.*?) \#"
+$string = Get-Content pubspec.yaml
+$wsl2_manager_version = [regex]::match($string, $pattern).Groups[1].Value
+Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v$wsl2_manager_version.zip
+Write-Output 'gh release create v$wsl2_manager_version ./build/windows/runner/Release/wsl2-distro-manager-v$wsl2_manager_version.zip --notes "This is an automated release."'
+
+name: Releaser
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      # get version from pubspec.yaml
+      - name: Get version
+        id: get_version
+        run: |
+          $pattern = "version: (.*?) \#"
+          $string = Get-Content pubspec.yaml
+          $wsl2_manager_version = [regex]::match($string, $pattern).Groups[1].Value
+          Write-Output "::set-output name=version::$wsl2_manager_version"
+      # check if release already exists
+      - uses: cardinalby/git-get-release-action@v1
+        name: Check if release exists
+        id: check_release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          with:
+          tag: v${{ steps.get_version.outputs.version }}
+      # if check_release step fails build
+      - uses: subosito/flutter-action@v2
+        if: ${{ steps.check_release.outcome == 'failure' }}
+        with:
+          channel: 'stable'
+      - run: flutter config --enable-windows-desktop
+        if: ${{ steps.check_release.outcome == 'failure' }}
+      - run: flutter build windows
+        if: ${{ steps.check_release.outcome == 'failure' }}
+      # create release
+      - name: Create release
+        if: ${{ steps.check_release.outcome == 'failure' }}
+        run: |
+          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
+          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip
+          Write-Output 'gh release create v${{ steps.get_version.outputs.version }} ./build/windows/runner/Release/wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip  --generate-notes --notes "This is an automated release."'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      
