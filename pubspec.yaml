@@ -5,20 +5,20 @@ publish_to: 'none'
 version: 1.6.0 # Current version
 
 environment:
-  sdk: ">=2.12.0 <3.0.0"
+  sdk: '>=2.12.0 <3.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations: 
+  flutter_localizations:
     sdk: flutter
   localization: ^2.1.0
   desktop_window: ^0.4.0
-  fluent_ui: ^4.3.0
+  fluent_ui: ^4.4.1
   system_theme: ^2.1.0
   file_picker: ^5.0.1
   url_launcher: ^6.1.6
-  dio: ^4.0.6
+  dio: ^5.0.3
   package_info_plus: ^3.0.2
   plausible_analytics: ^0.2.1
   shared_preferences: ^2.0.15
@@ -46,6 +46,3 @@ flutter:
   assets:
     - lib/i18n/
     - assets/scripts/settings.bash
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
