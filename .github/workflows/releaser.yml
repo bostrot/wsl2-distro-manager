@@ -19,57 +19,61 @@ jobs:
           $string = Get-Content pubspec.yaml
           $wsl2_manager_version = [regex]::match($string, $pattern).Groups[1].Value
           # Make web REST call to check if release already exists
-          $result = $(Invoke-RestMethod -Uri https://api.github.com/repos/bostrot/wsl2-distro-manager/releases/tags/v$wsl2_manager_version)
+          Try {
+            $result = $(Invoke-RestMethod -Uri https://api.github.com/repos/bostrot/wsl2-distro-manager/releases/tags/v$wsl2_manager_version)
+          } Catch {
+            $result = $false
+          }
           if ($result) {
             Write-Output "Release v$wsl2_manager_version already exists."
-            Write-Output "::set-output name=outcome::failure"
+            echo "::set-output name=exists::true"
           } else {
-            Write-Output "::set-output name=outcome::success"
+            echo "::set-output name=exists::false"
           }
           Write-Output "::set-output name=version::$wsl2_manager_version"
       # if get_version step does not fail just build nightly
       - uses: subosito/flutter-action@v2
-        if: ${{ steps.get_version.outcome == 'success' }}
+        if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
           channel: 'stable'
       - run: flutter config --enable-windows-desktop
-        if: ${{ steps.get_version.outcome == 'success' }}
+        if: ${{ steps.get_version.outputs.exists == 'true' }}
       - run: flutter build windows
-        if: ${{ steps.get_version.outcome == 'success' }}
+        if: ${{ steps.get_version.outputs.exists == 'true' }}
       # create zip from dlls and Release folder
       - name: Create zip
-        if: ${{ steps.get_version.outcome == 'success' }}
+        if: ${{ steps.get_version.outputs.exists == 'true' }}
         run: |
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
           Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
       # create nightly release
       - uses: actions/upload-artifact@v3
         name: Create nightly release
-        if: ${{ steps.get_version.outcome == 'success' }}
+        if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
           name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
           path: |
             ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
       # if get_version step fails build
       - uses: subosito/flutter-action@v2
-        if: ${{ steps.get_version.outcome == 'failure' }}
+        if: ${{ steps.get_version.outputs.exists == 'false' }}
         with:
           channel: 'stable'
       - name: Replace version in constants.dart
-        if: ${{ steps.get_version.outcome == 'failure' }}
+        if: ${{ steps.get_version.outputs.exists == 'false' }}
         run: |
           (Get-Content .\lib\components\constants.dart) -replace('currentVersion.*', 'currentVersion = "${{ steps.get_version.outputs.version }}";') | Set-Content .\lib\components\constants.dart
       - run: flutter config --enable-windows-desktop
-        if: ${{ steps.get_version.outcome == 'failure' }}
+        if: ${{ steps.get_version.outputs.exists == 'false' }}
       - run: flutter build windows
-        if: ${{ steps.get_version.outcome == 'failure' }}
+        if: ${{ steps.get_version.outputs.exists == 'false' }}
       # create release
       - name: Create release
-        if: ${{ steps.get_version.outcome == 'failure' }}
+        if: ${{ steps.get_version.outputs.exists == 'false' }}
         run: |
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
           Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip
-          Write-Output 'gh release create v${{ steps.get_version.outputs.version }} ./build/windows/runner/Release/wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip  --generate-notes --notes "This is an automated release."'
+          gh release create v${{ steps.get_version.outputs.version }} .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip  --generate-notes --notes "This is an automated release."
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}

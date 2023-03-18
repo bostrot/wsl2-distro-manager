@@ -1,5 +1,5 @@
 
-![Jenkins](https://img.shields.io/jenkins/build?jobUrl=https%3A%2F%2Fjenkins.aachen.dev%2Fjob%2Fwsl2-distro-manager&style=for-the-badge)
+![GitHub Workflow](https://img.shields.io/github/actions/workflow/status/bostrot/wsl2-distro-manager/releaser.yml?branch=main&label=nightly&style=for-the-badge)
 ![GitHub Release Date](https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/bostrot/wsl2-distro-manager?style=for-the-badge)
@@ -33,6 +33,10 @@ as a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-
 \- or -
 
 `choco install wsl2-distro-manager` (maintained by [@mikeee](https://github.com/mikeee/ChocoPackages))
+
+## Nightly
+
+The last build can be found as artificats in the "releaser" workflow or via [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-v1.6.0-14.zip).
 
 ## Build
 
