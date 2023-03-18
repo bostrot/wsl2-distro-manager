@@ -14,9 +14,6 @@ jobs:
       # get version from pubspec.yaml and check if release already exists
       - name: Get version
         id: get_version
-        outputs:
-          outcome: ${{ steps.get_version.outputs.outcome }}
-          version: ${{ steps.get_version.outputs.version }}
         run: |
           $pattern = "version: (.*?) \#"
           $string = Get-Content pubspec.yaml
@@ -24,42 +21,47 @@ jobs:
           # Make web REST call to check if release already exists
           $result = $(Invoke-RestMethod -Uri https://api.github.com/repos/bostrot/wsl2-distro-manager/releases/tags/v$wsl2_manager_version)
           if ($result) {
-            echo "Release v$wsl2_manager_version already exists."
-            echo "outcome=failure" >> $env:GITHUB_OUTPUT
+            Write-Output "Release v$wsl2_manager_version already exists."
+            Write-Output "::set-output name=outcome::failure"
           } else {
-            echo "outcome=success" >> $env:GITHUB_OUTPUT
+            Write-Output "::set-output name=outcome::success"
           }
-          echo "version=$wsl2_manager_version" >> $env:GITHUB_OUTPUT
+          Write-Output "::set-output name=version::$wsl2_manager_version"
       # if get_version step does not fail just build nightly
       - uses: subosito/flutter-action@v2
-        if: ${{ steps.get_version.outputs.outcome == 'success' }}
+        if: ${{ steps.get_version.outcome == 'success' }}
         with:
           channel: 'stable'
       - run: flutter config --enable-windows-desktop
-        if: ${{ steps.get_version.outputs.outcome == 'success' }}
+        if: ${{ steps.get_version.outcome == 'success' }}
       - run: flutter build windows
-        if: ${{ steps.get_version.outputs.outcome == 'success' }}
+        if: ${{ steps.get_version.outcome == 'success' }}
+      # create zip from dlls and Release folder
+      - name: Create zip
+        if: ${{ steps.get_version.outcome == 'success' }}
+        run: |
+          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
+          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.version }}-${{ github.run_number }}.zip
       # create nightly release
       - uses: actions/upload-artifact@v3
         name: Create nightly release
-        if: ${{ steps.get_version.outputs.outcome == 'success' }}
+        if: ${{ steps.get_version.outcome == 'success' }}
         with:
-          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
+          name: wsl2-distro-manager-v${{ steps.get_version.version }}-${{ github.run_number }}
           path: |
-            ./build/windows/runner/Release/*
-            ./windows-dlls/*
+            ./wsl2-distro-manager-v${{ steps.get_version.version }}-${{ github.run_number }}.zip
       # if get_version step fails build
       - uses: subosito/flutter-action@v2
-        if: ${{ steps.get_version.outputs.outcome == 'failure' }}
+        if: ${{ steps.get_version.outcome == 'failure' }}
         with:
           channel: 'stable'
       - run: flutter config --enable-windows-desktop
-        if: ${{ steps.get_version.outputs.outcome == 'failure' }}
+        if: ${{ steps.get_version.outcome == 'failure' }}
       - run: flutter build windows
-        if: ${{ steps.get_version.outputs.outcome == 'failure' }}
+        if: ${{ steps.get_version.outcome == 'failure' }}
       # create release
       - name: Create release
-        if: ${{ steps.get_version.outputs.outcome == 'failure' }}
+        if: ${{ steps.get_version.outcome == 'failure' }}
         run: |
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
           Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip
