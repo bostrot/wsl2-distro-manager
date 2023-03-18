@@ -21,12 +21,12 @@ jobs:
           # Make web REST call to check if release already exists
           $result = $(Invoke-RestMethod -Uri https://api.github.com/repos/bostrot/wsl2-distro-manager/releases/tags/v$wsl2_manager_version)
           if ($result) {
-            Write-Output "Release v$wsl2_manager_version already exists."
-            Write-Output "::set-output name=outcome::failure"
+            echo "Release v$wsl2_manager_version already exists."
+            echo "outcome=failure" >> $GITHUB_OUTPUT
           } else {
-            Write-Output "::set-output name=version::$wsl2_manager_version"
-            Write-Output "::set-output name=outcome::success"
+            echo "outcome=success" >> $GITHUB_OUTPUT
           }
+          echo "version=$wsl2_manager_version" >> $GITHUB_ENV
       # if get_version step does not fail just build nightly
       - uses: subosito/flutter-action@v2
         if: ${{ steps.get_version.outcome == 'success' }}
@@ -36,22 +36,15 @@ jobs:
         if: ${{ steps.get_version.outcome == 'success' }}
       - run: flutter build windows
         if: ${{ steps.get_version.outcome == 'success' }}
-      # create zip with dlls and build
-      - name: Create zip with dlls and build
-        if: ${{ steps.get_version.outcome == 'success' }}
-        run: |
-          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
-          # version is current build number or workflow run number
-          $version = $env:GITHUB_RUN_NUMBER
-          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v$version.zip
       # create nightly release
       - uses: actions/upload-artifact@v3
         name: Create nightly release
         if: ${{ steps.get_version.outcome == 'success' }}
         with:
-          name: wsl2-distro-manager-v${{ env.GITHUB_RUN_NUMBER }}
+          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
           path: |
-            ./build/windows/runner/Release/wsl2-distro-manager-v${{ env.GITHUB_RUN_NUMBER }}.zip
+            ./build/windows/runner/Release/*
+            ./windows-dlls/*
       # if get_version step fails build
       - uses: subosito/flutter-action@v2
         if: ${{ steps.get_version.outcome == 'failure' }}
