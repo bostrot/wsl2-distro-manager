@@ -55,6 +55,10 @@ jobs:
         if: ${{ steps.get_version.outcome == 'failure' }}
         with:
           channel: 'stable'
+      - name: Replace version in constants.dart
+        if: ${{ steps.get_version.outcome == 'failure' }}
+        run: |
+          (Get-Content .\lib\components\constants.dart) -replace('currentVersion.*', 'currentVersion = "${{ steps.get_version.outputs.version }}";') | Set-Content .\lib\components\constants.dart
       - run: flutter config --enable-windows-desktop
         if: ${{ steps.get_version.outcome == 'failure' }}
       - run: flutter build windows
