@@ -325,15 +325,6 @@ class _CreateWidgetState extends State<CreateWidget> {
                     list.add(AutoSuggestBoxItem(
                       value: snapshot.data![i],
                       label: snapshot.data![i],
-                      child: TextFieldTapRegion(
-                        onTapInside: (event) => node.requestFocus(),
-                        child: SizedBox(
-                            width: double.infinity,
-                            height: 20.0,
-                            child: Text(
-                              snapshot.data![i],
-                            )),
-                      ),
                     ));
                   }
                 } else if (snapshot.hasError) {}
