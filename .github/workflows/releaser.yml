@@ -21,7 +21,7 @@ jobs:
           # Make web REST call to check if release already exists
           $result = $(Invoke-RestMethod -Uri https://api.github.com/repos/bostrot/wsl2-distro-manager/releases/tags/v$wsl2_manager_version)
           if ($result) {
-            Write-Error "Release v$wsl2_manager_version already exists."
+            Write-Output "Release v$wsl2_manager_version already exists."
             Write-Output "::set-output name=outcome::failure"
           } else {
             Write-Output "::set-output name=version::$wsl2_manager_version"
