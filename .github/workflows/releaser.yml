@@ -41,15 +41,15 @@ jobs:
         if: ${{ steps.get_version.outcome == 'success' }}
         run: |
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
-          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.version }}-${{ github.run_number }}.zip
+          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
       # create nightly release
       - uses: actions/upload-artifact@v3
         name: Create nightly release
         if: ${{ steps.get_version.outcome == 'success' }}
         with:
-          name: wsl2-distro-manager-v${{ steps.get_version.version }}-${{ github.run_number }}
+          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
           path: |
-            ./wsl2-distro-manager-v${{ steps.get_version.version }}-${{ github.run_number }}.zip
+            ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
       # if get_version step fails build
       - uses: subosito/flutter-action@v2
         if: ${{ steps.get_version.outcome == 'failure' }}
