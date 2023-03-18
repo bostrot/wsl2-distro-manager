@@ -22,10 +22,10 @@ jobs:
           $result = $(Invoke-RestMethod -Uri https://api.github.com/repos/bostrot/wsl2-distro-manager/releases/tags/v$wsl2_manager_version)
           if ($result) {
             Write-Error "Release v$wsl2_manager_version already exists."
-            exit 1
+            Write-Output "::set-output name=outcome::failure"
           } else {
             Write-Output "::set-output name=version::$wsl2_manager_version"
-            exit 0
+            Write-Output "::set-output name=outcome::success"
           }
       # if get_version step does not fail just build nightly
       - uses: subosito/flutter-action@v2
