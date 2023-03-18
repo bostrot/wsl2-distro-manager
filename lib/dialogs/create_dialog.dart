@@ -128,9 +128,6 @@ Future<void> createInstance(
     }
 
     Navigator.of(context, rootNavigator: true).pop();
-    ProcessResult result = await api.create(
-        name, distroName, location, (String msg) => Notify.message(msg),
-        image: isDockerImage);
 
     // Check if docker image
     if (distroName.startsWith('dockerhub:')) {
@@ -172,7 +169,7 @@ Future<void> createInstance(
     }
 
     // Create instance
-    result = await api.create(
+    ProcessResult result = await api.create(
         name, distroName, location, (String msg) => Notify.message(msg),
         image: isDockerImage);
 
