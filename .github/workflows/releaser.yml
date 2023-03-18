@@ -18,6 +18,9 @@ jobs:
           $string = Get-Content pubspec.yaml
           $wsl2_manager_version = [regex]::match($string, $pattern).Groups[1].Value
           Write-Output "::set-output name=version::$wsl2_manager_version"
+      - name: Echo version
+        run: |
+          echo ${{ steps.get_version.outputs.version }}
       # check if release already exists
       - uses: cardinalby/git-get-release-action@v1
         name: Check if release exists
