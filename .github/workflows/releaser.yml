@@ -3,8 +3,7 @@ name: Releaser
 on:
   push:
     branches:
-      - main
-      - actions-fix
+      - '*'
 
 jobs:
   build:
@@ -31,49 +30,45 @@ jobs:
             echo "::set-output name=exists::false"
           }
           Write-Output "::set-output name=version::$wsl2_manager_version"
-      # if get_version step does not fail just build nightly
+
+      # Setup & build
+      - name: Replace version in constants.dart
+        run: |
+          (Get-Content .\lib\components\constants.dart) -replace('currentVersion.*', 'currentVersion = "${{ steps.get_version.outputs.version }}";') | Set-Content .\lib\components\constants.dart
+      - name: Replace version in pubspec.yaml for msix
+        run: |
+          (Get-Content .\pubspec.yaml) -replace('msix_version: (.*)', 'msix_version: ${{ steps.get_version.outputs.version }}.0') | Set-Content .\pubspec.yaml
       - uses: subosito/flutter-action@v2
-        if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
           channel: 'stable'
       - run: flutter config --enable-windows-desktop
-        if: ${{ steps.get_version.outputs.exists == 'true' }}
       - run: flutter build windows
-        if: ${{ steps.get_version.outputs.exists == 'true' }}
-      # create zip from dlls and Release folder
+      - run: flutter pub run msix:create
+
+      # Create nightly release
       - name: Create zip
         if: ${{ steps.get_version.outputs.exists == 'true' }}
         run: |
+          Move-Item .\build\windows\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
           Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
-      # create nightly release
       - uses: actions/upload-artifact@v3
         name: Create nightly release
         if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
           name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
           path: |
-            ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
-      # if get_version step fails build
-      - uses: subosito/flutter-action@v2
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
-        with:
-          channel: 'stable'
-      - name: Replace version in constants.dart
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
-        run: |
-          (Get-Content .\lib\components\constants.dart) -replace('currentVersion.*', 'currentVersion = "${{ steps.get_version.outputs.version }}";') | Set-Content .\lib\components\constants.dart
-      - run: flutter config --enable-windows-desktop
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
-      - run: flutter build windows
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
-      # create release
+            ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
+            ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
+            
+      # Create full release with tag
       - name: Create release
         if: ${{ steps.get_version.outputs.exists == 'false' }}
         run: |
+          Move-Item .\build\windows\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-unsigned.msix
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
           Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip
-          gh release create v${{ steps.get_version.outputs.version }} .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip  --generate-notes --notes "This is an automated release."
+          gh release create v${{ steps.get_version.outputs.version }} .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-unsigned.msix  --generate-notes --notes "This is an automated release."
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}

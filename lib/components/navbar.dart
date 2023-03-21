@@ -96,8 +96,13 @@ class _NavbarState extends State<Navbar> {
 
             // No exact match, try language only
             Locale lang = Locale(locale.languageCode, '');
-            if (supportedLocales.contains(lang)) {
-              return lang;
+            for (Locale loc in supportedLocales) {
+              if (loc.languageCode.toLowerCase() ==
+                      lang.languageCode.toLowerCase() &&
+                  loc.countryCode?.toLowerCase() ==
+                      lang.countryCode?.toLowerCase()) {
+                return loc;
+              }
             }
 
             // default language
