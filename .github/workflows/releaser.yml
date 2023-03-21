@@ -51,14 +51,20 @@ jobs:
         run: |
           Move-Item .\build\windows\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
-          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
+          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
       - uses: actions/upload-artifact@v3
-        name: Create nightly release
+        name: Create nightly release (ZIP)
         if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
-          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
+          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly-1
           path: |
             ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
+      - uses: actions/upload-artifact@v3
+        name: Create nightly release (MSIX)
+        if: ${{ steps.get_version.outputs.exists == 'true' }}
+        with:
+          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly-2
+          path: |
             ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
             
       # Create full release with tag
