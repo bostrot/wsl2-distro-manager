@@ -51,23 +51,18 @@ jobs:
         name: Create nightly release
         if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
-          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}
+          name: wsl2-distro-manager-nightly-archive
           path: |
             ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-${{ github.run_number }}.zip
       # if get_version step fails build
       - uses: subosito/flutter-action@v2
         if: ${{ steps.get_version.outputs.exists == 'false' }}
         with:
-          channel: 'stable'
-      - name: Replace version in constants.dart
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
-        run: |
-          (Get-Content .\lib\components\constants.dart) -replace('currentVersion.*', 'currentVersion = "${{ steps.get_version.outputs.version }}";') | Set-Content .\lib\components\constants.dart
-      - run: flutter config --enable-windows-desktop
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
-      - run: flutter build windows
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
-      # create release
+          name: wsl2-distro-manager-nightly-msix
+          path: |
+            ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
+            
+      # Create full release with tag
       - name: Create release
         if: ${{ steps.get_version.outputs.exists == 'false' }}
         run: |

@@ -1,126 +1,117 @@
+<h1 align="center">Welcome to WSL Distro Manager 👋</h1>
 
 ![GitHub Workflow](https://img.shields.io/github/actions/workflow/status/bostrot/wsl2-distro-manager/releaser.yml?branch=main&label=nightly&style=for-the-badge)
 ![GitHub Release Date](https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
-![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/bostrot/wsl2-distro-manager?style=for-the-badge)
+[![Documentation](https://img.shields.io/badge/DOCUMENTATION-WIKI-green?style=for-the-badge)](https://github.com/bostrot/wsl2-distro-manager/wiki)
 ![GitHub](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
 
 <p align='center'>
     English | <a href='./README_zh.md'>简体中文</a>
 </p>
 
-# [WSL Distro Manager](https://github.com/bostrot/wsl2-distro-manager)
-A quick way to manage your WSL instances with a GUI.
-
-Made with Flutter and [fluent_ui](https://github.com/bdlukaa/fluent_ui) based on Windows design guidelines.
-
 ![Preview with Darkmode](https://user-images.githubusercontent.com/7342321/161707979-f4c3091f-3f24-475e-87d4-0157caafab2a.png)
 
-[Here](https://user-images.githubusercontent.com/7342321/161708030-4f39a89e-7a2d-4460-b002-da7a619d6302.png) is how it looks in Lightmode if you are into that.
+<details>
+<summary>Preview with Lightmode</summary>
 
-## Install
+![Here](https://user-images.githubusercontent.com/7342321/161708030-4f39a89e-7a2d-4460-b002-da7a619d6302.png)
+
+</details>
+
+> WSL Distro Manager is a free and open source app that provides a user-friendly graphical interface for managing Windows Subsystem for Linux (WSL) distributions. With WSL Distro Manager, you can easily install, uninstall, update, backup and restore WSL distros, as well as configure their settings and launch them with a single click. WSL Distro Manager also offers some extra features to enhance your WSL experience, such as sharing Distros between multiple machines, and creating actions to quickly do repetitive tasks. Whether you are a beginner or an expert in WSL, WSL Distro Manager will help you get the most out of it.
+
+## 🚀 Features
+
+- [x] List WSL
+- [x] Copy WSL
+- [x] Delete WSL
+- [x] Start WSL
+- [x] Rename WSL
+- [x] Create WSL
+- [x] Download WSL
+- [x] Select rootfs from storage
+- [x] Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
+- [x] Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey Wordpress)
+- [x] Use your own repository for rootfs' or LXC containers
+- [x] and more...
+
+## 📦 Install
 
 This app is available on the [Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
 
-\- or -
+<details>
+<summary>Direct download</summary>
 
-as a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-manager/releases) page.
+You can get this app with a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-manager/releases) page. The latest version is available as a zip file.
+</details>
 
-\- or -
+<details>
+<summary>Install via Winget</summary>
 
-`winget install Bostrot.WSLManager` (outdated version)
+The winget package is outdated! Please use the Windows Store version instead.
 
-\- or -
+```sh
+winget install Bostrot.WSLManager
+```
 
-`choco install wsl2-distro-manager` (maintained by [@mikeee](https://github.com/mikeee/ChocoPackages))
+</details>
 
-## Nightly
+<details>
+<summary>Install via Chocolatey</summary>
 
-The last build can be found as artificats in the "releaser" workflow or via [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-v1.6.0-14.zip).
+This package is maintained by the community ([@mikeee](https://github.com/mikeee/ChocoPackages)). It is not an official package.
 
-## Build
+```sh
+choco install wsl2-distro-manager
+```
 
-Enable Flutter Desktop `flutter config --enable-windows-desktop` (https://flutter.dev/desktop)
+</details>
 
-  flutter upgrade
+<details>
+<summary>Install a nightly build</summary>
 
-Run with `flutter run -d windows` and build with `flutter build windows`
+The last build can be found as artificats in the "releaser" workflow or via [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip). If you rather prefer an unsigned `msix` you can also use [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip).
 
-## Features
+</details>
 
-* List WSL
-* Copy WSL
-* Delete WSL
-* Start WSL
-* Rename WSL
-* Create WSL
-* Download WSL
-* Select rootfs from storage
-* Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
-* Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey Wordpress)
-* Use your own repository for rootfs' or LXC containers
-* and more...
+## ⚙️ Build
 
-## FAQ
+Make sure [flutter](https://flutter.dev/desktop) is installed:
 
-### How do I access my Turnkey instance? (e.g. Wordpress)
+```powershell
+flutter config --enable-windows-desktop
+flutter upgrade
 
-Turnkey instances can be inited with `turnkey-init` in console. This will let you choose new passwords for your services.
+flutter build windows # build it
+flutter run -d windows # run it
+```
 
-### What does it mean that it installs "fake_systemd" with Turnkey?
+## Author
 
-As systemd is not officially supported in WSL (yet) [fake_systemd](https://github.com/bostrot/fake-systemd) is a custom fork from @kvaps specifically for WSL so that Turnkey services will actually startup when opening the instance.
+👤 **Eric Trenkel**
 
-## Contribute
+- Website: [erictrenkel.com](erictrenkel.com)
+- Github: [@bostrot](https://github.com/bostrot)
+- LinkedIn: [@erictrenkel](https://linkedin.com/in/erictrenkel)
 
-You are very welcome to contribute to this project in order to make it better.
+👥 **Contributors**
 
-### Missing distributions
+[![Contributors](https://contrib.rocks/image?repo=bostrot/wsl2-distro-manager)](https://github.com/bostrot/wsl2-distro-manager/graphs/contributors)
 
-If you find any missing distribution that you think should be added please open a [Distro request](https://github.com/bostrot/wsl2-distro-manager/issues/new?assignees=&labels=distro+request&template=distro-request.md&title=Add+a+new+distribution).
+## 🤝 Contributing
 
-### Docs
+Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/bostrot/wsl2-distro-manager/issues). You can also take a look at the [contributing guide](https://github.com/bostrot/wsl2-distro-manager/blob/main/CONTRIBUTING.md).
 
-Currently generated API docs are available. You can find the documentation [here](https://bostrot.github.io/wsl2-distro-manager/api/index.html).
+## Show your support
 
-### Code contributions
+Give a ⭐️ if this project helped you!
 
-If you have made a code contribution feel free to open a PR and/or an issue.
+## 📝 License
 
-### Language contributions
+Copyright © 2023 [Eric Trenkel](https://github.com/bostrot).<br />
+This project is [GPL-3.0](https://github.com/bostrot/wsl2-distro-manager/blob/main/LICENSE) licensed.
 
-Localizations are saved in `/lib/i18n/` as json files. New languages can be added either directly in the appropriate json file (e.g. `en.json`) or via the localizations [windows/mac application](https://github.com/Flutterando/localization/releases) which provides a GUI.
+---
 
-As of some restrictions with fluent_ui package currently it is easier not to use the country code in the file name so instead of `en_US.json` just `en.json`.
-
-Feel free to publish a PR :)
-
-## Help
-
-You need more help but the FAQ did not help? 
-
-Contact me on Telegram [@bostrot_bot](https://t.me/bostrot_bot).
-
-Or just open an issue [here](https://github.com/bostrot/wsl2-distro-manager/issues).
-
-## Stuff
-
-### Create signed msix package
-
-(Only for maintainers with build certificate)
-
-To create a signed msix package set the .githooks directory as your git hooks directory:
-
-  git config --local core.hooksPath .githooks/
-
-Then it will update version numbers, build sign and commit everything with the push. This will take the configuration from the file `certs/pubspec.yaml` and replace the version (`xxx` in the pubspec.yaml) with the current version from the running pubspec file.
-
-You can also sign it manually by adding the msix config to the end of the pubspec.yaml file and then run `flutter pub run msix:create`
-
-### Why a GUI
-
-WSL is great. It makes it very simple to spin up new workplaces with different systems for the project you need or just testing.
-
-### Other
-
-This project is made with [Flutter](https://flutter.dev/docs) for Desktop :)
+_Not found what you were looking for? Check out the [Wiki](https://github.com/bostrot/wsl2-distro-manager/wiki)_
