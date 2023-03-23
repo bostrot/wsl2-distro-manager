@@ -59,5 +59,4 @@ msix_config:
   icons_background_color: transparent
   architecture: x64
   capabilities: 'internetClient'
-  store: true
   languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW, zh-HK
