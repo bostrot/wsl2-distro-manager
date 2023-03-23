@@ -71,38 +71,36 @@ class _HomePageState extends State<HomePage> {
     enableAnalytics();
 
     // Check updates
-    // App app = App();
-    // app.checkUpdate(currentVersion).then((updateUrl) {
-    //   if (updateUrl != '') {
-    //     statusMsg('',
-    //         useWidget: true,
-    //         widget: Row(
-    //           children: [
-    //             Text('newversion-text'.i18n()),
-    //             TextButton(
-    //                 onPressed: () => launchUrl(Uri.parse(updateUrl)),
-    //                 child: Text('downloadnow-text'.i18n(),
-    //                     style: const TextStyle(fontSize: 12.0))),
-    //             Text('orcheck-text'.i18n()),
-    //             TextButton(
-    //                 onPressed: () => launchUrl(Uri.parse(windowsStoreUrl)),
-    //                 child: Text('windowsstore-text'.i18n(),
-    //                     style: const TextStyle(fontSize: 12.0))),
-    //           ],
-    //         ));
-    //   }
-    // });
+    App app = App();
+    app.checkUpdate(currentVersion).then((updateUrl) {
+      if (updateUrl != '') {
+        statusMsg('',
+            useWidget: true,
+            widget: Row(
+              children: [
+                Text('newversion-text'.i18n()),
+                TextButton(
+                    onPressed: () => launchUrl(Uri.parse(updateUrl)),
+                    child: Text('downloadnow-text'.i18n(),
+                        style: const TextStyle(fontSize: 12.0))),
+                Text('orcheck-text'.i18n()),
+                TextButton(
+                    onPressed: () => launchUrl(Uri.parse(windowsStoreUrl)),
+                    child: Text('windowsstore-text'.i18n(),
+                        style: const TextStyle(fontSize: 12.0))),
+              ],
+            ));
+      }
+    });
 
-    // // Check motd
-    // app.checkMotd().then((String motd) {
-    //   statusMsg(motd, leadingIcon: false);
-    // });
+    // Check motd
+    app.checkMotd().then((String motd) {
+      statusMsg(motd, leadingIcon: false);
+    });
 
     // Call constructor to initialize
     Notify();
     Notify.message = statusMsg;
-
-    Notify.message("Language tag: $language");
   }
 
   Widget statusWidget = const Text('');

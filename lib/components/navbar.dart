@@ -95,9 +95,9 @@ class _NavbarState extends State<Navbar> {
             }
 
             // Custom matching for chinese (simplified and traditional)
-            if (language.contains("hans")) {
+            if (language.toLowerCase().contains("hans")) {
               return const Locale('zh', 'CN');
-            } else if (language.contains("hant")) {
+            } else if (language.toLowerCase().contains("hant")) {
               return const Locale('zh', 'TW');
             } else if (locale.languageCode == "zh") {
               return const Locale('zh', 'CN');
