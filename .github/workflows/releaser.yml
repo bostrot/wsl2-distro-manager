@@ -56,14 +56,14 @@ jobs:
         name: Create nightly release (ZIP)
         if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
-          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly-1
+          name: wsl2-distro-manager-nightly-archive
           path: |
             ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
       - uses: actions/upload-artifact@v3
         name: Create nightly release (MSIX)
         if: ${{ steps.get_version.outputs.exists == 'true' }}
         with:
-          name: wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly-2
+          name: wsl2-distro-manager-nightly-msix
           path: |
             ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
             
