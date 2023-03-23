@@ -47,6 +47,16 @@ You can get this app with a direct download from the [Releases](https://github.c
 </details>
 
 <details>
+<summary>MSIX installer</summary>
+
+The `msix` is signed with a test certificate so you need to allow it specifically. In PowerShell you can do following:
+
+```powershell
+Add-AppPackage -Path .\wsl2-distro-manager-v1.x.x-unsigned.msix -AllowUnsigned
+```
+</details>
+
+<details>
 <summary>Install via Winget</summary>
 
 The winget package is outdated! Please use the Windows Store version instead.
