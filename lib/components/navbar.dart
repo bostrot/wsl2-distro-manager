@@ -94,15 +94,17 @@ class _NavbarState extends State<Navbar> {
               return locale;
             }
 
+            // Custom matching for chinese (simplified and traditional)
+            if (language.contains("hans") || locale.languageCode == "zh") {
+              return const Locale('zh', 'CN');
+            } else if (language.contains("hant")) {
+              return const Locale('zh', 'TW');
+            }
+
             // No exact match, try language only
-            Locale lang = Locale(locale.languageCode, '');
-            for (Locale loc in supportedLocales) {
-              if (loc.languageCode.toLowerCase() ==
-                      lang.languageCode.toLowerCase() &&
-                  loc.countryCode?.toLowerCase() ==
-                      lang.countryCode?.toLowerCase()) {
-                return loc;
-              }
+            final Locale lang = Locale(locale.languageCode, '');
+            if (supportedLocales.contains(lang)) {
+              return lang;
             }
 
             // default language
