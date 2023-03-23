@@ -46,3 +46,18 @@ flutter:
   assets:
     - lib/i18n/
     - assets/scripts/settings.bash
+
+msix_config:
+  display_name: WSL2 Manager
+  publisher_display_name: Bostrot
+  identity_name: 9891PhantomDevs.WSL2Manager
+  msix_version: 1.6.2.0
+  publisher: CN=94697CA2-9680-453C-A7CB-2FA531A4A341
+  logo_path: .\assets\logo.png
+  start_menu_icon_path: .\assets\logo.png
+  tile_icon_path: .\assets\logo.png
+  icons_background_color: transparent
+  architecture: x64
+  capabilities: 'internetClient'
+  store: true
+  languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW, zh-HK

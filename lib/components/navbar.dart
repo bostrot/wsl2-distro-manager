@@ -94,8 +94,17 @@ class _NavbarState extends State<Navbar> {
               return locale;
             }
 
+            // Custom matching for chinese (simplified and traditional)
+            if (language.toLowerCase().contains("hans")) {
+              return const Locale('zh', 'CN');
+            } else if (language.toLowerCase().contains("hant")) {
+              return const Locale('zh', 'TW');
+            } else if (locale.languageCode == "zh") {
+              return const Locale('zh', 'CN');
+            }
+
             // No exact match, try language only
-            Locale lang = Locale(locale.languageCode, '');
+            final Locale lang = Locale(locale.languageCode, '');
             if (supportedLocales.contains(lang)) {
               return lang;
             }
