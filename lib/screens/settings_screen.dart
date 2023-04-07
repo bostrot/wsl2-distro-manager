@@ -24,6 +24,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   final TextEditingController _syncIpTextController = TextEditingController();
   final TextEditingController _repoTextController = TextEditingController();
+  final TextEditingController _dockerrepoController = TextEditingController();
   bool showDocker = false;
   BuildContext? currentContext;
 
@@ -54,6 +55,12 @@ class SettingsPageState extends State<SettingsPage> {
     String? repoLink = prefs.getString('RepoLink');
     if (repoLink != null && repoLink != '') {
       _repoTextController.text = repoLink;
+    }
+    if (prefs.containsKey('DockerRepoLink')) {
+      String? dockerRepoLink = prefs.getString('DockerRepoLink');
+      if (dockerRepoLink != null && dockerRepoLink != '') {
+        _dockerrepoController.text = dockerRepoLink;
+      }
     }
     showDocker = prefs.getBool('showDocker') ?? false;
     if (!mounted) return;
@@ -146,6 +153,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("RepoLink", defaultRepoLink);
     }
 
+    // Save docker repo link
+    if (_dockerrepoController.text.isNotEmpty) {
+      prefs.setString("DockerRepoLink", _dockerrepoController.text);
+    } else {
+      prefs.setString("DockerRepoLink", "https://registry-1.docker.io");
+    }
+
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString(
@@ -216,6 +230,23 @@ class SettingsPageState extends State<SettingsPage> {
           ),
         ]),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Padding(
+          //   padding: const EdgeInsets.all(8.0),
+          //   child: Expander(
+          //     header: Text('dockerrepo-text'.i18n(),
+          //         style: const TextStyle(fontWeight: FontWeight.w500)),
+          //     content: Padding(
+          //       padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+          //       child: Tooltip(
+          //         message: 'dockerrepo-text'.i18n(),
+          //         child: TextBox(
+          //           controller: _dockerrepoController,
+          //           placeholder: 'https://registry-1.docker.io',
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
