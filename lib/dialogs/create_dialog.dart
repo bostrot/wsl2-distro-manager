@@ -94,8 +94,15 @@ Future<void> createInstance(
       // Remove prefix
       distroName = autoSuggestBox.text.split('dockerhub:')[1];
       // Get tag
+      if (!distroName.contains(':')) {
+        distroName += ':latest';
+      }
       String? image = distroName.split(':')[0];
       String? tag = distroName.split(':')[1];
+
+      if (!distroName.contains('/')) {
+        image = 'library/$image';
+      }
 
       bool isDownloaded = false;
       // Check if image already downloaded
@@ -116,7 +123,7 @@ Future<void> createInstance(
           String percentage =
               (currentStep / totalStep * 100).toStringAsFixed(0);
           Notify.message('${'downloading-text'.i18n()}'
-              ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB/$totalInMB MB)');
+              ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB)');
         });
         Notify.message('downloaded-text'.i18n());
         // Set distropath with distroName
@@ -406,11 +413,11 @@ class _CreateWidgetState extends State<CreateWidget> {
                 );
               }),
         ),
-        // ClickableUrl(
-        //   clickEvent: 'docker_wiki_clicked',
-        //   url: wikiDocker,
-        //   text: 'usedistrofromdockerhub-text'.i18n(),
-        // ),
+        ClickableUrl(
+          clickEvent: 'docker_wiki_clicked',
+          url: wikiDocker,
+          text: 'usedistrofromdockerhub-text'.i18n(),
+        ),
         Container(
           height: 10.0,
         ),
