@@ -3,16 +3,15 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
+import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/tar.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:path/path.dart' as p;
 import 'package:wsl2distromanager/components/notify.dart';
 
 class Manifests {
@@ -196,14 +195,31 @@ class DockerImage {
   /// @result {bool} success
   Future<bool> _downloadBlob(String image, String token, String digest,
       String file, ProgressCallback progressCallback) async {
-    Response<dynamic> response = await Dio().download(
-        '$registryUrl/v2/$image/blobs/$digest', file,
-        options: Options(headers: {
+    // Response<dynamic> response = await Dio().download(
+    //     '$registryUrl/v2/$image/blobs/$digest', file,
+    //     options: Options(headers: {
+    //       'Authorization': 'Bearer $token',
+    //     }),
+    //     onReceiveProgress: ((count, total) => progressCallback(count, total)));
+    var downloader = ChunkedDownloader(
+      url: '$registryUrl/v2/$image/blobs/$digest',
+      saveFilePath: file,
+      headers: {
           'Authorization': 'Bearer $token',
-        }),
-        onReceiveProgress: ((count, total) => progressCallback(count, total)));
-    if (response.statusCode != 200) {
-      throw Exception('Download failed');
+      },
+      onProgress: (progress, total, speed) => progressCallback(progress, total),
+      onDone: (file) {
+        if (kDebugMode) {
+          print('Download complete: $file');
+        }
+      },
+      onError: (error) => throw Exception('Download failed $error'),
+    );
+
+    downloader.start();
+
+    while (!downloader.done) {
+      await Future.delayed(const Duration(milliseconds: 1000));
     }
     return true;
   }
