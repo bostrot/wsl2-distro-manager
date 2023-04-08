@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
+import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
@@ -168,7 +169,7 @@ class WSLApi {
 
     if (kDebugMode) {
       print("Done starting $distribution");
-  }
+    }
   }
 
   /// Start a WSL distro by name with environment variables
@@ -647,12 +648,20 @@ class WSLApi {
       String url = distroRootfsLinks[filename]!;
       // Download file
       try {
-        Dio dio = Dio();
-        await dio.download(url, '$downloadPath.tmp',
-            onReceiveProgress: (int count, int total) {
-          status('${'downloading-text'.i18n()}'
-              ' ${(count / total * 100).toStringAsFixed(0)}%');
-        });
+        // Dio dio = Dio();
+        // await dio.download(url, '$downloadPath.tmp',
+        //     onReceiveProgress: (int count, int total) {
+        //   status('${'downloading-text'.i18n()}'
+        //       ' ${(count / total * 100).toStringAsFixed(0)}%');
+        // });
+        var downloader = ChunkedDownloader(
+            url: url,
+            saveFilePath: '$downloadPath.tmp',
+            onProgress: (int count, int total, double speed) {
+              status('${'downloading-text'.i18n()}'
+                  ' ${(count / total * 100).toStringAsFixed(0)}%');
+            });
+        await downloader.start();
         File file = File('$downloadPath.tmp');
         file.rename(downloadPath);
         status('${'downloaded-text'.i18n()} $filename');
