@@ -134,5 +134,6 @@
     "showdockershort-text": "Mostrar Docker",
     "showdockerlong-text": "Mostrar distribuições do Docker",
     "usedistrofromdockerhub-text": "Use uma distribuição do Docker Hub (exemplo: dockerhub:ubuntu:latest)",
-    "noresultsfound-text": "Nenhum resultado encontrado"
+    "noresultsfound-text": "Nenhum resultado encontrado",
+    "extractinglayers-text": "Extraindo camada %s0 de %s1 ..."
 }
