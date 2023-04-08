@@ -23,14 +23,14 @@
 
 ## 🚀 Features
 
-- [x] List WSL
-- [x] Copy WSL
-- [x] Delete WSL
-- [x] Start WSL
-- [x] Rename WSL
-- [x] Create WSL
-- [x] Download WSL
-- [x] Select rootfs from storage
+
+
+
+
+
+- [x] Manage WSL instances
+- [x] Download and use Docker images as WSL instances - without Docker! 
+
 - [x] Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
 - [x] Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey Wordpress)
 - [x] Use your own repository for rootfs' or LXC containers
