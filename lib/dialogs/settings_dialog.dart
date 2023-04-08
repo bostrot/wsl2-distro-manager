@@ -37,6 +37,8 @@ settingsDialog(context, item) {
   var title = 'settings-text'.i18n();
   final pathController = TextEditingController();
   pathController.text = prefs.getString('StartPath_$item') ?? '';
+  final startCmdController = TextEditingController();
+  startCmdController.text = prefs.getString('StartCmd_$item') ?? '';
   final userController = TextEditingController();
   userController.text = prefs.getString('StartUser_$item') ?? '';
   plausible.event(page: 'settings_dialog');
@@ -50,8 +52,8 @@ settingsDialog(context, item) {
         title: Text(title),
         content: StatefulBuilder(builder: (BuildContext context, setState) {
           return SingleChildScrollView(
-            child: settingsColumn(pathController, userController, context, item,
-                isSyncing, setState),
+            child: settingsColumn(pathController, startCmdController,
+                userController, context, item, isSyncing, setState),
           );
         }),
         actions: [
@@ -64,6 +66,7 @@ settingsDialog(context, item) {
               child: Text('save-text'.i18n()),
               onPressed: () {
                 prefs.setString('StartPath_$item', pathController.text);
+                prefs.setString('StartCmd_$item', startCmdController.text);
                 prefs.setString('StartUser_$item', userController.text);
                 Navigator.pop(childcontext);
               }),
@@ -94,6 +97,7 @@ Future<Map<String, String>> getInstanceData(String item) async {
 
 Column settingsColumn(
     TextEditingController pathController,
+    TextEditingController startCmdController,
     TextEditingController userController,
     context,
     item,
@@ -104,6 +108,17 @@ Column settingsColumn(
     children: [
       Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
+        child: Text('startcommand-text'.i18n()),
+      ),
+      Tooltip(
+        message: 'startcommand-text'.i18n(),
+        child: TextBox(
+          controller: startCmdController,
+          placeholder: 'e.g. /bin/bash',
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
         child: Text('startdirectorypath-text'.i18n()),
       ),
       Tooltip(
