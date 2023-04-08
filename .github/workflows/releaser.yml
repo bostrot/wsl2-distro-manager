@@ -67,9 +67,9 @@ jobs:
           path: |
             ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
             
-      # Create full release with tag
+      # Create full release with tag (only if branch is main)
       - name: Create release
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
+        if: ${{ steps.get_version.outputs.exists == 'false' && github.ref == 'refs/heads/main' }}
         run: |
           Move-Item .\build\windows\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-unsigned.msix
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
