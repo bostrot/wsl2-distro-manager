@@ -1,13 +1,19 @@
 /// API to download docker images from DockerHub and extract them
 /// into a rootfs.
 
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/api/tar.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:path/path.dart' as p;
+import 'package:wsl2distromanager/components/notify.dart';
 
 class Manifests {
   List<Manifest> manifests = [];
@@ -48,6 +54,34 @@ class Manifest {
     }
     size = map["size"];
   }
+}
+
+class ImageManifestV1 {
+  int schemaVersion = 1;
+  String name = '';
+  String tag = '';
+  String architecture = '';
+  List fsLayers = [];
+  List history = [];
+  List signatures = [];
+
+  ImageManifestV1(
+      {required this.schemaVersion,
+      required this.name,
+      required this.tag,
+      required this.architecture,
+      required this.fsLayers,
+      required this.history,
+      required this.signatures});
+
+  factory ImageManifestV1.fromMap(Map<String, dynamic> map) => ImageManifestV1(
+      schemaVersion: map["schemaVersion"],
+      name: map["name"],
+      tag: map["tag"],
+      architecture: map["architecture"],
+      fsLayers: List.from(map["fsLayers"]),
+      history: List.from(map["history"]),
+      signatures: List.from(map["signatures"]));
 }
 
 class ImageManifest {
@@ -97,7 +131,7 @@ typedef TotalProgressCallback = void Function(
     int count, int total, int countStep, int totalStep);
 
 class DockerImage {
-  static const String registryUrl = 'https://registry-1.docker.io';
+  static String registryUrl = 'https://registry-1.docker.io';
   static const String authUrl = 'https://auth.docker.io';
   static const String svcUrl = 'registry.docker.io';
 
@@ -127,14 +161,25 @@ class DockerImage {
   /// @throws {Exception} if manifest is not found
   Future<dynamic> _getManifest(
       String image, String token, String? digest) async {
+    if (!image.contains("/")) {
+      image = "library/$image";
+    }
     Response<dynamic> response = await Dio().get(
-      '$registryUrl/v2/$image/manifests/${digest ?? 'latest'}',
+      '$registryUrl/v2/$image/manifests/${digest ?? 'latest'}', // https://registry-1.docker.io/v2/nginx/manifests/latest
       // accept application/json
       options: Options(headers: {
         'Authorization': 'Bearer $token',
-        'Accept': 'application/vnd.docker.distribution.manifest.list.v2+json, '
-            'application/vnd.docker.distribution.manifest.v2+json, '
-            'application/vnd.docker.distribution.manifest.v1+json',
+        // see https://github.com/opencontainers/image-spec/blob/main/media-types.md#oci-image-media-types
+        'Accept': 'application/vnd.oci.descriptor.v1+json,'
+            'application/vnd.oci.descriptor.v1+json,'
+            'application/vnd.oci.layout.header.v1+json,'
+            'application/vnd.oci.image.index.v1+json,'
+            'application/vnd.oci.image.manifest.v1+json,'
+            'application/vnd.oci.image.config.v1+json,'
+            'application/vnd.oci.image.layer.v1.tar,'
+            'application/vnd.oci.image.layer.v1.tar+gzip,'
+            'application/vnd.oci.image.layer.v1.tar+zstd,'
+            'application/vnd.oci.artifact.manifest.v1+json'
       }),
     );
     if (response.data == null) {
@@ -174,10 +219,16 @@ class DockerImage {
     // Get token
     final token = await _authenticate(image);
 
-    final manifestData = await _getManifest(image, token, tag ?? 'latest');
-    ImageManifest imageManifest;
+    var manifestData = await _getManifest(image, token, tag ?? 'latest');
+    var imageManifest;
 
     // TODO: When the manifest is in hand, the client must verify the signature to ensure the names and layers are valid.
+
+    // Check if manifestData is a string
+    if (manifestData is String) {
+      // Get manifest
+      manifestData = json.decode(manifestData);
+    }
 
     // Multiple architectures per tag
     if (manifestData['manifests'] != null) {
@@ -194,29 +245,60 @@ class DockerImage {
       if (kDebugMode) {
         print('Downloading $image amd64 blob');
       }
-      imageManifest =
-          ImageManifest.fromMap(await _getManifest(image, token, digest));
+      try {
+        imageManifest =
+            ImageManifest.fromMap(await _getManifest(image, token, digest));
 
-      final config = imageManifest.config.digest;
-      await _downloadBlob(
-          image, token, config, '$path/config.json', (p0, p1) {});
+        final config = imageManifest.config.digest;
+        await _downloadBlob(
+            image, token, config, '$path/config.json', (p0, p1) {});
+      } catch (e) {
+        print(e);
+        return "false";
+      }
     } else {
       // Single architecture
-      imageManifest = ImageManifest.fromMap(manifestData);
+      try {
+        imageManifest = ImageManifest.fromMap(manifestData);
+      } catch (e) {
+        try {
+          imageManifest = ImageManifestV1.fromMap(manifestData);
+        } catch (e) {
+          Notify.message('Failed to parse manifest');
+          return "false";
+        }
+      }
     }
 
-    // Download layers
-    final layers = imageManifest.layers;
-    for (var i = 0; i < layers.length; i++) {
-      final digest = layers[i].digest;
-      if (kDebugMode) {
-        print('Downloading $image layer ${i + 1} of ${layers.length}');
+    if (imageManifest is ImageManifest) {
+      // Download layers
+      final layers = imageManifest.layers;
+      for (var i = 0; i < layers.length; i++) {
+        final digest = layers[i].digest;
+        if (kDebugMode) {
+          print('Downloading $image layer ${i + 1} of ${layers.length}');
+        }
+        progressCallback(i, layers.length, 0, 100);
+        await _downloadBlob(image, token, digest, '$path/layer_$i.tar.gz',
+            (currentStep, totalStep) {
+          progressCallback(i, layers.length, currentStep, totalStep);
+        });
       }
-      progressCallback(i, layers.length, 0, 100);
-      await _downloadBlob(image, token, digest, '$path/layer_$i.tar.gz',
-          (currentStep, totalStep) {
-        progressCallback(i, layers.length, currentStep, totalStep);
-      });
+    } else if (imageManifest is ImageManifestV1) {
+      // Download layers
+      final layers = imageManifest.fsLayers;
+      for (var i = 0; i < layers.length; i++) {
+        final digest = layers[i]["blobSum"];
+
+        if (kDebugMode) {
+          print('Downloading $image layer ${i + 1} of ${layers.length}');
+        }
+        progressCallback(i, layers.length, 0, 100);
+        await _downloadBlob(image, token, digest, '$path/layer_$i.tar.gz',
+            (currentStep, totalStep) {
+          progressCallback(i, layers.length, currentStep, totalStep);
+        });
+      }
     }
 
     return "true";
@@ -228,7 +310,9 @@ class DockerImage {
   /// @result {bool} success
   /// @throws {Exception} if tar file is not created
   Future<bool> getRootfs(String image,
-      {String? tag, required TotalProgressCallback progress}) async {
+      {String? tag,
+      required TotalProgressCallback progress,
+      bool skipDownload = false}) async {
     final distroPath = prefs.getString("SaveLocation") ?? defaultPath;
 
     // Add library to image name
@@ -241,51 +325,67 @@ class DockerImage {
     final path = '$distroPath/tmp/$file';
     var layers = 0;
     bool done = false;
-    await _download(image, path, (current, total, currentStep, totalStep) {
-      layers = total;
-      if (kDebugMode) {
-        print('${current + 1}/$total');
-      }
-      progress(current, total, currentStep, totalStep);
-      if (current + 1 == total && currentStep == totalStep) {
-        done = true;
-      }
-    }, tag: tag);
+
+    if (!skipDownload) {
+      await _download(image, path, (current, total, currentStep, totalStep) {
+        layers = total;
+        if (kDebugMode) {
+          print('${current + 1}/$total');
+        }
+        progress(current, total, currentStep, totalStep);
+        if (current + 1 == total && currentStep == totalStep) {
+          done = true;
+        }
+      }, tag: tag);
+    }
 
     // Wait for download to finish
-    while (!done) {
+    while (!done && !skipDownload) {
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
     // Extract layers
     // Write the compressed tar file to disk.
     int retry = 0;
+
     while (retry < 2) {
       try {
-        Archive outputArchive = Archive();
+        Archive archive = Archive();
         for (var i = 0; i < layers; i++) {
+          // Read archives layers
           if (kDebugMode) {
             print('Extracting layer $i of $layers');
           }
-          progress(i, layers, 0, 100);
-          // Read archives layers
-          final bytes = await File('$path/layer_$i.tar.gz').readAsBytes();
-          final gzip = GZipDecoder().decodeBytes(bytes);
-          final archive = TarDecoder().decodeBytes(gzip);
-          for (final file in archive) {
-            if (file.isFile) {
-              outputArchive.addFile(file);
+          progress(i, layers, -1, -1);
+
+          // In memory
+          final tarfile = GZipDecoder()
+              .decodeBytes(File('$path/layer_$i.tar.gz').readAsBytesSync());
+          final subArchive = TarDecoder().decodeBytes(tarfile);
+
+          // Add files to archive
+          for (final file in subArchive) {
+            if (file.isSymbolicLink) {
+              file.isSymbolicLink = true;
+              archive.addFile(file);
+            } else {
+              archive.addFile(file);
             }
           }
         }
 
-        final tarData = TarEncoder().encode(outputArchive);
-        final gzData = GZipEncoder().encode(tarData);
+        // Archive as tar then gzip to disk
+        final tarfile = CustomTarEncoder().encode(archive);
+        // var encoder = TarFileEncoder();
+        // encoder.open('$distroPath/distros/$file.tar');
+        final gzData = GZipEncoder().encode(tarfile);
+        final fp = File('$distroPath/distros/$file.tar.gz');
 
-        if (gzData != null) {
-          final fp = File('$distroPath/distros/$file.tar.gz');
-          await fp.writeAsBytes(gzData);
-        } else {}
+        Notify.message('writingtodisk-text'.i18n());
+        fp.writeAsBytesSync(gzData!);
+
+        retry = 2;
+        break;
       } catch (e) {
         retry++;
         await Future.delayed(const Duration(seconds: 1));
@@ -295,7 +395,7 @@ class DockerImage {
       }
     }
 
-    // Notify.message('creatinginstance-text'.i18n());
+    Notify.message('creatinginstance-text'.i18n());
 
     // Check if tar file is created
     if (!File('$distroPath/distros/$file.tar.gz').existsSync()) {
