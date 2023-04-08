@@ -118,12 +118,18 @@ Future<void> createInstance(
         Notify.message('${'downloading-text'.i18n()}...');
         await DockerImage().getRootfs(image, tag: tag,
             progress: (current, total, currentStep, totalStep) {
-          String progressInMB = (currentStep / 1024 / 1024).toStringAsFixed(2);
-          String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
-          String percentage =
-              (currentStep / totalStep * 100).toStringAsFixed(0);
-          Notify.message('${'downloading-text'.i18n()}'
-              ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB)');
+          if (currentStep != -1) {
+            String progressInMB =
+                (currentStep / 1024 / 1024).toStringAsFixed(2);
+            String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
+            String percentage =
+                (currentStep / totalStep * 100).toStringAsFixed(0);
+            Notify.message('${'downloading-text'.i18n()}'
+                ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB)');
+          } else {
+            Notify.message(
+                'extractinglayers-text'.i18n(['$current', '$total']));
+          }
         });
         Notify.message('downloaded-text'.i18n());
         // Set distropath with distroName
