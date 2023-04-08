@@ -92,6 +92,8 @@ class _ListItemState extends State<ListItem> {
     if (prefs.getBool('TurnkeyFirstStart_${widget.item}') ?? false) {
       startCmd = 'turnkey-init';
       prefs.setBool('TurnkeyFirstStart_${widget.item}', false);
+    } else {
+      startCmd = prefs.getString('StartCmd_${widget.item}') ?? '';
     }
     // Normal start
     WSLApi().start(widget.item,

@@ -58,7 +58,7 @@ void main() {
     const String distroPath = 'C:/WSL2-Distros/distros';
     final String filename = DockerImage().filename(image, tag);
     // Get rootfs
-    await DockerImage().getRootfs(image, tag: tag,
+    await DockerImage().getRootfs("test", image, tag: tag,
         progress: ((count, total, countStep, totalStep) {
       if (kDebugMode) {
         print('Downloading $count/$total ($countStep/$totalStep)');
@@ -73,12 +73,12 @@ void main() {
 
 // timeout test 2 minutes
   test('Docker rootfs download multi layer', () async {
-    const String image = 'library/nginx';
+    const String image = 'jekyll/jekyll';
     const String tag = 'latest';
     const String distroPath = 'C:/WSL2-Distros/distros';
     final String filename = DockerImage().filename(image, tag);
     // Get rootfs
-    await DockerImage().getRootfs(image, tag: tag, skipDownload: false,
+    await DockerImage().getRootfs("test", image, tag: tag, skipDownload: false,
         progress: ((count, total, countStep, totalStep) {
       if (kDebugMode) {
         print('Downloading $count/$total ($countStep/$totalStep)');
