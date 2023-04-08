@@ -135,5 +135,6 @@
     "showdockerlong-text": "Mostrar distribuições do Docker",
     "usedistrofromdockerhub-text": "Use uma distribuição do Docker Hub (exemplo: dockerhub:ubuntu:latest)",
     "noresultsfound-text": "Nenhum resultado encontrado",
-    "extractinglayers-text": "Extraindo camada %s0 de %s1 ..."
+    "extractinglayers-text": "Extraindo camada %s0 de %s1 ...",
+    "startcommand-text": "Comando de inicialização"
 }
