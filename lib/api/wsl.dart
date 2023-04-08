@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 import '../components/constants.dart';
 import '../components/helpers.dart';
@@ -159,10 +160,39 @@ class WSLApi {
       for (String cmd in startCmd.split(' ')) {
         args.add(cmd);
       }
+      // Run shell to keep open
+      args.add(';/bin/sh');
     }
-    Process.start('start', args,
+    var result = await Process.start('start', args,
         mode: ProcessStartMode.detached, runInShell: true);
+
+    if (kDebugMode) {
+      print("Done starting $distribution");
   }
+  }
+
+  /// Start a WSL distro by name with environment variables
+  /// @param distribution: String
+  /// @param startPath: String (optional) Defaults to root ('/')
+  // void startWithEnv(String distribution,
+  //     {String startPath = '',
+  //     String startUser = '',
+  //     String startCmd = }) async {
+  //   List<String> args = ['wsl', '-d', distribution];
+  //   if (startPath != '') {
+  //     args.addAll(['--cd', startPath]);
+  //   }
+  //   if (startUser != '') {
+  //     args.addAll(['--user', startUser]);
+  //   }
+  //   if (startCmd != '') {
+  //     for (String cmd in startCmd.split(' ')) {
+  //       args.add(cmd);
+  //     }
+  //   }
+  //   Process.start('start', args,
+  //       mode: ProcessStartMode.detached, runInShell: true);
+  // }
 
   /// Stop a WSL distro by name
   /// @param distribution: String

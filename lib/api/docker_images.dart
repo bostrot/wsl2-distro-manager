@@ -133,6 +133,7 @@ class DockerImage {
   static String registryUrl = 'https://registry-1.docker.io';
   static const String authUrl = 'https://auth.docker.io';
   static const String svcUrl = 'registry.docker.io';
+  String? distroName;
 
   /// Get auth token
   /// @param {String} image
@@ -205,7 +206,7 @@ class DockerImage {
       url: '$registryUrl/v2/$image/blobs/$digest',
       saveFilePath: file,
       headers: {
-          'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer $token',
       },
       onProgress: (progress, total, speed) => progressCallback(progress, total),
       onDone: (file) {
@@ -267,9 +268,11 @@ class DockerImage {
 
         final config = imageManifest.config.digest;
         await _downloadBlob(
-            image, token, config, '$path/config.json', (p0, p1) {});
+            image, token, config, '$path\\config.json', (p0, p1) {});
       } catch (e) {
-        print(e);
+        if (kDebugMode) {
+          print(e);
+        }
         return "false";
       }
     } else {
@@ -279,6 +282,41 @@ class DockerImage {
       } catch (e) {
         try {
           imageManifest = ImageManifestV1.fromMap(manifestData);
+
+          // Get ENV
+          final config = imageManifest.history.first;
+          // Parse
+          final parsedConfig = json.decode(config["v1Compatibility"]);
+          var parsedConfig2 = parsedConfig["config"];
+          final env = parsedConfig2["Env"];
+          final cmd = parsedConfig2["Cmd"];
+          // TODO: useradd, groupadd, etc
+          // // Check if adduser or groupadd is in one of the commands
+          // for (var item in imageManifest.history) {
+          //   if (item["v1Compatibility"] == null ||
+          //       item["v1Compatibility"]["container_config"]["Cmd"] == null) {
+          //     continue;
+          //   }
+          //   item["v1Compatibility"]["container_config"]["Cmd"]
+          //       .forEach((element) {
+          //     if (element.contains("adduser") || element.contains("groupadd")) {
+
+          //     }
+          //   });
+          // }
+          // Check if it has an entrypoint
+          final entrypoint = parsedConfig2["Entrypoint"];
+          var entrypointCmd = '';
+          if (entrypoint != null && entrypoint is List) {
+            entrypointCmd = entrypoint.map((e) => e).join(' ');
+          }
+          // Create export env command
+          final exportEnv = env.map((e) => 'export $e;').join(' ');
+
+          if (distroName != null) {
+            prefs.setString('StartCmd_$distroName',
+                '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+          }
         } catch (e) {
           Notify.message('Failed to parse manifest');
           return "false";
@@ -295,7 +333,7 @@ class DockerImage {
           print('Downloading $image layer ${i + 1} of ${layers.length}');
         }
         progressCallback(i, layers.length, 0, 100);
-        await _downloadBlob(image, token, digest, '$path/layer_$i.tar.gz',
+        await _downloadBlob(image, token, digest, '$path\\layer_$i.tar.gz',
             (currentStep, totalStep) {
           progressCallback(i, layers.length, currentStep, totalStep);
         });
@@ -310,7 +348,7 @@ class DockerImage {
           print('Downloading $image layer ${i + 1} of ${layers.length}');
         }
         progressCallback(i, layers.length, 0, 100);
-        await _downloadBlob(image, token, digest, '$path/layer_$i.tar.gz',
+        await _downloadBlob(image, token, digest, '$path\\layer_$i.tar.gz',
             (currentStep, totalStep) {
           progressCallback(i, layers.length, currentStep, totalStep);
         });
@@ -325,10 +363,11 @@ class DockerImage {
   /// @param {String} path
   /// @result {bool} success
   /// @throws {Exception} if tar file is not created
-  Future<bool> getRootfs(String image,
+  Future<bool> getRootfs(String name, String image,
       {String? tag,
       required TotalProgressCallback progress,
       bool skipDownload = false}) async {
+    distroName = name;
     final distroPath = prefs.getString("SaveLocation") ?? defaultPath;
 
     // Add library to image name
@@ -338,7 +377,16 @@ class DockerImage {
 
     // Replace special chars
     final file = filename(image, tag);
-    final path = '$distroPath/tmp/$file';
+    final path = '${distroPath}tmp\\$file';
+
+    // Create tmp folder
+    final tmp = Directory(path);
+    if (!tmp.existsSync()) {
+      tmp.createSync(recursive: true);
+    }
+
+    // Create distro folder
+
     var layers = 0;
     bool done = false;
 
@@ -360,6 +408,8 @@ class DockerImage {
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
+    Notify.message('Extracting layers ...');
+
     // Extract layers
     // Write the compressed tar file to disk.
     int retry = 0;
@@ -372,7 +422,8 @@ class DockerImage {
           if (kDebugMode) {
             print('Extracting layer $i of $layers');
           }
-          progress(i, layers, -1, -1);
+          // progress(i, layers, -1, -1);
+          Notify.message('Extracting layer $i of $layers');
 
           // In memory
           final tarfile = GZipDecoder()
@@ -383,10 +434,8 @@ class DockerImage {
           for (final file in subArchive) {
             if (file.isSymbolicLink) {
               file.isSymbolicLink = true;
-              archive.addFile(file);
-            } else {
-              archive.addFile(file);
             }
+            archive.addFile(file);
           }
         }
 

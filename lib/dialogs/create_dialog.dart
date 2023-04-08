@@ -116,7 +116,7 @@ Future<void> createInstance(
       if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
         // Download image
         Notify.message('${'downloading-text'.i18n()}...');
-        await DockerImage().getRootfs(image, tag: tag,
+        await DockerImage().getRootfs(name, image, tag: tag,
             progress: (current, total, currentStep, totalStep) {
           if (currentStep != -1) {
             String progressInMB =
@@ -163,7 +163,7 @@ Future<void> createInstance(
       if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
         // Download image
         Notify.message('${'downloading-text'.i18n()}...');
-        await DockerImage().getRootfs(image, tag: tag,
+        await DockerImage().getRootfs(name, image, tag: tag,
             progress: (current, total, currentStep, totalStep) {
           String progressInMB = (currentStep / 1024 / 1024).toStringAsFixed(2);
           String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
