@@ -133,5 +133,6 @@
     "showdockerlong-text": "Show Docker distributions",
     "sponsor-text": "Sponsor this project",
     "usedistrofromdockerhub-text": "Hint: You can use an image from Docker Hub (e.g. dockerhub:ubuntu:latest)",
-    "noresultsfound-text": "No results found"
+    "noresultsfound-text": "No results found",
+    "extractinglayers-text": "Extracting layer %s0 of %s1 ..."
 }

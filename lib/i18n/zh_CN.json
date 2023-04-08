@@ -134,5 +134,6 @@
     "showdockerlong-text": "显示 Docker 发行版",
     "sponsor-text": "赞助",
     "usedistrofromdockerhub-text": "使用 Docker Hub 中的发行版 (例如: dockerhub:ubuntu:latest)",
-    "noresultsfound-text": "没有找到结果"
+    "noresultsfound-text": "没有找到结果",
+    "extractinglayers-text": "正在提取层 %s0 / %s1 ..."
 }
