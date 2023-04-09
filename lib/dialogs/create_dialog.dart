@@ -16,7 +16,7 @@ import 'package:wsl2distromanager/theme.dart';
 /// Rename Dialog
 /// @param context: context
 /// @param api: WSLApi
-createDialog(context, Function mountedFn) {
+createDialog() {
   WSLApi api = WSLApi();
   final autoSuggestBox = TextEditingController();
   final locationController = TextEditingController();
@@ -24,11 +24,15 @@ createDialog(context, Function mountedFn) {
   final userController = TextEditingController();
   plausible.event(page: 'create');
 
+  // Get root context by Key
+  final context = GlobalVariable.infobox.currentContext!;
+
   showDialog(
+    useRootNavigator: false,
     context: context,
     builder: (context) {
       return ContentDialog(
-        constraints: const BoxConstraints(maxHeight: 450.0, maxWidth: 400.0),
+        constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 450.0),
         title: Text('createnewinstance-text'.i18n()),
         content: SingleChildScrollView(
           child: CreateWidget(
@@ -47,14 +51,17 @@ createDialog(context, Function mountedFn) {
               }),
           Button(
             onPressed: () async {
-              await createInstance(
-                  mountedFn,
+              // Run "runner" function from global key
+              GlobalVariable.root.currentState!.runner(
+                createInstance(
                   nameController,
                   locationController,
                   api,
                   autoSuggestBox,
                   userController,
-                  context);
+                  context,
+                ),
+              );
             },
             child: Text('create-text'.i18n()),
           ),
@@ -65,7 +72,6 @@ createDialog(context, Function mountedFn) {
 }
 
 Future<void> createInstance(
-    Function mountedFn,
     TextEditingController nameController,
     TextEditingController locationController,
     WSLApi api,
@@ -210,25 +216,12 @@ Future<void> createInstance(
         if (success) {
           prefs.setString('StartPath_$name', '/home/$user');
           prefs.setString('StartUser_$name', user);
-          bool mounted = mountedFn();
-          if (!mounted) {
-            return;
-          }
 
           Notify.message('createdinstance-text'.i18n());
         } else {
-          bool mounted = mountedFn();
-          if (!mounted) {
-            return;
-          }
           Notify.message('createdinstancenouser-text'.i18n());
         }
       } else {
-        bool mounted = mountedFn();
-        if (!mounted) {
-          return;
-        }
-
         // Install fake systemctl
         if (distroName.contains('Turnkey')) {
           // Set first start variable
@@ -292,9 +285,6 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
-        Text(
-          '${'name-text'.i18n()}:',
-        ),
         Container(
           height: 5.0,
         ),
@@ -314,9 +304,6 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
-        Text(
-          '${'pathtorootfs-text'.i18n()}:',
-        ),
         Container(
           height: 5.0,
         ),
@@ -329,10 +316,10 @@ class _CreateWidgetState extends State<CreateWidget> {
                           'turnkeylinux/images/proxmox/'),
                   (e) => Notify.message(e)),
               builder: (context, snapshot) {
-                List<AutoSuggestBoxItem<dynamic>> list = [];
+                List<AutoSuggestBoxItem<String>> list = [];
                 if (snapshot.hasData) {
                   for (var i = 0; i < snapshot.data!.length; i++) {
-                    list.add(AutoSuggestBoxItem(
+                    list.add(AutoSuggestBoxItem<String>(
                       value: snapshot.data![i],
                       label: snapshot.data![i],
                     ));
@@ -425,12 +412,6 @@ class _CreateWidgetState extends State<CreateWidget> {
           text: 'usedistrofromdockerhub-text'.i18n(),
         ),
         Container(
-          height: 10.0,
-        ),
-        Text(
-          '${'savelocation-text'.i18n()}:',
-        ),
-        Container(
           height: 5.0,
         ),
         Tooltip(
@@ -458,9 +439,15 @@ class _CreateWidgetState extends State<CreateWidget> {
             ? Text('turnkeywarning-text'.i18n(),
                 style: const TextStyle(fontStyle: FontStyle.italic))
             : Container(),
+        !turnkey && !docker ? Container(height: 15.0) : Container(),
         !turnkey && !docker
-            ? Text(
-                '${'createuser-text'.i18n()}:',
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${'createuser-text'.i18n()}:',
+                  ),
+                ],
               )
             : Container(),
         !turnkey && !docker
