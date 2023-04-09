@@ -165,10 +165,10 @@ packages:
     dependency: "direct main"
     description:
       name: fluent_ui
-      sha256: "29d85b74ee8d051bed9b5234afd50af4a693fef91f4e79657644051c23d789fb"
+      sha256: "6e9859514a4cf385f21b115f79939c232a9f6c99da5034d42b3965cc2cdcb12c"
       url: "https://pub.dev"
     source: hosted
-    version: "4.4.1"
+    version: "4.4.2"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -237,6 +237,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  go_router:
+    dependency: "direct main"
+    description:
+      name: go_router
+      sha256: feab99a20fd248c658c923ba98f4449ca6e575c3dee9fdf07146f4f33482c6bc
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.5.5"
   http:
     dependency: "direct main"
     description:
@@ -301,6 +309,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  logging:
+    dependency: transitive
+    description:
+      name: logging
+      sha256: "04094f2eb032cbb06c6f6e8d3607edcfcb0455e2bb6cbc010cb01171dcb64e6d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.1"
   macos_window_utils:
     dependency: transitive
     description:
@@ -325,6 +341,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.0"
+  math_expressions:
+    dependency: transitive
+    description:
+      name: math_expressions
+      sha256: "3576593617c3870d75728a751f6ec6e606706d44e363f088ac394b5a28a98064"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.0"
   meta:
     dependency: transitive
     description:
