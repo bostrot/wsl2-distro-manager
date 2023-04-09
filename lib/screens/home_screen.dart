@@ -1,4 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
@@ -23,10 +25,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String status = '';
-  bool loading = false;
-  bool statusLeading = true;
-
   WSLApi api = WSLApi();
 
   void enableAnalytics() async {
@@ -69,111 +67,17 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     enableAnalytics();
-
-    // Check updates
-    App app = App();
-    app.checkUpdate(currentVersion).then((updateUrl) {
-      if (updateUrl != '') {
-        statusMsg('',
-            useWidget: true,
-            widget: Row(
-              children: [
-                Text('newversion-text'.i18n()),
-                TextButton(
-                    onPressed: () => launchUrl(Uri.parse(updateUrl)),
-                    child: Text('downloadnow-text'.i18n(),
-                        style: const TextStyle(fontSize: 12.0))),
-                Text('orcheck-text'.i18n()),
-                TextButton(
-                    onPressed: () => launchUrl(Uri.parse(windowsStoreUrl)),
-                    child: Text('windowsstore-text'.i18n(),
-                        style: const TextStyle(fontSize: 12.0))),
-              ],
-            ));
-      }
-    });
-
-    // Check motd
-    app.checkMotd().then((String motd) {
-      statusMsg(motd, leadingIcon: false);
-    });
-
-    // Call constructor to initialize
-    Notify();
-    Notify.message = statusMsg;
-  }
-
-  Widget statusWidget = const Text('');
-  void statusMsg(
-    String msg, {
-    bool loading = false,
-    bool useWidget = false,
-    bool leadingIcon = true,
-    Widget widget = const Text(''),
-  }) {
-    if (!mounted) {
-      return;
-    }
-    if (useWidget) {
-      setState(() {
-        status = 'WIDGET';
-        this.loading = loading;
-        statusWidget = widget;
-        statusLeading = leadingIcon;
-      });
-    } else {
-      setState(() {
-        status = msg;
-        this.loading = loading;
-        statusLeading = leadingIcon;
-      });
-    }
-  }
-
-  Widget statusBuilder() {
-    return AnimatedOpacity(
-      opacity: status != '' ? 1.0 : 0.0,
-      duration: const Duration(milliseconds: 100),
-      child: InfoBar(
-        title: ListTile(
-          title: status == 'WIDGET'
-              ? statusWidget
-              : Text(
-                  status,
-                  maxLines: 1,
-                ),
-          trailing: loading
-              ? const SizedBox(width: 20.0, height: 20.0, child: ProgressRing())
-              : const Text(''),
-        ), // optional
-        severity:
-            InfoBarSeverity.info, // optional. Default to InfoBarSeverity.info
-        onClose: () {
-          // Dismiss the info bar
-          setState(() {
-            status = '';
-          });
-        },
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      key: GlobalVariable.infobox,
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         DistroList(
           api: api,
-        ),
-        SizedBox(
-          height: status != '' ? 80.0 : 0.0,
-          child: Padding(
-            padding:
-                const EdgeInsets.only(bottom: 10.0, left: 10.0, right: 10.0),
-            child: statusBuilder(),
-          ),
         ),
       ],
     );
