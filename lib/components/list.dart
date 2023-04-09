@@ -29,12 +29,19 @@ class DistroListState extends State<DistroList> {
     }
   }
 
-  @override
-  void initState() {
-    initPrefs();
+  void init() async {
+    await initPrefs();
     // Get shared prefs for showing docker containers
     showDocker = prefs.getBool('showDocker') ?? false;
+    if (mounted) {
+      setState(() {});
+    }
     reloadEvery5Seconds();
+  }
+
+  @override
+  void initState() {
+    init();
     super.initState();
   }
 
@@ -54,7 +61,8 @@ class DistroListState extends State<DistroList> {
   }
 }
 
-FutureBuilder<Instances> distroList(WSLApi api, Map<String, bool> hover, bool showDocker) {
+FutureBuilder<Instances> distroList(
+    WSLApi api, Map<String, bool> hover, bool showDocker) {
   // List as FutureBuilder with WSLApi
   return FutureBuilder<Instances>(
     future: api.list(showDocker),
