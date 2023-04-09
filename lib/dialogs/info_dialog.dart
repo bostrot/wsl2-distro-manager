@@ -2,14 +2,18 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/oss_licenses.dart';
 import 'base_dialog.dart';
 
 /// Rename Dialog
 /// @param context: context
-infoDialog(context, prefs, currentVersion) {
+infoDialog(prefs, currentVersion) {
   plausible.event(page: 'info');
+
+  // Get root context by Key
+  final context = GlobalVariable.root.currentContext!;
 
   showDialog(
       context: context,
