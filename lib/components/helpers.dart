@@ -1,4 +1,6 @@
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/main.dart';
 
 late String language;
 late SharedPreferences prefs;
@@ -17,4 +19,9 @@ String distroLabel(String item) {
 /// Initialize shared preferences
 Future initPrefs() async {
   prefs = await SharedPreferences.getInstance();
+}
+
+class GlobalVariable {
+  static final GlobalKey<RootPageState> root = GlobalKey<RootPageState>();
+  static final GlobalKey<NavigatorState> infobox = GlobalKey<NavigatorState>();
 }
