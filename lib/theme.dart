@@ -17,6 +17,13 @@ class AppTheme extends ChangeNotifier {
     notifyListeners();
   }
 
+  AccentColor _backgroundColor = systemBackgroundColor;
+  AccentColor get backgroundColor => _backgroundColor;
+  set backgroundColor(AccentColor color) {
+    _backgroundColor = color;
+    notifyListeners();
+  }
+
   Color _textColor = systemTextColor;
   Color get textColor => _textColor;
   set textColor(Color color) {
@@ -96,6 +103,23 @@ AccentColor get systemAccentColor {
     });
   }
   return Colors.blue;
+}
+
+AccentColor get systemBackgroundColor {
+  if ((defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.android)) {
+    // Fluent UI background colors (grey)
+    return AccentColor('normal', {
+      'darkest': Colors.grey[200],
+      'darker': Colors.grey[190],
+      'dark': Colors.grey[180],
+      'normal': Colors.grey[170],
+      'light': Colors.grey[160],
+      'lighter': Colors.grey[150],
+      'lightest': Colors.grey[140],
+    });
+  }
+  return Colors.grey.toAccentColor();
 }
 
 Color get systemTextColor {
