@@ -479,36 +479,35 @@ class RootPageState extends State<RootPage> with WindowListener {
     return Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
-        padding: const EdgeInsets.only(left: 50.0, bottom: 10.0),
+        padding: const EdgeInsets.only(bottom: 10.0),
         child: AnimatedOpacity(
           opacity: status != '' ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 100),
           child: InfoBar(
             style: InfoBarThemeData(
               decoration: (severity) {
+                Color color;
                 switch (severity) {
                   case InfoBarSeverity.info:
-                    return BoxDecoration(
-                      color: AppTheme().backgroundColor.darker,
-                      borderRadius: BorderRadius.circular(4.0),
-                    );
+                    color = AppTheme().backgroundColor.light;
+                    break;
                   case InfoBarSeverity.warning:
-                    return BoxDecoration(
-                      color: AppTheme().backgroundColor.darker,
-                      borderRadius: BorderRadius.circular(4.0),
-                    );
-                  case InfoBarSeverity.error:
-                    return BoxDecoration(
-                      color: AppTheme().backgroundColor.darker,
-                      borderRadius: BorderRadius.circular(4.0),
-                    );
+                    color = AppTheme().backgroundColor.light;
+                    break;
                   case InfoBarSeverity.success:
-                    return BoxDecoration(
-                      color: AppTheme().backgroundColor.darker,
-                      borderRadius: BorderRadius.circular(4.0),
-                    );
+                    color = AppTheme().backgroundColor.light;
+                    break;
+                  case InfoBarSeverity.error:
+                    color = AppTheme().backgroundColor.light;
                     break;
                 }
+                    return BoxDecoration(
+                  color: color,
+                      borderRadius: BorderRadius.circular(4.0),
+                  border: Border.all(
+                      color: AppTheme().backgroundColor.darker,
+                  ),
+                    );
               },
             ),
             title: status == 'WIDGET'
