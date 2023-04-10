@@ -61,35 +61,7 @@ infoDialog(prefs, currentVersion) {
                     },
                     text: 'dependencies-text'.i18n(),
                   ),
-                  ClickableText(
-                      clickEvent: "analytics_clicked",
-                      onPressed: () {
-                        bool privacyMode =
-                            prefs.getBool('privacyMode') ?? false;
-                        String privacyStatus = privacyMode
-                            ? 'notsharingdata-text'.i18n()
-                            : 'sharingdata-text'.i18n();
-                        dialog(
-                            item: 'allow-text'.i18n(),
-                            title: 'usagedata-text'.i18n(),
-                            body: 'usagedatawarning-text'.i18n([privacyStatus]),
-                            submitText: 'donotshare-text'.i18n(),
-                            submitInput: false,
-                            submitStyle: const ButtonStyle(),
-                            cancelText: 'share-text'.i18n(),
-                            onCancel: () {
-                              plausible.event(name: "privacy_off");
-                              prefs.setBool('privacyMode', false);
-                              plausible.enabled = true;
-                            },
-                            onSubmit: (inputText) {
-                              plausible.event(name: "privacy_on");
-                              prefs.setBool('privacyMode', true);
-                              plausible.enabled = false;
-                              Notify.message('privacymodeenabled-text'.i18n());
-                            });
-                      },
-                      text: 'privacy-text'.i18n()),
+                  shareUsageData(prefs),
                 ],
               ),
             ),
@@ -103,6 +75,37 @@ infoDialog(prefs, currentVersion) {
           ],
         );
       });
+}
+
+ClickableText shareUsageData(prefs) {
+  return ClickableText(
+      clickEvent: "analytics_clicked",
+      onPressed: () {
+        bool privacyMode = prefs.getBool('privacyMode') ?? false;
+        String privacyStatus = privacyMode
+            ? 'notsharingdata-text'.i18n()
+            : 'sharingdata-text'.i18n();
+        dialog(
+            item: 'allow-text'.i18n(),
+            title: 'usagedata-text'.i18n(),
+            body: 'usagedatawarning-text'.i18n([privacyStatus]),
+            submitText: 'donotshare-text'.i18n(),
+            submitInput: false,
+            submitStyle: const ButtonStyle(),
+            cancelText: 'share-text'.i18n(),
+            onCancel: () {
+              plausible.event(name: "privacy_off");
+              prefs.setBool('privacyMode', false);
+              plausible.enabled = true;
+            },
+            onSubmit: (inputText) {
+              plausible.event(name: "privacy_on");
+              prefs.setBool('privacyMode', true);
+              plausible.enabled = false;
+              Notify.message('privacymodeenabled-text'.i18n());
+            });
+      },
+      text: 'privacy-text'.i18n());
 }
 
 class DependencyList extends StatelessWidget {
