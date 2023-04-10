@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:localization/localization.dart';
@@ -125,7 +124,7 @@ Future<void> createInstance(
           if (currentStep != -1) {
             String progressInMB =
                 (currentStep / 1024 / 1024).toStringAsFixed(2);
-            String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
+            // String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
             String percentage =
                 (currentStep / totalStep * 100).toStringAsFixed(0);
             Notify.message('${'downloading-text'.i18n()}'

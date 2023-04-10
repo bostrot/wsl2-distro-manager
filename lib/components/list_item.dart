@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/notify.dart';

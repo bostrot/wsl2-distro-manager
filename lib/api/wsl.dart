@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'dart:ffi';
 import 'dart:io';
 import 'dart:convert' show Utf8Decoder, json, jsonDecode, utf8;
 import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
-import '../components/constants.dart';
-import '../components/helpers.dart';
+
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 
 class Instances {
   List<String> running = [];
@@ -164,7 +164,7 @@ class WSLApi {
       // Run shell to keep open
       args.add(';/bin/sh');
     }
-    var result = await Process.start('start', args,
+    await Process.start('start', args,
         mode: ProcessStartMode.detached, runInShell: true);
 
     if (kDebugMode) {

@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:wsl2distromanager/main.dart';
+import 'package:wsl2distromanager/nav/root_screen.dart';
 
 late String language;
 late SharedPreferences prefs;
