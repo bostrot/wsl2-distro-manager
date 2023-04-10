@@ -658,20 +658,18 @@ class WSLApi {
       String url = distroRootfsLinks[filename]!;
       // Download file
       try {
-        // Dio dio = Dio();
-        // await dio.download(url, '$downloadPath.tmp',
-        //     onReceiveProgress: (int count, int total) {
-        //   status('${'downloading-text'.i18n()}'
-        //       ' ${(count / total * 100).toStringAsFixed(0)}%');
-        // });
         var downloader = ChunkedDownloader(
             url: url,
             saveFilePath: '$downloadPath.tmp',
             onProgress: (int count, int total, double speed) {
               status('${'downloading-text'.i18n()}'
                   ' ${(count / total * 100).toStringAsFixed(0)}%');
-            });
-        await downloader.start();
+            })
+          ..start();
+        // Await download
+        while (!downloader.done) {
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
         File file = File('$downloadPath.tmp');
         file.rename(downloadPath);
         status('${'downloaded-text'.i18n()} $filename');
