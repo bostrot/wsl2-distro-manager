@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:chunked_downloader/chunked_downloader.dart';
-import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_static/shelf_static.dart';
