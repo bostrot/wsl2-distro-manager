@@ -421,6 +421,16 @@ class WSLApi {
   Future<String> remove(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--unregister', distribution]);
+
+    // Check if folder is empty and delete
+    String path = prefs.getString("Path_$distribution") ?? defaultPath;
+    Directory dir = Directory(path);
+    if (dir.existsSync()) {
+      if (dir.listSync().isEmpty) {
+        dir.deleteSync();
+      }
+    }
+
     return results.stdout;
   }
 
