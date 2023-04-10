@@ -109,15 +109,27 @@ AccentColor get systemBackgroundColor {
   if ((defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.android)) {
     // Fluent UI background colors (grey)
-    return AccentColor('normal', {
-      'darkest': Colors.grey[200],
-      'darker': Colors.grey[190],
-      'dark': Colors.grey[180],
-      'normal': Colors.grey[170],
-      'light': Colors.grey[160],
-      'lighter': Colors.grey[150],
-      'lightest': Colors.grey[140],
-    });
+    if (AppTheme.themeMode == ThemeMode.dark) {
+      return AccentColor('normal', {
+        'darkest': Colors.grey[200],
+        'darker': Colors.grey[190],
+        'dark': Colors.grey[180],
+        'normal': Colors.grey[170],
+        'light': Colors.grey[160],
+        'lighter': Colors.grey[150],
+        'lightest': Colors.grey[140],
+      });
+    } else {
+      return AccentColor('normal', {
+        'darkest': Colors.grey[40],
+        'darker': Colors.grey[30],
+        'dark': Colors.grey[20],
+        'normal': Colors.grey[10],
+        'light': Colors.grey[10],
+        'lighter': Colors.grey[10],
+        'lightest': Colors.grey[10],
+      });
+    }
   }
   return Colors.grey.toAccentColor();
 }
