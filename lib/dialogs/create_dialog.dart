@@ -13,9 +13,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 import 'package:wsl2distromanager/theme.dart';
 
-/// Rename Dialog
-/// @param context: context
-/// @param api: WSLApi
+/// Create Dialog
 createDialog() {
   WSLApi api = WSLApi();
   final autoSuggestBox = TextEditingController();
@@ -146,7 +144,7 @@ Future<void> createInstance(
       }
     }
 
-    Navigator.of(context, rootNavigator: true).pop();
+    // Navigator.of(context, rootNavigator: true).pop();
 
     // Check if docker image
     if (distroName.startsWith('dockerhub:')) {
@@ -358,8 +356,8 @@ class _CreateWidgetState extends State<CreateWidget> {
                       padding: const EdgeInsets.all(10.0),
                       child: Text(
                         text,
-                        style: const TextStyle(
-                          color: Colors.grey,
+                        style: TextStyle(
+                          color: AppTheme().textColor,
                         ),
                       ),
                     );

@@ -23,5 +23,5 @@ Future initPrefs() async {
 
 class GlobalVariable {
   static final GlobalKey<RootPageState> root = GlobalKey<RootPageState>();
-  static final GlobalKey<NavigatorState> infobox = GlobalKey<NavigatorState>();
+  static GlobalKey<NavigatorState> infobox = GlobalKey<NavigatorState>();
 }

@@ -1,9 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 
 dialog({
-  required BuildContext context,
   required item,
   Function? onSubmit,
   bool bodyIsWidget = false,
@@ -17,6 +17,8 @@ dialog({
   String cancelText = '',
   Function? onCancel,
 }) {
+  // Get root context by Key
+  final context = GlobalVariable.infobox.currentContext!;
   final controller = TextEditingController();
   plausible.event(page: 'base_dialog');
   showDialog(

@@ -7,8 +7,9 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/oss_licenses.dart';
 import 'base_dialog.dart';
 
-/// Rename Dialog
-/// @param context: context
+/// Info Dialog
+/// @param prefs: SharedPreferences
+/// @param currentVersion: String
 infoDialog(prefs, currentVersion) {
   plausible.event(page: 'info');
 
@@ -49,7 +50,6 @@ infoDialog(prefs, currentVersion) {
                     clickEvent: "libraries_clicked",
                     onPressed: () {
                       dialog(
-                        context: context,
                         item: 'dependencies-text'.i18n(),
                         title: 'dependencies-text'.i18n(),
                         body: "",
@@ -70,7 +70,6 @@ infoDialog(prefs, currentVersion) {
                             ? 'notsharingdata-text'.i18n()
                             : 'sharingdata-text'.i18n();
                         dialog(
-                            context: context,
                             item: 'allow-text'.i18n(),
                             title: 'usagedata-text'.i18n(),
                             body: 'usagedatawarning-text'.i18n([privacyStatus]),
@@ -120,7 +119,6 @@ class DependencyList extends StatelessWidget {
           clickEvent: "license_clicked",
           onPressed: () {
             dialog(
-              context: context,
               item: entry.value.name,
               title: entry.value.name,
               body: entry.value.license ?? 'No License',

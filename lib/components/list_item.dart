@@ -218,7 +218,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                     icon: const Icon(FluentIcons.copy, size: 16.0),
                     onPressed: () {
-                      copyDialog(context, widget.item);
+                      copyDialog(widget.item);
                     },
                   ),
                 ),
@@ -230,7 +230,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                     icon: const Icon(FluentIcons.rename, size: 16.0),
                     onPressed: () {
-                      renameDialog(context, widget.item);
+                      renameDialog(widget.item);
                     },
                   ),
                 ),
@@ -242,7 +242,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                       icon: const Icon(FluentIcons.delete, size: 16.0),
                       onPressed: () {
-                        deleteDialog(context, widget.item);
+                        deleteDialog(widget.item);
                       }),
                 ),
               ),
@@ -253,7 +253,7 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                       icon: const Icon(FluentIcons.settings, size: 16.0),
                       onPressed: () {
-                        settingsDialog(context, widget.item);
+                        settingsDialog(widget.item);
                       }),
                 ),
               ),

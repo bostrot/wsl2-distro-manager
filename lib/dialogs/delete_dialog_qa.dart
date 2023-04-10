@@ -5,12 +5,11 @@ import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 /// QuickActions Delete Dialog
-/// @param context: context
 /// @param {QuickActionItem} item: QuickActionItem
-deleteQaDialog(context, QuickActionItem item, Function callback) {
+/// @param {Function} callback: callback
+deleteQaDialog(QuickActionItem item, Function callback) {
   plausible.event(page: 'delete_qa');
   dialog(
-      context: context,
       item: item,
       title: 'deleteinstancequestion-text'.i18n([item.name]),
       body: 'deleteinstancebody-text'.i18n(),

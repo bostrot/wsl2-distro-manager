@@ -8,14 +8,11 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 
 /// Copy Dialog
-/// @param context: context
 /// @param item: distro name
-/// @param api: WSLApi
-copyDialog(context, item) {
+copyDialog(item) {
   WSLApi api = WSLApi();
   plausible.event(page: 'copy');
   dialog(
-      context: context,
       item: item,
       title: '${'copy-text'.i18n()} \'$item\'',
       body: 'copyinstance-text'.i18n([distroLabel(item)]),

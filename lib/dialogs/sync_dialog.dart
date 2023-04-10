@@ -5,11 +5,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 /// Sync Dialog
-/// @param context: context
 /// @param item: distro name
-syncDialog(context, item) {
+syncDialog(item) {
   dialog(
-      context: context,
       item: item,
       title: 'syncfromserver-text'.i18n([distroLabel(item)]),
       body: 'syncwarning-text'.i18n([item]),
