@@ -9,7 +9,6 @@ import 'package:system_theme/system_theme.dart';
 import 'package:url_launcher/link.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -55,7 +54,8 @@ void main() async {
         TitleBarStyle.hidden,
         windowButtonVisibility: false,
       );
-      await windowManager.setMinimumSize(const Size(700, 600));
+      await windowManager.setMinimumSize(const Size(550, 450));
+      await windowManager.setSize(const Size(700, 500));
       await windowManager.show();
       await windowManager.setPreventClose(true);
       await windowManager.setSkipTaskbar(false);
@@ -501,13 +501,13 @@ class RootPageState extends State<RootPage> with WindowListener {
                     color = AppTheme().backgroundColor.light;
                     break;
                 }
-                    return BoxDecoration(
+                return BoxDecoration(
                   color: color,
-                      borderRadius: BorderRadius.circular(4.0),
+                  borderRadius: BorderRadius.circular(4.0),
                   border: Border.all(
-                      color: AppTheme().backgroundColor.darker,
+                    color: AppTheme().backgroundColor.darker,
                   ),
-                    );
+                );
               },
             ),
             title: status == 'WIDGET'
