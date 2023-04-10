@@ -195,6 +195,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_markdown:
+    dependency: "direct main"
+    description:
+      name: flutter_markdown
+      sha256: "7b25c10de1fea883f3c4f9b8389506b54053cd00807beab69fd65c8653a2711f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.14"
   flutter_oss_licenses:
     dependency: "direct dev"
     description:
@@ -325,6 +333,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  markdown:
+    dependency: transitive
+    description:
+      name: markdown
+      sha256: d95a9d12954aafc97f984ca29baaa7690ed4d9ec4140a23ad40580bcdb6c87f5
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.2"
   matcher:
     dependency: transitive
     description:
@@ -803,5 +819,5 @@ packages:
     source: hosted
     version: "3.1.1"
 sdks:
-  dart: ">=2.18.5 <3.0.0"
+  dart: ">=2.19.0 <3.0.0"
   flutter: ">=3.7.0"
