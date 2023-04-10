@@ -94,6 +94,8 @@ class _ListItemState extends State<ListItem> {
       prefs.setBool('TurnkeyFirstStart_${widget.item}', false);
     } else {
       startCmd = prefs.getString('StartCmd_${widget.item}') ?? '';
+      // Replace faulty semicolons (e.g. "; ;" or ";;")
+      startCmd = startCmd.replaceAll(RegExp(r';[ ]*;'), ';');
     }
     // Normal start
     WSLApi().start(widget.item,
