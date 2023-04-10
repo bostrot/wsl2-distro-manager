@@ -236,7 +236,7 @@ class DockerImage {
     final token = await _authenticate(image);
 
     var manifestData = await _getManifest(image, token, tag ?? 'latest');
-    var imageManifest;
+    dynamic imageManifest;
 
     // TODO: When the manifest is in hand, the client must verify the signature to ensure the names and layers are valid.
 

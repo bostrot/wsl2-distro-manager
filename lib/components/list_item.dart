@@ -80,7 +80,8 @@ class _ListItemState extends State<ListItem> {
   void stopInstance() {
     plausible.event(name: "wsl_stopped");
     WSLApi().stop(widget.item);
-    Notify.message('${widget.item} ${'stopped-text'.i18n()}.', loading: false);
+    Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
+        loading: false, duration: const Duration(seconds: 3));
   }
 
   void startInstance() {
@@ -100,8 +101,10 @@ class _ListItemState extends State<ListItem> {
     WSLApi().start(widget.item,
         startPath: startPath, startUser: startName, startCmd: startCmd);
 
-    Future.delayed(const Duration(milliseconds: 500),
-        Notify.message('${widget.item} ${'started-text'.i18n()}.'));
+    Future.delayed(
+        const Duration(milliseconds: 500),
+        Notify.message('${widget.item} ${'started-text'.i18n()}.',
+            duration: const Duration(seconds: 3)));
   }
 }
 

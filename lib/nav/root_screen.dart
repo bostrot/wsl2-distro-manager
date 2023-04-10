@@ -47,6 +47,7 @@ class RootPageState extends State<RootPage> with WindowListener {
   // Setup status bar
   void statusMsg(
     String msg, {
+    Duration? duration,
     InfoBarSeverity severity = InfoBarSeverity.info,
     bool loading = false,
     bool useWidget = false,
@@ -68,6 +69,16 @@ class RootPageState extends State<RootPage> with WindowListener {
         status = msg;
         this.loading = loading;
         statusLeading = leadingIcon;
+      });
+    }
+    if (duration != null) {
+      Future.delayed(duration, () {
+        if (mounted) {
+          setState(() {
+            status = '';
+            this.loading = false;
+          });
+        }
       });
     }
   }

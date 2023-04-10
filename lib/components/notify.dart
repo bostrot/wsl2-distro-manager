@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/theme.dart';
 class Notify {
   static late Function(
     String msg, {
+    Duration? duration,
     bool loading,
     bool useWidget,
     bool leadingIcon,
