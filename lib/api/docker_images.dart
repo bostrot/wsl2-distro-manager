@@ -9,7 +9,6 @@ import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
-import 'package:wsl2distromanager/api/tar.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -440,9 +439,7 @@ class DockerImage {
         }
 
         // Archive as tar then gzip to disk
-        final tarfile = CustomTarEncoder().encode(archive);
-        // var encoder = TarFileEncoder();
-        // encoder.open('$distroPath/distros/$file.tar');
+        final tarfile = TarEncoder().encode(archive);
         final gzData = GZipEncoder().encode(tarfile);
         final fp = File('$distroPath/distros/$file.tar.gz');
 
