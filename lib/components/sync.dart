@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -65,28 +66,39 @@ class Sync {
       return;
     }
     Notify.message('${'shuttingdownwsl-text'.i18n()}...', loading: true);
+
     // Shutdown WSL
     await WSLApi().shutdown();
     Notify.message('${'connectingtoip-text'.i18n()}: "$syncIP"...',
         loading: true);
-    Dio().download(
-        'http://$syncIP:59132/ext4.vhdx', '$distroLocation\\ext4.vhdx.tmp',
-        onReceiveProgress: (received, total) {
-      String rec = (received / 1024 / 1024).toStringAsFixed(2);
-      String tot = (total / 1024 / 1024).toStringAsFixed(2);
-      Notify.message(
-          '${'downloading-text'.i18n()} $distroName, $rec MB / $tot MB',
-          loading: true);
-      if (received == total) {
-        Notify.message('${'downloaded-text'.i18n()} $distroName');
-        File oldFile = File('$distroLocation\\ext4.vhdx');
-        oldFile.rename('$distroLocation\\ext4.vhdx.old');
-        File file = File('$distroLocation\\ext4.vhdx.tmp');
-        file.rename('$distroLocation\\ext4.vhdx');
-      }
-    }).catchError((e) {
-      Notify.message('${'errordownloading-text'.i18n()} $distroName',
-          loading: false);
-    });
+
+    // Download using chunks
+    var response = ChunkedDownloader(
+        url: 'http://$syncIP:59132/ext4.vhdx',
+        saveFilePath: '$distroLocation\\ext4.vhdx.tmp',
+        onProgress: (progress, total, speed) {
+          String rec = (progress / 1024 / 1024).toStringAsFixed(2);
+          String tot = (total / 1024 / 1024).toStringAsFixed(2);
+          Notify.message(
+              '${'downloading-text'.i18n()} $distroName, $rec MB / $tot MB',
+              loading: true);
+          if (progress == total) {
+            Notify.message('${'downloaded-text'.i18n()} $distroName');
+            File oldFile = File('$distroLocation\\ext4.vhdx');
+            oldFile.rename('$distroLocation\\ext4.vhdx.old');
+            File file = File('$distroLocation\\ext4.vhdx.tmp');
+            file.rename('$distroLocation\\ext4.vhdx');
+          }
+        },
+        onError: (error) {
+          Notify.message(
+              '${'errordownloading-text'.i18n()} $distroName: $error',
+              loading: false);
+        });
+
+    // Await download
+    while (!response.done) {
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
   }
 }
