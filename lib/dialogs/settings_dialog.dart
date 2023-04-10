@@ -33,7 +33,10 @@ String cmds = '';
 /// Rename Dialog
 /// @param context: context
 /// @param item: distro name
-settingsDialog(context, item) {
+settingsDialog(item) {
+  // Get root context by Key
+  final context = GlobalVariable.infobox.currentContext!;
+
   var title = 'settings-text'.i18n();
   final pathController = TextEditingController();
   pathController.text = prefs.getString('StartPath_$item') ?? '';
@@ -248,7 +251,7 @@ Column settingsColumn(
                       ]),
                   onPressed: () {
                     plausible.event(name: "network_downloaded");
-                    syncDialog(context, item);
+                    syncDialog(item);
                   },
                 ),
               ),

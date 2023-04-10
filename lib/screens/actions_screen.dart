@@ -116,11 +116,9 @@ class QuickPageState extends State<QuickPage> {
                               top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
                   onPressed: () {
                     // Open qa_dialog
-                    communityDialog(
-                        context,
-                        () => setState(
-                              () {},
-                            ));
+                    communityDialog(() => setState(
+                          () {},
+                        ));
                   },
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -304,8 +302,8 @@ class QuickPageState extends State<QuickPage> {
                           icon: const Icon(FluentIcons.delete),
                           onPressed: () {
                             // Open remove dialog
-                            deleteQaDialog(context, quickActions[i],
-                                () => setState(() {}));
+                            deleteQaDialog(
+                                quickActions[i], () => setState(() {}));
                           },
                         ),
                       ],

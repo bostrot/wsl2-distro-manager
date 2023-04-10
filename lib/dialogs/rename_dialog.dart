@@ -5,11 +5,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 /// Rename Dialog
-/// @param context: context
 /// @param item: distro name
-renameDialog(context, item) {
+renameDialog(item) {
   dialog(
-      context: context,
       item: item,
       title: '${'rename-text'.i18n()} \'${distroLabel(item)}\'',
       body: 'renameinfo-text'.i18n(),

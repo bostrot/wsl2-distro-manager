@@ -7,14 +7,11 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 /// Delete Dialog
-/// @param context: context
 /// @param item: distro name
-/// @param api: WSLApi
-deleteDialog(context, item) {
+deleteDialog(item) {
   WSLApi api = WSLApi();
   plausible.event(page: 'delete');
   dialog(
-      context: context,
       item: item,
       title: 'deleteinstancequestion-text'.i18n([distroLabel(item)]),
       body: 'deleteinstancebody-text'.i18n(),
