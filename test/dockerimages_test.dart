@@ -19,6 +19,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 void main() {
   void statusMsg(
     String msg, {
+    Duration? duration,
     dynamic severity = "",
     bool loading = false,
     bool useWidget = false,
