@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -245,7 +248,8 @@ class RootPageState extends State<RootPage> with WindowListener {
 
   @override
   void onWindowClose() async {
-    // TODO: implement onWindowClose
+    SystemNavigator.pop();
+    exit(0);
   }
 }
 
