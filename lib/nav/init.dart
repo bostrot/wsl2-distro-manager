@@ -41,7 +41,6 @@ initRoot(statusMsg) async {
   if (kDebugMode) {
     // prefs.remove('version');
   }
-
   // Check updates
   App app = App();
   app.checkUpdate(currentVersion).then((updateUrl) {
