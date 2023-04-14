@@ -135,5 +135,6 @@
     "usedistrofromdockerhub-text": "Hint: You can use an image from Docker Hub (e.g. dockerhub:ubuntu:latest)",
     "noresultsfound-text": "No results found",
     "extractinglayers-text": "Extracting layer %s0 of %s1 ...",
-    "startcommand-text": "Start command"
+    "startcommand-text": "Start command",
+    "writingtodisk-text": "Rootfs is being created, please wait ..."
 }
