@@ -136,5 +136,6 @@
     "usedistrofromdockerhub-text": "使用 Docker Hub 中的發行版本 (例如: dockerhub:ubuntu:latest)",
     "noresultsfound-text": "沒有找到結果",
     "extractinglayers-text": "正在提取層 %s0 / %s1 ...",
-    "startcommand-text": "啟動指令"
+    "startcommand-text": "啟動指令",
+    "writingtodisk-text": "正在建立 rootfs，請稍候 ..."
 }
