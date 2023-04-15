@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:go_router/go_router.dart';
+import 'package:plausible_analytics/navigator_observer.dart';
+import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
@@ -12,6 +14,7 @@ final router = GoRouter(
   navigatorKey: rootNavigatorKey,
   routes: [
     ShellRoute(
+      observers: [PlausibleNavigatorObserver(plausible)],
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
         return RootPage(
