@@ -23,16 +23,10 @@
 
 ## 🚀 Features
 
-
-
-
-
-
 - [x] Manage WSL instances
-- [x] Download and use Docker images as WSL instances - without Docker! 
-
+- [x] Download and use Docker images as WSL instances - without Docker!
 - [x] Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
-- [x] Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey Wordpress)
+- [x] Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey WordPress)
 - [x] Use your own repository for rootfs' or LXC containers
 - [x] and more...
 
@@ -49,7 +43,7 @@ You can get this app with a direct download from the [Releases](https://github.c
 <details>
 <summary>MSIX installer</summary>
 
-The `msix` is signed with a test certificate so you need to allow it specifically. In PowerShell you can do following:
+The `msix` is signed with a test certificate so you need to allow it specifically. In PowerShell you can do the following:
 
 ```powershell
 Add-AppPackage -Path .\wsl2-distro-manager-v1.x.x-unsigned.msix -AllowUnsigned
@@ -81,7 +75,7 @@ choco install wsl2-distro-manager
 <details>
 <summary>Install a nightly build</summary>
 
-The last build can be found as artificats in the "releaser" workflow or via [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip). If you rather prefer an unsigned `msix` you can also use [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip).
+The last build can be found as artifacts in the "releaser" workflow or via [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip). If you rather prefer an unsigned `msix` you can also use [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip).
 
 </details>
 
@@ -111,7 +105,9 @@ flutter run -d windows # run it
 
 ## 🤝 Contributing
 
-Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/bostrot/wsl2-distro-manager/issues). You can also take a look at the [contributing guide](https://github.com/bostrot/wsl2-distro-manager/blob/main/CONTRIBUTING.md).
+Contributions, issues and feature requests are welcome!\
+Feel free to check the [issues page](https://github.com/bostrot/wsl2-distro-manager/issues). 
+You can also take a look at the [contributing guide](https://github.com/bostrot/wsl2-distro-manager/blob/main/CONTRIBUTING.md).
 
 ## Show your support
 
@@ -119,7 +115,7 @@ Give a ⭐️ if this project helped you!
 
 ## 📝 License
 
-Copyright © 2023 [Eric Trenkel](https://github.com/bostrot).<br />
+Copyright © 2023 [Eric Trenkel](https://github.com/bostrot).\
 This project is [GPL-3.0](https://github.com/bostrot/wsl2-distro-manager/blob/main/LICENSE) licensed.
 
 ---
