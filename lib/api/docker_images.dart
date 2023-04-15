@@ -9,6 +9,7 @@ import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -278,7 +279,7 @@ class DockerImage {
       // Single architecture
       try {
         imageManifest = ImageManifest.fromMap(manifestData);
-      } catch (e) {
+      } catch (e, stackTrace) {
         try {
           imageManifest = ImageManifestV1.fromMap(manifestData);
 
@@ -316,10 +317,20 @@ class DockerImage {
             prefs.setString('StartCmd_$distroName',
                 '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
           }
-        } catch (e) {
+        } catch (e, stackTrace) {
           Notify.message('Failed to parse manifest');
+          await Sentry.captureException(
+            e,
+            stackTrace: stackTrace,
+          );
           return "false";
         }
+        Notify.message('Failed to parse manifest');
+        await Sentry.captureException(
+          e,
+          stackTrace: stackTrace,
+        );
+        return "false";
       }
     }
 
@@ -448,8 +459,15 @@ class DockerImage {
 
         retry = 2;
         break;
-      } catch (e) {
+      } catch (e, stackTrace) {
         retry++;
+        // Sentry capture
+        if (retry == 2) {
+          await Sentry.captureException(
+            e,
+            stackTrace: stackTrace,
+          );
+        }
         await Future.delayed(const Duration(seconds: 1));
         if (kDebugMode) {
           print('Retrying $retry');
