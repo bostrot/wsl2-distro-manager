@@ -20,7 +20,7 @@ dependencies:
   url_launcher: ^6.1.6
   dio: ^5.0.3
   package_info_plus: ^3.0.2
-  plausible_analytics: ^0.2.1
+  plausible_analytics: ^0.3.0
   shared_preferences: ^2.0.15
   shelf_static: ^1.1.1
   shelf: ^1.4.0
