@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/router.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'theme.dart';
 
@@ -52,7 +53,16 @@ void main() async {
     });
   }
 
-  runApp(const WSLManager());
+  // Sentry initialization for error reporting
+  Sentry.init(
+    (options) {
+      options.dsn = sentryDsn;
+      options.environment = kReleaseMode ? 'production' : 'development';
+      options.release = currentVersion;
+      options.diagnosticLevel = SentryLevel.info;
+    },
+    appRunner: () => runApp(const WSLManager()),
+  );
 }
 
 class WSLManager extends StatelessWidget {

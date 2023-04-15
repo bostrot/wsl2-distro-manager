@@ -35,6 +35,7 @@ dependencies:
   chunked_downloader: ^0.0.2
   go_router: ^6.5.5
   flutter_markdown: ^0.6.14
+  sentry_flutter: ^7.4.2
 
 dev_dependencies:
   flutter_test:
@@ -53,7 +54,7 @@ msix_config:
   display_name: WSL2 Manager
   publisher_display_name: Bostrot
   identity_name: 9891PhantomDevs.WSL2Manager
-  msix_version: 1.6.2.0
+  msix_version: 1.7.2.0
   publisher: CN=94697CA2-9680-453C-A7CB-2FA531A4A341
   logo_path: .\assets\logo.png
   start_menu_icon_path: .\assets\logo.png
@@ -61,5 +62,5 @@ msix_config:
   icons_background_color: transparent
   architecture: x64
   capabilities: 'internetClient'
-  languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW, zh-HK
-  install_certificate: false
+  store: true
+  languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW
