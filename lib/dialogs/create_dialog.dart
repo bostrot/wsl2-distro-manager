@@ -56,7 +56,6 @@ createDialog() {
                   api,
                   autoSuggestBox,
                   userController,
-                  context,
                 ),
               );
             },
@@ -69,12 +68,12 @@ createDialog() {
 }
 
 Future<void> createInstance(
-    TextEditingController nameController,
-    TextEditingController locationController,
-    WSLApi api,
-    TextEditingController autoSuggestBox,
-    TextEditingController userController,
-    BuildContext context) async {
+  TextEditingController nameController,
+  TextEditingController locationController,
+  WSLApi api,
+  TextEditingController autoSuggestBox,
+  TextEditingController userController,
+) async {
   plausible.event(name: "wsl_create");
   String label = nameController.text;
   // Replace all special characters with _
@@ -144,45 +143,6 @@ Future<void> createInstance(
     }
 
     // Navigator.of(context, rootNavigator: true).pop();
-
-    // Check if docker image
-    if (distroName.startsWith('dockerhub:')) {
-      isDockerImage = true;
-      // Remove prefix
-      distroName = autoSuggestBox.text.split('dockerhub:')[1];
-      // Get tag
-      String? image = distroName.split(':')[0];
-      String? tag = distroName.split(':')[1];
-
-      bool isDownloaded = false;
-      // Check if image already downloaded
-      if (await DockerImage().isDownloaded(image, tag: tag)) {
-        isDownloaded = true;
-        // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
-      }
-
-      // Check if image exists
-      if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
-        // Download image
-        Notify.message('${'downloading-text'.i18n()}...');
-        await DockerImage().getRootfs(name, image, tag: tag,
-            progress: (current, total, currentStep, totalStep) {
-          String progressInMB = (currentStep / 1024 / 1024).toStringAsFixed(2);
-          String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
-          String percentage =
-              (currentStep / totalStep * 100).toStringAsFixed(0);
-          Notify.message('${'downloading-text'.i18n()}'
-              ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB/$totalInMB MB)');
-        });
-        Notify.message('downloaded-text'.i18n());
-        // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
-      } else if (!isDownloaded) {
-        Notify.message('distronotfound-text'.i18n());
-        return;
-      }
-    }
 
     // Create instance
     ProcessResult result = await api.create(
