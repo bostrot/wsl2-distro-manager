@@ -349,7 +349,7 @@ class DockerImage {
               user = int.tryParse(user) ?? user;
               if (user is String) {
                 // Add to shared preferences
-                prefs.setString('DefaultUser_$distroName', user);
+                prefs.setString('StartUser_$distroName', user);
               } else {
                 // User is a number
                 // TODO: implement docker user is a number
@@ -374,13 +374,12 @@ class DockerImage {
       // Create export env command
       final exportEnv = env.map((e) => 'export $e;').join(' ');
 
-      if (distroName != null) {
-        prefs.setString('StartCmd_$distroName',
-            '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
-        // Add to shared preferences
-        prefs.setStringList('UserCmds_$distroName', userCmds);
-        prefs.setStringList('GroupCmds_$distroName', groupCmds);
-      }
+      // Set image specific commands
+      String name = filename(image, tag);
+      prefs.setString(
+          'StartCmd_$name', '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+      prefs.setStringList('UserCmds_$name', userCmds);
+      prefs.setStringList('GroupCmds_$name', groupCmds);
 
       // Download layers
       final layers = imageManifest.fsLayers;

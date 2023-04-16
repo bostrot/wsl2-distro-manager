@@ -157,14 +157,19 @@ Future<void> createInstance(
     if (result.exitCode != 0) {
       Notify.message(WSLApi().utf8Convert(result.stdout));
     } else {
-      var userCmds = prefs.getStringList('UserCmds_$name');
-      var groupCmds = prefs.getStringList('GroupCmds_$name');
+      var userCmds = prefs.getStringList('UserCmds_$distroName');
+      var groupCmds = prefs.getStringList('GroupCmds_$distroName');
       if (userCmds != null && groupCmds != null) {
         for (int i = 0; i < groupCmds.length; i++) {
-          await api.exec(name, [groupCmds[i]]);
+          var cmd = groupCmds[i].replaceAll("/bin/sh -c ", "");
+          cmd = cmd.replaceAll(RegExp(r'\s+'), ' ');
+          await api.exec(name, [cmd]);
         }
         for (int i = 0; i < userCmds.length; i++) {
-          await api.exec(name, [userCmds[i]]);
+          var cmd = userCmds[i].replaceAll("/bin/sh -c ", "");
+          // Replace multiple spaces with one
+          cmd = cmd.replaceAll(RegExp(r'\s+'), ' ');
+          await api.exec(name, [cmd]);
         }
       }
       String user = userController.text;
