@@ -39,7 +39,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  msix: ^3.7.0
+  msix: ^3.10.1
   flutter_lints: ^2.0.1
   flutter_oss_licenses: ^2.0.1
 
@@ -53,7 +53,7 @@ msix_config:
   display_name: WSL2 Manager
   publisher_display_name: Bostrot
   identity_name: 9891PhantomDevs.WSL2Manager
-  msix_version: 1.7.2.0
+  msix_version: 1.7.3.0
   publisher: CN=94697CA2-9680-453C-A7CB-2FA531A4A341
   logo_path: .\assets\logo.png
   start_menu_icon_path: .\assets\logo.png
@@ -61,5 +61,7 @@ msix_config:
   icons_background_color: transparent
   architecture: x64
   capabilities: 'internetClient'
-  store: true
   languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW
+  certificate_path: ./certs/CERTIFICATE.pfx
+  certificate_password: REDACTED
+  install_certificate: false

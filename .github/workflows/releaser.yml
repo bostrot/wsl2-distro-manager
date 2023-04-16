@@ -31,6 +31,13 @@ jobs:
           }
           Write-Output "::set-output name=version::$wsl2_manager_version"
 
+      # Generate .pfx from CERTIFICATE.pem and CERTIFICATE.key
+      - name: Create PFX
+        run: |
+          echo "$BASE64_PFX" | ConvertFrom-Base64String | Set-Content -Path ./certs/CERTIFICATE.pfx
+        env:
+          BASE64_PFX: ${{ secrets.SIGN_PFX }}
+
       # Setup & build
       - name: Replace version in constants.dart
         run: |
@@ -43,7 +50,18 @@ jobs:
           channel: 'stable'
       - run: flutter config --enable-windows-desktop
       - run: flutter build windows
+      - name: Add certificate_password to pubspec.yaml
+        run: |
+          (Get-Content .\pubspec.yaml) -replace("certificate_password: (.*)"", "certificate_password: $SIGN_PASSWORD") | Set-Content .\pubspec.yaml
+        env:
+          SIGN_PASSWORD: ${{ secrets.SIGN_PWD }}
+      - name: Set store to false
+        run: |
+          (Get-Content .\pubspec.yaml) -replace("store: (.*)", "store: false") | Set-Content .\pubspec.yaml
       - run: flutter pub run msix:create
+      - name: Delete PFX
+        run: |
+          Remove-Item ./certs/CERTIFICATE.pfx
 
       # Create nightly release
       - name: Create zip
