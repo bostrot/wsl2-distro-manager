@@ -318,20 +318,52 @@ class DockerImage {
       var parsedConfig2 = parsedConfig["config"];
       final env = parsedConfig2["Env"];
       final cmd = parsedConfig2["Cmd"];
-      // TODO: useradd, groupadd, etc
-      // // Check if adduser or groupadd is in one of the commands
-      // for (var item in imageManifest.history) {
-      //   if (item["v1Compatibility"] == null ||
-      //       item["v1Compatibility"]["container_config"]["Cmd"] == null) {
-      //     continue;
-      //   }
-      //   item["v1Compatibility"]["container_config"]["Cmd"]
-      //       .forEach((element) {
-      //     if (element.contains("adduser") || element.contains("groupadd")) {
 
-      //     }
-      //   });
-      // }
+      // Check if adduser or groupadd is in one of the commands
+      List<String> userCmds = [];
+      List<String> groupCmds = [];
+      for (var item in imageManifest.history) {
+        try {
+          if (item["v1Compatibility"] == null) {
+            continue;
+          }
+          item = json.decode(item["v1Compatibility"]);
+          if (item["container_config"] == null) {
+            continue;
+          }
+          item["container_config"]["Cmd"].forEach((element) {
+            // User commands
+            if (element.contains("adduser") || element.contains("useradd")) {
+              userCmds.add(element);
+            }
+            // Group commands
+            if (element.contains("groupadd") || element.contains("addgroup")) {
+              groupCmds.add(element);
+            }
+            // Default user
+            if (element.contains("USER")) {
+              var user = element.split(' ')[1];
+              if (user.contains(':')) {
+                user = user.split(':')[0];
+              }
+              user = int.tryParse(user) ?? user;
+              if (user is String) {
+                // Add to shared preferences
+                prefs.setString('DefaultUser_$distroName', user);
+              } else {
+                // User is a number
+                // TODO: implement docker user is a number
+                Notify.message('Not implemented yet: Docker USER is a number.');
+              }
+            }
+          });
+        } catch (e, stacktrace) {
+          if (kDebugMode) {
+            print(e);
+          }
+          logDebug(e, stacktrace, null);
+        }
+      }
 
       // Check if it has an entrypoint
       final entrypoint = parsedConfig2["Entrypoint"];
@@ -345,6 +377,9 @@ class DockerImage {
       if (distroName != null) {
         prefs.setString('StartCmd_$distroName',
             '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+        // Add to shared preferences
+        prefs.setStringList('UserCmds_$distroName', userCmds);
+        prefs.setStringList('GroupCmds_$distroName', groupCmds);
       }
 
       // Download layers
@@ -433,37 +468,37 @@ class DockerImage {
 
         // More than one layer
         if (layers != 1) {
-        for (var i = 0; i < layers; i++) {
-          // Read archives layers
-          if (kDebugMode) {
-            print('Extracting layer $i of $layers');
-          }
-          // progress(i, layers, -1, -1);
-          Notify.message('Extracting layer $i of $layers');
+          for (var i = 0; i < layers; i++) {
+            // Read archives layers
+            if (kDebugMode) {
+              print('Extracting layer $i of $layers');
+            }
+            // progress(i, layers, -1, -1);
+            Notify.message('Extracting layer $i of $layers');
 
-          // In memory
-          final tarfile = GZipDecoder()
-              .decodeBytes(File('$path/layer_$i.tar.gz').readAsBytesSync());
-          final subArchive = TarDecoder().decodeBytes(tarfile);
+            // In memory
+            final tarfile = GZipDecoder()
+                .decodeBytes(File('$path/layer_$i.tar.gz').readAsBytesSync());
+            final subArchive = TarDecoder().decodeBytes(tarfile);
 
-          // Add files to archive
-          for (final file in subArchive) {
-            archive.addFile(file);
+            // Add files to archive
+            for (final file in subArchive) {
+              archive.addFile(file);
               if (kDebugMode && !file.name.contains('/')) {
                 if (kDebugMode) {
                   print('Adding root file ${file.name}');
                 }
               }
+            }
           }
-        }
 
-        // Archive as tar then gzip to disk
-        final tarfile = TarEncoder().encode(archive);
-        final gzData = GZipEncoder().encode(tarfile);
-        final fp = File('$distroPath/distros/$file.tar.gz');
+          // Archive as tar then gzip to disk
+          final tarfile = TarEncoder().encode(archive);
+          final gzData = GZipEncoder().encode(tarfile);
+          final fp = File('$distroPath/distros/$file.tar.gz');
 
-        Notify.message('writingtodisk-text'.i18n());
-        fp.writeAsBytesSync(gzData!);
+          Notify.message('writingtodisk-text'.i18n());
+          fp.writeAsBytesSync(gzData!);
         } else if (layers == 1) {
           // Just copy the file
           File('$path/layer_0.tar.gz')
