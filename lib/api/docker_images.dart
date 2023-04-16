@@ -430,6 +430,9 @@ class DockerImage {
     while (retry < 2) {
       try {
         Archive archive = Archive();
+
+        // More than one layer
+        if (layers != 1) {
         for (var i = 0; i < layers; i++) {
           // Read archives layers
           if (kDebugMode) {
@@ -445,10 +448,12 @@ class DockerImage {
 
           // Add files to archive
           for (final file in subArchive) {
-            if (file.isSymbolicLink) {
-              file.isSymbolicLink = true;
-            }
             archive.addFile(file);
+              if (kDebugMode && !file.name.contains('/')) {
+                if (kDebugMode) {
+                  print('Adding root file ${file.name}');
+                }
+              }
           }
         }
 
@@ -459,6 +464,11 @@ class DockerImage {
 
         Notify.message('writingtodisk-text'.i18n());
         fp.writeAsBytesSync(gzData!);
+        } else if (layers == 1) {
+          // Just copy the file
+          File('$path/layer_0.tar.gz')
+              .copySync('$distroPath/distros/$file.tar.gz');
+        }
 
         retry = 2;
         break;
