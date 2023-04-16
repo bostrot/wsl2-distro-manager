@@ -35,7 +35,6 @@ dependencies:
   chunked_downloader: ^0.0.2
   go_router: ^6.5.5
   flutter_markdown: ^0.6.14
-  sentry_flutter: ^7.4.2
 
 dev_dependencies:
   flutter_test:
