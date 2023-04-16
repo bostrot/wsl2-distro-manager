@@ -9,16 +9,28 @@ import 'package:wsl2distromanager/components/constants.dart';
 
 /// Initialize logging
 void initLogging() async {
-  var logfile = File('wslmanager_01.log');
+  // AppData folder
+  var appData = Directory(Platform.environment['APPDATA']!);
+  appData = Directory('${appData.path}/com.bostrot/WSL Distro Manager');
+
+  // Create folder if it does not exist
+  if (!await appData.exists()) {
+    await appData.create(recursive: true);
+  }
+
+  // Log file
+  var logfile = File('${appData.path}/wslmanager_01.log');
   // Delete if file is larger than 1MB
   if (await logfile.exists() && await logfile.length() > 10 * 1024 * 1024) {
     await logfile.delete();
   }
+
   // File does not contain current version
   if (await logfile.exists() &&
       !(await logfile.readAsString()).contains(currentVersion)) {
     await logfile.delete();
   }
+
   // Check if file exists
   if (!await logfile.exists()) {
     await logfile.create();
