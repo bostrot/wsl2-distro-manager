@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/dialogs/bug_dialog.dart';
 import 'package:wsl2distromanager/main.dart';
 import 'package:wsl2distromanager/nav/init.dart';
 import 'package:wsl2distromanager/nav/panelist.dart';
@@ -190,6 +191,13 @@ class RootPageState extends State<RootPage> with WindowListener {
           );
         }(),
         actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          // Bug report button
+          Padding(
+              padding: const EdgeInsetsDirectional.only(end: 8.0),
+              child: IconButton(
+                icon: const Icon(FluentIcons.bug),
+                onPressed: () => bugDialog(),
+              )),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8.0),
             child: ToggleSwitch(

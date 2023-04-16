@@ -137,5 +137,9 @@
     "noresultsfound-text": "没有找到结果",
     "extractinglayers-text": "正在提取层 %s0 / %s1 ...",
     "startcommand-text": "启动命令",
-    "writingtodisk-text": "正在创建 rootfs，请稍候..."
+    "writingtodisk-text": "正在创建 rootfs，请稍候...",
+    "report-text": "您想上传日志文件或打开 Github 问题吗？",
+    "cancelreport-text": "取消报告",
+    "githubissue-text": "Github 问题",
+    "uploadlogfile-text": "上传日志文件"
 }
