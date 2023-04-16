@@ -7,8 +7,8 @@ import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/nav/router.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'theme.dart';
 
@@ -53,16 +53,21 @@ void main() async {
     });
   }
 
-  // Sentry initialization for error reporting
-  Sentry.init(
-    (options) {
-      options.dsn = sentryDsn;
-      options.environment = kReleaseMode ? 'production' : 'development';
-      options.release = currentVersion;
-      options.diagnosticLevel = SentryLevel.info;
-    },
-    appRunner: () => runApp(const WSLManager()),
-  );
+  // Init logging
+  initLogging();
+
+  // Error logging
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    logError(details.exception, details.stack, details.library);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    logError(error, stack, null);
+    return true;
+  };
+
+  // Init app
+  runApp(const WSLManager());
 }
 
 class WSLManager extends StatelessWidget {
