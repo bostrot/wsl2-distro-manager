@@ -136,5 +136,9 @@
     "noresultsfound-text": "No results found",
     "extractinglayers-text": "Extracting layer %s0 of %s1 ...",
     "startcommand-text": "Start command",
-    "writingtodisk-text": "Rootfs is being created, please wait ..."
+    "writingtodisk-text": "Rootfs is being created, please wait ...",
+    "report-text": "Do you want to upload the log file or open a Github issue?",
+    "cancelreport-text": "Cancel report",
+    "githubissue-text": "Github Issue",
+    "uploadlogfile-text": "Upload log file"
 }

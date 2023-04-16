@@ -137,5 +137,9 @@
     "noresultsfound-text": "Nenhum resultado encontrado",
     "extractinglayers-text": "Extraindo camada %s0 de %s1 ...",
     "startcommand-text": "Comando de inicialização",
-    "writingtodisk-text": "Rootfs está sendo criado, por favor aguarde ..."
+    "writingtodisk-text": "Rootfs está sendo criado, por favor aguarde ...",
+    "report-text": "Você deseja enviar o arquivo de log ou abrir um problema no Github?",
+    "cancelreport-text": "Cancelar relatório",
+    "githubissue-text": "Problema no Github",
+    "uploadlogfile-text": "Enviar arquivo de log"
 }

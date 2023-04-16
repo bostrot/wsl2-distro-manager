@@ -137,5 +137,9 @@
     "noresultsfound-text": "Keine Ergebnisse gefunden",
     "extractinglayers-text": "Layer %s0 von %s1 wird extrahiert ...",
     "startcommand-text": "Startkommando",
-    "writingtodisk-text": "Rootfs wird erstellt, bitte warten ..."
+    "writingtodisk-text": "Rootfs wird erstellt, bitte warten ...",
+    "report-text": "Möchten Sie die Protokolldatei hochladen oder ein Github-Issue öffnen?",
+    "cancelreport-text": "Bericht abbrechen",
+    "githubissue-text": "Github Issue",
+    "uploadlogfile-text": "Protokoll hochladen"
 }
