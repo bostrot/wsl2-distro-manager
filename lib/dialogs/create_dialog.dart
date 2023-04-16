@@ -110,8 +110,6 @@ Future<void> createInstance(
       // Check if image already downloaded
       if (await DockerImage().isDownloaded(image, tag: tag)) {
         isDownloaded = true;
-        // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
       }
 
       // Check if image exists
@@ -140,6 +138,11 @@ Future<void> createInstance(
       } else if (!isDownloaded) {
         Notify.message('distronotfound-text'.i18n());
         return;
+      }
+
+      if (isDownloaded) {
+        // Set distropath with distroName
+        distroName = DockerImage().filename(image, tag);
       }
     }
 
