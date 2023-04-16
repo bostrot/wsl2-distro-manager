@@ -3,6 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:localization/localization.dart';
+import 'package:system_theme/system_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -10,6 +11,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/changelog_dialog.dart';
 import 'package:wsl2distromanager/dialogs/firststart_dialog.dart';
+import 'package:wsl2distromanager/theme.dart';
 
 initRoot(statusMsg) async {
   // Call constructor to initialize
@@ -88,5 +90,12 @@ initRoot(statusMsg) async {
 
   if (kDebugMode) {
     prefs.remove('LastMotd');
+  }
+
+  // Get system dark mode
+  if (SystemTheme.isDarkMode) {
+    AppTheme().mode = ThemeMode.dark;
+  } else {
+    AppTheme().mode = ThemeMode.light;
   }
 }
