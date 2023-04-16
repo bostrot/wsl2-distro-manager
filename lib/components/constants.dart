@@ -23,8 +23,11 @@ String gitApiScriptsLink =
 String repoScripts =
     'https://rawcdn.githack.com/bostrot/wsl-scripts/main/scripts/';
 
-const String sentryDsn =
-    'https://86902199b537438795ef3daf6e898819@o4505019059863552.ingest.sentry.io/4505019072512000';
+const String githubIssues =
+    'https://github.com/bostrot/wsl2-distro-manager/issues/new/choose';
+
+const String errorUrl =
+    'https://n8n.aachen.dev/webhook/error-logging-1866548e-233f-4c09-a257-9f3deab055b3';
 
 String explorerPath = '\\\\wsl.localhost';
 
