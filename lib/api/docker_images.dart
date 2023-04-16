@@ -12,6 +12,7 @@ import 'package:localization/localization.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
 class Manifests {
@@ -247,6 +248,10 @@ class DockerImage {
       manifestData = json.decode(manifestData);
     }
 
+    // For logging
+    Object? exception;
+    StackTrace? stacktrace;
+
     // Multiple architectures per tag
     if (manifestData['manifests'] != null) {
       // Get manifest
@@ -269,68 +274,26 @@ class DockerImage {
         final config = imageManifest.config.digest;
         await _downloadBlob(
             image, token, config, '$path\\config.json', (p0, p1) {});
-      } catch (e) {
+      } catch (e, stackTrace) {
         if (kDebugMode) {
           print(e);
         }
+        await Sentry.captureException(e, stackTrace: stackTrace);
         return "false";
       }
     } else {
       // Single architecture
       try {
         imageManifest = ImageManifest.fromMap(manifestData);
-      } catch (e, stackTrace) {
-        try {
-          imageManifest = ImageManifestV1.fromMap(manifestData);
-
-          // Get ENV
-          final config = imageManifest.history.first;
-          // Parse
-          final parsedConfig = json.decode(config["v1Compatibility"]);
-          var parsedConfig2 = parsedConfig["config"];
-          final env = parsedConfig2["Env"];
-          final cmd = parsedConfig2["Cmd"];
-          // TODO: useradd, groupadd, etc
-          // // Check if adduser or groupadd is in one of the commands
-          // for (var item in imageManifest.history) {
-          //   if (item["v1Compatibility"] == null ||
-          //       item["v1Compatibility"]["container_config"]["Cmd"] == null) {
-          //     continue;
-          //   }
-          //   item["v1Compatibility"]["container_config"]["Cmd"]
-          //       .forEach((element) {
-          //     if (element.contains("adduser") || element.contains("groupadd")) {
-
-          //     }
-          //   });
-          // }
-          // Check if it has an entrypoint
-          final entrypoint = parsedConfig2["Entrypoint"];
-          var entrypointCmd = '';
-          if (entrypoint != null && entrypoint is List) {
-            entrypointCmd = entrypoint.map((e) => e).join(' ');
-          }
-          // Create export env command
-          final exportEnv = env.map((e) => 'export $e;').join(' ');
-
-          if (distroName != null) {
-            prefs.setString('StartCmd_$distroName',
-                '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
-          }
-        } catch (e, stackTrace) {
-          Notify.message('Failed to parse manifest');
-          await Sentry.captureException(
-            e,
-            stackTrace: stackTrace,
-          );
-          return "false";
-        }
-        Notify.message('Failed to parse manifest');
-        await Sentry.captureException(
-          e,
-          stackTrace: stackTrace,
-        );
-        return "false";
+      } catch (e, stack) {
+        exception = e;
+        stacktrace = stack;
+      }
+      try {
+        imageManifest = ImageManifestV1.fromMap(manifestData);
+      } catch (e, stack) {
+        exception = e;
+        stacktrace = stack;
       }
     }
 
@@ -349,6 +312,42 @@ class DockerImage {
         });
       }
     } else if (imageManifest is ImageManifestV1) {
+      // Get ENV
+      final config = imageManifest.history.first;
+      // Parse
+      final parsedConfig = json.decode(config["v1Compatibility"]);
+      var parsedConfig2 = parsedConfig["config"];
+      final env = parsedConfig2["Env"];
+      final cmd = parsedConfig2["Cmd"];
+      // TODO: useradd, groupadd, etc
+      // // Check if adduser or groupadd is in one of the commands
+      // for (var item in imageManifest.history) {
+      //   if (item["v1Compatibility"] == null ||
+      //       item["v1Compatibility"]["container_config"]["Cmd"] == null) {
+      //     continue;
+      //   }
+      //   item["v1Compatibility"]["container_config"]["Cmd"]
+      //       .forEach((element) {
+      //     if (element.contains("adduser") || element.contains("groupadd")) {
+
+      //     }
+      //   });
+      // }
+
+      // Check if it has an entrypoint
+      final entrypoint = parsedConfig2["Entrypoint"];
+      var entrypointCmd = '';
+      if (entrypoint != null && entrypoint is List) {
+        entrypointCmd = entrypoint.map((e) => e).join(' ');
+      }
+      // Create export env command
+      final exportEnv = env.map((e) => 'export $e;').join(' ');
+
+      if (distroName != null) {
+        prefs.setString('StartCmd_$distroName',
+            '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+      }
+
       // Download layers
       final layers = imageManifest.fsLayers;
       for (var i = 0; i < layers.length; i++) {
@@ -363,6 +362,11 @@ class DockerImage {
           progressCallback(i, layers.length, currentStep, totalStep);
         });
       }
+    } else {
+      Notify.message('Unknown manifest type');
+      logError(exception ?? "No exception", stacktrace ?? StackTrace.current,
+          imageManifest.toString());
+      return "false";
     }
 
     return "true";
