@@ -110,15 +110,14 @@ Future<void> createInstance(
       // Check if image already downloaded
       if (await DockerImage().isDownloaded(image, tag: tag)) {
         isDownloaded = true;
-        // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
       }
 
       // Check if image exists
       if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
         // Download image
         Notify.message('${'downloading-text'.i18n()}...');
-        await DockerImage().getRootfs(name, image, tag: tag,
+        var docker = DockerImage()..distroName = distroName;
+        await docker.getRootfs(name, image, tag: tag,
             progress: (current, total, currentStep, totalStep) {
           if (currentStep != -1) {
             String progressInMB =
@@ -140,6 +139,11 @@ Future<void> createInstance(
         Notify.message('distronotfound-text'.i18n());
         return;
       }
+
+      if (isDownloaded) {
+        // Set distropath with distroName
+        distroName = DockerImage().filename(image, tag);
+      }
     }
 
     // Navigator.of(context, rootNavigator: true).pop();
@@ -153,6 +157,21 @@ Future<void> createInstance(
     if (result.exitCode != 0) {
       Notify.message(WSLApi().utf8Convert(result.stdout));
     } else {
+      var userCmds = prefs.getStringList('UserCmds_$distroName');
+      var groupCmds = prefs.getStringList('GroupCmds_$distroName');
+      if (userCmds != null && groupCmds != null) {
+        for (int i = 0; i < groupCmds.length; i++) {
+          var cmd = groupCmds[i].replaceAll("/bin/sh -c ", "");
+          cmd = cmd.replaceAll(RegExp(r'\s+'), ' ');
+          await api.exec(name, [cmd]);
+        }
+        for (int i = 0; i < userCmds.length; i++) {
+          var cmd = userCmds[i].replaceAll("/bin/sh -c ", "");
+          // Replace multiple spaces with one
+          cmd = cmd.replaceAll(RegExp(r'\s+'), ' ');
+          await api.exec(name, [cmd]);
+        }
+      }
       String user = userController.text;
       if (user != '') {
         List<int> processes = await api.exec(name, [

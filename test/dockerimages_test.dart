@@ -5,6 +5,7 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
@@ -13,8 +14,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 
 void main() {
   void statusMsg(
@@ -40,25 +43,125 @@ void main() {
     Notify.message = statusMsg;
   });
 
-  // test('CRC32 combination', () {
-  //   // Bzip2CombinedCrc _fileCrc = Bzip2CombinedCrc();
+  Future<bool> isInstance(String name) async {
+    bool found = false;
+    // Get list
+    var list = await WSLApi().list(false);
+    found = false;
 
-  //   var testCrc1 = 3957769958;
-  //   var testCrc2 = 3028153490;
+    for (var item in list.all) {
+      if (item == name) {
+        found = true;
+      }
+    }
+    return found;
+  }
 
-  //   // _fileCrc.update(testCrc1);
-  //   // _fileCrc.update(testCrc2);
-  //   var length = "How are you today?".length;
-  //   var combinedCrc = CRC32().combine(testCrc1, testCrc2, length);
+  test('Create instance test alpine', () async {
+    TextEditingController nameController = TextEditingController(text: 'test');
+    TextEditingController locationController = TextEditingController(text: '');
+    TextEditingController autoSuggestBox =
+        TextEditingController(text: 'dockerhub:alpine:latest');
 
-  //   expect(combinedCrc, 1463772643);
-  // });
+    final file = File('C:/WSL2-Distros/distros/library_alpine_latest.tar.gz');
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    // Test build context
+    await createInstance(
+      nameController,
+      locationController,
+      WSLApi(),
+      autoSuggestBox,
+      TextEditingController(text: ''),
+    );
+
+    // Verify that the file exists and has > 2MB
+    expect(await file.exists(), true);
+    expect(await file.length(), greaterThan(2 * 1024 * 1024));
+
+    expect(await isInstance('test'), true);
+
+    // Delete the instance
+    await WSLApi().remove('test');
+
+    expect(await isInstance('test'), false);
+
+    // Test creating it without re-downloading the rootfs
+    await createInstance(
+      nameController,
+      locationController,
+      WSLApi(),
+      autoSuggestBox,
+      TextEditingController(text: ''),
+    );
+
+    expect(await isInstance('test'), true);
+
+    // Delete the instance
+    await WSLApi().remove('test');
+  });
+
+  test('Create instance test nginx (nonroot)', () async {
+    TextEditingController nameController = TextEditingController(text: 'test');
+    TextEditingController locationController = TextEditingController(text: '');
+    TextEditingController autoSuggestBox =
+        TextEditingController(text: 'dockerhub:bitnami/nginx:latest');
+
+    final file = File('C:/WSL2-Distros/distros/bitnami_nginx_latest.tar.gz');
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    // Delete the instance
+    await WSLApi().remove('test');
+
+    // Test build context
+    await createInstance(
+      nameController,
+      locationController,
+      WSLApi(),
+      autoSuggestBox,
+      TextEditingController(text: ''),
+    );
+
+    // Verify that the file exists and has > 2MB
+    expect(await file.exists(), true);
+    expect(await file.length(), greaterThan(2 * 1024 * 1024));
+    expect(await isInstance('test'), true);
+
+    // Delete the instance
+    await WSLApi().remove('test');
+
+    expect(await isInstance('test'), false);
+
+    // Test creating it without re-downloading the rootfs
+    await createInstance(
+      nameController,
+      locationController,
+      WSLApi(),
+      autoSuggestBox,
+      TextEditingController(text: ''),
+    );
+
+    expect(await isInstance('test'), true);
+
+    // Delete the instance
+    await WSLApi().remove('test');
+  }, timeout: const Timeout(Duration(minutes: 10)));
 
   test('Docker rootfs download single layer', () async {
     const String image = 'library/alpine';
     const String tag = 'latest';
     const String distroPath = 'C:/WSL2-Distros/distros';
     final String filename = DockerImage().filename(image, tag);
+
+    final file = File('$distroPath/$filename.tar.gz');
+    if (await file.exists()) {
+      await file.delete();
+    }
+
     // Get rootfs
     await DockerImage().getRootfs("test", image, tag: tag,
         progress: ((count, total, countStep, totalStep) {
@@ -66,7 +169,6 @@ void main() {
         print('Downloading $count/$total ($countStep/$totalStep)');
       }
     }));
-    final file = File('$distroPath/$filename.tar.gz');
 
     // Verify that the file exists and has > 2MB
     expect(await file.exists(), true);
