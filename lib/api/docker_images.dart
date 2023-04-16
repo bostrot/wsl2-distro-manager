@@ -9,7 +9,6 @@ import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -278,7 +277,7 @@ class DockerImage {
         if (kDebugMode) {
           print(e);
         }
-        await Sentry.captureException(e, stackTrace: stackTrace);
+        logError(e, stackTrace, null);
         return "false";
       }
     } else {
