@@ -35,6 +35,9 @@ jobs:
       - name: Add PFX
         run: |
           $bytes = [Convert]::FromBase64String($BASE64_PFX)
+          if (!(Test-Path -Path "./certs")) {
+            New-Item -ItemType Directory -Path "./certs"
+          }
           [IO.File]::WriteAllBytes("./certs/CERTIFICATE.pfx", $bytes)
         env:
           BASE64_PFX: ${{ secrets.SIGN_PFX }}
