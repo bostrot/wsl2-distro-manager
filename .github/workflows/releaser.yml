@@ -56,7 +56,7 @@ jobs:
       - run: flutter build windows
       - name: Add certificate_password to pubspec.yaml
         run: |
-          (Get-Content .\pubspec.yaml) -replace("certificate_password: (.*)"", "certificate_password: $SIGN_PASSWORD") | Set-Content .\pubspec.yaml
+          (Get-Content .\pubspec.yaml) -replace("certificate_password: (.*)", "certificate_password: $SIGN_PASSWORD") | Set-Content .\pubspec.yaml
         env:
           SIGN_PASSWORD: ${{ secrets.SIGN_PWD }}
       - name: Set store to false
