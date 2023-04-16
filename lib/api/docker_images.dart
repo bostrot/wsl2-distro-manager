@@ -464,12 +464,8 @@ class DockerImage {
         break;
       } catch (e, stackTrace) {
         retry++;
-        // Sentry capture
         if (retry == 2) {
-          await Sentry.captureException(
-            e,
-            stackTrace: stackTrace,
-          );
+          logDebug(e, stackTrace, null);
         }
         await Future.delayed(const Duration(seconds: 1));
         if (kDebugMode) {
