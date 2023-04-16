@@ -5,6 +5,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
 [![Documentation](https://img.shields.io/badge/DOCUMENTATION-WIKI-green?style=for-the-badge)](https://github.com/bostrot/wsl2-distro-manager/wiki)
 ![GitHub](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
+[![GitLab stars](https://img.shields.io/gitlab/stars/bostrot/wsl2-distro-manager?gitlab_url=https%3A%2F%2Fgitlab.com&label=GitLab%20Project&style=for-the-badge)](https://gitlab.com/bostrot/wsl2-distro-manager)
 
 <p align='center'>
     English | <a href='./README_zh.md'>简体中文</a>
