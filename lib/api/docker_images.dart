@@ -9,7 +9,7 @@ import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
-import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -136,9 +136,6 @@ class DockerImage {
   String? distroName;
 
   /// Get auth token
-  /// @param {String} image
-  /// @result {String} token
-  /// @throws {Exception} if token is not found
   Future<String> _authenticate(String image) async {
     Response<dynamic> response = await Dio().get(
       '$authUrl/token?service=$svcUrl&scope=repository:$image:pull',
@@ -154,11 +151,6 @@ class DockerImage {
   }
 
   /// Get manifest
-  /// @param {String} image
-  /// @param {String} token
-  /// @param {String} digest
-  /// @result {String} manifest
-  /// @throws {Exception} if manifest is not found
   Future<dynamic> _getManifest(
       String image, String token, String? digest) async {
     if (!image.contains("/")) {
@@ -189,19 +181,8 @@ class DockerImage {
   }
 
   /// Download blob to file
-  /// @param {String} image
-  /// @param {String} token
-  /// @param {String} digest
-  /// @param {String} path
-  /// @result {bool} success
   Future<bool> _downloadBlob(String image, String token, String digest,
       String file, ProgressCallback progressCallback) async {
-    // Response<dynamic> response = await Dio().download(
-    //     '$registryUrl/v2/$image/blobs/$digest', file,
-    //     options: Options(headers: {
-    //       'Authorization': 'Bearer $token',
-    //     }),
-    //     onReceiveProgress: ((count, total) => progressCallback(count, total)));
     var downloader = ChunkedDownloader(
       url: '$registryUrl/v2/$image/blobs/$digest',
       saveFilePath: file,
@@ -226,10 +207,6 @@ class DockerImage {
   }
 
   /// Download image
-  /// @param {String} image The image name
-  /// @param {String} path The path to extract the image to
-  /// @param {Function} progressCallback The progress callback
-  /// @result {String} msg
   Future<String> _download(
       String image, String path, TotalProgressCallback progressCallback,
       {String? tag}) async {
@@ -305,7 +282,8 @@ class DockerImage {
           print('Downloading $image layer ${i + 1} of ${layers.length}');
         }
         progressCallback(i, layers.length, 0, 100);
-        await _downloadBlob(image, token, digest, '$path\\layer_$i.tar.gz',
+        await _downloadBlob(
+            image, token, digest, SafePath(path).file('layer_$i.tar.gz'),
             (currentStep, totalStep) {
           progressCallback(i, layers.length, currentStep, totalStep);
         });
@@ -390,7 +368,8 @@ class DockerImage {
           print('Downloading $image layer ${i + 1} of ${layers.length}');
         }
         progressCallback(i, layers.length, 0, 100);
-        await _downloadBlob(image, token, digest, '$path\\layer_$i.tar.gz',
+        await _downloadBlob(
+            image, token, digest, SafePath(path).file('layer_$i.tar.gz'),
             (currentStep, totalStep) {
           progressCallback(i, layers.length, currentStep, totalStep);
         });
@@ -406,16 +385,12 @@ class DockerImage {
   }
 
   /// Putting layers into single tar file
-  /// @param {String} image
-  /// @param {String} path
-  /// @result {bool} success
-  /// @throws {Exception} if tar file is not created
   Future<bool> getRootfs(String name, String image,
       {String? tag,
       required TotalProgressCallback progress,
       bool skipDownload = false}) async {
     distroName = name;
-    final distroPath = prefs.getString("SaveLocation") ?? defaultPath;
+    var distroPath = getDistroPath().path;
 
     // Add library to image name
     if (image.split('/').length == 1) {
@@ -423,14 +398,8 @@ class DockerImage {
     }
 
     // Replace special chars
-    final file = filename(image, tag);
-    final path = '${distroPath}tmp\\$file';
-
-    // Create tmp folder
-    final tmp = Directory(path);
-    if (!tmp.existsSync()) {
-      tmp.createSync(recursive: true);
-    }
+    final imageName = filename(image, tag);
+    final tmpImagePath = (getTmpPath()..cd(imageName)).path;
 
     // Create distro folder
 
@@ -438,7 +407,8 @@ class DockerImage {
     bool done = false;
 
     if (!skipDownload) {
-      await _download(image, path, (current, total, currentStep, totalStep) {
+      await _download(image, tmpImagePath,
+          (current, total, currentStep, totalStep) {
         layers = total;
         if (kDebugMode) {
           print('${current + 1}/$total');
@@ -461,6 +431,7 @@ class DockerImage {
     // Write the compressed tar file to disk.
     int retry = 0;
 
+    String outArchive = SafePath(distroPath).file('$imageName.tar.gz');
     while (retry < 2) {
       try {
         Archive archive = Archive();
@@ -476,8 +447,9 @@ class DockerImage {
             Notify.message('Extracting layer $i of $layers');
 
             // In memory
-            final tarfile = GZipDecoder()
-                .decodeBytes(File('$path/layer_$i.tar.gz').readAsBytesSync());
+            final tarfile = GZipDecoder().decodeBytes(
+                File(SafePath(tmpImagePath).file('layer_$i.tar.gz'))
+                    .readAsBytesSync());
             final subArchive = TarDecoder().decodeBytes(tarfile);
 
             // Add files to archive
@@ -494,14 +466,14 @@ class DockerImage {
           // Archive as tar then gzip to disk
           final tarfile = TarEncoder().encode(archive);
           final gzData = GZipEncoder().encode(tarfile);
-          final fp = File('$distroPath/distros/$file.tar.gz');
+          final fp = File(outArchive);
 
           Notify.message('writingtodisk-text'.i18n());
           fp.writeAsBytesSync(gzData!);
         } else if (layers == 1) {
           // Just copy the file
-          File('$path/layer_0.tar.gz')
-              .copySync('$distroPath/distros/$file.tar.gz');
+          File(SafePath(tmpImagePath).file('layer_0.tar.gz'))
+              .copySync(outArchive);
         }
 
         retry = 2;
@@ -521,19 +493,17 @@ class DockerImage {
     Notify.message('creatinginstance-text'.i18n());
 
     // Check if tar file is created
-    if (!File('$distroPath/distros/$file.tar.gz').existsSync()) {
+    if (!File(outArchive).existsSync()) {
       throw Exception('Tar file is not created');
     }
     // Wait for tar file to be created
     await Future.delayed(const Duration(seconds: 1));
     // Cleanup
-    await Directory(path).delete(recursive: true);
+    await Directory(tmpImagePath).delete(recursive: true);
     return true;
   }
 
   /// Check if registry has image
-  /// @param {String} image
-  /// @result {bool} hasImage
   Future<bool> _hasImageOnly(String image) async {
     try {
       await _authenticate(image);
@@ -544,9 +514,6 @@ class DockerImage {
   }
 
   /// Check if registry has image tag
-  /// @param {String} image
-  /// @param {String} tag
-  /// @result {bool} hasImageTag
   Future<bool> hasImage(String image, {String? tag}) async {
     bool hasImage = await _hasImageOnly(image);
     if (tag == null) {
@@ -564,20 +531,12 @@ class DockerImage {
   }
 
   /// Check if image is already downloaded
-  /// @param {String} image
-  /// @result {bool} isDownloaded
   Future<bool> isDownloaded(String image, {String? tag = 'latest'}) async {
-    final distroPath = prefs.getString("SaveLocation") ?? defaultPath;
-    // Replace special chars
-    return File('$distroPath/distros/${filename(image, tag)}.tar.gz')
+    return File(getDistroPath().file('${filename(image, tag)}.tar.gz'))
         .existsSync();
   }
 
   /// Formate image and tag to filename format
-  /// @param {String} image
-  /// @param {String} tag
-  /// @result {String} filename
-  /// @throws {Exception} if image or is not valid
   String filename(String image, String? tag) {
     if (image.isEmpty) {
       throw Exception('Image is not valid');

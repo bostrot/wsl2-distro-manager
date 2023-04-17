@@ -176,9 +176,7 @@ class Bar extends StatelessWidget {
                         size: 16.0),
                     onPressed: () {
                       plausible.event(name: "wsl_explorer");
-                      String? path =
-                          prefs.getString('StartPath_${widget.item}') ?? '';
-                      WSLApi().startExplorer(widget.item, path: path);
+                      WSLApi().startExplorer(widget.item);
                     },
                   ),
                 ),
@@ -191,9 +189,7 @@ class Bar extends StatelessWidget {
                     icon: const Icon(FluentIcons.power_shell, size: 16.0),
                     onPressed: () {
                       plausible.event(name: "wsl_wt");
-                      String? path =
-                          prefs.getString('StartPath_${widget.item}') ?? '';
-                      WSLApi().startWindowsTerminal(widget.item, path: path);
+                      WSLApi().startWindowsTerminal(widget.item);
                     },
                   ),
                 ),
