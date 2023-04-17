@@ -62,7 +62,6 @@ SafePath getInstancePath(String name) {
   }
   return getDistroPath()
     ..cdUp()
-    ..cdUp()
     ..cd(name);
 }
 
