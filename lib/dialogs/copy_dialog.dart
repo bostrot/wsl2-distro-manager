@@ -5,7 +5,6 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/constants.dart';
 
 /// Copy Dialog
 /// @param item: distro name
@@ -22,7 +21,6 @@ copyDialog(item) {
         if (inputText.length > 0) {
           Notify.message('copyinginstance-text'.i18n([item]), loading: true);
 
-          final String path = prefs.getString('SaveLocation') ?? defaultPath;
           // Only allow A-Z, a-z, 0-9, and _ in distro names
           inputText = inputText.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
           String results;
@@ -33,11 +31,10 @@ copyDialog(item) {
             // Stop distro
             await api.stop(item);
             // Copy vhd
-            results = await api.copyVhd('$oldDistroPath\\ext4.vhdx', inputText,
-                location: path);
+            results = await api.copyVhd(item, inputText);
           } else {
             // Export and import copy
-            results = await api.copy(item, inputText, location: path);
+            results = await api.copy(item, inputText);
           }
 
           // Error catching
@@ -52,7 +49,7 @@ copyDialog(item) {
           prefs.setString('StartPath_$inputText', startPath);
           prefs.setString('StartUser_$inputText', startName);
           // Save distro path
-          prefs.setString('Path_$inputText', '$path\\$inputText');
+          prefs.setString('Path_$inputText', getInstancePath(inputText).path);
           Notify.message(
               'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
               loading: false);

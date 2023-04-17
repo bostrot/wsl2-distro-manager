@@ -7,8 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/logging.dart';
 
 class Instances {
   List<String> running = [];
@@ -19,8 +21,6 @@ class Instances {
 class App {
   /// Returns an int of the string
   /// '1.2.3' -> 123
-  /// @param versionString: String
-  /// @return double
   double versionToDouble(String version) {
     return double.tryParse(version
             .toString()
@@ -31,8 +31,6 @@ class App {
   }
 
   /// Returns an url as String when the app is not up-to-date otherwise empty string
-  /// @param version: String
-  /// @return Future<String>
   Future<String> checkUpdate(String version) async {
     try {
       var response = await Dio().get(updateUrl);
@@ -51,7 +49,6 @@ class App {
   }
 
   /// Returns the message of the day
-  /// @return Future<String>
   Future<String> checkMotd() async {
     try {
       var response = await Dio().get(motdUrl);
@@ -67,7 +64,6 @@ class App {
   }
 
   /// Get list of distros from Repo
-  /// @return Future<Map<String, String>>
   Future<Map<String, String>> getDistroLinks() async {
     try {
       var response = await Dio().get(gitRepoLink);
@@ -101,35 +97,25 @@ class WSLApi {
 
   /// Get distro size
   String? getSize(String distroName) {
-    String? distroLocation = prefs.getString('Path_$distroName');
-    if (distroLocation == null) {
-      return null;
-    }
-    distroLocation += '\\ext4.vhdx';
-    distroLocation = distroLocation.replaceAll('/', '\\');
+    String ext4Path = getInstancePath(distroName).file('ext4.vhdx');
     // Get size of distro
     try {
-      File file = File(distroLocation);
+      File file = File(ext4Path);
       int byteSize = file.lengthSync();
       if (byteSize == 0) {
-        file = File(defaultPath + distroLocation);
-        byteSize = file.lengthSync();
+        return null;
       }
       double size = byteSize / 1024 / 1024 / 1024; // Convert to GB
       return '${'size-text'.i18n()}: ${size.toStringAsFixed(2)} GB';
-    } catch (e) {
+    } catch (error, stack) {
+      logDebug(error, stack, null);
       return null;
     }
   }
 
   /// Create directory
-  void mkRootDir({String path = defaultPath}) async {
-    // Create directory
-    Directory dir = Directory(path);
-    if (dir.existsSync() == true) {
-      return;
-    }
-    dir.create(recursive: true);
+  void mkRootDir({String path = defaultPath}) {
+    SafePath(path);
   }
 
   /// Install WSL
@@ -144,8 +130,6 @@ class WSLApi {
   }
 
   /// Start a WSL distro by name
-  /// @param distribution: String
-  /// @param startPath: String (optional) Defaults to root ('/')
   void start(String distribution,
       {String startPath = '',
       String startUser = '',
@@ -172,32 +156,7 @@ class WSLApi {
     }
   }
 
-  /// Start a WSL distro by name with environment variables
-  /// @param distribution: String
-  /// @param startPath: String (optional) Defaults to root ('/')
-  // void startWithEnv(String distribution,
-  //     {String startPath = '',
-  //     String startUser = '',
-  //     String startCmd = }) async {
-  //   List<String> args = ['wsl', '-d', distribution];
-  //   if (startPath != '') {
-  //     args.addAll(['--cd', startPath]);
-  //   }
-  //   if (startUser != '') {
-  //     args.addAll(['--user', startUser]);
-  //   }
-  //   if (startCmd != '') {
-  //     for (String cmd in startCmd.split(' ')) {
-  //       args.add(cmd);
-  //     }
-  //   }
-  //   Process.start('start', args,
-  //       mode: ProcessStartMode.detached, runInShell: true);
-  // }
-
   /// Stop a WSL distro by name
-  /// @param distribution: String
-  /// @return Future<String>
   Future<String> stop(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--terminate', distribution]);
@@ -205,7 +164,6 @@ class WSLApi {
   }
 
   /// Open bashrc with notepad from WSL
-  /// @param distribution: String
   Future<String> openBashrc(String distribution) async {
     List<String> argsRc = ['wsl', '-d', distribution, 'notepad.exe', '.bashrc'];
     Process results = await Process.start('start', argsRc,
@@ -214,14 +172,12 @@ class WSLApi {
   }
 
   /// Shutdown WSL
-  /// @return Future<String>
   Future<String> shutdown() async {
     ProcessResult results = await Process.run('wsl', ['--shutdown']);
     return results.stdout;
   }
 
   /// Start VSCode
-  /// @param distribution: String
   void startVSCode(String distribution, {String path = ''}) async {
     List<String> args = ['wsl', '-d', distribution, 'code'];
     if (path != '') {
@@ -233,8 +189,7 @@ class WSLApi {
 
   /// Write wslconfig file
   void writeConfig(String text) async {
-    File file =
-        File('C:\\Users\\${Platform.environment['USERNAME']}\\.wslconfig');
+    File file = File(getWslConfigPath());
     if (!file.existsSync()) {
       file.createSync();
     }
@@ -242,12 +197,8 @@ class WSLApi {
   }
 
   /// Set wslconfig setting
-  /// @param parent: String
-  /// @param key: String
-  /// @param value: String
   void setConfig(String parent, String key, String value) async {
-    File file =
-        File('C:\\Users\\${Platform.environment['USERNAME']}\\.wslconfig');
+    File file = File(getWslConfigPath());
     if (!file.existsSync()) {
       file.createSync();
     }
@@ -274,10 +225,8 @@ class WSLApi {
   }
 
   /// Read wslconfig file
-  /// @return Future<Map<String, String>>
   Future<Map<String, String>> readConfig() async {
-    File file =
-        File('C:\\Users\\${Platform.environment['USERNAME']}\\.wslconfig');
+    File file = File(getWslConfigPath());
     if (!file.existsSync()) {
       file.createSync();
     }
@@ -300,66 +249,35 @@ class WSLApi {
 
   /// Open wslconfig file
   void editConfig() async {
-    Process.start('start', ['notepad.exe', '%USERPROFILE%\\.wslconfig'],
-        mode: ProcessStartMode.normal, runInShell: true);
-  }
-
-  /// Open distro config file
-  void editDistroConfig(String distroname) async {
-    String path =
-        prefs.getString("Path_$distroname") ?? defaultPath + distroname;
-    Process.start('start', ['notepad.exe', '$path\\startup.sh'],
+    Process.start('start', ['notepad.exe', getWslConfigPath()],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Start Explorer
-  /// @param distribution: String
-  void startExplorer(String distribution, {String path = ''}) async {
-    String fullPath = '$explorerPath\\$distribution';
-    if (path != '') {
-      path = path.replaceAll('/', '\\');
-      fullPath += path;
-    }
-    await Process.start('start', ['explorer.exe', fullPath],
+  void startExplorer(String distribution) async {
+    await Process.start(
+        'start', ['explorer.exe', getInstancePath(distribution).path],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Start Windows Terminal
-  /// @param distribution: String
-  void startWindowsTerminal(String distribution, {String path = ''}) async {
+  void startWindowsTerminal(String distribution) async {
     List<String> args = ['wt', 'wsl', '-d', distribution, '--cd', '~'];
-    // if (path != '') {
-    //   args.add(path);
-    // }
     Process.start('start', args,
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Copy a WSL distro by name
-  /// @param distribution: String
-  /// @param newName: String
-  /// @param location: String (optional)
-  /// @return Future<String>
-  Future<String> copy(String distribution, String newName,
-      {String location = defaultPath}) async {
-    if (location == '') {
-      location = defaultPath;
-    }
-    final String last = location[location.length - 1];
-    if (last != '/' && last != '\\') {
-      location = '$location\\';
-    }
-
-    // Try to create directory
-    mkRootDir(path: location);
-
+  Future<String> copy(String distribution, String newName) async {
+    String exportTarPath =
+        getInstancePath(distribution).file('$distribution.tar');
     // Copy
-    String exportRes = await export(distribution, '$location$distribution.tar');
+    String exportRes = await export(distribution, exportTarPath);
     String importRes =
-        await import(newName, location + newName, '$location$distribution.tar');
+        await import(newName, getInstancePath(newName).path, exportTarPath);
 
     // Cleanup, delete file
-    File file = File('$location$distribution.tar');
+    File file = File(exportTarPath);
     if (file.existsSync()) {
       file.deleteSync();
     }
@@ -367,37 +285,23 @@ class WSLApi {
   }
 
   /// Copy a WSL distro by name and vhd
-  /// @param distribution: String
-  /// @param newName: String
-  /// @param location: String (optional)
-  /// @return Future<String>
-  Future<String> copyVhd(String vhdPath, String newName,
-      {String location = defaultPath}) async {
-    if (location == '') {
-      location = defaultPath;
-    }
-    final String last = location[location.length - 1];
-    if (last != '/' && last != '\\') {
-      location = '$location\\';
-    }
-
-    // Try to create directory
-    mkRootDir(path: location);
-
-    // Copy path to new location
+  Future<String> copyVhd(String name, String newName) async {
+    String vhdPath = getInstancePath(name).file('ext4.vhdx');
+    String copyPath = getInstancePath(name).file('ext4.copy.vhdx');
+    // Copy path to new location so instance doesn't have to be stopped
     File file = File(vhdPath);
     if (file.existsSync()) {
-      file.copySync('$vhdPath.copy.vhdx');
+      file.copySync(copyPath);
     } else {
       return 'File not found';
     }
 
     String importRes = await import(
-        newName, location + newName, '$vhdPath.copy.vhdx',
+        newName, getInstancePath(newName).path, copyPath,
         isVhd: true);
 
     // Cleanup, delete file
-    File file2 = File('$vhdPath.copy.vhdx');
+    File file2 = File(copyPath);
     if (file2.existsSync()) {
       file2.deleteSync();
     }
@@ -405,25 +309,20 @@ class WSLApi {
   }
 
   /// Export a WSL distro by name
-  /// @param distribution: String
-  /// @param location: String
-  /// @return Future<String>
   Future<String> export(String distribution, String location) async {
     ProcessResult results = await Process.run(
-        'wsl', ['--export', distribution, location],
+        'wsl', ['--export', distribution, SafePath(location).path],
         stdoutEncoding: null);
     return utf8Convert(results.stdout);
   }
 
   /// Remove a WSL distro by name
-  /// @param distribution: String
-  /// @return Future<String>
   Future<String> remove(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--unregister', distribution]);
 
     // Check if folder is empty and delete
-    String path = prefs.getString("Path_$distribution") ?? defaultPath;
+    String path = getInstancePath(distribution).path;
     Directory dir = Directory(path);
     if (dir.existsSync()) {
       if (dir.listSync().isEmpty) {
@@ -435,8 +334,6 @@ class WSLApi {
   }
 
   /// Install a WSL distro by name
-  /// @param distribution: String
-  /// @return Future<String>
   Future<String> install(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--install', '-d', distribution]);
@@ -446,7 +343,6 @@ class WSLApi {
   List<String> resultQueue = [];
 
   /// Get the current cached output
-  /// @return String
   String getCurrentOutput() {
     String tmp = resultQueue.join('\n');
     resultQueue = [];
@@ -454,9 +350,6 @@ class WSLApi {
   }
 
   /// Executes a command list in a WSL distro
-  /// @param distribution: String
-  /// @param cmd: List<String>
-  /// @return Future<List<int>>
   Future<List<int>> execCmds(
     String distribution,
     List<String> cmds, {
@@ -470,7 +363,7 @@ class WSLApi {
         'wsl', ['-d', distribution, '-u', user ?? 'root'],
         mode: ProcessStartMode.normal, runInShell: true);
 
-    Timer currentWaiter = Timer(const Duration(seconds: 15), () {
+    Timer currentWaiter = Timer(const Duration(seconds: 60), () {
       result.kill();
       onDone();
     });
@@ -518,9 +411,6 @@ class WSLApi {
   }
 
   /// Executes a command list in a WSL distro and open a terminal
-  /// @param distribution: String
-  /// @param cmd: List<String>
-  /// @return Future<List<int>>
   Future<Process> runCmds(
     String distribution,
     List<String> cmds, {
@@ -560,9 +450,6 @@ class WSLApi {
   }
 
   /// Executes a command in a WSL distro and returns the output
-  /// @param distribution: String
-  /// @param cmd: String
-  /// @return Future<String>
   Future<String> execCmdAsRoot(String distribution, String cmd) async {
     List<String> args = ['--distribution', distribution, '-u', 'root'];
     for (var arg in cmd.split(' ')) {
@@ -574,9 +461,6 @@ class WSLApi {
   }
 
   /// Executes a command in a WSL distro. passwd will open a shell
-  /// @param distribution: String
-  /// @param cmd: List<String>
-  /// @return Future<List<int>>
   Future<List<int>> exec(String distribution, List<String> cmds) async {
     List<String> args;
     List<int> processes = [];
@@ -606,7 +490,6 @@ class WSLApi {
   }
 
   /// Restart WSL
-  /// @return Future<String>
   Future<String> restart() async {
     ProcessResult results = await Process.run('wsl', ['--shutdown']);
     results = await Process.run('wsl', ['--shutdown']);
@@ -614,15 +497,13 @@ class WSLApi {
   }
 
   /// Import a WSL distro by name
-  /// @param distribution: String
-  /// @param installLocation: String
-  /// @param filename: String
-  /// @return Future<String>
   Future<String> import(
       String distribution, String installLocation, String filename,
       {bool isVhd = false}) async {
     if (installLocation == '') {
-      installLocation = '$defaultPath/$distribution';
+      installLocation = getInstancePath(distribution).path;
+    } else {
+      installLocation = SafePath(installLocation).path;
     }
     ProcessResult results;
     if (isVhd) {
@@ -638,21 +519,18 @@ class WSLApi {
   }
 
   /// Import a WSL distro by name
-  /// @param distribution: String
-  /// @param installPath: String distro name or tar file
-  /// @param filename: String
-  /// @return Future<String>
   Future<dynamic> create(String distribution, String filename,
       String installPath, Function(String) status,
       {bool image = false}) async {
     if (installPath == '') {
-      installPath = defaultPath + distribution;
+      installPath = getInstancePath(distribution).path;
+    } else {
+      installPath = SafePath(installPath).path;
     }
-    mkRootDir(path: installPath);
 
     // Download
-    String downloadPath = '';
-    downloadPath = '${defaultPath}distros\\$filename.tar.gz';
+    String downloadPath = getDistroPath().file('$filename.tar.gz');
+    String downloadPathTmp = getDistroPath().file('$filename.tar.gz.tmp');
     bool fileExists = await File(downloadPath).exists();
     if (!image && distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
@@ -660,7 +538,7 @@ class WSLApi {
       try {
         var downloader = ChunkedDownloader(
             url: url,
-            saveFilePath: '$downloadPath.tmp',
+            saveFilePath: downloadPathTmp,
             onProgress: (int count, int total, double speed) {
               status('${'downloading-text'.i18n()}'
                   ' ${(count / total * 100).toStringAsFixed(0)}%');
@@ -670,7 +548,7 @@ class WSLApi {
         while (!downloader.done) {
           await Future.delayed(const Duration(milliseconds: 500));
         }
-        File file = File('$downloadPath.tmp');
+        File file = File(downloadPathTmp);
         file.rename(downloadPath);
         status('${'downloaded-text'.i18n()} $filename');
       } catch (error) {
@@ -694,7 +572,6 @@ class WSLApi {
   var lastDistroList = Instances([], []);
 
   /// Returns list of WSL distros
-  /// @return Future<Instances>
   Future<Instances> list(bool showDocker) async {
     ProcessResult results =
         await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
@@ -728,7 +605,6 @@ class WSLApi {
   }
 
   /// Returns list of WSL distros
-  /// @return Future<List<String>>
   Future<List<String>> listRunning() async {
     ProcessResult results = await Process.run(
         'wsl', ['--list', '--running', '--quiet'],
@@ -745,7 +621,6 @@ class WSLApi {
   }
 
   /// Returns list of downloadable WSL distros
-  /// @return Future<List<String>>
   Future<List<String>> getDownloadable(
       String repo, Function(String) onError) async {
     // Get list of distros from git
@@ -781,8 +656,6 @@ class WSLApi {
   }
 
   /// Convert bytes to human readable string while removing non-ascii characters
-  /// @param bytes: List<int>
-  /// @return String
   String utf8Convert(List<int> bytes) {
     List<int> utf8Lines = List<int>.from(bytes);
     bool running = true;
@@ -804,9 +677,6 @@ class WSLApi {
   }
 
   /// Change setting in wsl.conf with key and value
-  /// @param key: String
-  /// @param value: String
-  /// @return Future<boolean>
   Future<bool> setSetting(
       String distro, String parent, String key, String value) async {
     // Read trigger script from assets
