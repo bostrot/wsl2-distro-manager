@@ -8,16 +8,18 @@ import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 
-/// Initialize logging
-void initLogging() async {
-  // AppData folder
-  final logPath = (SafePath(Platform.environment['APPDATA']!)
+/// Get log file path
+String getLogFilePath() {
+  return (SafePath(Platform.environment['APPDATA']!)
         ..cd('com.bostrot')
         ..cd('WSL Distro Manager'))
       .file('wslmanager_01.log');
+}
 
+/// Initialize logging
+void initLogging() async {
   // Log file
-  var logfile = File(logPath);
+  var logfile = File(getLogFilePath());
   // Delete if file is larger than 1MB
   if (await logfile.exists() && await logfile.length() > 10 * 1024 * 1024) {
     await logfile.delete();
@@ -50,7 +52,7 @@ void logDebug(Object error, StackTrace? stack, String? library) {
 /// Log a message to file
 void logInfo(String msg) {
   // Append to file
-  File('wslmanager_01.log').writeAsStringSync(msg, mode: FileMode.append);
+  File(getLogFilePath()).writeAsStringSync(msg, mode: FileMode.append);
 }
 
 /// Log an error to file and send to webhook if analytics are enabled
@@ -75,7 +77,7 @@ void logError(Object error, StackTrace? stack, String? library) {
 
 /// Manually trigger upload of log file
 void uploadLog() async {
-  var file = File('wslmanager_01.log');
+  var file = File(getLogFilePath());
   if (!await file.exists()) return;
 
   // Date only
