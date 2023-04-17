@@ -4,22 +4,20 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 
 /// Initialize logging
 void initLogging() async {
   // AppData folder
-  var appData = Directory(Platform.environment['APPDATA']!);
-  appData = Directory('${appData.path}/com.bostrot/WSL Distro Manager');
-
-  // Create folder if it does not exist
-  if (!await appData.exists()) {
-    await appData.create(recursive: true);
-  }
+  final logPath = (SafePath(Platform.environment['APPDATA']!)
+        ..cd('com.bostrot')
+        ..cd('WSL Distro Manager'))
+      .file('wslmanager_01.log');
 
   // Log file
-  var logfile = File('${appData.path}/wslmanager_01.log');
+  var logfile = File(logPath);
   // Delete if file is larger than 1MB
   if (await logfile.exists() && await logfile.length() > 10 * 1024 * 1024) {
     await logfile.delete();
