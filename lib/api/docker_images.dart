@@ -248,8 +248,8 @@ class DockerImage {
             ImageManifest.fromMap(await _getManifest(image, token, digest));
 
         final config = imageManifest.config.digest;
-        await _downloadBlob(
-            image, token, config, '$path\\config.json', (p0, p1) {});
+        await _downloadBlob(image, token, config,
+            SafePath(path).file('config.json'), (p0, p1) {});
       } catch (e, stackTrace) {
         if (kDebugMode) {
           print(e);
