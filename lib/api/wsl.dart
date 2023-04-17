@@ -269,15 +269,14 @@ class WSLApi {
 
   /// Copy a WSL distro by name
   Future<String> copy(String distribution, String newName) async {
-    String exportTarPath =
-        getInstancePath(distribution).file('$distribution.tar');
+    String exportPath = getInstancePath(distribution).file(distribution);
     // Copy
-    String exportRes = await export(distribution, exportTarPath);
+    String exportRes = await export(distribution, exportPath);
     String importRes =
-        await import(newName, getInstancePath(newName).path, exportTarPath);
+        await import(newName, getInstancePath(newName).path, exportPath);
 
     // Cleanup, delete file
-    File file = File(exportTarPath);
+    File file = File(exportPath);
     if (file.existsSync()) {
       file.deleteSync();
     }
