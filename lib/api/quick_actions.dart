@@ -24,9 +24,6 @@ class QuickActionItem {
   String content;
 
   /// Load from yaml string
-  /// @param {String} yamlString
-  /// @return {QuickAction}
-  /// @throws {Exception}
   static QuickActionItem fromYamlString(String yamlString,
       {String content = ""}) {
     var yaml = loadYaml(yamlString);
@@ -66,7 +63,6 @@ class QuickActionItem {
   }
 
   /// To yaml string
-  /// @return {String}
   String toYamlString() {
     return '''
 name: $name

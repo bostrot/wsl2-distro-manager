@@ -16,8 +16,6 @@ class Sync {
   Sync();
 
   /// Constructor
-  /// @param {String} distroName
-  /// @param {Function} Notify.message
   Sync.instance(this.distroName) {
     String? distroLocation = prefs.getString('Path_$distroName');
     if (distroLocation == null) {
@@ -28,7 +26,6 @@ class Sync {
   }
 
   /// Check if distro has path in settings
-  /// @param {String} distroName
   bool hasPath(String distroName) {
     String? distroLocation = prefs.getString('Path_$distroName');
     if (distroLocation == null) {
