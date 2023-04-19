@@ -1,112 +1,124 @@
+<h1 align="center">欢迎加入WSL Manager 👋</h1>
 
-![Jenkins](https://img.shields.io/jenkins/build?jobUrl=https%3A%2F%2Fjenkins.aachen.dev%2Fjob%2Fwsl2-distro-manager&style=for-the-badge)
+![License](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub Release Date](https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge)
+![GitHub Workflow](https://img.shields.io/github/actions/workflow/status/bostrot/wsl2-distro-manager/releaser.yml?branch=main&label=nightly&style=for-the-badge)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
-![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/bostrot/wsl2-distro-manager?style=for-the-badge)
-![GitHub](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
+[![Documentation](https://img.shields.io/badge/DOCUMENTATION-WIKI-green?style=for-the-badge)](https://github.com/bostrot/wsl2-distro-manager/wiki)
+[![GitLab stars](https://img.shields.io/gitlab/stars/bostrot/wsl2-distro-manager?gitlab_url=https%3A%2F%2Fgitlab.com&label=GitLab&style=for-the-badge)](https://gitlab.com/bostrot/wsl2-distro-manager)
 
+<p align='center'>
+    <a href='./README.md'>English</a> | 简体中文
+</p>
 
-# [WSL 发行版管理器](https://github.com/bostrot/wsl2-distro-manager)
-使用 GUI 管理 WSL 实例的快速方法. 
+![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png)
 
-基于 Windows 设计指南, 使用 Flutter 和 [fluent_ui](https://github.com/bdlukaa/fluent_ui) 制作. 
+<details>
+<summary>Preview with Lightmode</summary>
 
-![Preview with Darkmode](https://user-images.githubusercontent.com/7342321/161707979-f4c3091f-3f24-475e-87d4-0157caafab2a.png)
+![Screenshot with Lightmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
 
-[这里](https://user-images.githubusercontent.com/7342321/161708030-4f39a89e-7a2d-4460-b002-da7a619d6302.png) 是它在 Lightmode 中的外观. 
+</details>
 
-## 安装
+> WSL Distro Manager是一个免费的开源应用程序，它提供了一个用户友好的图形界面来管理Windows Subsystem for Linux（WSL）发行版。通过WSL发行版管理器，你可以轻松地安装、卸载、更新、备份和恢复WSL发行版，以及配置它们的设置，并通过一次点击启动它们。WSL发行版管理器还提供了一些额外的功能来增强你的WSL体验，例如在多台机器之间共享发行版，以及创建动作来快速完成重复性任务。无论你是WSL的初学者还是专家，WSL发行版管理器都能帮助你获得最大的收益。
 
-此应用程序已发布在 [Windows 应用商店](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
+## 🚀功能
 
-\- or -
+- [x] 管理WSL的实例
+- [x] 下载并使用Docker镜像作为WSL实例 - 无需Docker!
+- [x] 快速行动（直接在你的实例上执行预定义的脚本以进行快速配置）
+- [x] 下载并使用Turnkey或其他LXC容器（试验性的，用Turnkey WordPress等测试）。
+- [x] 使用您自己的rootfs'或LXC容器的存储库
+- [x] 还有更多...
 
-直接在 [Releases](https://github.com/bostrot/wsl2-distro-manager/releases) 页面下载.
+## 📦安装
 
-\- or -
+此应用程序可在[Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US)上使用。
 
-`winget install Bostrot.WSLManager` (可能是过时的版本)
+<详情><br />
+<summary>直接下载</summary
 
-## 构建
+你可以从[Release](https://github.com/bostrot/wsl2-distro-manager/releases)页面直接下载此应用。最新版本是以压缩文件的形式提供的。
+</details>
 
-启用 Flutter 桌面 `flutter config --enable-windows-desktop` (https://flutter.dev/desktop)
+<详情> <details
+<summary>MSIX安装器</summary>。
 
-  flutter upgrade
+`msix`是用一个测试证书签名的，所以你需要特别允许它。在PowerShell中，你可以做以下工作：
 
-运行使用 `flutter run -d windows` , 构建使用 `flutter build windows`
+``powershell
+Add-AppPackage -Path .\wsl2-distro-manager-v1.x.x-unsigned.msix -AllowUnsigned
+```
+</details>
 
-## 特征
+<details>
+<summary>通过 Winget 安装</summary>。
 
-* 列出 WSL
-* 复制 WSL
-* 删除 WSL
-* 启动 WSL
-* 重命名 WSL
-* 创建 WSL
-* 下载 WSL
-* 从存储中选择 rootfs
-* 快速操作（直接在您的实例上执行预定义脚本以进行快速配置）
-* 下载并使用 Turnkey 或其他 LXC 容器（实验性, 使用 Turnkey Wordpress 等进行测试）
-* 为 rootfs 或 LXC 容器使用您自己的存储库
-* 和更多...
+winget软件包已经过期! 请使用Windows商店版本代替。
 
-## FAQ
+```sh
+winget install Bostrot.WSLManager
+```
 
-### 如何访问我的交钥匙实例？ （例如 WordPress）
+</details>
 
-Turnkey 实例可以在控制台中使用 `turnkey-init` 启动. 这将让您为您的服务选择新密码. 
-### 用 Turnkey 安装"fake_systemd"是什么意思？
+<details
+<summary>通过Chocolatey安装</summary>。
 
-由于 WSL 中尚未正式支持 systemd [fake_systemd](https://github.com/bostrot/fake-systemd) 是来自 @kvaps 的自定义分支, 专门用于 WSL, 因此 Turnkey 服务将在打开实例时实际启动.
-## 贡献
+这个软件包是由社区（[@mikeee](https://github.com/mikeee/ChocoPackages)）维护的。它不是一个官方软件包。
 
-非常欢迎您为这个项目做出贡献, 以使其变得更好. 
+```sh
+choco install wsl2-distro-manager
+```
 
-### 缺少发行版
+</details>
 
-如果您发现任何您认为应该添加的缺失发行版, 请打开 [Distro request](https://github.com/bostrot/wsl2-distro-manager/issues/new?assignees=&labels=distro+request&template=distro-request.md&title=Add+a+new+distribution). 
+<details>
+<summary>安装一个夜间构建</summary>。
 
-### Docs
+最后的构建可以在 "releaser "工作流中找到工件，或者通过[这个链接](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip)。如果你更喜欢无符号的`msix`，你也可以使用[此链接](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip)。
 
-当前生成的 API 文档可用. 你可以找到文档 [here](https://bostrot.github.io/wsl2-distro-manager/api/index.html).
+</details>
 
-### 代码贡献
+## ⚙️ 构建
 
-如果您做出了代码贡献, 请随时打开 PR 和/或 issuess. 
+确保[flutter](https://flutter.dev/desktop)已经安装：
 
-### 语言贡献
+``powershell
+flutter config --enable-windows-desktop
+flutter升级
 
-本地化作为 json 文件保存在 `/lib/i18n/` 中. 新语言可以直接添加到适当的 json 文件（例如`en.json`）中, 也可以通过提供 GUI 的本地化 [windows/mac 应用程序](https://github.com/Flutterando/localization/releases) 添加. 
+flutter build windows # build it
+flutter run -d windows # run it
+```
 
-由于 fluent_ui 包的一些限制, 目前在文件名中不使用国家代码更容易, 所以用 `en.json` 代替 `en_US.json`. 
+##作者
 
-随意发布 PR :)
+👤 **Eric Trenkel**
 
-## 帮助
+- 网站： [erictrenkel.com](erictrenkel.com)
+- Github： [@bostrot](https://github.com/bostrot)
+- LinkedIn： [@erictrenkel](https://linkedin.com/in/erictrenkel)
 
-您需要更多帮助, 但常见问题解答没有帮助？
+👥 **贡献者**
 
-通过 Telegram [@bostrot_bot](https://t.me/bostrot_bot) 与我联系. 
+[! [Contributors](https://contrib.rocks/image?repo=bostrot/wsl2-distro-manager)](https://github.com/bostrot/wsl2-distro-manager/graphs/contributors)
 
-或者只是打开一个 issue [here](https://github.com/bostrot/wsl2-distro-manager/issues). 
+## 🤝 贡献者
 
-## Stuff
+欢迎贡献、问题和功能请求！（欢迎）。
+请随时查看[问题页面](https://github.com/bostrot/wsl2-distro-manager/issues)。
+你也可以看一下[贡献指南](https://github.com/bostrot/wsl2-distro-manager/blob/main/CONTRIBUTING.md)。
 
-### 创建签名的 msix 包
+## 显示你的支持
 
-（仅适用于拥有构建证书的维护者）
+如果这个项目帮助了你，请给⭐️!
 
-要创建签名的 msix 包, 请将 .githooks 目录设置为您的 git hooks 目录：
+## 📝 许可证
 
-  git config --local core.hooksPath .githooks/
+Copyright © 2023 [Eric Trenkel] (https://github.com/bostrot).\
+本项目是[GPL-3.0](https://github.com/bostrot/wsl2-distro-manager/blob/main/LICENSE)许可的。
 
-然后它将更新版本号, 构建签名并通过推送提交所有内容. 这将从文件 `certs/pubspec.yaml` 中获取配置, 并将版本（pubspec.yaml 中的`xxx`）替换为正在运行的 pubspec 文件中的当前版本. 
+---
 
-您也可以通过将 msix 配置添加到 pubspec.yaml 文件的末尾来手动对其进行签名, 然后运行`flutter pub run msix:create`
-### 为什么是图形用户界面
-
-WSL 很棒. 它使得为您需要的项目或只是测试的项目启动具有不同系统的新工作场所变得非常简单. 
-
-### 其他
-
-这个项目是用 [Flutter](https://flutter.dev/docs) for Desktop 制作的 :)
+没有找到你要找的东西？请查看[Wiki](https://github.com/bostrot/wsl2-distro-manager/wiki)_
