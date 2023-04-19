@@ -1,4 +1,4 @@
-<h1 align="center">Welcome to WSL Distro Manager 👋</h1>
+<h1 align="center">Welcome to WSL Manager 👋</h1>
 
 ![GitHub Workflow](https://img.shields.io/github/actions/workflow/status/bostrot/wsl2-distro-manager/releaser.yml?branch=main&label=nightly&style=for-the-badge)
 ![GitHub Release Date](https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge)
