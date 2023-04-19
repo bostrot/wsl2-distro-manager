@@ -8,7 +8,7 @@
 [![GitLab stars](https://img.shields.io/gitlab/stars/bostrot/wsl2-distro-manager?gitlab_url=https%3A%2F%2Fgitlab.com&label=GitLab&style=for-the-badge)](https://gitlab.com/bostrot/wsl2-distro-manager)
 
 <p align='center'>
-    English | <a href='./README_zh.md'>简体中文</a>
+    English | <a href='./README_zh.md'>简体中文</a> | <a href='./README_de.md'>Deutsch</a>
 </p>
 
 ![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png)
