@@ -84,7 +84,7 @@ Den letzten Build findet man als Artefakte im "releaser"-Workflow oder über [di
 
 Stellen Sie sicher, dass [flutter](https://flutter.dev/desktop) installiert ist:
 
-``powershell
+```powershell
 flutter config --enable-windows-desktop
 flutter upgrade
 
