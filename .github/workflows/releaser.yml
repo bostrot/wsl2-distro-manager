@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - '*'
+    paths:
+      - 'lib/**/*'
+      - 'assets/**/*'
+      - 'windows/**/*'
 
 jobs:
   build:
