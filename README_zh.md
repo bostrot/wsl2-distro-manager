@@ -35,18 +35,18 @@
 
 此应用程序可在[Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US)上使用。
 
-<详情><br />
+<details><br />
 <summary>直接下载</summary
 
 你可以从[Release](https://github.com/bostrot/wsl2-distro-manager/releases)页面直接下载此应用。最新版本是以压缩文件的形式提供的。
 </details>
 
-<详情> <details
-<summary>MSIX安装器</summary>。
+<details><br />
+<summary>MSIX安装器</summary>
 
 `msix`是用一个测试证书签名的，所以你需要特别允许它。在PowerShell中，你可以做以下工作：
 
-``powershell
+```powershell
 Add-AppPackage -Path .\wsl2-distro-manager-v1.x.x-unsigned.msix -AllowUnsigned
 ```
 </details>
@@ -84,7 +84,7 @@ choco install wsl2-distro-manager
 
 确保[flutter](https://flutter.dev/desktop)已经安装：
 
-``powershell
+```powershell
 flutter config --enable-windows-desktop
 flutter升级
 
@@ -92,7 +92,7 @@ flutter build windows # build it
 flutter run -d windows # run it
 ```
 
-##作者
+## 作者
 
 👤 **Eric Trenkel**
 
@@ -102,7 +102,7 @@ flutter run -d windows # run it
 
 👥 **贡献者**
 
-[! [Contributors](https://contrib.rocks/image?repo=bostrot/wsl2-distro-manager)](https://github.com/bostrot/wsl2-distro-manager/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=bostrot/wsl2-distro-manager)](https://github.com/bostrot/wsl2-distro-manager/graphs/contributors)
 
 ## 🤝 贡献者
 
@@ -121,4 +121,4 @@ Copyright © 2023 [Eric Trenkel] (https://github.com/bostrot).\
 
 ---
 
-没有找到你要找的东西？请查看[Wiki](https://github.com/bostrot/wsl2-distro-manager/wiki)_
+_没有找到你要找的东西？请查看[Wiki](https://github.com/bostrot/wsl2-distro-manager/wiki)_
