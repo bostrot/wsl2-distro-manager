@@ -60,6 +60,7 @@ void logError(Object error, StackTrace? stack, String? library) {
   // Print to console
   if (kDebugMode) {
     print('$error at $stack in $library');
+    return;
   }
   // Log to file
   logInfo('$error at $stack in $library');
