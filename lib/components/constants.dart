@@ -1,3 +1,5 @@
+import 'package:fluent_ui/fluent_ui.dart';
+
 const String title = 'WSL Distro Manager by Bostrot';
 
 const String currentVersion = "1.7.4";
