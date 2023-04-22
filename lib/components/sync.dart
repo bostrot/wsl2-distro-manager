@@ -4,7 +4,6 @@ import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:localization/localization.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_static/shelf_static.dart';
-import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'helpers.dart';
@@ -17,9 +16,7 @@ class Sync {
   Sync();
 
   /// Constructor
-  Sync.instance(this.distroName) {
-    distroLocation = getInstancePath(distroName).path;
-  }
+  Sync.instance(this.distroName);
 
   /// Check if distro has path in settings
   bool hasPath(String distroName) {
@@ -30,7 +27,8 @@ class Sync {
   void startServer() async {
     // Get path for distro filesystem
     // Serve filesystem file
-    var handler = createFileHandler(SafePath(distroLocation).file('ext4.vhdx'),
+    var handler = createFileHandler(
+        getInstancePath(distroName).file('ext4.vhdx'),
         contentType: "application/octet-stream");
     // Listen on network
     try {
@@ -55,9 +53,9 @@ class Sync {
     }
     Notify.message('${'shuttingdownwsl-text'.i18n()}...', loading: true);
 
-    final vhdxPath = SafePath(distroLocation).file('ext4.vhdx');
-    final vhdxPathTmp = SafePath(distroLocation).file('ext4.vhdx.tmp');
-    final vhdxPathOld = SafePath(distroLocation).file('ext4.vhdx.old');
+    final vhdxPath = getInstancePath(distroName).file('ext4.vhdx');
+    final vhdxPathTmp = getInstancePath(distroName).file('ext4.vhdx.tmp');
+    final vhdxPathOld = getInstancePath(distroName).file('ext4.vhdx.old');
 
     // Shutdown WSL
     await WSLApi().shutdown();
