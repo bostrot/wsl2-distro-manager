@@ -1,3 +1,5 @@
+import 'package:fluent_ui/fluent_ui.dart';
+
 const String title = 'WSL Distro Manager by Bostrot';
 
 const String currentVersion = "1.7.4";
@@ -62,3 +64,12 @@ Map<String, String> distroRootfsLinks = {
   'SLES 15':
       'https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/sles15_rootfs_x64.tar.gz',
 };
+
+const supportedLocalesList = [
+  Locale('en', ''), // English, no country code
+  Locale('de', ''), // German, no country code
+  Locale('pt', ''), // Portuguese, no country code
+  Locale('zh', ''), // Chinese, simplified
+  Locale('zh', 'TW'), // Chinese, taiwan (traditional)
+  Locale('zh', 'HK'), // Chinese, hongkong (traditional)
+];

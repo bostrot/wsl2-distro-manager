@@ -83,6 +83,7 @@ class WSLManager extends StatelessWidget {
         // Wait for prefs to be initialized
         while (!initialized) {}
         final appTheme = context.watch<AppTheme>();
+        var selectedLang = prefs.getString('language');
         return FluentApp.router(
           title: appTitle,
           themeMode: appTheme.mode,
@@ -105,6 +106,12 @@ class WSLManager extends StatelessWidget {
           ),
           locale: appTheme.locale,
           localeResolutionCallback: (locale, supportedLocales) {
+            // Language was set manually
+            if (selectedLang != null) {
+              language = selectedLang;
+              return Locale(selectedLang);
+            }
+
             if (locale == null) {
               language = 'en';
               return const Locale('en', '');
@@ -135,14 +142,7 @@ class WSLManager extends StatelessWidget {
           localizationsDelegates: [
             LocalJsonLocalization.delegate,
           ],
-          supportedLocales: const [
-            Locale('en', ''), // English, no country code
-            Locale('de', ''), // German, no country code
-            Locale('pt', ''), // Portuguese, no country code
-            Locale('zh', ''), // Chinese, simplified
-            Locale('zh', 'TW'), // Chinese, taiwan (traditional)
-            Locale('zh', 'HK'), // Chinese, hongkong (traditional)
-          ],
+          supportedLocales: supportedLocalesList,
           builder: (context, child) {
             return Directionality(
               textDirection: appTheme.textDirection,
