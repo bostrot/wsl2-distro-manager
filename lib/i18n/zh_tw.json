@@ -146,5 +146,6 @@
     "saveastemplate-text": "另存為範本",
     "savingastemplate-text": "另存為範本 ...",
     "language-text": "語言",
-    "languagechange-text": "語言變更將在重新啟動後生效。"
+    "languagechange-text": "語言變更將在重新啟動後生效。",
+    "notemplates-text": "沒有找到範本"
 }

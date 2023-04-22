@@ -146,5 +146,6 @@
     "saveastemplate-text": "Salvar como modelo",
     "savingastemplate-text": "Salvando como modelo ...",
     "language-text": "Idioma",
-    "languagechange-text": "A alteração de idioma terá efeito após o reinício."
+    "languagechange-text": "A alteração de idioma terá efeito após o reinício.",
+    "notemplates-text": "Nenhum modelo encontrado"
 }

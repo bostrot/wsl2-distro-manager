@@ -146,5 +146,6 @@
     "saveastemplate-text": "Als Vorlage speichern",
     "savingastemplate-text": "Speichern als Vorlage ...",
     "language-text": "Sprache",
-    "languagechange-text": "Die Sprachänderung wird nach dem Neustart wirksam."
+    "languagechange-text": "Die Sprachänderung wird nach dem Neustart wirksam.",
+    "notemplates-text": "Keine Vorlagen gefunden"
 }
