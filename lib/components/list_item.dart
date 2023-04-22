@@ -1,4 +1,5 @@
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'analytics.dart';
@@ -167,6 +168,18 @@ class Bar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              Tooltip(
+                message: 'saveastemplate-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.save_template, size: 16.0),
+                    onPressed: () async {
+                      await Templates().saveTemplate(widget.item);
+                    },
+                  ),
+                ),
+              ),
               Tooltip(
                 message: 'openwithexplorer-text'.i18n(),
                 child: MouseRegion(
