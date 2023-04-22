@@ -140,5 +140,8 @@
     "report-text": "Do you want to upload the log file or open a Github issue?",
     "cancelreport-text": "Cancel report",
     "githubissue-text": "Github Issue",
-    "uploadlogfile-text": "Upload log file"
+    "uploadlogfile-text": "Upload log file",
+    "templates-text": "Templates",
+    "saveastemplate-text": "Save as template",
+    "savingastemplate-text": "Saving as template ..."
 }

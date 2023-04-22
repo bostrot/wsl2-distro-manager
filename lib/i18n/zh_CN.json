@@ -141,5 +141,8 @@
     "report-text": "您想上传日志文件或打开 Github 问题吗？",
     "cancelreport-text": "取消报告",
     "githubissue-text": "Github 问题",
-    "uploadlogfile-text": "上传日志文件"
+    "uploadlogfile-text": "上传日志文件",
+    "templates-text": "模板",
+    "saveastemplate-text": "另存为模板",
+    "savingastemplate-text": "另存为模板 ..."
 }

@@ -141,5 +141,8 @@
     "report-text": "Você deseja enviar o arquivo de log ou abrir um problema no Github?",
     "cancelreport-text": "Cancelar relatório",
     "githubissue-text": "Problema no Github",
-    "uploadlogfile-text": "Enviar arquivo de log"
+    "uploadlogfile-text": "Enviar arquivo de log",
+    "templates-text": "Modelos",
+    "saveastemplate-text": "Salvar como modelo",
+    "savingastemplate-text": "Salvando como modelo ..."
 }

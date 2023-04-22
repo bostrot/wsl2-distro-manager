@@ -141,5 +141,8 @@
     "report-text": "Möchten Sie die Protokolldatei hochladen oder ein Github-Issue öffnen?",
     "cancelreport-text": "Bericht abbrechen",
     "githubissue-text": "Github Issue",
-    "uploadlogfile-text": "Protokoll hochladen"
+    "uploadlogfile-text": "Protokoll hochladen",
+    "templates-text": "Vorlagen",
+    "saveastemplate-text": "Als Vorlage speichern",
+    "savingastemplate-text": "Speichern als Vorlage ..."
 }
