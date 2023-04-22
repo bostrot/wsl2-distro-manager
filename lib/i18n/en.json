@@ -145,5 +145,6 @@
     "saveastemplate-text": "Save as template",
     "savingastemplate-text": "Saving as template ...",
     "language-text": "Language",
-    "languagechange-text": "Language change will take effect after restart."
+    "languagechange-text": "Language change will take effect after restart.",
+    "notemplates-text": "No templates found"
 }
