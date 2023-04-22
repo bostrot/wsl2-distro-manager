@@ -150,5 +150,6 @@
     "notemplates-text": "Nenhum modelo encontrado",
     "cleanuptitle-text": "Limpar instância WSL ($s0)",
     "cleanupbody-text": "Você realmente quer limpar a distribuição? Isso exportará e importará a distribuição novamente. Isso pode levar algum tempo.",
-    "continue-text": "Continuar"
+    "continue-text": "Continuar",
+    "notemplates-text": "Nenhum modelo encontrado"
 }

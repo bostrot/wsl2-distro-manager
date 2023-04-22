@@ -150,5 +150,6 @@
     "notemplates-text": "没有找到模板",
     "cleanuptitle-text": "清理 WSL 实例（%s）",
     "cleanupbody-text": "您确定要清理发行版吗？这将导出并重新导入发行版。这可能需要一些时间。",
-    "continue-text": "继续"
+    "continue-text": "继续",
+    "notemplates-text": "没有找到模板"
 }
