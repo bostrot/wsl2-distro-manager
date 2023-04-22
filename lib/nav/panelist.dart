@@ -19,12 +19,23 @@ final List<NavigationPaneItem> originalItems = [
   ),
   PaneItem(
     key: const Key('/quickactions'),
-    icon: const Icon(FluentIcons.settings_add),
+    icon: const Icon(FluentIcons.file_code),
     title: Text('managequickactions-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
       if (router.location != '/quickactions') {
         router.pushNamed('quickactions');
+      }
+    },
+  ),
+  PaneItem(
+    key: const Key('/templates'),
+    icon: const Icon(FluentIcons.file_template),
+    title: Text('templates-text'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      if (router.location != '/templates') {
+        router.pushNamed('templates');
       }
     },
   ),

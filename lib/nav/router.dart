@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/nav/root_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
+import 'package:wsl2distromanager/screens/template_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -46,6 +47,13 @@ final router = GoRouter(
           path: '/quickactions',
           name: 'quickactions',
           builder: (context, state) => const QuickPage(),
+        ),
+
+        /// Templates
+        GoRoute(
+          path: '/templates',
+          name: 'templates',
+          builder: (context, state) => const TemplatePage(),
         ),
       ],
     ),
