@@ -5,7 +5,7 @@
     "Ubuntu 19.04": "https://cloud-images.ubuntu.com/releases/disco/release/ubuntu-19.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
     "Ubuntu 18.04": "https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
     "Ubuntu 16.04": "https://cloud-images.ubuntu.com/releases/xenial/release/ubuntu-16.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
-    "Rocky Linux 9.1": "https://github.com/rocky-linux/sig-cloud-instance-images/blob/Rocky-9.1.20230215-Base-x86_64/layer.tar.xz",
+    "Rocky Linux 9.1": "https://raw.githubusercontent.com/rocky-linux/sig-cloud-instance-images/Rocky-9.1.20230215-Base-x86_64/layer.tar.xz",
     "Alpine": "https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-minirootfs-3.15.0-x86_64.tar.gz",
     "Debian": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/debian_rootfs_x64.tar.gz",
     "Kali Linux": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v0.6.1/kalilinux_rootfs_x64.tar.gz",
