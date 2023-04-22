@@ -82,12 +82,23 @@ void main() {
     WSLApi().remove('test');
     WSLApi().remove('test2');
     Templates().deleteTemplate('test');
+    Templates().deleteTemplate('test-2');
+    Templates().deleteTemplate('test-3');
   });
 
   test('Create template', () async {
     await Templates().saveTemplate('test');
     expect(File(Templates().getTemplateFilePath('test')).existsSync(), true);
-  }, timeout: const Timeout(Duration(minutes: 10)));
+  });
+
+  test('Create template of already existent', () async {
+    await Templates().saveTemplate('test');
+    expect(File(Templates().getTemplateFilePath('test')).existsSync(), true);
+    await Templates().saveTemplate('test');
+    expect(File(Templates().getTemplateFilePath('test-2')).existsSync(), true);
+    await Templates().saveTemplate('test');
+    expect(File(Templates().getTemplateFilePath('test-3')).existsSync(), true);
+  });
 
   test('Use template', () async {
     await Templates().useTemplate('test', 'test2');

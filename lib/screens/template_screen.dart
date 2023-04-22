@@ -21,56 +21,63 @@ class _TemplatePageState extends State<TemplatePage> {
   void initState() {
     super.initState();
 
-    _templates = prefs.getStringList('templates') ?? [];
+    _templates = Templates().getTemplates();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ListView is a scrollable list with template items
+    if (_templates.isEmpty) {
+      return Center(
+        child: Text('notemplates-text'.i18n()),
+      );
+    }
+    // Scrollable list with template items
     return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: ListView.builder(
-        itemCount: _templates.length,
-        itemBuilder: (context, index) {
-          var name = _templates[index];
-          var size = Templates().getTemplateSize(name);
-          if (size == '0 GB') {
-            return const SizedBox();
-          }
-          return Expander(
-            header: Text('$name ($size)'),
-            content: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Button(
-                  child: Row(
-                    children: [
-                      const Icon(FluentIcons.add),
-                      const SizedBox(
-                        width: 10.0,
+        padding: const EdgeInsets.all(12.0),
+        child: ListView.builder(
+          itemCount: _templates.length,
+          itemBuilder: (context, index) {
+            var name = _templates[index];
+            var size = Templates().getTemplateSize(name);
+            if (size == '0 GB') {
+              return const SizedBox();
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Expander(
+                header: Text('$name ($size)'),
+                content: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Button(
+                      child: Row(
+                        children: [
+                          const Icon(FluentIcons.add),
+                          const SizedBox(
+                            width: 10.0,
+                          ),
+                          Text('createnewinstance-text'.i18n()),
+                        ],
                       ),
-                      Text('createnewinstance-text'.i18n()),
-                    ],
-                  ),
-                  onPressed: () {
-                    createTemplateDialog(name);
-                  },
+                      onPressed: () {
+                        createTemplateDialog(name);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(FluentIcons.delete),
+                      onPressed: () {
+                        deleteTemplateDialog(name, () {
+                          Templates().deleteTemplate(name);
+                          _templates.remove(name);
+                          setState(() {});
+                        });
+                      },
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(FluentIcons.delete),
-                  onPressed: () {
-                    deleteTemplateDialog(name, () {
-                      _templates.removeAt(index);
-                      prefs.setStringList('templates', _templates);
-                      setState(() {});
-                    });
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+              ),
+            );
+          },
+        ));
   }
 }
