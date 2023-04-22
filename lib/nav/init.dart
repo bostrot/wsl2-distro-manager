@@ -49,30 +49,33 @@ initRoot(statusMsg) async {
       statusMsg('',
           useWidget: true,
           widget: RichText(
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.clip,
               text: TextSpan(children: [
-            TextSpan(
-                text: '${'newversion-text'.i18n()} ',
-                style: const TextStyle(fontSize: 14.0)),
-            TextSpan(
-                text: '${'downloadnow-text'.i18n()} ',
-                style: TextStyle(
-                    color: Colors.purple,
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.bold),
-                recognizer: TapGestureRecognizer()
-                  ..onTap = () => launchUrl(Uri.parse(updateUrl))),
-            TextSpan(
-                text: '${'orcheck-text'.i18n()} ',
-                style: const TextStyle(fontSize: 14.0)),
-            TextSpan(
-                text: '${'windowsstore-text'.i18n()} ',
-                style: TextStyle(
-                    color: Colors.purple,
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.bold),
-                recognizer: TapGestureRecognizer()
-                  ..onTap = () => launchUrl(Uri.parse(windowsStoreUrl))),
-          ])));
+                TextSpan(
+                    text: '${'newversion-text'.i18n()} ',
+                    style: const TextStyle(fontSize: 14.0)),
+                TextSpan(
+                    text: '${'downloadnow-text'.i18n()} ',
+                    style: TextStyle(
+                        color: Colors.purple,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => launchUrl(Uri.parse(updateUrl))),
+                TextSpan(
+                    text: '${'orcheck-text'.i18n()} ',
+                    style: const TextStyle(fontSize: 14.0)),
+                TextSpan(
+                    text: '${'windowsstore-text'.i18n()} ',
+                    style: TextStyle(
+                        color: Colors.purple,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => launchUrl(Uri.parse(windowsStoreUrl))),
+              ])));
     }
   });
 
