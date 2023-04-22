@@ -147,4 +147,7 @@
     "language-text": "Language",
     "languagechange-text": "Language change will take effect after restart.",
     "notemplates-text": "No templates found"
+    "cleanuptitle-text": "Clean up WSL instance ($s0)",
+    "cleanupbody-text": "Do you really want to clean up the distribution? This will export and re-import the distribution. This may take some time.",
+    "continue-text": "Continue"
 }
