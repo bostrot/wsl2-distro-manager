@@ -1,12 +1,14 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
+import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:system_info2/system_info2.dart';
+import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 enum SettingsType { bool, text, size }
@@ -230,6 +232,55 @@ class SettingsPageState extends State<SettingsPage> {
           ),
         ]),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Expander(
+              header: Text('language-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              content: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+                child: Tooltip(
+                    message: 'language-text'.i18n(),
+                    // Menu
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'languagechange-text'.i18n(),
+                        ),
+                        const SizedBox(
+                          height: 20.0,
+                        ),
+                        Builder(
+                          builder: (context) {
+                            var lang =
+                                Localizations.localeOf(context).languageCode;
+                            var selectedLanguage =
+                                prefs.getString('language') ?? lang;
+
+                            // Language menu
+                            return ComboBox<String>(
+                                value: selectedLanguage,
+                                items: supportedLocalesList
+                                    .map((e) => ComboBoxItem(
+                                        value: e.languageCode,
+                                        child: Text(e.toString())))
+                                    .toList(),
+                                onChanged: (language) {
+                                  String curLanguage = language ?? lang;
+                                  prefs.setString('language', curLanguage);
+                                  setState(() {
+                                    selectedLanguage = curLanguage;
+                                  });
+                                });
+                          },
+                        ),
+                      ],
+                    )),
+              ),
+            ),
+          ),
           // Padding(
           //   padding: const EdgeInsets.all(8.0),
           //   child: Expander(

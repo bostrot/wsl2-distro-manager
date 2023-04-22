@@ -144,5 +144,7 @@
     "uploadlogfile-text": "Enviar arquivo de log",
     "templates-text": "Modelos",
     "saveastemplate-text": "Salvar como modelo",
-    "savingastemplate-text": "Salvando como modelo ..."
+    "savingastemplate-text": "Salvando como modelo ...",
+    "language-text": "Idioma",
+    "languagechange-text": "A alteração de idioma terá efeito após o reinício."
 }
