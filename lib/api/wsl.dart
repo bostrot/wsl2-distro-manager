@@ -204,7 +204,8 @@ class WSLApi {
 
   /// Copy a WSL distro by name
   Future<String> copy(String distribution, String newName) async {
-    String exportPath = getInstancePath(distribution).file(distribution);
+    String exportPath =
+        getInstancePath(distribution).file('$distribution.ext4');
     // Copy
     String exportRes = await export(distribution, exportPath);
     String importRes =
@@ -245,7 +246,7 @@ class WSLApi {
   /// Export a WSL distro by name
   Future<String> export(String distribution, String location) async {
     ProcessResult results = await Process.run(
-        'wsl', ['--export', distribution, SafePath(location).path],
+        'wsl', ['--export', distribution, location],
         stdoutEncoding: null);
     return utf8Convert(results.stdout);
   }
