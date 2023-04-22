@@ -22,9 +22,12 @@ class App {
       if (response.data.length > 0) {
         var latest = response.data[0];
         String tagName = latest['tag_name'];
+        String publishedAt = latest['published_at'];
 
-        if (versionToDouble(tagName) > versionToDouble(version)) {
-          return latest['assets'][0]['browser_download_url'];
+        // Newer version and at least 2 days old
+        if (versionToDouble(tagName) > versionToDouble(version) &&
+            DateTime.now().difference(DateTime.parse(publishedAt)).inDays > 2) {
+          return latest['html_url'];
         }
       }
     } catch (e) {
