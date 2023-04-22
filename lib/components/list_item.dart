@@ -249,6 +249,30 @@ class Bar extends StatelessWidget {
                 ),
               ),
               Tooltip(
+                message: 'cleanup-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                      icon: const Icon(FluentIcons.broom, size: 16.0),
+                      onPressed: () {
+                        dialog(
+                            item: widget.item,
+                            title: 'cleanuptitle-text'.i18n([widget.item]),
+                            body: 'cleanupbody-text'.i18n(),
+                            submitText: 'continue-text'.i18n(),
+                            submitStyle: ButtonStyle(
+                              backgroundColor: ButtonState.all(Colors.red),
+                              foregroundColor: ButtonState.all(Colors.white),
+                            ),
+                            submitInput: false,
+                            cancelText: 'cancel-text'.i18n(),
+                            onSubmit: (inputText) {
+                              WSLApi().cleanup(widget.item);
+                            });
+                      }),
+                ),
+              ),
+              Tooltip(
                 message: 'delete-text'.i18n(),
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
