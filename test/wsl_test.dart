@@ -5,10 +5,10 @@ import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
-import 'package:wsl2distromanager/dialogs/copy_dialog.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 
 void main() {
