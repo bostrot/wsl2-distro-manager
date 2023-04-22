@@ -18,9 +18,42 @@ String distroLabel(String item) {
   return distroName;
 }
 
+/// Replace special characters in [name] with underscores.
+String replaceSpecialChars(String name) {
+  return name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+}
+
 /// Initialize shared preferences
 Future initPrefs() async {
   prefs = await SharedPreferences.getInstance();
+
+  // Fix for older versions and move the shared_preferences.json file
+  var oldPath = (SafePath(Platform.environment['APPDATA']!)
+        ..cd('com.bostrot')
+        ..cd('WSL Manager'))
+      .file('shared_preferences.json');
+  if (File(oldPath).existsSync()) {
+    var oldContent = File(oldPath).readAsStringSync();
+    oldContent = oldContent.substring(1, oldContent.length);
+
+    var newPath = (SafePath(Platform.environment['APPDATA']!)
+          ..cd('com.bostrot')
+          ..cd('WSL Distro Manager'))
+        .file('shared_preferences.json');
+
+    if (File(newPath).existsSync() && File(newPath).readAsStringSync() != '') {
+      var newContent = File(newPath).readAsStringSync();
+      newContent = newContent.substring(0, newContent.length - 1);
+      newContent = '$newContent,$oldContent';
+      // Backup old file
+      File(newPath).copySync('$newPath.bak');
+      File(newPath).deleteSync();
+      // Write new content
+      File(newPath).writeAsStringSync(newContent, mode: FileMode.writeOnly);
+      File(oldPath).copySync('$oldPath.bak');
+      File(oldPath).deleteSync();
+    }
+  }
 }
 
 /// Global variables for global context access.
