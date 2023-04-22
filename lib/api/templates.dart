@@ -13,14 +13,28 @@ import 'package:wsl2distromanager/components/notify.dart';
 class Templates {
   /// Save a distro as a template by [name]
   Future<void> saveTemplate(String name) async {
-    plausible.event(name: "wsl_saveastemplate");
-    Notify.message('$name ${'savingastemplate-text'.i18n()}.', loading: true);
-    await WSLApi().export(name, getTemplatePath().file('$name.ext4'));
+    String templateName = name;
+    // Check if template already exists
     var templates = prefs.getStringList('templates');
+    var i = 2;
+    while (templates != null && templates.contains(templateName)) {
+      if (i > 2) {
+        templateName =
+            '${templateName.substring(0, templateName.length - 2)}-$i';
+      } else {
+        templateName = '$templateName-2';
+      }
+      i++;
+    }
+
+    plausible.event(name: "wsl_saveastemplate");
+    Notify.message('$templateName ${'savingastemplate-text'.i18n()}.',
+        loading: true);
+    await WSLApi().export(name, getTemplatePath().file('$templateName.ext4'));
     templates ??= [];
-    templates.add(name);
+    templates.add(templateName);
     prefs.setStringList('templates', templates);
-    Notify.message('$name ${'savedastemplate-text'.i18n()}.',
+    Notify.message('$templateName ${'savedastemplate-text'.i18n()}.',
         duration: const Duration(seconds: 3));
   }
 
@@ -43,6 +57,13 @@ class Templates {
     // Delete template file
     await File(getTemplateFilePath(name)).delete();
     Notify.message('deletedinstance-text'.i18n([name]));
+  }
+
+  /// Get a list of all templates.
+  List<String> getTemplates() {
+    var templates = prefs.getStringList('templates');
+    if (templates == null) return [];
+    return templates;
   }
 
   /// Return the general template path. Templates are saved here by default.
