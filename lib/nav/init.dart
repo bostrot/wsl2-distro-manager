@@ -5,7 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:localization/localization.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
