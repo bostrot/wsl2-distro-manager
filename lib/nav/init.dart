@@ -18,7 +18,6 @@ initRoot(statusMsg) async {
   Notify();
   Notify.message = statusMsg;
 
-  await initPrefs();
   // First start with this version
   String? version = prefs.getString('version');
 

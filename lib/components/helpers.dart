@@ -8,6 +8,7 @@ import 'package:wsl2distromanager/nav/root_screen.dart';
 
 late String language;
 late SharedPreferences prefs;
+bool initialized = false;
 
 /// Get distro label from [item].
 String distroLabel(String item) {
@@ -54,6 +55,8 @@ Future initPrefs() async {
       File(oldPath).deleteSync();
     }
   }
+
+  initialized = true;
 }
 
 /// Global variables for global context access.
