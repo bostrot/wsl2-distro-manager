@@ -55,6 +55,7 @@ void main() async {
 
   // Init logging
   initLogging();
+  initPrefs();
 
   // Error logging
   FlutterError.onError = (details) {
@@ -79,6 +80,8 @@ class WSLManager extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AppTheme(),
       builder: (context, _) {
+        // Wait for prefs to be initialized
+        while (!initialized) {}
         final appTheme = context.watch<AppTheme>();
         return FluentApp.router(
           title: appTitle,
@@ -103,6 +106,7 @@ class WSLManager extends StatelessWidget {
           locale: appTheme.locale,
           localeResolutionCallback: (locale, supportedLocales) {
             if (locale == null) {
+              language = 'en';
               return const Locale('en', '');
             }
             language = locale.toLanguageTag();

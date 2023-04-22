@@ -173,7 +173,7 @@ class SettingsPageState extends State<SettingsPage> {
     hasPushed = false;
 
     if (!dispose) {
-      Navigator.popAndPushNamed(context, '/');
+      router.pushNamed('home');
     }
   }
 
