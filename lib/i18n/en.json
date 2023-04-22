@@ -143,5 +143,7 @@
     "uploadlogfile-text": "Upload log file",
     "templates-text": "Templates",
     "saveastemplate-text": "Save as template",
-    "savingastemplate-text": "Saving as template ..."
+    "savingastemplate-text": "Saving as template ...",
+    "language-text": "Language",
+    "languagechange-text": "Language change will take effect after restart."
 }
