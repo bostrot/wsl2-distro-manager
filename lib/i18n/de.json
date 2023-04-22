@@ -147,5 +147,9 @@
     "savingastemplate-text": "Speichern als Vorlage ...",
     "language-text": "Sprache",
     "languagechange-text": "Die Sprachänderung wird nach dem Neustart wirksam.",
+    "notemplates-text": "Keine Vorlagen gefunden",
+    "cleanuptitle-text": "WSL Instanz bereinigen (%s0)",
+    "cleanupbody-text": "Möchten Sie die Distribution wirklich bereinigen? Dies wird die Distribution exportieren und wieder importieren. Dies kann einige Zeit dauern.",
+    "continue-text": "Weiter",
     "notemplates-text": "Keine Vorlagen gefunden"
 }

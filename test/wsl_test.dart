@@ -158,4 +158,20 @@ void main() {
     expect(await isInstance('testcopy'), false);
     expect(await isInstance('testcopy2'), false);
   }, timeout: const Timeout(Duration(minutes: 10)));
+
+  test('Cleanup test', () async {
+    // Create a new instance
+    await createDistro(
+      'test',
+      '',
+      'Debian',
+      '',
+    );
+
+    // Cleanup
+    await WSLApi().cleanup('test');
+
+    // Still exists
+    expect(await isInstance('test'), true);
+  });
 }
