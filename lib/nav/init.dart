@@ -24,6 +24,9 @@ initRoot(statusMsg) async {
   if (version == null) {
     // First start
     prefs.setString('version', currentVersion);
+    while (GlobalVariable.infobox.currentContext == null) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
     firststartDialog();
   } else if (version != currentVersion) {
     // First start with this version
@@ -39,9 +42,13 @@ initRoot(statusMsg) async {
       changelogDialog(prefs, tagName, body);
     }
   }
+  // if (kDebugMode) {
+  //   prefs.remove('version');
+  // }
   if (kDebugMode) {
-    // prefs.remove('version');
+    prefs.setString('version', '1.8.0');
   }
+
   // Check updates
   App app = App();
   app.checkUpdate(currentVersion).then((updateUrl) {
@@ -90,9 +97,9 @@ initRoot(statusMsg) async {
     });
   }
 
-  if (kDebugMode) {
-    prefs.remove('LastMotd');
-  }
+  // if (kDebugMode) {
+  //   prefs.remove('LastMotd');
+  // }
 
   // Get system dark mode
   if (SystemTheme.isDarkMode) {
