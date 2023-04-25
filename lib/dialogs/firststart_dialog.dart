@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import 'package:localization/localization.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -41,6 +42,10 @@ Eric
         content: Markdown(
           shrinkWrap: true,
           data: body,
+          onTapLink: (text, href, title) {
+            if (href == null) return;
+            launchUrlString(href);
+          },
           extensionSet: md.ExtensionSet(
             md.ExtensionSet.gitHubFlavored.blockSyntaxes,
             [

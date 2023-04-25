@@ -56,7 +56,7 @@ class App {
     try {
       var response = await Dio().get(gitRepoLink);
       if (response.statusCode != null && response.statusCode! < 300) {
-        var jsonData = jsonDecode(response.data);
+        var jsonData = response.data;
         Map<String, String> distros = {};
         jsonData.forEach((key, value) {
           distros.addAll({key: value});
