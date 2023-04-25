@@ -24,7 +24,7 @@ dependencies:
   shared_preferences: ^2.0.15
   shelf_static: ^1.1.1
   shelf: ^1.4.0
-  window_manager: ^0.3.0
+  window_manager: ^0.3.2
   provider: ^6.0.3
   flutter_acrylic: ^1.0.0+2
   system_info2: ^3.0.1
