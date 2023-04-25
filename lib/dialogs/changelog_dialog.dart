@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import 'package:localization/localization.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -23,6 +24,10 @@ changelogDialog(prefs, currentVersion, body) {
         constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 500.0),
         title: Text('🚀 ${'changelog-text'.i18n()} $currentVersion'),
         content: Markdown(
+          onTapLink: (text, href, title) {
+            if (href == null) return;
+            launchUrlString(href);
+          },
           shrinkWrap: true,
           data: body,
           extensionSet: md.ExtensionSet(
