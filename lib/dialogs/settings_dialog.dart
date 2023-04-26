@@ -270,6 +270,44 @@ Column settingsColumn(
               ),
             )
           : Container(),
+      const SizedBox(height: 8.0),
+      MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Tooltip(
+          message: 'move-text'.i18n(),
+          child: Button(
+            style: ButtonStyle(
+                padding: ButtonState.all(const EdgeInsets.only(
+                    left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('move-text'.i18n()),
+                  const Icon(FluentIcons.move),
+                ]),
+            onPressed: () async {
+              dialog(
+                  item: item,
+                  title: '${'move-text'.i18n()} \'${distroLabel(item)}\'',
+                  body: 'movebody-text'.i18n([distroLabel(item)]),
+                  submitText: 'move-text'.i18n(),
+                  submitStyle: ButtonStyle(
+                    backgroundColor: ButtonState.all(Colors.red),
+                    foregroundColor: ButtonState.all(Colors.white),
+                  ),
+                  submitInput: false,
+                  onSubmit: (inputText) async {
+                    Notify.message(
+                        'moving-text'.i18n([distroLabel(item), inputText]),
+                        loading: true);
+                    await WSLApi().move(item, getInstancePath(item).path);
+                    Notify.message(
+                        'moved-text'.i18n([distroLabel(item), inputText]));
+                  });
+            },
+          ),
+        ),
+      )
     ],
   );
 }
