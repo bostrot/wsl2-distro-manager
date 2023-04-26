@@ -607,6 +607,17 @@ class WSLApi {
     return list;
   }
 
+  /// Move WSL distro to another location by [distro] and [newPath].
+  /// Returns [ProcessResult] of the command.
+  Future<String> move(String distro, String newPath) async {
+    SafePath path = SafePath(newPath);
+    await export(distro, path.file('export.ext4'));
+    await remove(distro);
+    await File(path.file('export.ext4')).delete();
+    var res = await import(distro, newPath, path.file('export.ext4'));
+    return res;
+  }
+
   /// Convert bytes to human readable string while removing non-ascii characters
   String utf8Convert(List<int> bytes) {
     List<int> utf8Lines = List<int>.from(bytes);

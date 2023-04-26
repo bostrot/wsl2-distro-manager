@@ -181,6 +181,38 @@ class Bar extends StatelessWidget {
                 ),
               ),
               Tooltip(
+                message: 'move-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.move, size: 16.0),
+                    onPressed: () async {
+                      dialog(
+                          item: widget.item,
+                          title:
+                              '${'move-text'.i18n()} \'${distroLabel(widget.item)}\'',
+                          body: 'movebody-text'.i18n(),
+                          submitText: 'move-text'.i18n(),
+                          submitStyle: ButtonStyle(
+                            backgroundColor: ButtonState.all(Colors.red),
+                            foregroundColor: ButtonState.all(Colors.white),
+                          ),
+                          submitInput: false,
+                          onSubmit: (inputText) async {
+                            Notify.message(
+                                'moving-text'.i18n(
+                                    [distroLabel(widget.item), inputText]),
+                                loading: true);
+                            await WSLApi().move(
+                                widget.item, getInstancePath(widget.item).path);
+                            Notify.message('moved-text'
+                                .i18n([distroLabel(widget.item), inputText]));
+                          });
+                    },
+                  ),
+                ),
+              ),
+              Tooltip(
                 message: 'openwithexplorer-text'.i18n(),
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
@@ -248,7 +280,7 @@ class Bar extends StatelessWidget {
                           title:
                               '${'rename-text'.i18n()} \'${distroLabel(widget.item)}\'',
                           body: 'renameinfo-text'.i18n(),
-                          submitText: 'Rename',
+                          submitText: 'rename-text'.i18n(),
                           submitStyle: const ButtonStyle(),
                           onSubmit: (inputText) {
                             Notify.message(
