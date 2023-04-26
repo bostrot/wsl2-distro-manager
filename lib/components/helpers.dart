@@ -101,6 +101,19 @@ SafePath getInstancePath(String name) {
     ..cd(name);
 }
 
+/// Get instance size for [name] instance.
+String getInstanceSize(String name) {
+  var path = getInstancePath(name).file('ext4.vhdx');
+  var size = File(path).lengthSync();
+
+  if (size > 0) {
+    var sizeGB = size / 1024 / 1024 / 1024;
+    return '${sizeGB.toStringAsFixed(2)} GB';
+  } else {
+    return '- GB';
+  }
+}
+
 /// Get the wslconfig path
 String getWslConfigPath() {
   return SafePath('C:\\Users\\${Platform.environment['USERNAME']}')

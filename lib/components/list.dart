@@ -85,7 +85,11 @@ FutureBuilder<Instances> distroList(
           return const InstallDialog();
         }
         for (String item in list) {
-          newList.add(ListItem(item: item, running: running));
+            newList.add(ListItem(
+              item: item,
+              running: running,
+              trailing: getInstanceSize(item),
+            ));
         }
         return Expanded(
           child: ListView.custom(
