@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 
@@ -63,6 +64,7 @@ Future initPrefs() async {
 class GlobalVariable {
   static final GlobalKey<RootPageState> root = GlobalKey<RootPageState>();
   static GlobalKey<NavigatorState> infobox = GlobalKey<NavigatorState>();
+  static Instances? initialSnapshot;
 }
 
 /// Return the general distro path. Distros are saved here by default.
