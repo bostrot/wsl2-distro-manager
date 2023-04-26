@@ -613,8 +613,9 @@ class WSLApi {
     SafePath path = SafePath(newPath);
     await export(distro, path.file('export.ext4'));
     await remove(distro);
-    await File(path.file('export.ext4')).delete();
     var res = await import(distro, newPath, path.file('export.ext4'));
+    await File(path.file('export.ext4')).delete();
+
     return res;
   }
 
