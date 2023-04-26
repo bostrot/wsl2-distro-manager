@@ -151,6 +151,9 @@
     "cleanuptitle-text": "Limpar instância WSL ($s0)",
     "cleanupbody-text": "Você realmente quer limpar a distribuição? Isso exportará e importará a distribuição novamente. Isso pode levar algum tempo.",
     "continue-text": "Continuar",
-    "notemplates-text": "Nenhum modelo encontrado",
-    "cleanuptext-text": "Limpar"
+    "cleanuptext-text": "Limpar",
+    "move-text": "Mover",
+    "movebody-text": "Você realmente deseja mover a distribuição %s0 para o caminho padrão da distribuição? Isso exportará e importará a distribuição novamente. Isso pode levar algum tempo.",
+    "moving-text": "Movendo ...",
+    "moved-text": "A distribuição foi movida com sucesso."
 }

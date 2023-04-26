@@ -151,6 +151,9 @@
     "cleanuptitle-text": "WSL Instanz bereinigen (%s0)",
     "cleanupbody-text": "Möchten Sie die Distribution wirklich bereinigen? Dies wird die Distribution exportieren und wieder importieren. Dies kann einige Zeit dauern.",
     "continue-text": "Weiter",
-    "notemplates-text": "Keine Vorlagen gefunden",
-    "cleanup-text": "Bereinigen"
+    "cleanup-text": "Bereinigen",
+    "move-text": "Verschieben",
+    "movebody-text": "Möchten Sie die Distribution %s0 wirklich zum Standard Distro Pfad verschieben? Dies wird die Distribution exportieren und wieder importieren. Dies kann einige Zeit dauern.",
+    "moving-text": "Verschieben ...",
+    "moved-text": "Die Distribution wurde erfolgreich verschoben."
 }
