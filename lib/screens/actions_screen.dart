@@ -1,8 +1,8 @@
-import 'package:wsl2distromanager/dialogs/delete_dialog_qa.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
@@ -302,8 +302,22 @@ class QuickPageState extends State<QuickPage> {
                           icon: const Icon(FluentIcons.delete),
                           onPressed: () {
                             // Open remove dialog
-                            deleteQaDialog(
-                                quickActions[i], () => setState(() {}));
+                            dialog(
+                                item: quickActions[i],
+                                title: 'deleteinstancequestion-text'
+                                    .i18n([quickActions[i].name]),
+                                body: 'deleteinstancebody-text'.i18n(),
+                                submitText: 'delete-text'.i18n(),
+                                submitInput: false,
+                                submitStyle: ButtonStyle(
+                                  backgroundColor: ButtonState.all(Colors.red),
+                                  foregroundColor:
+                                      ButtonState.all(Colors.white),
+                                ),
+                                onSubmit: (inputText) {
+                                  QuickAction.removeFromPrefs(quickActions[i]);
+                                  setState(() {});
+                                });
                           },
                         ),
                       ],
