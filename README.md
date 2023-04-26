@@ -6,6 +6,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
 [![Documentation](https://img.shields.io/badge/DOCUMENTATION-WIKI-green?style=for-the-badge)](https://github.com/bostrot/wsl2-distro-manager/wiki)
 [![GitLab stars](https://img.shields.io/gitlab/stars/bostrot/wsl2-distro-manager?gitlab_url=https%3A%2F%2Fgitlab.com&label=GitLab&style=for-the-badge)](https://gitlab.com/bostrot/wsl2-distro-manager)
+[![Discord](https://img.shields.io/discord/1100070299308937287?style=for-the-badge)](https://discord.gg/fY5uE5WRTP)
+
 
 <p align='center'>
     English | <a href='./README_zh.md'>简体中文</a> | <a href='./README_de.md'>Deutsch</a>
@@ -33,7 +35,12 @@
 
 ## 📦 Install
 
-This app is available on the [Windows Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
+<details>
+<summary>Microsoft Store</summary>
+
+This app is available on the [Microsoft Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).\
+If you don't want to support this project by paying for it you can get a key when you join our [Discord community](https://discord.gg/fY5uE5WRTP) and write `/key` into the `codes` channel!
+</details>
 
 <details>
 <summary>Direct download</summary>
