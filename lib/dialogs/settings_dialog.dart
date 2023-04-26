@@ -2,11 +2,9 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
-import 'package:wsl2distromanager/components/console.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/sync.dart';
-import 'package:wsl2distromanager/theme.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 
 String extractPorts(String portRaw) {
@@ -150,54 +148,6 @@ Column settingsColumn(
         height: 8.0,
       ),
       wslSettings(item, setState),
-      const SizedBox(
-        height: 8.0,
-      ),
-      cmds.isNotEmpty
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: Console(
-                item: item,
-                cmds: cmds,
-                afterInit: () {
-                  cmds = '';
-                },
-              ),
-            )
-          : Container(),
-      FutureBuilder<Map<String, String>>(
-          future: getInstanceData(item),
-          builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              String ip = snapshot.data!["ip"] ?? '';
-              String portsTcp = snapshot.data!["portsTcp"] ?? '';
-              String portsTcp6 = snapshot.data!["portsTcp6"] ?? '';
-              String portsUdp = snapshot.data!["portsUdp"] ?? '';
-              String portsUdp6 = snapshot.data!["portsUdp6"] ?? '';
-              return Container(
-                width: MediaQuery.of(context).size.width,
-                color: AppTheme().color.withOpacity(0.1),
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SelectableText('eth0 IPv4: ${ip.replaceAll('\n', ' ')}'),
-                      SelectableText('TCP ${'ports-text'.i18n()}: $portsTcp'),
-                      SelectableText('TCP6 ${'ports-text'.i18n()}: $portsTcp6'),
-                      SelectableText('UDP ${'ports-text'.i18n()}: $portsUdp'),
-                      SelectableText('UDP6 ${'ports-text'.i18n()}: $portsUdp6'),
-                    ],
-                  ),
-                ),
-              );
-            } else if (snapshot.hasError) {
-              return const Center(
-                child: Text("Could not get Port & IP info."),
-              );
-            }
-            return const Center(child: ProgressRing());
-          }),
       const SizedBox(
         height: 12.0,
       ),
