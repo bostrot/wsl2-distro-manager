@@ -1,6 +1,7 @@
 name: Releaser
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - '*'
@@ -8,6 +9,7 @@ on:
       - 'lib/**/*'
       - 'assets/**/*'
       - 'windows/**/*'
+      - 'pubspec.yaml'
 
 jobs:
   build:

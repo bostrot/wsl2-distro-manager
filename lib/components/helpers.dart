@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 
 late String language;
@@ -116,7 +115,7 @@ String getInstanceSize(String name) {
     } else {
       return '';
     }
-  } catch (e, s) {
+  } catch (e) {
     return '';
   }
 }
