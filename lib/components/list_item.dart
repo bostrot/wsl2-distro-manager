@@ -243,7 +243,23 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                     icon: const Icon(FluentIcons.rename, size: 16.0),
                     onPressed: () {
-                      renameDialog(widget.item);
+                      dialog(
+                          item: widget.item,
+                          title:
+                              '${'rename-text'.i18n()} \'${distroLabel(widget.item)}\'',
+                          body: 'renameinfo-text'.i18n(),
+                          submitText: 'Rename',
+                          submitStyle: const ButtonStyle(),
+                          onSubmit: (inputText) {
+                            Notify.message(
+                                'renaminginstance-text'.i18n(
+                                    [distroLabel(widget.item), inputText]),
+                                loading: true);
+                            prefs.setString(
+                                'DistroName_${widget.item}', inputText);
+                            Notify.message('renamedinstance-text'
+                                .i18n([distroLabel(widget.item), inputText]));
+                          });
                     },
                   ),
                 ),
@@ -279,7 +295,22 @@ class Bar extends StatelessWidget {
                   child: IconButton(
                       icon: const Icon(FluentIcons.delete, size: 16.0),
                       onPressed: () {
-                        deleteDialog(widget.item);
+                        dialog(
+                            item: widget.item,
+                            title: 'deleteinstancequestion-text'
+                                .i18n([distroLabel(widget.item)]),
+                            body: 'deleteinstancebody-text'.i18n(),
+                            submitText: 'delete-text'.i18n(),
+                            submitInput: false,
+                            submitStyle: ButtonStyle(
+                              backgroundColor: ButtonState.all(Colors.red),
+                              foregroundColor: ButtonState.all(Colors.white),
+                            ),
+                            onSubmit: (inputText) async {
+                              await WSLApi().remove(widget.item);
+                              Notify.message(
+                                  'deletedinstance-text'.i18n([widget.item]));
+                            });
                       }),
                 ),
               ),

@@ -6,8 +6,8 @@ import 'package:wsl2distromanager/components/console.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/sync.dart';
-import 'package:wsl2distromanager/dialogs/sync_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
+import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 
 String extractPorts(String portRaw) {
   List<String> portsRaw = portRaw.split('\n');
@@ -251,7 +251,20 @@ Column settingsColumn(
                       ]),
                   onPressed: () {
                     plausible.event(name: "network_downloaded");
-                    syncDialog(item);
+                    dialog(
+                        item: item,
+                        title: 'syncfromserver-text'.i18n([distroLabel(item)]),
+                        body: 'syncwarning-text'.i18n([item]),
+                        submitText: 'yesoverride-text'.i18n(),
+                        submitInput: false,
+                        submitStyle: ButtonStyle(
+                          backgroundColor: ButtonState.all(Colors.red),
+                          foregroundColor: ButtonState.all(Colors.white),
+                        ),
+                        onSubmit: (inputText) {
+                          Sync sync = Sync.instance(item);
+                          sync.download();
+                        });
                   },
                 ),
               ),

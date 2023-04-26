@@ -2,8 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/dialogs/create_template_dialog.dart';
-import 'package:wsl2distromanager/dialogs/delete_template_dialog.dart';
+import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 
 /// Template Screen
 class TemplatePage extends StatefulWidget {
@@ -50,27 +49,43 @@ class _TemplatePageState extends State<TemplatePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Button(
-                      child: Row(
-                        children: [
-                          const Icon(FluentIcons.add),
-                          const SizedBox(
-                            width: 10.0,
-                          ),
-                          Text('createnewinstance-text'.i18n()),
-                        ],
-                      ),
-                      onPressed: () {
-                        createTemplateDialog(name);
-                      },
-                    ),
+                        child: Row(
+                          children: [
+                            const Icon(FluentIcons.add),
+                            const SizedBox(
+                              width: 10.0,
+                            ),
+                            Text('createnewinstance-text'.i18n()),
+                          ],
+                        ),
+                        onPressed: () => dialog(
+                            item: name,
+                            title: '${'copy-text'.i18n()} \'$name\'',
+                            body: 'copyinstance-text'.i18n([distroLabel(name)]),
+                            submitText: 'copy-text'.i18n(),
+                            submitStyle: const ButtonStyle(),
+                            onSubmit: (inputText) async {
+                              await Templates().useTemplate(name, inputText);
+                            })),
                     IconButton(
                       icon: const Icon(FluentIcons.delete),
                       onPressed: () {
-                        deleteTemplateDialog(name, () {
-                          Templates().deleteTemplate(name);
-                          _templates.remove(name);
-                          setState(() {});
-                        });
+                        dialog(
+                            item: name,
+                            title: 'deleteinstancequestion-text'
+                                .i18n([distroLabel(name)]),
+                            body: 'deleteinstancebody-text'.i18n(),
+                            submitText: 'delete-text'.i18n(),
+                            submitInput: false,
+                            submitStyle: ButtonStyle(
+                              backgroundColor: ButtonState.all(Colors.red),
+                              foregroundColor: ButtonState.all(Colors.white),
+                            ),
+                            onSubmit: (inputText) async {
+                              await Templates().deleteTemplate(name);
+                              _templates.remove(name);
+                              setState(() {});
+                            });
                       },
                     ),
                   ],
