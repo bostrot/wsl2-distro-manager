@@ -7,11 +7,19 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 
+/// Builder for the WSL Distro List Items. Each item is an expander with [item]
+/// as the title and [trailing] as the trailing text. [running] is a list of
+/// running distros.
 class ListItem extends StatefulWidget {
-  const ListItem({Key? key, required this.item, required this.running})
+  const ListItem(
+      {Key? key,
+      required this.item,
+      required this.running,
+      required this.trailing})
       : super(key: key);
   final List<String> running;
   final String item;
+  final String trailing;
   @override
   State<ListItem> createState() => _ListItemState();
 }
@@ -69,9 +77,17 @@ class _ListItemState extends State<ListItem> {
                   )
                 : const Text(''),
           ]),
-          header: isRunning(widget.item, widget.running)
-              ? (Text('${distroLabel(widget.item)} (${'running-text'.i18n()})'))
-              : Text(distroLabel(widget.item)),
+          header: Row(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              isRunning(widget.item, widget.running)
+                  ? (Text(
+                      '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
+                  : Text(distroLabel(widget.item)),
+              Text(widget.trailing),
+            ],
+          ),
           content: Bar(
             widget: widget,
           )),
