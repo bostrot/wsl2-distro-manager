@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 
 late String language;
@@ -106,13 +107,18 @@ SafePath getInstancePath(String name) {
 /// Get instance size for [name] instance.
 String getInstanceSize(String name) {
   var path = getInstancePath(name).file('ext4.vhdx');
-  var size = File(path).lengthSync();
+  try {
+    var size = File(path).lengthSync();
 
-  if (size > 0) {
-    var sizeGB = size / 1024 / 1024 / 1024;
-    return '${sizeGB.toStringAsFixed(2)} GB';
-  } else {
-    return '- GB';
+    if (size > 0) {
+      var sizeGB = size / 1024 / 1024 / 1024;
+      return '${sizeGB.toStringAsFixed(2)} GB';
+    } else {
+      return '';
+    }
+  } catch (e, s) {
+    logDebug(e, s, null);
+    return '';
   }
 }
 
