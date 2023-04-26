@@ -3,6 +3,13 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
+/// This function displays a dialog box with the given [item], which is a widget
+/// that is displayed in the dialog box. It also takes an optional [onSubmit]
+/// parameter, which is a function that is called
+/// when the user presses the submit button. The rest of the parameters are
+/// optional and are used to customize the dialog box. The [onSubmit] function
+/// is called with the text input by the user as a parameter. This function
+/// returns a future that resolves when the dialog is closed.
 dialog({
   required item,
   Function? onSubmit,
