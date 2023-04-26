@@ -117,7 +117,6 @@ String getInstanceSize(String name) {
       return '';
     }
   } catch (e, s) {
-    logDebug(e, s, null);
     return '';
   }
 }
