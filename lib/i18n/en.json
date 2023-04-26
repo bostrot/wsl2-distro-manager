@@ -150,5 +150,9 @@
     "cleanuptitle-text": "Clean up WSL instance ($s0)",
     "cleanupbody-text": "Do you really want to clean up the distribution? This will export and re-import the distribution. This may take some time.",
     "continue-text": "Continue",
-    "cleanup-text": "Cleanup"
+    "cleanup-text": "Cleanup",
+    "move-text": "Move",
+    "movebody-text": "Do you really want to move the distribution %s0 to the default distro path? This will export and re-import the distribution. This may take some time.",
+    "moving-text": "Moving ...",
+    "moved-text": "Distribution moved successfully."
 }

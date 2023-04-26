@@ -248,7 +248,7 @@ class Bar extends StatelessWidget {
                           title:
                               '${'rename-text'.i18n()} \'${distroLabel(widget.item)}\'',
                           body: 'renameinfo-text'.i18n(),
-                          submitText: 'Rename',
+                          submitText: 'rename-text'.i18n(),
                           submitStyle: const ButtonStyle(),
                           onSubmit: (inputText) {
                             Notify.message(

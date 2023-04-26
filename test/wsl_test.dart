@@ -174,4 +174,31 @@ void main() {
     // Still exists
     expect(await isInstance('test'), true);
   });
+
+  test('Move distro', () async {
+    // Create a new instance
+    await createDistro(
+      'test',
+      '',
+      'Debian',
+      '',
+    );
+
+    // Move it
+    await WSLApi().move('test', 'C:/WSL2-Distros/test-moved');
+
+    // File exists
+    var file = File('C:/WSL2-Distros/test-moved/ext4.vhdx');
+    expect(await file.exists(), true);
+
+    // Still exists
+    expect(await isInstance('test'), true);
+
+    // Delete the instance
+    await WSLApi().remove('test');
+    expect(await isInstance('test'), false);
+
+    // Delete folder
+    await Directory('C:/WSL2-Distros/test-moved').delete(recursive: true);
+  });
 }

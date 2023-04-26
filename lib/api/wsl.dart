@@ -13,6 +13,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 
+/// Used to store the instances of WSL in a list.
 class Instances {
   List<String> running = [];
   List<String> all = [];
@@ -21,7 +22,9 @@ class Instances {
 
 bool inited = false;
 
-/// WSL API
+/// This class is used to interact with WSL. It contains all the functions
+/// needed to interact with WSL based on Process.run and Process.start.
+/// Most functions will return the UTF8 converted stdout of the process.
 class WSLApi {
   WSLApi() {
     if (!inited) {
@@ -30,7 +33,9 @@ class WSLApi {
     }
   }
 
-  /// Get distro size
+  /// Get distro size of [distroName] a string with a GB suffix.
+  /// Returns null if size is 0.
+  /// e.g. "2.00 GB"
   String? getSize(String distroName) {
     String ext4Path = getInstancePath(distroName).file('ext4.vhdx');
     // Get size of distro
@@ -600,6 +605,18 @@ class WSLApi {
     List<String> list = [];
     list.addAll(distroRootfsLinks.keys);
     return list;
+  }
+
+  /// Move WSL distro to another location by [distro] and [newPath].
+  /// Returns [ProcessResult] of the command.
+  Future<String> move(String distro, String newPath) async {
+    SafePath path = SafePath(newPath);
+    await export(distro, path.file('export.ext4'));
+    await remove(distro);
+    var res = await import(distro, newPath, path.file('export.ext4'));
+    await File(path.file('export.ext4')).delete();
+
+    return res;
   }
 
   /// Convert bytes to human readable string while removing non-ascii characters

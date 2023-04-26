@@ -151,5 +151,9 @@
     "cleanuptitle-text": "清理 WSL 实例（%s）",
     "cleanupbody-text": "您确定要清理发行版吗？这将导出并重新导入发行版。这可能需要一些时间。",
     "continue-text": "继续",
-    "cleanup-text": "清理"
+    "cleanup-text": "清理",
+    "move-text": "移动",
+    "movebody-text": "您确定要将发行版 %s0 移动到默认发行版位置吗？这将导出并重新导入发行版。这可能需要一些时间。",
+    "moving-text": "移动 ...",
+    "moved-text": "发行版已成功移动。"
 }
