@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 
 class App {
   /// Returns an int of the string
@@ -43,6 +44,11 @@ class App {
       if (response.data.length > 0) {
         var jsonData = json.decode(response.data);
         String motd = jsonData['motd'];
+        // Check if same as last time
+        if (prefs.getString('motd') == motd) {
+          return '';
+        }
+        prefs.setString('motd', motd);
         return motd;
       }
     } catch (e) {
