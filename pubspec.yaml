@@ -19,7 +19,7 @@ dependencies:
   file_picker: ^5.0.1
   url_launcher: ^6.1.6
   dio: ^5.0.3
-  package_info_plus: ^3.1.0
+  package_info_plus: ^4.0.2
   plausible_analytics: ^0.3.0
   shared_preferences: ^2.0.15
   shelf_static: ^1.1.1
@@ -27,19 +27,19 @@ dependencies:
   window_manager: ^0.3.2
   provider: ^6.0.3
   flutter_acrylic: ^1.0.0+2
-  system_info2: ^3.0.1
+  system_info2: ^4.0.0
   yaml: ^3.1.1
   archive: ^3.3.7
   http: ^0.13.5
   async: ^2.9.0
   chunked_downloader: ^0.0.2
-  go_router: ^6.5.5
+  go_router: ^8.0.1
   flutter_markdown: ^0.6.14
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  msix: ^3.7.0
+  msix: ^3.14.2
   flutter_lints: ^2.0.1
   flutter_oss_licenses: ^2.0.1
 
