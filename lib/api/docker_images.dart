@@ -354,8 +354,10 @@ class DockerImage {
 
       // Set image specific commands
       String name = filename(image, tag);
-      prefs.setString(
-          'StartCmd_$name', '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+      if (cmd != null) {
+        prefs.setString(
+            'StartCmd_$name', '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+      }
       prefs.setStringList('UserCmds_$name', userCmds);
       prefs.setStringList('GroupCmds_$name', groupCmds);
 
