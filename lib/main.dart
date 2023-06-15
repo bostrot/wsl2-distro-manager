@@ -109,6 +109,9 @@ class WSLManager extends StatelessWidget {
             // Language was set manually
             if (selectedLang != null) {
               language = selectedLang;
+              if (language == "zh") {
+                return const Locale('zh', 'CN');
+              }
               return Locale(selectedLang);
             }
 
