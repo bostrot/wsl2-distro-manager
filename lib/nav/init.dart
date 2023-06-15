@@ -62,7 +62,8 @@ initRoot(statusMsg) async {
               text: TextSpan(children: [
                 TextSpan(
                     text: '${'newversion-text'.i18n()} ',
-                    style: const TextStyle(fontSize: 14.0)),
+                    style:
+                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
                 TextSpan(
                     text: '${'downloadnow-text'.i18n()} ',
                     style: TextStyle(
@@ -73,7 +74,8 @@ initRoot(statusMsg) async {
                       ..onTap = () => launchUrl(Uri.parse(updateUrl))),
                 TextSpan(
                     text: '${'orcheck-text'.i18n()} ',
-                    style: const TextStyle(fontSize: 14.0)),
+                    style:
+                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
                 TextSpan(
                     text: '${'windowsstore-text'.i18n()} ',
                     style: TextStyle(
