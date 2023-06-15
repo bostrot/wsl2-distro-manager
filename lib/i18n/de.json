@@ -121,7 +121,7 @@
     "nestedvirtinfo-text": "Boolescher Wert zum Ein- oder Ausschalten der verschachtelten Virtualisierung, sodass andere verschachtelte VMs in WSL 2 ausgeführt werden können. Nur für Windows 11 verfügbar.",
     "vmidleinfo-text": "Die Anzahl der Millisekunden, die eine VM im Leerlauf ist, bevor sie heruntergefahren wird. Nur verfügbar für Windows 11.",
     "documentation-text": "Dokumentation",
-    "addcommunityactions-text": "Community Actions hinzufügen",
+    "addcommunityactions-text": "Community Codeausschnitte hinzufügen",
     "done-text": "Fertig",
     "search-text": "Suche",
     "shareyourquickaction-text": "Teilen Sie Ihre Codeausschnitte",
