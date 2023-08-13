@@ -164,7 +164,7 @@ class SettingsPageState extends State<SettingsPage> {
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString(
-          "SaveLocation", _settings['Default Distro Location']!.text);
+          "DistroPath", _settings['Default Distro Location']!.text);
     }
     _settings.forEach((key, value) {
       if (key != 'Default Distro Location' && value.text.isNotEmpty) {
@@ -189,7 +189,9 @@ class SettingsPageState extends State<SettingsPage> {
             suffix: IconButton(
               icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
               onPressed: () async {
-                String? path = await FilePicker.platform.getDirectoryPath();
+                String? path = await FilePicker.platform.getDirectoryPath(
+                  initialDirectory: prefs.getString("DistroPath") ?? defaultPath,
+                );
                 if (path != null &&
                     _settings['Default Distro Location'] != null) {
                   _settings['Default Distro Location']!.text = path;
@@ -198,7 +200,7 @@ class SettingsPageState extends State<SettingsPage> {
                 }
               },
             ),
-            placeholder: prefs.getString("SaveLocation") ?? defaultPath),
+            placeholder: prefs.getString("DistroPath") ?? defaultPath),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.all(8.0),

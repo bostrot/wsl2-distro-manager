@@ -76,7 +76,9 @@
           suffix: IconButton(
             icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
             onPressed: () async {
-              String? path = await FilePicker.platform.getDirectoryPath();
+              String? path = await FilePicker.platform.getDirectoryPath(
+                initialDirectory: prefs.getString(&quot;DistroPath&quot;) ?? defaultPath,
+              );
               if (path != null &amp;&amp;
                   _settings[&#39;Default Distro Location&#39;] != null) {
                 _settings[&#39;Default Distro Location&#39;]!.text = path;
@@ -85,7 +87,7 @@
               }
             },
           ),
-          placeholder: prefs.getString(&quot;SaveLocation&quot;) ?? defaultPath),
+          placeholder: prefs.getString(&quot;DistroPath&quot;) ?? defaultPath),
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
