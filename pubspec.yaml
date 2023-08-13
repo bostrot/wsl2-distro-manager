@@ -4,6 +4,7 @@ description: A GUI to quickly manage your WSL instances.
 publish_to: "none"
 version: 1.8.6 # Current version
 
+
 environment:
   sdk: ">=2.17.0 <3.0.0"
 
