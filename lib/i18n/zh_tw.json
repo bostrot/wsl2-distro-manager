@@ -148,7 +148,7 @@
     "language-text": "語言",
     "languagechange-text": "語言變更將在重新啟動後生效。",
     "notemplates-text": "沒有找到範本",
-    "cleanuptitle-text": "清理 WSL 安裝實體 ($s0)",
+    "cleanuptitle-text": "清理 WSL 安裝實體 (%s0)",
     "cleanupbody-text": "您確定要清理發行版本嗎？這將匯出並重新匯入發行版本。這可能需要一些時間。",
     "continue-text": "繼續",
     "cleanup-text": "清理",

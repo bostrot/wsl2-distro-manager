@@ -548,14 +548,14 @@ class WSLApi {
 
   /// Clean up WSL distros. Exporting, deleting, and importing.
   Future<String> cleanup(String distribution) async {
-    var file = getInstancePath(distribution).file('export.tar.gz');
+    var instancePath = getInstancePath(distribution);
+    var file = instancePath.file('export.tar.gz');
 
     // Export, remove, and import
     await export(distribution, file);
     await remove(distribution);
-    var res = await import(distribution, '', file);
 
-    return res;
+    return await import(distribution, instancePath.path, file);
   }
 
   /// Returns list of WSL distros

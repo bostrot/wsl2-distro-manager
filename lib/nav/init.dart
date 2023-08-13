@@ -43,9 +43,9 @@ initRoot(statusMsg) async {
   // if (kDebugMode) {
   //   prefs.remove('version');
   // }
-  if (kDebugMode) {
-    prefs.setString('version', '1.8.0');
-  }
+  // if (kDebugMode) {
+  //   prefs.setString('version', '1.8.0');
+  // }
 
   // Check updates
   App app = App();
