@@ -126,6 +126,9 @@ void main() {
     await WSLApi().remove('test');
     expect(await isInstance('test'), false);
 
+    // Check if folder is deleted
+    expect(await Directory('C:/WSL2-Distros/test').exists(), false);
+
     // Test without download
     // Test creating it
     await createDistro(

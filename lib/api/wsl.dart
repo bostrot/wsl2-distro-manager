@@ -263,13 +263,15 @@ class WSLApi {
 
     // Check if folder is empty and delete
     String path = getInstancePath(distribution).path;
-    Directory dir = Directory(path);
-    if (dir.existsSync()) {
-      if (dir.listSync().isEmpty) {
-        dir.deleteSync();
+    // Wait 10 seconds in async then delete for Windows to release file
+    Future.delayed(const Duration(seconds: 10), () {
+      Directory dir = Directory(path);
+      if (dir.existsSync()) {
+        if (dir.listSync().isEmpty) {
+          dir.deleteSync(recursive: true);
+        }
       }
-    }
-
+    });
     return results.stdout;
   }
 
