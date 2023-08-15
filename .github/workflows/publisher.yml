@@ -38,7 +38,7 @@ jobs:
 
     - name: List files in release folder
       run: |
-        ls-l
+        ls -l
         echo "List files in release folder"
         ls -la release
 
