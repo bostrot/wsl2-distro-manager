@@ -43,11 +43,11 @@ jobs:
         ls -la release
 
     # Publish to Microsoft Store
-    - uses: isaacrlevin/windows-store-action@1.0
+    - uses: isaacrlevin/windows-store-action@master
       name: Publish to Store
       with:
         tenant-id: ${{ secrets.AZURE_AD_TENANT_ID }}
         client-id: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
         client-secret: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
         app-id: ${{ secrets.STORE_APP_ID }}
-        package-path: 'release/release.msix'
+        package-path: '${{ github.workspace }}/release/release.msix'
