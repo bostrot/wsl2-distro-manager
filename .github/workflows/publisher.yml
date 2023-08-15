@@ -32,7 +32,15 @@ jobs:
       with:
         version: tags/${{ env.TAG }}
         file: wsl2-distro-manager-${{ env.TAG }}-unsigned.msix
-        target: '/release/release.msix'
+        target: 'release/release.msix'
+
+# debug: list files in release folder
+
+    - name: List files in release folder
+      run: |
+        ls-l
+        echo "List files in release folder"
+        ls -la release
 
     # Publish to Microsoft Store
     - uses: isaacrlevin/windows-store-action@1.0
@@ -42,4 +50,4 @@ jobs:
         client-id: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
         client-secret: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
         app-id: ${{ secrets.STORE_APP_ID }}
-        package-path: '/release/release.msix'
+        package-path: 'release/release.msix'
