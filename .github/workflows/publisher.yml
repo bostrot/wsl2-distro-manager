@@ -31,7 +31,7 @@ jobs:
       uses: dsaltares/fetch-gh-release-asset@master
       with:
         version: tags/${{ env.TAG }}
-        file: wsl2-distro-manager-v${{ env.TAG }}.msix
+        file: wsl2-distro-manager-v${{ env.TAG }}-unsigned.msix
         target: release.msix
 
     # Publish to Microsoft Store
