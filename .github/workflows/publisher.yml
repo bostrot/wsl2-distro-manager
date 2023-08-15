@@ -1,0 +1,32 @@
+name: Publish to Microsoft Store
+
+on:
+  workflow_dispatch:
+  push:
+    tags:        
+      - '*'
+
+jobs:
+  # Publish to Microsoft Store
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    # Download release asset
+    - id: download-release-asset
+      name: Download release asset
+      uses: dsaltares/fetch-gh-release-asset@master
+      with:
+        version: tags/${{ env.RELEASE }}
+        file: wsl2-distro-manager-v${{ env.RELEASE }}.msix
+        target: release.msix
+        token: ${{ secrets.DEPLOY_TOKEN }}
+
+    # Publish to Microsoft Store
+    - uses: isaacrlevin/windows-store-action@1.0
+      name: Publish to Store
+      with:
+        tenant-id: ${{ secrets.AZURE_AD_TENANT_ID }}
+        client-id: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+        client-secret: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+        app-id: ${{ secrets.STORE_APP_ID }}
+        package-path: release.msix
