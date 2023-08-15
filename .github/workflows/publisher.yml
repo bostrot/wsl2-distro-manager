@@ -2,6 +2,10 @@ name: Publish to Microsoft Store
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Empty for latest tag or specify a tag to publish
+        type: string
   push:
     tags:        
       - '*'
@@ -11,12 +15,25 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+    # Setup variables
+    - id: set_output
+      run: echo "my_output=helloworld" >> $GITHUB_OUTPUT
+
+    - name: Save job output OR workflow dispatch to Env
+      run: |
+        if [[ ${{ github.event_name == 'workflow_dispatch' }} == true ]]; then
+          TAG=${{ inputs.my_input }}
+        else
+          TAG=${{ steps.set_output.outputs.my_output }}
+        fi
+        echo "TAG=$TAG" >> $GITHUB_ENV
+
     # Download release asset
     - name: Download release asset
       uses: dsaltares/fetch-gh-release-asset@master
       with:
-        version: tags/${{ env.RELEASE }}
-        file: wsl2-distro-manager-v${{ env.RELEASE }}.msix
+        version: tags/${{ env.TAG }}
+        file: wsl2-distro-manager-v${{ env.TAG }}.msix
         target: release.msix
 
     # Publish to Microsoft Store
