@@ -43,4 +43,4 @@ jobs:
         client-secret: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
         app-id: ${{ secrets.STORE_APP_ID }}
         package-path: '${{ github.workspace }}'
-        
+        skip-polling: false
