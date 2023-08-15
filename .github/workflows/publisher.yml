@@ -2,8 +2,6 @@ name: Publish to Microsoft Store
 
 on:
   workflow_dispatch:
-      tags:
-        description: 'Placeholder'  
   push:
     tags:        
       - '*'
