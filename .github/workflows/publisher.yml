@@ -32,7 +32,7 @@ jobs:
       with:
         version: tags/${{ env.TAG }}
         file: wsl2-distro-manager-${{ env.TAG }}-unsigned.msix
-        target: 'release/release.msix'
+        target: '${{ github.workspace }}/release.msix'
 
 # debug: list files in release folder
 
@@ -50,4 +50,4 @@ jobs:
         client-id: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
         client-secret: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
         app-id: ${{ secrets.STORE_APP_ID }}
-        package-path: '${{ github.workspace }}/release/release.msix'
+        package-path: '${{ github.workspace }}/release.msix'
