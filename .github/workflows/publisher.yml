@@ -43,7 +43,7 @@ jobs:
         ls -la release
 
     # Publish to Microsoft Store
-    - uses: isaacrlevin/windows-store-action@master
+    - uses: isaacrlevin/windows-store-action@main
       name: Publish to Store
       with:
         tenant-id: ${{ secrets.AZURE_AD_TENANT_ID }}
