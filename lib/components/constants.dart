@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 const String title = 'WSL Distro Manager by Bostrot';
 
-const String currentVersion = "1.8.5";
+const String currentVersion = "1.8.6";
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros';

@@ -85,7 +85,7 @@ Future<void> createInstance(
     Notify.message('creatinginstance-text'.i18n(), loading: true);
     String location = locationController.text;
     if (location == '') {
-      location = prefs.getString("SaveLocation") ?? defaultPath;
+      location = prefs.getString("DistroPath") ?? defaultPath;
       location += '/$name';
     }
 

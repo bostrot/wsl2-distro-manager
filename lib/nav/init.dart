@@ -1,9 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:localization/localization.dart';
-import 'package:system_theme/system_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -45,9 +43,9 @@ initRoot(statusMsg) async {
   // if (kDebugMode) {
   //   prefs.remove('version');
   // }
-  if (kDebugMode) {
-    prefs.setString('version', '1.8.0');
-  }
+  // if (kDebugMode) {
+  //   prefs.setString('version', '1.8.0');
+  // }
 
   // Check updates
   App app = App();
@@ -104,9 +102,9 @@ initRoot(statusMsg) async {
   // }
 
   // Get system dark mode
-  if (SystemTheme.isDarkMode) {
+  if (ThemeMode.system == ThemeMode.dark) {
     AppTheme().mode = ThemeMode.dark;
-  } else {
+  } else if (ThemeMode.system == ThemeMode.light) {
     AppTheme().mode = ThemeMode.light;
   }
 }
