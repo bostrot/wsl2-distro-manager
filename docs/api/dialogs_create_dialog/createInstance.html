@@ -90,7 +90,7 @@
     statusMsg(&#39;creatinginstance-text&#39;.i18n(), loading: true);
     String location = locationController.text;
     if (location == &#39;&#39;) {
-      location = prefs.getString(&quot;SaveLocation&quot;) ?? defaultPath;
+      location = prefs.getString(&quot;DistroPath&quot;) ?? defaultPath;
       location += &#39;&#47;$name&#39;;
     }
     var result = await api.create(
