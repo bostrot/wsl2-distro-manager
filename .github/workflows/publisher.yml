@@ -22,9 +22,9 @@ jobs:
     - name: Save job output OR workflow dispatch to Env
       run: |
         if [[ ${{ github.event_name == 'workflow_dispatch' }} == true ]]; then
-          TAG=${{ inputs.my_input }}
+          TAG=${{ inputs.tag }}
         else
-          TAG=${{ steps.set_output.outputs.my_output }}
+          TAG=${{ env.RELEASE }}
         fi
         echo "TAG=$TAG" >> $GITHUB_ENV
 
