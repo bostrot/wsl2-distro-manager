@@ -10,7 +10,6 @@ jobs:
   # Publish to Microsoft Store
   publish:
     runs-on: ubuntu-latest
-    needs: build
     steps:
     # Download release asset
     - id: download-release-asset
@@ -23,7 +22,7 @@ jobs:
         token: ${{ secrets.DEPLOY_TOKEN }}
 
     # Publish to Microsoft Store
-    - uses: isaacrlevin/windows-store-action
+    - uses: isaacrlevin/windows-store-action@1.0
       name: Publish to Store
       with:
         tenant-id: ${{ secrets.AZURE_AD_TENANT_ID }}
