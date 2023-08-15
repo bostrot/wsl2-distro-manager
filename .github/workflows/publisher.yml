@@ -34,14 +34,6 @@ jobs:
         file: wsl2-distro-manager-${{ env.TAG }}-unsigned.msix
         target: '${{ github.workspace }}/release.msix'
 
-# debug: list files in release folder
-
-    - name: List files in release folder
-      run: |
-        ls -l
-        echo "List files in release folder"
-        ls -la release
-
     # Publish to Microsoft Store
     - uses: isaacrlevin/windows-store-action@main
       name: Publish to Store
