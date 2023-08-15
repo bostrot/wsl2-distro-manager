@@ -16,9 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     # Setup variables
-    - id: set_output
-      run: echo "my_output=helloworld" >> $GITHUB_OUTPUT
-
     - name: Save job output OR workflow dispatch to Env
       run: |
         if [[ ${{ github.event_name == 'workflow_dispatch' }} == true ]]; then
@@ -27,6 +24,7 @@ jobs:
           TAG=${{ env.RELEASE }}
         fi
         echo "TAG=$TAG" >> $GITHUB_ENV
+        echo "Tag: $TAG"
 
     # Download release asset
     - name: Download release asset
