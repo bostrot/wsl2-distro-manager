@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the readData method from the SettingsPageState class, for the Dart programming language.">
+  <title>readData method - SettingsPageState class - settings_screen library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../../static-assets/styles.css?v1">
+  <link rel="icon" href="../../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../../index.html">wsl2distromanager</a></li>
+    <li><a href="../../screens_settings_screen/screens_settings_screen-library.html">settings_screen</a></li>
+    <li><a href="../../screens_settings_screen/SettingsPageState-class.html">SettingsPageState</a></li>
+    <li class="self-crumb">readData method</li>
+  </ol>
+  <div class="self-name">readData</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-method">readData</span> method 
+</h1></div>
+
+    <section class="multi-line-signature">
+      
+
+<span class="returntype">void</span>
+<span class="name ">readData</span>(<wbr>)
+
+      
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">void readData() async {
+  final Map&lt;String, String&gt; settings = await WSLApi().readConfig();
+  settings.forEach((key, value) {
+    _settings[key] = TextEditingController(text: value);
+  });
+  String? syncIP = prefs.getString(&#39;SyncIP&#39;);
+  if (syncIP != null &amp;&amp; syncIP != &#39;&#39;) {
+    _syncIpTextController.text = syncIP;
+  }
+  String? repoLink = prefs.getString(&#39;RepoLink&#39;);
+  if (repoLink != null &amp;&amp; repoLink != &#39;&#39;) {
+    _repoTextController.text = repoLink;
+  }
+  if (prefs.containsKey(&#39;DockerRepoLink&#39;)) {
+    String? dockerRepoLink = prefs.getString(&#39;DockerRepoLink&#39;);
+    if (dockerRepoLink != null &amp;&amp; dockerRepoLink != &#39;&#39;) {
+      _dockerrepoController.text = dockerRepoLink;
+    }
+  }
+  showDocker = prefs.getBool(&#39;showDocker&#39;) ?? false;
+  if (!mounted) return;
+  setState(() {
+    _settings = _settings;
+  });
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../../index.html">wsl2distromanager</a></li>
+  <li><a href="../../screens_settings_screen/screens_settings_screen-library.html">settings_screen</a></li>
+  <li><a href="../../screens_settings_screen/SettingsPageState-class.html">SettingsPageState</a></li>
+  <li class="self-crumb">readData method</li>
+</ol>
+
+
+    <h5>SettingsPageState class</h5>
+    <ol>
+
+        <li class="section-title"><a href="../../screens_settings_screen/SettingsPageState-class.html#constructors">Constructors</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/SettingsPageState.html">SettingsPageState</a></li>
+
+
+        <li class="section-title">
+          <a href="../../screens_settings_screen/SettingsPageState-class.html#instance-properties">Properties</a>
+        </li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/context.html">context</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/currentContext.html">currentContext</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/hashCode.html">hashCode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/mounted.html">mounted</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/showDocker.html">showDocker</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/widget.html">widget</a></li>
+
+        <li class="section-title"><a href="../../screens_settings_screen/SettingsPageState-class.html#instance-methods">Methods</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/activate.html">activate</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/build.html">build</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/deactivate.html">deactivate</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/debugFillProperties.html">debugFillProperties</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/didChangeDependencies.html">didChangeDependencies</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/didUpdateWidget.html">didUpdateWidget</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/dispose.html">dispose</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/initState.html">initState</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/readData.html">readData</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/reassemble.html">reassemble</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/saveSettings.html">saveSettings</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/setState.html">setState</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/settingsList.html">settingsList</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/settingsWidget.html">settingsWidget</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toDiagnosticsNode.html">toDiagnosticsNode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toString.html">toString</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toStringShort.html">toStringShort</a></li>
+
+        <li class="section-title inherited"><a href="../../screens_settings_screen/SettingsPageState-class.html#operators">Operators</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/operator_equals.html">operator ==</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../../static-assets/highlight.pack.js?v1"></script>
+<script src="../../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

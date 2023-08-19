@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the firststartDialog function from the firststart_dialog library, for the Dart programming language.">
+  <title>firststartDialog function - firststart_dialog library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../dialogs_firststart_dialog/dialogs_firststart_dialog-library.html">firststart_dialog</a></li>
+    <li class="self-crumb">firststartDialog function</li>
+  </ol>
+  <div class="self-name">firststartDialog</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">firststartDialog</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype">dynamic</span>
+<span class="name ">firststartDialog</span>(<wbr>)
+
+        
+
+    </section>
+    
+<section class="desc markdown">
+  <p>First start Dialog
+@param prefs: SharedPreferences
+@param currentVersion: String</p>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">firststartDialog() {
+  plausible.event(page: &#39;changelog&#39;);
+
+  &#47;&#47; Get root context by Key
+  final context = GlobalVariable.infobox.currentContext!;
+  const String title = &quot;🎉 Welcome to WSL Manager! 🎉&quot;;
+  const String body = &quot;&quot;&quot;
+Hi there! 👋
+
+As the developer of this application, I want to express my sincere gratitude for choosing WSL Manager. 🙏 I have put in a lot of time and effort to make sure that this application is both intuitive and easy to use, while also providing a comprehensive set of features for managing your WSL environments.
+
+Whether you&#39;re a developer, system administrator, or just someone who enjoys tinkering with Linux, I believe that WSL Manager will be a valuable addition to your toolkit. 🛠️
+
+If you have any feedback or suggestions for improving the application, please don&#39;t hesitate to get in touch. I&#39;m always eager to hear from users and to make WSL Manager even better. 📣
+
+Thank you for your support, and happy WSL-ing!
+
+Best regards,
+
+Eric
+&quot;&quot;&quot;;
+  showDialog(
+    context: context,
+    builder: (context) {
+      return ContentDialog(
+        constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 500.0),
+        title: const Text(title),
+        content: Markdown(
+          shrinkWrap: true,
+          data: body,
+          onTapLink: (text, href, title) {
+            if (href == null) return;
+            launchUrlString(href);
+          },
+          extensionSet: md.ExtensionSet(
+            md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+            [
+              md.EmojiSyntax(),
+              ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes
+            ],
+          ),
+        ),
+        actions: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              shareUsageData(prefs),
+              Button(
+                  style: ButtonStyle(
+                    backgroundColor: ButtonState.all(Colors.blue),
+                    foregroundColor: ButtonState.all(Colors.white),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(&#39;ok-text&#39;.i18n())),
+            ],
+          )
+        ],
+      );
+    },
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../dialogs_firststart_dialog/dialogs_firststart_dialog-library.html">firststart_dialog</a></li>
+  <li class="self-crumb">firststartDialog function</li>
+</ol>
+
+
+    <h5>firststart_dialog library</h5>
+    <ol>
+
+
+
+
+
+      <li class="section-title"><a href="../dialogs_firststart_dialog/dialogs_firststart_dialog-library.html#functions">Functions</a></li>
+        <li><a href="../dialogs_firststart_dialog/firststartDialog.html">firststartDialog</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

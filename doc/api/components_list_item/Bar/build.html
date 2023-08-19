@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the build method from the Bar class, for the Dart programming language.">
+  <title>build method - Bar class - list_item library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../../static-assets/styles.css?v1">
+  <link rel="icon" href="../../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../../index.html">wsl2distromanager</a></li>
+    <li><a href="../../components_list_item/components_list_item-library.html">list_item</a></li>
+    <li><a href="../../components_list_item/Bar-class.html">Bar</a></li>
+    <li class="self-crumb">build method</li>
+  </ol>
+  <div class="self-name">build</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-method">build</span> method 
+</h1></div>
+
+    <section class="multi-line-signature">
+      
+  <div>
+    <ol class="annotation-list">
+        <li>@<a href="https://api.flutter.dev/flutter/dart-core/override-constant.html">override</a></li>
+    </ol>
+  </div>
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/widgets/Widget-class.html">Widget</a></span>
+<span class="name ">build</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="build-param-context"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a></span> <span class="parameter-name">context</span></span></li>
+</ol>)
+
+      <div class="features"><span class="feature">override</span></div>
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Describes the part of the user interface represented by this widget.</p>
+<p>The framework calls this method when this widget is inserted into the tree
+in a given <a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a> and when the dependencies of this widget change
+(e.g., an <a href="https://api.flutter.dev/flutter/widgets/InheritedWidget-class.html">InheritedWidget</a> referenced by this widget changes). This
+method can potentially be called in every frame and should not have any side
+effects beyond building a widget.</p>
+<p>The framework replaces the subtree below this widget with the widget
+returned by this method, either by updating the existing subtree or by
+removing the subtree and inflating a new subtree, depending on whether the
+widget returned by this method can update the root of the existing
+subtree, as determined by calling <a href="https://api.flutter.dev/flutter/widgets/Widget/canUpdate.html">Widget.canUpdate</a>.</p>
+<p>Typically implementations return a newly created constellation of widgets
+that are configured with information from this widget's constructor and
+from the given <a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a>.</p>
+<p>The given <a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a> contains information about the location in the
+tree at which this widget is being built. For example, the context
+provides the set of inherited widgets for this location in the tree. A
+given widget might be built with multiple different <a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a>
+arguments over time if the widget is moved around the tree or if the
+widget is inserted into the tree in multiple places at once.</p>
+<p>The implementation of this method must only depend on:</p>
+<ul>
+<li>the fields of the widget, which themselves must not change over time,
+and</li>
+<li>any ambient state obtained from the <code>context</code> using
+<a href="https://api.flutter.dev/flutter/widgets/BuildContext/dependOnInheritedWidgetOfExactType.html">BuildContext.dependOnInheritedWidgetOfExactType</a>.</li>
+</ul>
+<p>If a widget's <a href="../../components_list_item/Bar/build.html">build</a> method is to depend on anything else, use a
+<a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a> instead.</p>
+<p>See also:</p>
+<ul>
+<li><a href="https://api.flutter.dev/flutter/widgets/StatelessWidget-class.html">StatelessWidget</a>, which contains the discussion on performance considerations.</li>
+</ul>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">@override
+Widget build(BuildContext context) {
+  return Container(
+    decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(5.0),
+            bottomRight: Radius.circular(5.0))),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Builder(builder: (childcontext) {
+          &#47;&#47; Quick actions
+          List&lt;MenuFlyoutItem&gt; actions = [];
+          List&lt;String&gt;? quickSettingsTitles =
+              prefs.getStringList(&quot;quickSettingsTitles&quot;);
+          List&lt;String&gt;? quickSettingsContents =
+              prefs.getStringList(&quot;quickSettingsContents&quot;);
+          String? user = prefs.getString(&#39;StartUser_${widget.item}&#39;);
+          if (quickSettingsContents != null &amp;&amp; quickSettingsTitles != null) {
+            for (int i = 0; i &lt; quickSettingsTitles.length; i++) {
+              actions.add(MenuFlyoutItem(
+                leading: const MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Icon(FluentIcons.play),
+                  ),
+                ),
+                onPressed: () async {
+                  plausible.event(name: &quot;wsl_quickaction_run&quot;);
+                  WSLApi().runCmds(
+                      widget.item, quickSettingsContents[i].split(&#39;\n&#39;),
+                      user: user);
+                },
+                text: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Text(quickSettingsTitles[i])),
+              ));
+            }
+          }
+          return actions.isNotEmpty
+              ? MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: DropDownButton(
+                    leading: const Icon(FluentIcons.code),
+                    title: Text(&#39;runquickaction-text&#39;.i18n()),
+                    items: actions,
+                  ),
+                )
+              : const SizedBox();
+        }),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Tooltip(
+              message: &#39;saveastemplate-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                  icon: const Icon(FluentIcons.save_template, size: 16.0),
+                  onPressed: () async {
+                    await Templates().saveTemplate(widget.item);
+                  },
+                ),
+              ),
+            ),
+            Tooltip(
+              message: &#39;openwithexplorer-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                  icon: const Icon(FluentIcons.open_folder_horizontal,
+                      size: 16.0),
+                  onPressed: () {
+                    plausible.event(name: &quot;wsl_explorer&quot;);
+                    WSLApi().startExplorer(widget.item);
+                  },
+                ),
+              ),
+            ),
+            Tooltip(
+              message: &#39;openwithwt-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                  icon: const Icon(FluentIcons.power_shell, size: 16.0),
+                  onPressed: () {
+                    plausible.event(name: &quot;wsl_wt&quot;);
+                    WSLApi().startWindowsTerminal(widget.item);
+                  },
+                ),
+              ),
+            ),
+            Tooltip(
+              message: &#39;openwithvscode-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                  icon: const Icon(FluentIcons.visual_studio_for_windows,
+                      size: 16.0),
+                  onPressed: () {
+                    plausible.event(name: &quot;wsl_vscode&quot;);
+                    &#47;&#47; Get path
+                    String? path =
+                        prefs.getString(&#39;StartPath_${widget.item}&#39;) ?? &#39;&#39;;
+                    WSLApi().startVSCode(widget.item, path: path);
+                  },
+                ),
+              ),
+            ),
+            Tooltip(
+              message: &#39;copy-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                  icon: const Icon(FluentIcons.copy, size: 16.0),
+                  onPressed: () {
+                    copyDialog(widget.item);
+                  },
+                ),
+              ),
+            ),
+            Tooltip(
+              message: &#39;rename-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                  icon: const Icon(FluentIcons.rename, size: 16.0),
+                  onPressed: () {
+                    dialog(
+                        item: widget.item,
+                        title:
+                            &#39;${&#39;rename-text&#39;.i18n()} \&#39;${distroLabel(widget.item)}\&#39;&#39;,
+                        body: &#39;renameinfo-text&#39;.i18n(),
+                        submitText: &#39;rename-text&#39;.i18n(),
+                        submitStyle: const ButtonStyle(),
+                        onSubmit: (inputText) {
+                          Notify.message(
+                              &#39;renaminginstance-text&#39;.i18n(
+                                  [distroLabel(widget.item), inputText]),
+                              loading: true);
+                          prefs.setString(
+                              &#39;DistroName_${widget.item}&#39;, inputText);
+                          Notify.message(&#39;renamedinstance-text&#39;
+                              .i18n([distroLabel(widget.item), inputText]));
+                        });
+                  },
+                ),
+              ),
+            ),
+            Tooltip(
+              message: &#39;cleanup-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                    icon: const Icon(FluentIcons.broom, size: 16.0),
+                    onPressed: () {
+                      dialog(
+                          item: widget.item,
+                          title: &#39;cleanuptitle-text&#39;.i18n([widget.item]),
+                          body: &#39;cleanupbody-text&#39;.i18n(),
+                          submitText: &#39;continue-text&#39;.i18n(),
+                          submitStyle: ButtonStyle(
+                            backgroundColor: ButtonState.all(Colors.red),
+                            foregroundColor: ButtonState.all(Colors.white),
+                          ),
+                          submitInput: false,
+                          cancelText: &#39;cancel-text&#39;.i18n(),
+                          onSubmit: (inputText) {
+                            WSLApi().cleanup(widget.item);
+                          });
+                    }),
+              ),
+            ),
+            Tooltip(
+              message: &#39;delete-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                    icon: const Icon(FluentIcons.delete, size: 16.0),
+                    onPressed: () {
+                      dialog(
+                          item: widget.item,
+                          title: &#39;deleteinstancequestion-text&#39;
+                              .i18n([distroLabel(widget.item)]),
+                          body: &#39;deleteinstancebody-text&#39;.i18n(),
+                          submitText: &#39;delete-text&#39;.i18n(),
+                          submitInput: false,
+                          submitStyle: ButtonStyle(
+                            backgroundColor: ButtonState.all(Colors.red),
+                            foregroundColor: ButtonState.all(Colors.white),
+                          ),
+                          onSubmit: (inputText) async {
+                            await WSLApi().remove(widget.item);
+                            Notify.message(
+                                &#39;deletedinstance-text&#39;.i18n([widget.item]));
+                          });
+                    }),
+              ),
+            ),
+            Tooltip(
+              message: &#39;settings-text&#39;.i18n(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: IconButton(
+                    icon: const Icon(FluentIcons.settings, size: 16.0),
+                    onPressed: () {
+                      settingsDialog(widget.item);
+                    }),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../../index.html">wsl2distromanager</a></li>
+  <li><a href="../../components_list_item/components_list_item-library.html">list_item</a></li>
+  <li><a href="../../components_list_item/Bar-class.html">Bar</a></li>
+  <li class="self-crumb">build method</li>
+</ol>
+
+
+    <h5>Bar class</h5>
+    <ol>
+
+        <li class="section-title"><a href="../../components_list_item/Bar-class.html#constructors">Constructors</a></li>
+          <li><a href="../../components_list_item/Bar/Bar.html">Bar</a></li>
+
+
+        <li class="section-title">
+          <a href="../../components_list_item/Bar-class.html#instance-properties">Properties</a>
+        </li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/Widget/hashCode.html">hashCode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/Widget/key.html">key</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></li>
+          <li><a href="../../components_list_item/Bar/widget.html">widget</a></li>
+
+        <li class="section-title"><a href="../../components_list_item/Bar-class.html#instance-methods">Methods</a></li>
+          <li><a href="../../components_list_item/Bar/build.html">build</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/StatelessWidget/createElement.html">createElement</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/DiagnosticableTree/debugDescribeChildren.html">debugDescribeChildren</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/Widget/debugFillProperties.html">debugFillProperties</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/DiagnosticableTree/toDiagnosticsNode.html">toDiagnosticsNode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toString.html">toString</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/DiagnosticableTree/toStringDeep.html">toStringDeep</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/DiagnosticableTree/toStringShallow.html">toStringShallow</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/Widget/toStringShort.html">toStringShort</a></li>
+
+        <li class="section-title inherited"><a href="../../components_list_item/Bar-class.html#operators">Operators</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/Widget/operator_equals.html">operator ==</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../../static-assets/highlight.pack.js?v1"></script>
+<script src="../../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

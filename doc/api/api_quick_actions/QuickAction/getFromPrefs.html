@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the getFromPrefs method from the QuickAction class, for the Dart programming language.">
+  <title>getFromPrefs method - QuickAction class - quick_actions library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../../static-assets/styles.css?v1">
+  <link rel="icon" href="../../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../../index.html">wsl2distromanager</a></li>
+    <li><a href="../../api_quick_actions/api_quick_actions-library.html">quick_actions</a></li>
+    <li><a href="../../api_quick_actions/QuickAction-class.html">QuickAction</a></li>
+    <li class="self-crumb">getFromPrefs method</li>
+  </ol>
+  <div class="self-name">getFromPrefs</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-method">getFromPrefs</span> method 
+</h1></div>
+
+    <section class="multi-line-signature">
+      
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="../../api_quick_actions/QuickActionItem-class.html">QuickActionItem</a></span>&gt;</span></span>
+<span class="name ">getFromPrefs</span>(<wbr>)
+
+      
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">List&lt;QuickActionItem&gt; getFromPrefs() {
+  List&lt;QuickActionItem&gt; quickActions = [];
+  &#47;&#47; Get lists
+  List&lt;String&gt; quickSettingsTitles =
+      prefs.getStringList(&#39;quickSettingsTitles&#39;) ?? [];
+  List&lt;String&gt; quickSettingsContents =
+      prefs.getStringList(&#39;quickSettingsContents&#39;) ?? [];
+
+  &#47;&#47; Add to list
+  for (int i = 0; i &lt; quickSettingsTitles.length; i++) {
+    String name = quickSettingsTitles[i];
+    String? quickSettingsMetadata =
+        prefs.getString(&#39;quickSettingsMeta_$name&#39;);
+    if (quickSettingsMetadata != null) {
+      try {
+        QuickActionItem item = QuickActionItem.fromYamlString(
+            quickSettingsMetadata,
+            content: quickSettingsContents[i]);
+        &#47;&#47; Parse yaml from metadata
+        quickActions.add(item);
+      } catch (e) {
+        if (kDebugMode) {
+          print(e);
+        }
+      }
+    } else {
+      &#47;&#47; For local quick actions
+      quickActions.add(
+          QuickActionItem(name: name, content: quickSettingsContents[i]));
+    }
+  }
+
+  return quickActions;
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../../index.html">wsl2distromanager</a></li>
+  <li><a href="../../api_quick_actions/api_quick_actions-library.html">quick_actions</a></li>
+  <li><a href="../../api_quick_actions/QuickAction-class.html">QuickAction</a></li>
+  <li class="self-crumb">getFromPrefs method</li>
+</ol>
+
+
+    <h5>QuickAction class</h5>
+    <ol>
+
+        <li class="section-title"><a href="../../api_quick_actions/QuickAction-class.html#constructors">Constructors</a></li>
+          <li><a href="../../api_quick_actions/QuickAction/QuickAction.html">QuickAction</a></li>
+          <li><a href="../../api_quick_actions/QuickAction/QuickAction.addToPrefs.html">addToPrefs</a></li>
+          <li><a href="../../api_quick_actions/QuickAction/QuickAction.removeFromPrefs.html">removeFromPrefs</a></li>
+
+
+        <li class="section-title inherited">
+          <a href="../../api_quick_actions/QuickAction-class.html#instance-properties">Properties</a>
+        </li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/hashCode.html">hashCode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></li>
+
+        <li class="section-title"><a href="../../api_quick_actions/QuickAction-class.html#instance-methods">Methods</a></li>
+          <li><a href="../../api_quick_actions/QuickAction/getFromPrefs.html">getFromPrefs</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/toString.html">toString</a></li>
+
+        <li class="section-title inherited"><a href="../../api_quick_actions/QuickAction-class.html#operators">Operators</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/operator_equals.html">operator ==</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../../static-assets/highlight.pack.js?v1"></script>
+<script src="../../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

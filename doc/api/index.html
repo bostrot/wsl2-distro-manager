@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="generator" content="made with love by dartdoc 6.2.2">
+  <meta name="description" content="wsl2distromanager API docs, for the Dart programming language.">
+  <title>wsl2distromanager - Dart API docs</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="static-assets/github.css?v1">
+  <link rel="stylesheet" href="static-assets/styles.css?v1">
+  <link rel="icon" href="static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li class="self-crumb">wsl2distromanager package</li>
+  </ol>
+  <div class="self-name">wsl2distromanager</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      
+<section class="desc markdown">
+  <h1 align="center">Welcome to WSL Manager 👋</h1>
+<p><img src="https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge" alt="License">
+<img src="https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge" alt="GitHub Release Date">
+<img src="https://img.shields.io/github/actions/workflow/status/bostrot/wsl2-distro-manager/releaser.yml?branch=main&amp;label=nightly&amp;style=for-the-badge" alt="GitHub Workflow">
+<img src="https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge" alt="GitHub release (latest by date)">
+<a href="https://github.com/bostrot/wsl2-distro-manager/wiki"><img src="https://img.shields.io/badge/DOCUMENTATION-WIKI-green?style=for-the-badge" alt="Documentation"></a>
+<a href="https://gitlab.com/bostrot/wsl2-distro-manager"><img src="https://img.shields.io/gitlab/stars/bostrot/wsl2-distro-manager?gitlab_url=https%3A%2F%2Fgitlab.com&amp;label=GitLab&amp;style=for-the-badge" alt="GitLab stars"></a>
+<a href="https://discord.gg/fY5uE5WRTP"><img src="https://img.shields.io/discord/1100070299308937287?style=for-the-badge" alt="Discord"></a></p>
+<p align="center">
+English | <a href="./README_zh.md">简体中文</a> | <a href="./README_de.md">Deutsch</a>
+</p>
+<p><img src="https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png" alt="Screenshot with Darkmode"></p>
+<details>
+<summary>Preview with Lightmode</summary>
+<p><img src="https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png" alt="Screenshot with Lightmode"></p>
+</details>
+<blockquote>
+<p>WSL Distro Manager is a free and open source app that provides a user-friendly graphical interface for managing Windows Subsystem for Linux (WSL) distributions. With WSL Distro Manager, you can easily install, uninstall, update, backup and restore WSL distros, as well as configure their settings and launch them with a single click. WSL Distro Manager also offers some extra features to enhance your WSL experience, such as sharing Distros between multiple machines, and creating actions to quickly do repetitive tasks. Whether you are a beginner or an expert in WSL, WSL Distro Manager will help you get the most out of it.</p>
+</blockquote>
+<h2 id="-features">🚀 Features</h2>
+<ul>
+<li><code>x</code> Manage WSL instances</li>
+<li><code>x</code> Download and use Docker images as WSL instances - without Docker!</li>
+<li><code>x</code> Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)</li>
+<li><code>x</code> Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey WordPress)</li>
+<li><code>x</code> Use your own repository for rootfs' or LXC containers</li>
+<li><code>x</code> and more...</li>
+</ul>
+<h2 id="-install">📦 Install</h2>
+<details>
+<summary>Microsoft Store</summary>
+<p>This app is available on the <a href="https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&amp;gl=US">Microsoft Store</a>.<br>
+If you don't want to support this project by paying for it you can get a key when you join our <a href="https://discord.gg/fY5uE5WRTP">Discord community</a> and write <code>/key</code> into the <code>codes</code> channel!</p>
+</details>
+<details>
+<summary>Direct download</summary>
+<p>You can get this app with a direct download from the <a href="https://github.com/bostrot/wsl2-distro-manager/releases">Releases</a> page. The latest version is available as a zip file.</p>
+</details>
+<details>
+<summary>Install via Winget</summary>
+<p>The winget package is outdated! Please use the Windows Store version instead.</p>
+<pre class="language-sh"><code class="language-sh">winget install Bostrot.WSLManager
+</code></pre>
+</details>
+<details>
+<summary>Install via Chocolatey</summary>
+<p>This package is maintained by the community (<a href="https://github.com/mikeee/ChocoPackages">@mikeee</a>). It is not an official package.</p>
+<pre class="language-sh"><code class="language-sh">choco install wsl2-distro-manager
+</code></pre>
+</details>
+<details>
+<summary>Install a nightly build</summary>
+<p>The last build can be found as artifacts in the "releaser" workflow or via <a href="https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip">this link</a>. If you rather prefer an unsigned <code>msix</code> you can also use <a href="https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip">this link</a>.</p>
+</details>
+<h2 id="-build">⚙️ Build</h2>
+<p>Make sure <a href="https://flutter.dev/desktop">flutter</a> is installed:</p>
+<pre class="language-powershell"><code class="language-powershell">flutter config --enable-windows-desktop
+flutter upgrade
+
+flutter build windows # build it
+flutter run -d windows # run it
+</code></pre>
+<h2 id="author">Author</h2>
+<p>👤 <strong>Eric Trenkel</strong></p>
+<ul>
+<li>Website: <a href="erictrenkel.com">erictrenkel.com</a></li>
+<li>Github: <a href="https://github.com/bostrot">@bostrot</a></li>
+<li>LinkedIn: <a href="https://linkedin.com/in/erictrenkel">@erictrenkel</a></li>
+</ul>
+<p>👥 <strong>Contributors</strong></p>
+<p><a href="https://github.com/bostrot/wsl2-distro-manager/graphs/contributors"><img src="https://contrib.rocks/image?repo=bostrot/wsl2-distro-manager" alt="Contributors"></a></p>
+<h2 id="-contributing">🤝 Contributing</h2>
+<p>Contributions, issues and feature requests are welcome!<br>
+Feel free to check the <a href="https://github.com/bostrot/wsl2-distro-manager/issues">issues page</a>.
+You can also take a look at the <a href="https://github.com/bostrot/wsl2-distro-manager/blob/main/CONTRIBUTING.md">contributing guide</a>.</p>
+<h2 id="show-your-support">Show your support</h2>
+<p>Give a ⭐️ if this project helped you!</p>
+<h2 id="-license">📝 License</h2>
+<p>Copyright © 2023 <a href="https://github.com/bostrot">Eric Trenkel</a>.<br>
+This project is <a href="https://github.com/bostrot/wsl2-distro-manager/blob/main/LICENSE">GPL-3.0</a> licensed.</p>
+<hr>
+<p><em>Not found what you were looking for? Check out the <a href="https://github.com/bostrot/wsl2-distro-manager/wiki">Wiki</a></em></p>
+</section>
+
+
+      <section class="summary">
+          <h2>Libraries</h2>
+        <dl>
+          <dt id="actions_screen">
+  <span class="name"><a href="screens_actions_screen/screens_actions_screen-library.html">actions_screen</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="app">
+  <span class="name"><a href="api_app/api_app-library.html">app</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="base_dialog">
+  <span class="name"><a href="dialogs_base_dialog/dialogs_base_dialog-library.html">base_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="bug_dialog">
+  <span class="name"><a href="dialogs_bug_dialog/dialogs_bug_dialog-library.html">bug_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="changelog_dialog">
+  <span class="name"><a href="dialogs_changelog_dialog/dialogs_changelog_dialog-library.html">changelog_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="constants">
+  <span class="name"><a href="components_constants/components_constants-library.html">constants</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="copy_dialog">
+  <span class="name"><a href="dialogs_copy_dialog/dialogs_copy_dialog-library.html">copy_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="create_dialog">
+  <span class="name"><a href="dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="dialogs">
+  <span class="name"><a href="dialogs_dialogs/dialogs_dialogs-library.html">dialogs</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="docker_images">
+  <span class="name"><a href="api_docker_images/api_docker_images-library.html">docker_images</a></span> 
+
+</dt>
+<dd>API to download docker images from DockerHub and extract them
+into a rootfs.
+</dd>
+
+          <dt id="firststart_dialog">
+  <span class="name"><a href="dialogs_firststart_dialog/dialogs_firststart_dialog-library.html">firststart_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="helpers">
+  <span class="name"><a href="components_helpers/components_helpers-library.html">helpers</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="home_screen">
+  <span class="name"><a href="screens_home_screen/screens_home_screen-library.html">home_screen</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="hoverable">
+  <span class="name"><a href="components_hoverable/components_hoverable-library.html">hoverable</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="info_dialog">
+  <span class="name"><a href="dialogs_info_dialog/dialogs_info_dialog-library.html">info_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="init">
+  <span class="name"><a href="nav_init/nav_init-library.html">init</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="install_dialog">
+  <span class="name"><a href="dialogs_install_dialog/dialogs_install_dialog-library.html">install_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="linkaction">
+  <span class="name"><a href="nav_linkaction/nav_linkaction-library.html">linkaction</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="list">
+  <span class="name"><a href="components_list/components_list-library.html">list</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="list_item">
+  <span class="name"><a href="components_list_item/components_list_item-library.html">list_item</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="logging">
+  <span class="name"><a href="components_logging/components_logging-library.html">logging</a></span> 
+
+</dt>
+<dd>Simple file-based logging and error reporting
+</dd>
+
+          <dt id="main">
+  <span class="name"><a href="main/main-library.html">main</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="navbar">
+  <span class="name"><a href="components_navbar/components_navbar-library.html">navbar</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="notify">
+  <span class="name"><a href="components_notify/components_notify-library.html">notify</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="oss_licenses">
+  <span class="name"><a href="oss_licenses/oss_licenses-library.html">oss_licenses</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="panelist">
+  <span class="name"><a href="nav_panelist/nav_panelist-library.html">panelist</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="qa_dialog">
+  <span class="name"><a href="dialogs_qa_dialog/dialogs_qa_dialog-library.html">qa_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="qa_list">
+  <span class="name"><a href="components_qa_list/components_qa_list-library.html">qa_list</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="quick_actions">
+  <span class="name"><a href="api_quick_actions/api_quick_actions-library.html">quick_actions</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="root_screen">
+  <span class="name"><a href="nav_root_screen/nav_root_screen-library.html">root_screen</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="router">
+  <span class="name"><a href="nav_router/nav_router-library.html">router</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="safe_paths">
+  <span class="name"><a href="api_safe_paths/api_safe_paths-library.html">safe_paths</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="settings_dialog">
+  <span class="name"><a href="dialogs_settings_dialog/dialogs_settings_dialog-library.html">settings_dialog</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="settings_screen">
+  <span class="name"><a href="screens_settings_screen/screens_settings_screen-library.html">settings_screen</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="sync">
+  <span class="name"><a href="components_sync/components_sync-library.html">sync</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="template_screen">
+  <span class="name"><a href="screens_template_screen/screens_template_screen-library.html">template_screen</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="templates">
+  <span class="name"><a href="api_templates/api_templates-library.html">templates</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="theme">
+  <span class="name"><a href="theme/theme-library.html">theme</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="wsl">
+  <span class="name"><a href="api_wsl/api_wsl-library.html">wsl</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+          <dt id="wsl2distromanager.analytics">
+  <span class="name"><a href="wsl2distromanager.analytics/wsl2distromanager.analytics-library.html">wsl2distromanager.analytics</a></span> 
+
+</dt>
+<dd>
+</dd>
+
+        </dl>
+      </section>
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li class="self-crumb">wsl2distromanager package</li>
+</ol>
+
+
+    <h5 class="hidden-xs"><span class="package-name">wsl2distromanager</span> <span class="package-kind">package</span></h5>
+    <ol>
+      <li class="section-title">Libraries</li>
+      <li><a href="screens_actions_screen/screens_actions_screen-library.html">actions_screen</a></li>
+      <li><a href="api_app/api_app-library.html">app</a></li>
+      <li><a href="dialogs_base_dialog/dialogs_base_dialog-library.html">base_dialog</a></li>
+      <li><a href="dialogs_bug_dialog/dialogs_bug_dialog-library.html">bug_dialog</a></li>
+      <li><a href="dialogs_changelog_dialog/dialogs_changelog_dialog-library.html">changelog_dialog</a></li>
+      <li><a href="components_constants/components_constants-library.html">constants</a></li>
+      <li><a href="dialogs_copy_dialog/dialogs_copy_dialog-library.html">copy_dialog</a></li>
+      <li><a href="dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></li>
+      <li><a href="dialogs_dialogs/dialogs_dialogs-library.html">dialogs</a></li>
+      <li><a href="api_docker_images/api_docker_images-library.html">docker_images</a></li>
+      <li><a href="dialogs_firststart_dialog/dialogs_firststart_dialog-library.html">firststart_dialog</a></li>
+      <li><a href="components_helpers/components_helpers-library.html">helpers</a></li>
+      <li><a href="screens_home_screen/screens_home_screen-library.html">home_screen</a></li>
+      <li><a href="components_hoverable/components_hoverable-library.html">hoverable</a></li>
+      <li><a href="dialogs_info_dialog/dialogs_info_dialog-library.html">info_dialog</a></li>
+      <li><a href="nav_init/nav_init-library.html">init</a></li>
+      <li><a href="dialogs_install_dialog/dialogs_install_dialog-library.html">install_dialog</a></li>
+      <li><a href="nav_linkaction/nav_linkaction-library.html">linkaction</a></li>
+      <li><a href="components_list/components_list-library.html">list</a></li>
+      <li><a href="components_list_item/components_list_item-library.html">list_item</a></li>
+      <li><a href="components_logging/components_logging-library.html">logging</a></li>
+      <li><a href="main/main-library.html">main</a></li>
+      <li><a href="components_navbar/components_navbar-library.html">navbar</a></li>
+      <li><a href="components_notify/components_notify-library.html">notify</a></li>
+      <li><a href="oss_licenses/oss_licenses-library.html">oss_licenses</a></li>
+      <li><a href="nav_panelist/nav_panelist-library.html">panelist</a></li>
+      <li><a href="dialogs_qa_dialog/dialogs_qa_dialog-library.html">qa_dialog</a></li>
+      <li><a href="components_qa_list/components_qa_list-library.html">qa_list</a></li>
+      <li><a href="api_quick_actions/api_quick_actions-library.html">quick_actions</a></li>
+      <li><a href="nav_root_screen/nav_root_screen-library.html">root_screen</a></li>
+      <li><a href="nav_router/nav_router-library.html">router</a></li>
+      <li><a href="api_safe_paths/api_safe_paths-library.html">safe_paths</a></li>
+      <li><a href="dialogs_settings_dialog/dialogs_settings_dialog-library.html">settings_dialog</a></li>
+      <li><a href="screens_settings_screen/screens_settings_screen-library.html">settings_screen</a></li>
+      <li><a href="components_sync/components_sync-library.html">sync</a></li>
+      <li><a href="screens_template_screen/screens_template_screen-library.html">template_screen</a></li>
+      <li><a href="api_templates/api_templates-library.html">templates</a></li>
+      <li><a href="theme/theme-library.html">theme</a></li>
+      <li><a href="api_wsl/api_wsl-library.html">wsl</a></li>
+      <li><a href="wsl2distromanager.analytics/wsl2distromanager.analytics-library.html">wsl2distromanager.analytics</a></li>
+</ol>
+
+  </div>
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div>
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="static-assets/highlight.pack.js?v1"></script>
+<script src="static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

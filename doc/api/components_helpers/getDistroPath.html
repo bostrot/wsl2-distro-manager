@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the getDistroPath function from the helpers library, for the Dart programming language.">
+  <title>getDistroPath function - helpers library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../components_helpers/components_helpers-library.html">helpers</a></li>
+    <li class="self-crumb">getDistroPath function</li>
+  </ol>
+  <div class="self-name">getDistroPath</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">getDistroPath</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype"><a href="../api_safe_paths/SafePath-class.html">SafePath</a></span>
+<span class="name ">getDistroPath</span>(<wbr>)
+
+        
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Return the general distro path. Distros are saved here by default.
+It will be created if it does not exist.</p>
+<p>e.g. C:\WSL2-Distros\distros</p>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">SafePath getDistroPath() {
+  String path = prefs.getString(&#39;DistroPath&#39;) ?? defaultPath;
+  return SafePath(path)..cd(&#39;distros&#39;);
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../components_helpers/components_helpers-library.html">helpers</a></li>
+  <li class="self-crumb">getDistroPath function</li>
+</ol>
+
+
+    <h5>helpers library</h5>
+    <ol>
+      <li class="section-title"><a href="../components_helpers/components_helpers-library.html#classes">Classes</a></li>
+        <li><a href="../components_helpers/GlobalVariable-class.html">GlobalVariable</a></li>
+
+
+
+
+      <li class="section-title"><a href="../components_helpers/components_helpers-library.html#properties">Properties</a></li>
+        <li><a href="../components_helpers/initialized.html">initialized</a></li>
+        <li><a href="../components_helpers/language.html">language</a></li>
+        <li><a href="../components_helpers/prefs.html">prefs</a></li>
+
+      <li class="section-title"><a href="../components_helpers/components_helpers-library.html#functions">Functions</a></li>
+        <li><a href="../components_helpers/distroLabel.html">distroLabel</a></li>
+        <li><a href="../components_helpers/getDistroPath.html">getDistroPath</a></li>
+        <li><a href="../components_helpers/getInstancePath.html">getInstancePath</a></li>
+        <li><a href="../components_helpers/getInstanceSize.html">getInstanceSize</a></li>
+        <li><a href="../components_helpers/getTmpPath.html">getTmpPath</a></li>
+        <li><a href="../components_helpers/getWslConfigPath.html">getWslConfigPath</a></li>
+        <li><a href="../components_helpers/initPrefs.html">initPrefs</a></li>
+        <li><a href="../components_helpers/replaceSpecialChars.html">replaceSpecialChars</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the initLogging function from the logging library, for the Dart programming language.">
+  <title>initLogging function - logging library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../components_logging/components_logging-library.html">logging</a></li>
+    <li class="self-crumb">initLogging function</li>
+  </ol>
+  <div class="self-name">initLogging</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">initLogging</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype">void</span>
+<span class="name ">initLogging</span>(<wbr>)
+
+        
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Initialize logging</p>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">void initLogging() async {
+  &#47;&#47; Log file
+  var logfile = File(getLogFilePath());
+  &#47;&#47; Delete if file is larger than 1MB
+  if (await logfile.exists() &amp;&amp; await logfile.length() &gt; 10 * 1024 * 1024) {
+    await logfile.delete();
+  }
+
+  &#47;&#47; File does not contain current version
+  if (await logfile.exists() &amp;&amp;
+      !(await logfile.readAsString()).contains(currentVersion)) {
+    await logfile.delete();
+  }
+
+  &#47;&#47; Check if file exists
+  if (!await logfile.exists()) {
+    await logfile.create();
+    &#47;&#47; Write header with version info and OS info
+    await logfile.writeAsString(
+        &#39;WSL Manager v$currentVersion on ${Platform.operatingSystem} &#39;
+        &#39;${Platform.operatingSystemVersion}\r\n\r\n&#39;
+        &#39;============================================================&#39;
+        &#39;\r\n\r\n&#39;);
+  }
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../components_logging/components_logging-library.html">logging</a></li>
+  <li class="self-crumb">initLogging function</li>
+</ol>
+
+
+    <h5>logging library</h5>
+    <ol>
+
+
+
+
+
+      <li class="section-title"><a href="../components_logging/components_logging-library.html#functions">Functions</a></li>
+        <li><a href="../components_logging/getLogFilePath.html">getLogFilePath</a></li>
+        <li><a href="../components_logging/initLogging.html">initLogging</a></li>
+        <li><a href="../components_logging/logDebug.html">logDebug</a></li>
+        <li><a href="../components_logging/logError.html">logError</a></li>
+        <li><a href="../components_logging/logInfo.html">logInfo</a></li>
+        <li><a href="../components_logging/uploadLog.html">uploadLog</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

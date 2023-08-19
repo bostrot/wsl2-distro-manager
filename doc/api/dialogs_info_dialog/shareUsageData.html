@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the shareUsageData function from the info_dialog library, for the Dart programming language.">
+  <title>shareUsageData function - info_dialog library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../dialogs_info_dialog/dialogs_info_dialog-library.html">info_dialog</a></li>
+    <li class="self-crumb">shareUsageData function</li>
+  </ol>
+  <div class="self-name">shareUsageData</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">shareUsageData</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype"><a href="../dialogs_info_dialog/ClickableText-class.html">ClickableText</a></span>
+<span class="name ">shareUsageData</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="shareUsageData-param-prefs"><span class="type-annotation">dynamic</span> <span class="parameter-name">prefs</span></span></li>
+</ol>)
+
+        
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">ClickableText shareUsageData(prefs) {
+  return ClickableText(
+      clickEvent: &quot;analytics_clicked&quot;,
+      onPressed: () {
+        bool privacyMode = prefs.getBool(&#39;privacyMode&#39;) ?? false;
+        String privacyStatus = privacyMode
+            ? &#39;notsharingdata-text&#39;.i18n()
+            : &#39;sharingdata-text&#39;.i18n();
+        dialog(
+            item: &#39;allow-text&#39;.i18n(),
+            title: &#39;usagedata-text&#39;.i18n(),
+            body: &#39;usagedatawarning-text&#39;.i18n([privacyStatus]),
+            submitText: &#39;donotshare-text&#39;.i18n(),
+            submitInput: false,
+            submitStyle: const ButtonStyle(),
+            cancelText: &#39;share-text&#39;.i18n(),
+            onCancel: () {
+              plausible.event(name: &quot;privacy_off&quot;);
+              prefs.setBool(&#39;privacyMode&#39;, false);
+              plausible.enabled = true;
+            },
+            onSubmit: (inputText) {
+              plausible.event(name: &quot;privacy_on&quot;);
+              prefs.setBool(&#39;privacyMode&#39;, true);
+              plausible.enabled = false;
+              Notify.message(&#39;privacymodeenabled-text&#39;.i18n());
+            });
+      },
+      text: &#39;privacy-text&#39;.i18n());
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../dialogs_info_dialog/dialogs_info_dialog-library.html">info_dialog</a></li>
+  <li class="self-crumb">shareUsageData function</li>
+</ol>
+
+
+    <h5>info_dialog library</h5>
+    <ol>
+      <li class="section-title"><a href="../dialogs_info_dialog/dialogs_info_dialog-library.html#classes">Classes</a></li>
+        <li><a href="../dialogs_info_dialog/ClickableDependency-class.html">ClickableDependency</a></li>
+        <li><a href="../dialogs_info_dialog/ClickableText-class.html">ClickableText</a></li>
+        <li><a href="../dialogs_info_dialog/ClickableUrl-class.html">ClickableUrl</a></li>
+        <li><a href="../dialogs_info_dialog/DependencyList-class.html">DependencyList</a></li>
+
+
+
+
+
+      <li class="section-title"><a href="../dialogs_info_dialog/dialogs_info_dialog-library.html#functions">Functions</a></li>
+        <li><a href="../dialogs_info_dialog/infoDialog.html">infoDialog</a></li>
+        <li><a href="../dialogs_info_dialog/shareUsageData.html">shareUsageData</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

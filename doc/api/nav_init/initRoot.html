@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the initRoot function from the init library, for the Dart programming language.">
+  <title>initRoot function - init library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../nav_init/nav_init-library.html">init</a></li>
+    <li class="self-crumb">initRoot function</li>
+  </ol>
+  <div class="self-name">initRoot</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">initRoot</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype">dynamic</span>
+<span class="name ">initRoot</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="initRoot-param-statusMsg"><span class="type-annotation">dynamic</span> <span class="parameter-name">statusMsg</span></span></li>
+</ol>)
+
+        
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">initRoot(statusMsg) async {
+  &#47;&#47; Call constructor to initialize
+  Notify();
+  Notify.message = statusMsg;
+
+  &#47;&#47; First start with this version
+  String? version = prefs.getString(&#39;version&#39;);
+
+  if (version == null) {
+    &#47;&#47; First start
+    prefs.setString(&#39;version&#39;, currentVersion);
+    while (GlobalVariable.infobox.currentContext == null) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    firststartDialog();
+  } else if (version != currentVersion) {
+    &#47;&#47; First start with this version
+    prefs.setString(&#39;version&#39;, currentVersion);
+
+    &#47;&#47; Get changelog
+    var response = await Dio().get(updateUrl);
+    if (response.data.length &gt; 0) {
+      var latest = response.data[0];
+      String tagName = latest[&#39;tag_name&#39;];
+      String body = latest[&#39;body&#39;];
+
+      changelogDialog(prefs, tagName, body);
+    }
+  }
+  &#47;&#47; if (kDebugMode) {
+  &#47;&#47;   prefs.remove(&#39;version&#39;);
+  &#47;&#47; }
+  &#47;&#47; if (kDebugMode) {
+  &#47;&#47;   prefs.setString(&#39;version&#39;, &#39;1.8.0&#39;);
+  &#47;&#47; }
+
+  &#47;&#47; Check updates
+  App app = App();
+  app.checkUpdate(currentVersion).then((updateUrl) {
+    if (updateUrl != &#39;&#39;) {
+      statusMsg(&#39;&#39;,
+          useWidget: true,
+          widget: RichText(
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.clip,
+              text: TextSpan(children: [
+                TextSpan(
+                    text: &#39;${&#39;newversion-text&#39;.i18n()} &#39;,
+                    style:
+                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
+                TextSpan(
+                    text: &#39;${&#39;downloadnow-text&#39;.i18n()} &#39;,
+                    style: TextStyle(
+                        color: Colors.purple,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () =&gt; launchUrl(Uri.parse(updateUrl))),
+                TextSpan(
+                    text: &#39;${&#39;orcheck-text&#39;.i18n()} &#39;,
+                    style:
+                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
+                TextSpan(
+                    text: &#39;${&#39;windowsstore-text&#39;.i18n()} &#39;,
+                    style: TextStyle(
+                        color: Colors.purple,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () =&gt; launchUrl(Uri.parse(windowsStoreUrl))),
+              ])));
+    }
+  });
+
+  &#47;&#47; Check motd Show once a day
+  if (prefs.getString(&#39;LastMotd&#39;) !=
+      DateTime.now().toString().substring(0, 10)) {
+    prefs.setString(&#39;LastMotd&#39;, DateTime.now().toString().substring(0, 10));
+    app.checkMotd().then((String motd) {
+      if (motd != &#39;&#39;) {
+        Notify.message(motd, duration: const Duration(seconds: 60));
+      }
+    });
+  }
+
+  &#47;&#47; if (kDebugMode) {
+  &#47;&#47;   prefs.remove(&#39;LastMotd&#39;);
+  &#47;&#47; }
+
+  &#47;&#47; Get system dark mode
+  if (ThemeMode.system == ThemeMode.dark) {
+    AppTheme().mode = ThemeMode.dark;
+  } else if (ThemeMode.system == ThemeMode.light) {
+    AppTheme().mode = ThemeMode.light;
+  }
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../nav_init/nav_init-library.html">init</a></li>
+  <li class="self-crumb">initRoot function</li>
+</ol>
+
+
+    <h5>init library</h5>
+    <ol>
+
+
+
+
+
+      <li class="section-title"><a href="../nav_init/nav_init-library.html#functions">Functions</a></li>
+        <li><a href="../nav_init/initRoot.html">initRoot</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+
