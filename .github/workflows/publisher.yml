@@ -6,9 +6,8 @@ on:
       tag:
         description: Empty for latest tag or specify a tag to publish
         type: string
-  push:
-    tags:        
-      - '*'
+  release:
+    types: [published]
 
 jobs:
   # Publish to Microsoft Store
