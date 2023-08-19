@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
 import 'package:localization/localization.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
@@ -12,7 +13,7 @@ import 'package:wsl2distromanager/nav/router.dart';
 
 import 'theme.dart';
 
-const String appTitle = "WSL Manager v$currentVersion";
+String appTitle = "WSL Manager v$currentVersion";
 
 /// Checks if the current environment is a desktop environment.
 bool get isDesktop {
@@ -66,6 +67,11 @@ void main() async {
     logError(error, stack, null);
     return true;
   };
+
+  // Set version
+  await PackageInfo.fromPlatform().then((PackageInfo packageInfo) {
+    currentVersion = packageInfo.version;
+  });
 
   // Init app
   runApp(const WSLManager());
