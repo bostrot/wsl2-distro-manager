@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the footerItems property from the panelist library, for the Dart programming language.">
+  <title>footerItems property - panelist library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../nav_panelist/nav_panelist-library.html">panelist</a></li>
+    <li class="self-crumb">footerItems property</li>
+  </ol>
+  <div class="self-name">footerItems</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-top-level-property">footerItems</span> top-level property 
+ 
+</h1></div>
+
+        <section class="multi-line-signature">
+          
+          <a href="https://api.flutter.dev/flutter/dart-core/List-class.html">List</a><span class="signature">&lt;<wbr><span class="type-parameter"><a href="https://pub.dev/documentation/fluent_ui/4.7.3/fluent_ui/NavigationPaneItem-class.html">NavigationPaneItem</a></span>&gt;</span>
+          <span class="name ">footerItems</span>
+          <div class="features"><span class="feature">final</span></div>
+
+        </section>
+        
+
+        
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">final List&lt;NavigationPaneItem&gt; footerItems = [
+  LinkPaneItemAction(
+    icon: const Icon(FluentIcons.heart),
+    title: Text(&#39;sponsor-text&#39;.i18n()),
+    link: &#39;https:&#47;&#47;github.com&#47;sponsors&#47;bostrot&#39;,
+    body: const SizedBox.shrink(),
+  ),
+  PaneItemSeparator(),
+  PaneItem(
+    key: const Key(&#39;&#47;settings&#39;),
+    icon: const Icon(FluentIcons.settings),
+    title: Text(&#39;settings-text&#39;.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      if (router.location != &#39;&#47;settings&#39;) router.pushNamed(&#39;settings&#39;);
+    },
+  ),
+  LinkPaneItemAction(
+    icon: const Icon(FluentIcons.help),
+    title: Text(&#39;documentation-text&#39;.i18n()),
+    link: &#39;https:&#47;&#47;github.com&#47;bostrot&#47;wsl2-distro-manager&#47;wiki&#39;,
+    body: const SizedBox.shrink(),
+  ),
+  PaneItem(
+    key: const Key(&#39;&#47;about&#39;),
+    icon: const Icon(FluentIcons.info),
+    title: Text(&#39;about-text&#39;.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      infoDialog(prefs, currentVersion);
+    },
+  ),
+];</code></pre>
+</section>
+
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../nav_panelist/nav_panelist-library.html">panelist</a></li>
+  <li class="self-crumb">footerItems property</li>
+</ol>
+
+
+    <h5>panelist library</h5>
+    <ol>
+
+
+
+
+      <li class="section-title"><a href="../nav_panelist/nav_panelist-library.html#properties">Properties</a></li>
+        <li><a href="../nav_panelist/footerItems.html">footerItems</a></li>
+        <li><a href="../nav_panelist/originalItems.html">originalItems</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

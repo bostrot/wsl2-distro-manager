@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the createInstance function from the create_dialog library, for the Dart programming language.">
+  <title>createInstance function - create_dialog library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></li>
+    <li class="self-crumb">createInstance function</li>
+  </ol>
+  <div class="self-name">createInstance</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">createInstance</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/dart-async/Future-class.html">Future</a><span class="signature">&lt;<wbr><span class="type-parameter">void</span>&gt;</span></span>
+<span class="name ">createInstance</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="createInstance-param-nameController"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/widgets/TextEditingController-class.html">TextEditingController</a></span> <span class="parameter-name">nameController</span>, </span></li>
+<li><span class="parameter" id="createInstance-param-locationController"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/widgets/TextEditingController-class.html">TextEditingController</a></span> <span class="parameter-name">locationController</span>, </span></li>
+<li><span class="parameter" id="createInstance-param-api"><span class="type-annotation"><a href="../api_wsl/WSLApi-class.html">WSLApi</a></span> <span class="parameter-name">api</span>, </span></li>
+<li><span class="parameter" id="createInstance-param-autoSuggestBox"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/widgets/TextEditingController-class.html">TextEditingController</a></span> <span class="parameter-name">autoSuggestBox</span>, </span></li>
+<li><span class="parameter" id="createInstance-param-userController"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/widgets/TextEditingController-class.html">TextEditingController</a></span> <span class="parameter-name">userController</span></span></li>
+</ol>)
+
+        
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">Future&lt;void&gt; createInstance(
+  TextEditingController nameController,
+  TextEditingController locationController,
+  WSLApi api,
+  TextEditingController autoSuggestBox,
+  TextEditingController userController,
+) async {
+  plausible.event(name: &quot;wsl_create&quot;);
+  String label = nameController.text;
+  &#47;&#47; Replace all special characters with _
+  String name = label.replaceAll(RegExp(&#39;[^A-Za-z0-9]&#39;), &#39;_&#39;);
+  if (name != &#39;&#39;) {
+    String distroName = autoSuggestBox.text;
+
+    &#47;&#47; Set paths
+    Notify.message(&#39;creatinginstance-text&#39;.i18n(), loading: true);
+    String location = locationController.text;
+    if (location == &#39;&#39;) {
+      location = prefs.getString(&quot;DistroPath&quot;) ?? defaultPath;
+      location += &#39;&#47;$name&#39;;
+    }
+
+    &#47;&#47; Check if docker image
+    bool isDockerImage = false;
+    if (distroName.startsWith(&#39;dockerhub:&#39;)) {
+      isDockerImage = true;
+      &#47;&#47; Remove prefix
+      distroName = autoSuggestBox.text.split(&#39;dockerhub:&#39;)[1];
+      &#47;&#47; Get tag
+      if (!distroName.contains(&#39;:&#39;)) {
+        distroName += &#39;:latest&#39;;
+      }
+      String? image = distroName.split(&#39;:&#39;)[0];
+      String? tag = distroName.split(&#39;:&#39;)[1];
+
+      if (!distroName.contains(&#39;&#47;&#39;)) {
+        image = &#39;library&#47;$image&#39;;
+      }
+
+      bool isDownloaded = false;
+      &#47;&#47; Check if image already downloaded
+      if (await DockerImage().isDownloaded(image, tag: tag)) {
+        isDownloaded = true;
+      }
+
+      &#47;&#47; Check if image exists
+      if (!isDownloaded &amp;&amp; await DockerImage().hasImage(image, tag: tag)) {
+        &#47;&#47; Download image
+        Notify.message(&#39;${&#39;downloading-text&#39;.i18n()}...&#39;);
+        var docker = DockerImage()..distroName = distroName;
+        await docker.getRootfs(name, image, tag: tag,
+            progress: (current, total, currentStep, totalStep) {
+          if (currentStep != -1) {
+            String progressInMB =
+                (currentStep &#47; 1024 &#47; 1024).toStringAsFixed(2);
+            &#47;&#47; String totalInMB = (total &#47; 1024 &#47; 1024).toStringAsFixed(2);
+            String percentage =
+                (currentStep &#47; totalStep * 100).toStringAsFixed(0);
+            Notify.message(&#39;${&#39;downloading-text&#39;.i18n()}&#39;
+                &#39; Layer ${current + 1}&#47;$total: $percentage% ($progressInMB MB)&#39;);
+          } else {
+            Notify.message(
+                &#39;extractinglayers-text&#39;.i18n([&#39;$current&#39;, &#39;$total&#39;]));
+          }
+        });
+        Notify.message(&#39;downloaded-text&#39;.i18n());
+        &#47;&#47; Set distropath with distroName
+        distroName = DockerImage().filename(image, tag);
+      } else if (!isDownloaded) {
+        Notify.message(&#39;distronotfound-text&#39;.i18n());
+        return;
+      }
+
+      if (isDownloaded) {
+        &#47;&#47; Set distropath with distroName
+        distroName = DockerImage().filename(image, tag);
+      }
+    }
+
+    &#47;&#47; Navigator.of(context, rootNavigator: true).pop();
+
+    &#47;&#47; Create instance
+    ProcessResult result = await api.create(
+        name, distroName, location, (String msg) =&gt; Notify.message(msg),
+        image: isDockerImage);
+
+    &#47;&#47; Check if instance was created then handle postprocessing
+    if (result.exitCode != 0) {
+      Notify.message(WSLApi().utf8Convert(result.stdout));
+    } else {
+      var userCmds = prefs.getStringList(&#39;UserCmds_$distroName&#39;);
+      var groupCmds = prefs.getStringList(&#39;GroupCmds_$distroName&#39;);
+      if (userCmds != null &amp;&amp; groupCmds != null) {
+        for (int i = 0; i &lt; groupCmds.length; i++) {
+          var cmd = groupCmds[i].replaceAll(&quot;&#47;bin&#47;sh -c &quot;, &quot;&quot;);
+          cmd = cmd.replaceAll(RegExp(r&#39;\s+&#39;), &#39; &#39;);
+          await api.exec(name, [cmd]);
+        }
+        for (int i = 0; i &lt; userCmds.length; i++) {
+          var cmd = userCmds[i].replaceAll(&quot;&#47;bin&#47;sh -c &quot;, &quot;&quot;);
+          &#47;&#47; Replace multiple spaces with one
+          cmd = cmd.replaceAll(RegExp(r&#39;\s+&#39;), &#39; &#39;);
+          await api.exec(name, [cmd]);
+        }
+      }
+      String user = userController.text;
+      if (user != &#39;&#39;) {
+        List&lt;int&gt; processes = await api.exec(name, [
+          &#39;apt-get update&#39;,
+          &#39;apt-get install -y sudo&#39;,
+          &#39;useradd -m -s &#47;bin&#47;bash -G sudo $user&#39;,
+          &#39;passwd $user&#39;,
+          &#39;echo \&#39;$user ALL=(ALL) NOPASSWD:ALL\&#39; &gt;&gt; &#47;etc&#47;sudoers.d&#47;wslsudo&#39;,
+          &#39;echo -e \&#39;[user]\ndefault = $user\&#39; &gt; &#47;etc&#47;wsl.conf&#39;,
+        ]);
+        bool success = true;
+        for (dynamic process in processes) {
+          if (process != 0) {
+            success = false;
+            break;
+          }
+        }
+        if (success) {
+          prefs.setString(&#39;StartPath_$name&#39;, &#39;&#47;home&#47;$user&#39;);
+          prefs.setString(&#39;StartUser_$name&#39;, user);
+
+          Notify.message(&#39;createdinstance-text&#39;.i18n());
+        } else {
+          Notify.message(&#39;createdinstancenouser-text&#39;.i18n());
+        }
+      } else {
+        &#47;&#47; Install fake systemctl
+        if (distroName.contains(&#39;Turnkey&#39;)) {
+          &#47;&#47; Set first start variable
+          prefs.setBool(&#39;TurnkeyFirstStart_$name&#39;, true);
+          Notify.message(&#39;installingfakesystemd-text&#39;.i18n(), loading: true);
+          WSLApi().execCmds(
+              name,
+              [
+                &#39;wget https:&#47;&#47;raw.githubusercontent.com&#47;bostrot&#47;&#39;
+                    &#39;fake-systemd&#47;master&#47;systemctl -O &#47;usr&#47;bin&#47;systemctl&#39;,
+                &#39;chmod +x &#47;usr&#47;bin&#47;systemctl&#39;,
+                &#39;&#47;usr&#47;bin&#47;systemctl&#39;,
+              ],
+              onMsg: (output) =&gt; null,
+              onDone: () =&gt; Notify.message(&#39;createdinstance-text&#39;.i18n()));
+        } else {
+          Notify.message(&#39;createdinstance-text&#39;.i18n());
+        }
+      }
+      &#47;&#47; Save distro label
+      prefs.setString(&#39;DistroName_$name&#39;, label);
+      &#47;&#47; Save distro path
+      prefs.setString(&#39;Path_$name&#39;, location);
+    }
+    &#47;&#47; Download distro check
+  } else {
+    Notify.message(&#39;entername-text&#39;.i18n());
+  }
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></li>
+  <li class="self-crumb">createInstance function</li>
+</ol>
+
+
+    <h5>create_dialog library</h5>
+    <ol>
+      <li class="section-title"><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html#classes">Classes</a></li>
+        <li><a href="../dialogs_create_dialog/CreateWidget-class.html">CreateWidget</a></li>
+
+
+
+
+
+      <li class="section-title"><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html#functions">Functions</a></li>
+        <li><a href="../dialogs_create_dialog/createDialog.html">createDialog</a></li>
+        <li><a href="../dialogs_create_dialog/createInstance.html">createInstance</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

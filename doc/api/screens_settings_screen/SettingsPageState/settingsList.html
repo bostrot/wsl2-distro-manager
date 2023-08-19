@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the settingsList method from the SettingsPageState class, for the Dart programming language.">
+  <title>settingsList method - SettingsPageState class - settings_screen library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../../static-assets/styles.css?v1">
+  <link rel="icon" href="../../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../../index.html">wsl2distromanager</a></li>
+    <li><a href="../../screens_settings_screen/screens_settings_screen-library.html">settings_screen</a></li>
+    <li><a href="../../screens_settings_screen/SettingsPageState-class.html">SettingsPageState</a></li>
+    <li class="self-crumb">settingsList method</li>
+  </ol>
+  <div class="self-name">settingsList</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-method">settingsList</span> method 
+</h1></div>
+
+    <section class="multi-line-signature">
+      
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/widgets/Widget-class.html">Widget</a></span>
+<span class="name ">settingsList</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="settingsList-param-context"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a></span> <span class="parameter-name">context</span></span></li>
+</ol>)
+
+      
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">Widget settingsList(BuildContext context) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      settingsWidget(context,
+          title: &#39;defaultdistrolocation-text&#39;.i18n(),
+          name: &#39;Default Distro Location&#39;,
+          tooltip: &#39;distropath-text&#39;.i18n(),
+          suffix: IconButton(
+            icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+            onPressed: () async {
+              String? path = await FilePicker.platform.getDirectoryPath(
+                initialDirectory: prefs.getString(&quot;DistroPath&quot;) ?? defaultPath,
+              );
+              if (path != null &amp;&amp;
+                  _settings[&#39;Default Distro Location&#39;] != null) {
+                _settings[&#39;Default Distro Location&#39;]!.text = path;
+              } else {
+                &#47;&#47; User canceled the picker
+              }
+            },
+          ),
+          placeholder: prefs.getString(&quot;DistroPath&quot;) ?? defaultPath),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Text(&#39;showdockershort-text&#39;.i18n(),
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Row(
+                children: [
+                  Tooltip(
+                      message: &#39;showdockershort-text&#39;.i18n(),
+                      child: ToggleSwitch(
+                        checked: showDocker,
+                        onChanged: (value) {
+                          setState(() {
+                            showDocker = value;
+                            prefs.setBool(&#39;showDocker&#39;, value);
+                          });
+                        },
+                      )),
+                  const SizedBox(
+                    width: 10.0,
+                  ),
+                  Text(&#39;showdockerlong-text&#39;.i18n()),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ]),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Text(&#39;language-text&#39;.i18n(),
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                  message: &#39;language-text&#39;.i18n(),
+                  &#47;&#47; Menu
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        &#39;languagechange-text&#39;.i18n(),
+                      ),
+                      const SizedBox(
+                        height: 20.0,
+                      ),
+                      Builder(
+                        builder: (context) {
+                          var lang =
+                              Localizations.localeOf(context).languageCode;
+                          var selectedLanguage =
+                              prefs.getString(&#39;language&#39;) ?? lang;
+
+                          &#47;&#47; Language menu
+                          return ComboBox&lt;String&gt;(
+                              value: selectedLanguage,
+                              items: supportedLocalesList
+                                  .map((e) =&gt; ComboBoxItem(
+                                      value: e.languageCode,
+                                      child: Text(e.toString())))
+                                  .toList(),
+                              onChanged: (language) {
+                                String curLanguage = language ?? lang;
+                                prefs.setString(&#39;language&#39;, curLanguage);
+                                setState(() {
+                                  selectedLanguage = curLanguage;
+                                });
+                              });
+                        },
+                      ),
+                    ],
+                  )),
+            ),
+          ),
+        ),
+        &#47;&#47; Padding(
+        &#47;&#47;   padding: const EdgeInsets.all(8.0),
+        &#47;&#47;   child: Expander(
+        &#47;&#47;     header: Text(&#39;dockerrepo-text&#39;.i18n(),
+        &#47;&#47;         style: const TextStyle(fontWeight: FontWeight.w500)),
+        &#47;&#47;     content: Padding(
+        &#47;&#47;       padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+        &#47;&#47;       child: Tooltip(
+        &#47;&#47;         message: &#39;dockerrepo-text&#39;.i18n(),
+        &#47;&#47;         child: TextBox(
+        &#47;&#47;           controller: _dockerrepoController,
+        &#47;&#47;           placeholder: &#39;https:&#47;&#47;registry-1.docker.io&#39;,
+        &#47;&#47;         ),
+        &#47;&#47;       ),
+        &#47;&#47;     ),
+        &#47;&#47;   ),
+        &#47;&#47; ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Text(&#39;syncipaddress-text&#39;.i18n(),
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: &#39;syncipaddress-text&#39;.i18n(),
+                child: TextBox(
+                  controller: _syncIpTextController,
+                  placeholder: &#39;192.168.1.20&#39;,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Text(&#39;repofordistro-text&#39;.i18n(),
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: &#39;repofordistro-text&#39;.i18n(),
+                child: TextBox(
+                  controller: _repoTextController,
+                  placeholder: defaultRepoLink,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]),
+      const Padding(
+        padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
+        child: Divider(),
+      ),
+      Center(
+        child: Text(&quot;globalconfiguration-text&quot;.i18n()),
+      ),
+      Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Text(
+          &#39;globalconfigurationinfo-text&#39;.i18n(),
+          style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+        ),
+      ),
+      settingsWidget(context,
+          title: &#39;kernel&#39;,
+          tooltip: &#39;absolutewindowspath-text&#39;.i18n(),
+          placeholder: &#39;&#39;),
+      settingsWidget(context,
+          title: &#39;memory&#39;,
+          tooltip: &#39;memoryinfo-text&#39;.i18n(),
+          type: SettingsType.size,
+          sizePostfix: &#39;GB&#39;,
+          sizeMin: 1,
+          sizeMax:
+              (SysInfo.getTotalPhysicalMemory() ~&#47; 1024 ~&#47; 1024 ~&#47; 1024) + 1,
+          placeholder: &#39;&#39;),
+      settingsWidget(context,
+          title: &#39;processors&#39;,
+          tooltip: &#39;processorinfo-text&#39;.i18n(),
+          type: SettingsType.size,
+          sizeMin: 1,
+          sizeMax: SysInfo.cores.length,
+          placeholder: &#39;&#39;),
+      settingsWidget(context,
+          title: &#39;localhostForwarding&#39;,
+          tooltip: &#39;wildcardinfo-text&#39;.i18n(),
+          type: SettingsType.bool),
+      settingsWidget(context,
+          title: &#39;kernelCommandLine&#39;,
+          tooltip: &#39;kernelcmdinfo-text&#39;.i18n(),
+          placeholder: &#39;&#39;),
+      settingsWidget(context,
+          title: &#39;swap&#39;, tooltip: &#39;swapinfo-text&#39;.i18n(), placeholder: &#39;&#39;),
+      settingsWidget(context,
+          title: &#39;swapFile&#39;, tooltip: &#39;vhdinfo-text&#39;.i18n(), placeholder: &#39;&#39;),
+      settingsWidget(context,
+          title: &#39;pageReporting&#39;,
+          tooltip: &#39;unusedmemoryinfo-text&#39;.i18n(),
+          type: SettingsType.bool),
+      settingsWidget(context,
+          title: &#39;guiApplications&#39;,
+          tooltip: &#39;guiinfo-text&#39;.i18n(),
+          type: SettingsType.bool),
+      settingsWidget(context,
+          title: &#39;debugConsole&#39;,
+          tooltip: &#39;consoleinfo-text&#39;.i18n(),
+          type: SettingsType.bool),
+      settingsWidget(context,
+          title: &#39;nestedVirtualization&#39;,
+          tooltip: &#39;nestedvirtinfo-text&#39;.i18n(),
+          type: SettingsType.bool),
+      settingsWidget(context,
+          title: &#39;vmIdleTimeout&#39;,
+          tooltip: &#39;vmidleinfo-text&#39;.i18n(),
+          placeholder: &#39;&#39;),
+    ],
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../../index.html">wsl2distromanager</a></li>
+  <li><a href="../../screens_settings_screen/screens_settings_screen-library.html">settings_screen</a></li>
+  <li><a href="../../screens_settings_screen/SettingsPageState-class.html">SettingsPageState</a></li>
+  <li class="self-crumb">settingsList method</li>
+</ol>
+
+
+    <h5>SettingsPageState class</h5>
+    <ol>
+
+        <li class="section-title"><a href="../../screens_settings_screen/SettingsPageState-class.html#constructors">Constructors</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/SettingsPageState.html">SettingsPageState</a></li>
+
+
+        <li class="section-title">
+          <a href="../../screens_settings_screen/SettingsPageState-class.html#instance-properties">Properties</a>
+        </li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/context.html">context</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/currentContext.html">currentContext</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/hashCode.html">hashCode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/mounted.html">mounted</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/showDocker.html">showDocker</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/widget.html">widget</a></li>
+
+        <li class="section-title"><a href="../../screens_settings_screen/SettingsPageState-class.html#instance-methods">Methods</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/activate.html">activate</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/build.html">build</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/deactivate.html">deactivate</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/debugFillProperties.html">debugFillProperties</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/didChangeDependencies.html">didChangeDependencies</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/didUpdateWidget.html">didUpdateWidget</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/dispose.html">dispose</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/initState.html">initState</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/readData.html">readData</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/reassemble.html">reassemble</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/saveSettings.html">saveSettings</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/setState.html">setState</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/settingsList.html">settingsList</a></li>
+          <li><a href="../../screens_settings_screen/SettingsPageState/settingsWidget.html">settingsWidget</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toDiagnosticsNode.html">toDiagnosticsNode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toString.html">toString</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toStringShort.html">toStringShort</a></li>
+
+        <li class="section-title inherited"><a href="../../screens_settings_screen/SettingsPageState-class.html#operators">Operators</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/operator_equals.html">operator ==</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../../static-assets/highlight.pack.js?v1"></script>
+<script src="../../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

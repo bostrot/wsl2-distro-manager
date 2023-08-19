@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the build method from the RootPageState class, for the Dart programming language.">
+  <title>build method - RootPageState class - root_screen library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../../static-assets/styles.css?v1">
+  <link rel="icon" href="../../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../../index.html">wsl2distromanager</a></li>
+    <li><a href="../../nav_root_screen/nav_root_screen-library.html">root_screen</a></li>
+    <li><a href="../../nav_root_screen/RootPageState-class.html">RootPageState</a></li>
+    <li class="self-crumb">build method</li>
+  </ol>
+  <div class="self-name">build</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-method">build</span> method 
+</h1></div>
+
+    <section class="multi-line-signature">
+      
+  <div>
+    <ol class="annotation-list">
+        <li>@<a href="https://api.flutter.dev/flutter/dart-core/override-constant.html">override</a></li>
+    </ol>
+  </div>
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/widgets/Widget-class.html">Widget</a></span>
+<span class="name ">build</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="build-param-context"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a></span> <span class="parameter-name">context</span></span></li>
+</ol>)
+
+      <div class="features"><span class="feature">override</span></div>
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Describes the part of the user interface represented by this widget.</p>
+<p>The framework calls this method in a number of different situations. For
+example:</p>
+<ul>
+<li>After calling <a href="../../nav_root_screen/RootPageState/initState.html">initState</a>.</li>
+<li>After calling <a href="https://api.flutter.dev/flutter/widgets/State/didUpdateWidget.html">didUpdateWidget</a>.</li>
+<li>After receiving a call to <a href="https://api.flutter.dev/flutter/widgets/State/setState.html">setState</a>.</li>
+<li>After a dependency of this <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object changes (e.g., an
+<a href="https://api.flutter.dev/flutter/widgets/InheritedWidget-class.html">InheritedWidget</a> referenced by the previous <a href="../../nav_root_screen/RootPageState/build.html">build</a> changes).</li>
+<li>After calling <a href="https://api.flutter.dev/flutter/widgets/State/deactivate.html">deactivate</a> and then reinserting the <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object into
+the tree at another location.</li>
+</ul>
+<p>This method can potentially be called in every frame and should not have
+any side effects beyond building a widget.</p>
+<p>The framework replaces the subtree below this widget with the widget
+returned by this method, either by updating the existing subtree or by
+removing the subtree and inflating a new subtree, depending on whether the
+widget returned by this method can update the root of the existing
+subtree, as determined by calling <a href="https://api.flutter.dev/flutter/widgets/Widget/canUpdate.html">Widget.canUpdate</a>.</p>
+<p>Typically implementations return a newly created constellation of widgets
+that are configured with information from this widget's constructor, the
+given <a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a>, and the internal state of this <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object.</p>
+<p>The given <a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a> contains information about the location in the
+tree at which this widget is being built. For example, the context
+provides the set of inherited widgets for this location in the tree. The
+<a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a> argument is always the same as the <code>context</code> property of
+this <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object and will remain the same for the lifetime of this
+object. The <a href="https://api.flutter.dev/flutter/widgets/BuildContext-class.html">BuildContext</a> argument is provided redundantly here so that
+this method matches the signature for a <a href="https://api.flutter.dev/flutter/widgets/WidgetBuilder.html">WidgetBuilder</a>.</p>
+<h2 id="design-discussion">Design discussion</h2>
+<h3 id="why-is-the-build-method-on-state-and-not-statefulwidget">Why is the <a href="../../nav_root_screen/RootPageState/build.html">build</a> method on <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a>, and not <a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a>?</h3>
+<p>Putting a <code>Widget build(BuildContext context)</code> method on <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> rather
+than putting a <code>Widget build(BuildContext context, State state)</code> method
+on <a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a> gives developers more flexibility when subclassing
+<a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a>.</p>
+<p>For example, <a href="https://api.flutter.dev/flutter/widgets/AnimatedWidget-class.html">AnimatedWidget</a> is a subclass of <a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a> that
+introduces an abstract <code>Widget build(BuildContext context)</code> method for its
+subclasses to implement. If <a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a> already had a <a href="../../nav_root_screen/RootPageState/build.html">build</a> method
+that took a <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> argument, <a href="https://api.flutter.dev/flutter/widgets/AnimatedWidget-class.html">AnimatedWidget</a> would be forced to provide
+its <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object to subclasses even though its <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object is an
+internal implementation detail of <a href="https://api.flutter.dev/flutter/widgets/AnimatedWidget-class.html">AnimatedWidget</a>.</p>
+<p>Conceptually, <a href="https://api.flutter.dev/flutter/widgets/StatelessWidget-class.html">StatelessWidget</a> could also be implemented as a subclass of
+<a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a> in a similar manner. If the <a href="../../nav_root_screen/RootPageState/build.html">build</a> method were on
+<a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a> rather than <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a>, that would not be possible anymore.</p>
+<p>Putting the <a href="../../nav_root_screen/RootPageState/build.html">build</a> function on <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> rather than <a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a> also
+helps avoid a category of bugs related to closures implicitly capturing
+<code>this</code>. If you defined a closure in a <a href="../../nav_root_screen/RootPageState/build.html">build</a> function on a
+<a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a>, that closure would implicitly capture <code>this</code>, which is
+the current widget instance, and would have the (immutable) fields of that
+instance in scope:</p>
+<pre class="language-dart"><code class="language-dart">// (this is not valid Flutter code)
+class MyButton extends StatefulWidgetX {
+  MyButton({super.key, required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context, State state) {
+    return SpecialWidget(
+      handler: () { print('color: $color'); },
+    );
+  }
+}
+</code></pre>
+<p>For example, suppose the parent builds <code>MyButton</code> with <code>color</code> being blue,
+the <code>$color</code> in the print function refers to blue, as expected. Now,
+suppose the parent rebuilds <code>MyButton</code> with green. The closure created by
+the first build still implicitly refers to the original widget and the
+<code>$color</code> still prints blue even through the widget has been updated to
+green; should that closure outlive its widget, it would print outdated
+information.</p>
+<p>In contrast, with the <a href="../../nav_root_screen/RootPageState/build.html">build</a> function on the <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object, closures
+created during <a href="../../nav_root_screen/RootPageState/build.html">build</a> implicitly capture the <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> instance instead of
+the widget instance:</p>
+<pre class="language-dart"><code class="language-dart">class MyButton extends StatefulWidget {
+  const MyButton({super.key, this.color = Colors.teal});
+
+  final Color color;
+  // ...
+}
+
+class MyButtonState extends State&lt;MyButton&gt; {
+  // ...
+  @override
+  Widget build(BuildContext context) {
+    return SpecialWidget(
+      handler: () { print('color: ${widget.color}'); },
+    );
+  }
+}
+</code></pre>
+<p>Now when the parent rebuilds <code>MyButton</code> with green, the closure created by
+the first build still refers to <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object, which is preserved across
+rebuilds, but the framework has updated that <a href="https://api.flutter.dev/flutter/widgets/State-class.html">State</a> object's <a href="https://api.flutter.dev/flutter/widgets/State/widget.html">widget</a>
+property to refer to the new <code>MyButton</code> instance and <code>${widget.color}</code>
+prints green, as expected.</p>
+<p>See also:</p>
+<ul>
+<li><a href="https://api.flutter.dev/flutter/widgets/StatefulWidget-class.html">StatefulWidget</a>, which contains the discussion on performance considerations.</li>
+</ul>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">@override
+Widget build(BuildContext context) {
+  final localizations = FluentLocalizations.of(context);
+
+  final appTheme = context.watch&lt;AppTheme&gt;();
+  if (widget.shellContext != null) {
+    if (router.canPop() == false) {
+      setState(() {});
+    }
+  }
+  return NavigationView(
+    key: viewKey,
+    appBar: NavigationAppBar(
+      automaticallyImplyLeading: false,
+      leading: () {
+        final enabled = widget.shellContext != null &amp;&amp; router.canPop();
+
+        final onPressed = enabled
+            ? () {
+                if (router.canPop()) {
+                  context.pop();
+                  setState(() {});
+                }
+              }
+            : null;
+        return NavigationPaneTheme(
+          data: NavigationPaneTheme.of(context).merge(NavigationPaneThemeData(
+            unselectedIconColor: ButtonState.resolveWith((states) {
+              if (states.isDisabled) {
+                return ButtonThemeData.buttonColor(context, states);
+              }
+              return ButtonThemeData.uncheckedInputColor(
+                FluentTheme.of(context),
+                states,
+              ).basedOnLuminance();
+            }),
+          )),
+          child: Builder(
+            builder: (context) =&gt; PaneItem(
+              icon: const Center(child: Icon(FluentIcons.back, size: 12.0)),
+              title: Text(localizations.backButtonTooltip),
+              body: const SizedBox.shrink(),
+              enabled: enabled,
+            ).build(
+              context,
+              false,
+              onPressed,
+              displayMode: PaneDisplayMode.compact,
+            ),
+          ),
+        );
+      }(),
+      title: () {
+        if (kIsWeb) {
+          return Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(appTitle),
+          );
+        }
+        return DragToMoveArea(
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(appTitle),
+          ),
+        );
+      }(),
+      actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+        &#47;&#47; Bug report button
+        Padding(
+            padding: const EdgeInsetsDirectional.only(end: 8.0),
+            child: IconButton(
+              icon: const Icon(FluentIcons.bug),
+              onPressed: () =&gt; bugDialog(),
+            )),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: 8.0),
+          child: ToggleSwitch(
+            content: const Text(&#39;Dark Mode&#39;),
+            checked: FluentTheme.of(context).brightness.isDark,
+            onChanged: (v) {
+              if (v) {
+                appTheme.mode = ThemeMode.dark;
+              } else {
+                appTheme.mode = ThemeMode.light;
+              }
+            },
+          ),
+        ),
+        if (!kIsWeb) const WindowButtons(),
+      ]),
+    ),
+    paneBodyBuilder: (item, child) {
+      final name =
+          item?.key is ValueKey ? (item!.key as ValueKey).value : null;
+      return FocusTraversalGroup(
+        key: ValueKey(&#39;body$name&#39;),
+        child: Stack(
+          children: [
+            widget.child,
+            statusBuilder(status, statusWidget, loading, () {
+              &#47;&#47; Dismiss the info bar
+              setState(() {
+                status = &#39;&#39;;
+              });
+            })
+          ],
+        ),
+      );
+    },
+    pane: NavigationPane(
+      selected: _calculateSelectedIndex(context),
+      displayMode: appTheme.displayMode,
+      indicator: () {
+        switch (appTheme.indicator) {
+          case NavigationIndicators.end:
+            return const EndNavigationIndicator();
+          case NavigationIndicators.sticky:
+          default:
+            return const StickyNavigationIndicator();
+        }
+      }(),
+      items: originalItems,
+      footerItems: footerItems,
+    ),
+    onOpenSearch: () {
+      searchFocusNode.requestFocus();
+    },
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../../index.html">wsl2distromanager</a></li>
+  <li><a href="../../nav_root_screen/nav_root_screen-library.html">root_screen</a></li>
+  <li><a href="../../nav_root_screen/RootPageState-class.html">RootPageState</a></li>
+  <li class="self-crumb">build method</li>
+</ol>
+
+
+    <h5>RootPageState class</h5>
+    <ol>
+
+        <li class="section-title"><a href="../../nav_root_screen/RootPageState-class.html#constructors">Constructors</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/RootPageState.html">RootPageState</a></li>
+
+
+        <li class="section-title">
+          <a href="../../nav_root_screen/RootPageState-class.html#instance-properties">Properties</a>
+        </li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/context.html">context</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/hashCode.html">hashCode</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/loading.html">loading</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/mounted.html">mounted</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html">runtimeType</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/searchController.html">searchController</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/searchFocusNode.html">searchFocusNode</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/searchKey.html">searchKey</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/status.html">status</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/statusLeading.html">statusLeading</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/statusWidget.html">statusWidget</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/value.html">value</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/viewKey.html">viewKey</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/widget.html">widget</a></li>
+
+        <li class="section-title"><a href="../../nav_root_screen/RootPageState-class.html#instance-methods">Methods</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/activate.html">activate</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/build.html">build</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/deactivate.html">deactivate</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/debugFillProperties.html">debugFillProperties</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/didChangeDependencies.html">didChangeDependencies</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/didUpdateWidget.html">didUpdateWidget</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/dispose.html">dispose</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/initState.html">initState</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/noSuchMethod.html">noSuchMethod</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowBlur.html">onWindowBlur</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/onWindowClose.html">onWindowClose</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowDocked.html">onWindowDocked</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowEnterFullScreen.html">onWindowEnterFullScreen</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowEvent.html">onWindowEvent</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowFocus.html">onWindowFocus</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowLeaveFullScreen.html">onWindowLeaveFullScreen</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowMaximize.html">onWindowMaximize</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowMinimize.html">onWindowMinimize</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowMove.html">onWindowMove</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowMoved.html">onWindowMoved</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowResize.html">onWindowResize</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowResized.html">onWindowResized</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowRestore.html">onWindowRestore</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowUndocked.html">onWindowUndocked</a></li>
+          <li class="inherited"><a href="https://pub.dev/documentation/window_manager/0.3.5/window_manager/WindowListener/onWindowUnmaximize.html">onWindowUnmaximize</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/reassemble.html">reassemble</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/runner.html">runner</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/widgets/State/setState.html">setState</a></li>
+          <li><a href="../../nav_root_screen/RootPageState/statusMsg.html">statusMsg</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toDiagnosticsNode.html">toDiagnosticsNode</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toString.html">toString</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/foundation/Diagnosticable/toStringShort.html">toStringShort</a></li>
+
+        <li class="section-title inherited"><a href="../../nav_root_screen/RootPageState-class.html#operators">Operators</a></li>
+          <li class="inherited"><a href="https://api.flutter.dev/flutter/dart-core/Object/operator_equals.html">operator ==</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../../static-assets/highlight.pack.js?v1"></script>
+<script src="../../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

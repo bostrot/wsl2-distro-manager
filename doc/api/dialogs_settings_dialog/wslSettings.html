@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the wslSettings function from the settings_dialog library, for the Dart programming language.">
+  <title>wslSettings function - settings_dialog library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../dialogs_settings_dialog/dialogs_settings_dialog-library.html">settings_dialog</a></li>
+    <li class="self-crumb">wslSettings function</li>
+  </ol>
+  <div class="self-name">wslSettings</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">wslSettings</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype"><a href="https://api.flutter.dev/flutter/widgets/Widget-class.html">Widget</a></span>
+<span class="name ">wslSettings</span>(<wbr><ol class="parameter-list"><li><span class="parameter" id="wslSettings-param-item"><span class="type-annotation">dynamic</span> <span class="parameter-name">item</span>, </span></li>
+<li><span class="parameter" id="wslSettings-param-setState"><span class="type-annotation"><a href="https://api.flutter.dev/flutter/dart-core/Function-class.html">Function</a></span> <span class="parameter-name">setState</span></span></li>
+</ol>)
+
+        
+
+    </section>
+    
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">Widget wslSettings(item, Function setState) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(&#39;wslsettings-text&#39;.i18n()),
+      const SizedBox(
+        height: 8.0,
+      ),
+      Expander(
+        header: Text(&#39;boot-text&#39;.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, &quot;boot&quot;, &quot;systemd&quot;),
+            settingText(item, setState, &quot;boot&quot;, &quot;command&quot;),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8.0),
+      Expander(
+        header: Text(&#39;automount-text&#39;.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, &quot;automount&quot;, &quot;enabled&quot;),
+            settingSwitch(item, setState, &quot;automount&quot;, &quot;mountFsTab&quot;),
+            settingText(item, setState, &quot;automount&quot;, &quot;root&quot;),
+            settingText(item, setState, &quot;automount&quot;, &quot;options&quot;),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8.0),
+      Expander(
+        header: Text(&#39;network-text&#39;.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, &quot;network&quot;, &quot;generateHosts&quot;),
+            settingSwitch(item, setState, &quot;network&quot;, &quot;generateResolvConf&quot;),
+            settingText(item, setState, &quot;network&quot;, &quot;hostname&quot;),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8.0),
+      Expander(
+        header: Text(&#39;interop-text&#39;.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            settingSwitch(item, setState, &quot;interop&quot;, &quot;enabled&quot;),
+            settingSwitch(item, setState, &quot;interop&quot;, &quot;appendWindowsPath&quot;),
+          ],
+        ),
+      ),
+    ],
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../dialogs_settings_dialog/dialogs_settings_dialog-library.html">settings_dialog</a></li>
+  <li class="self-crumb">wslSettings function</li>
+</ol>
+
+
+    <h5>settings_dialog library</h5>
+    <ol>
+
+
+
+
+      <li class="section-title"><a href="../dialogs_settings_dialog/dialogs_settings_dialog-library.html#properties">Properties</a></li>
+        <li><a href="../dialogs_settings_dialog/cmds.html">cmds</a></li>
+
+      <li class="section-title"><a href="../dialogs_settings_dialog/dialogs_settings_dialog-library.html#functions">Functions</a></li>
+        <li><a href="../dialogs_settings_dialog/extractPorts.html">extractPorts</a></li>
+        <li><a href="../dialogs_settings_dialog/getInstanceData.html">getInstanceData</a></li>
+        <li><a href="../dialogs_settings_dialog/settingsColumn.html">settingsColumn</a></li>
+        <li><a href="../dialogs_settings_dialog/settingsDialog.html">settingsDialog</a></li>
+        <li><a href="../dialogs_settings_dialog/settingSwitch.html">settingSwitch</a></li>
+        <li><a href="../dialogs_settings_dialog/settingText.html">settingText</a></li>
+        <li><a href="../dialogs_settings_dialog/wslSettings.html">wslSettings</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

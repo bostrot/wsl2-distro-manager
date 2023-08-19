@@ -178,12 +178,12 @@ class RootPageState extends State<RootPage> with WindowListener {
         }(),
         title: () {
           if (kIsWeb) {
-            return const Align(
+            return Align(
               alignment: AlignmentDirectional.centerStart,
               child: Text(appTitle),
             );
           }
-          return const DragToMoveArea(
+          return DragToMoveArea(
             child: Align(
               alignment: AlignmentDirectional.centerStart,
               child: Text(appTitle),

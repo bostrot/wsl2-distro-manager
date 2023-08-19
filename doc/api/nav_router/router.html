@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the router property from the router library, for the Dart programming language.">
+  <title>router property - router library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../nav_router/nav_router-library.html">router</a></li>
+    <li class="self-crumb">router property</li>
+  </ol>
+  <div class="self-name">router</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-top-level-property">router</span> top-level property 
+ 
+</h1></div>
+
+        <section class="multi-line-signature">
+          
+          <a href="https://pub.dev/documentation/go_router/8.0.3/go_router/GoRouter-class.html">GoRouter</a>
+          <span class="name ">router</span>
+          <div class="features"><span class="feature">final</span></div>
+
+        </section>
+        
+
+        
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">final router = GoRouter(
+  navigatorKey: rootNavigatorKey,
+  routes: [
+    ShellRoute(
+      observers: [PlausibleNavigatorObserver(plausible)],
+      navigatorKey: _shellNavigatorKey,
+      builder: (context, state, child) {
+        return RootPage(
+          key: GlobalVariable.root,
+          shellContext: _shellNavigatorKey.currentContext,
+          state: state,
+          child: child,
+        );
+      },
+      routes: [
+        &#47;&#47;&#47; Home
+        GoRoute(
+          path: &#39;&#47;&#39;,
+          name: &#39;home&#39;,
+          builder: (context, state) =&gt; const HomePage(
+            title: &quot;WSL Manager&quot;,
+          ),
+        ),
+
+        &#47;&#47;&#47; Settings
+        GoRoute(
+          path: &#39;&#47;settings&#39;,
+          name: &#39;settings&#39;,
+          builder: (context, state) =&gt; const SettingsPage(),
+        ),
+
+        &#47;&#47;&#47; Quick Actions
+        GoRoute(
+          path: &#39;&#47;quickactions&#39;,
+          name: &#39;quickactions&#39;,
+          builder: (context, state) =&gt; const QuickPage(),
+        ),
+
+        &#47;&#47;&#47; Templates
+        GoRoute(
+          path: &#39;&#47;templates&#39;,
+          name: &#39;templates&#39;,
+          builder: (context, state) =&gt; const TemplatePage(),
+        ),
+      ],
+    ),
+  ],
+);</code></pre>
+</section>
+
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../nav_router/nav_router-library.html">router</a></li>
+  <li class="self-crumb">router property</li>
+</ol>
+
+
+    <h5>router library</h5>
+    <ol>
+
+
+
+
+      <li class="section-title"><a href="../nav_router/nav_router-library.html#properties">Properties</a></li>
+        <li><a href="../nav_router/rootNavigatorKey.html">rootNavigatorKey</a></li>
+        <li><a href="../nav_router/router.html">router</a></li>
+
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+

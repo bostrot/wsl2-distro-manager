@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no">
+  <meta name="description" content="API docs for the createDialog function from the create_dialog library, for the Dart programming language.">
+  <title>createDialog function - create_dialog library - Dart API</title>
+
+
+  
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" rel="stylesheet">
+  
+  <link rel="stylesheet" href="../static-assets/github.css?v1">
+  <link rel="stylesheet" href="../static-assets/styles.css?v1">
+  <link rel="icon" href="../static-assets/favicon.png?v1">
+
+  
+</head>
+
+
+<body data-base-href="../" data-using-base-href="false" class="light-theme">
+
+<div id="overlay-under-drawer"></div>
+
+<header id="title">
+  <span id="sidenav-left-toggle" class="material-symbols-outlined" role="button" tabindex="0">menu</span>
+  <ol class="breadcrumbs gt-separated dark hidden-xs">
+    <li><a href="../index.html">wsl2distromanager</a></li>
+    <li><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></li>
+    <li class="self-crumb">createDialog function</li>
+  </ol>
+  <div class="self-name">createDialog</div>
+  <form class="search navbar-right" role="search">
+    <input type="text" id="search-box" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+  <div class="toggle" id="theme-button">
+    <label for="theme">
+      <input type="checkbox" id="theme" value="light-theme">
+      <span id="dark-theme-button" class="material-symbols-outlined">
+        brightness_4
+      </span>
+      <span id="light-theme-button" class="material-symbols-outlined">
+        brightness_5
+      </span>
+    </label>
+  </div>
+</header>
+<main>
+
+  <div id="dartdoc-main-content" class="main-content">
+      <div>
+<h1><span class="kind-function">createDialog</span> function 
+ 
+</h1></div>
+
+    <section class="multi-line-signature">
+        
+
+<span class="returntype">dynamic</span>
+<span class="name ">createDialog</span>(<wbr>)
+
+        
+
+    </section>
+    
+<section class="desc markdown">
+  <p>Create Dialog</p>
+</section>
+
+
+    
+<section class="summary source-code" id="source">
+  <h2><span>Implementation</span></h2>
+  <pre class="language-dart"><code class="language-dart">createDialog() {
+  WSLApi api = WSLApi();
+  final autoSuggestBox = TextEditingController();
+  final locationController = TextEditingController();
+  final nameController = TextEditingController();
+  final userController = TextEditingController();
+  plausible.event(page: &#39;create&#39;);
+
+  &#47;&#47; Get root context by Key
+  final context = GlobalVariable.infobox.currentContext!;
+
+  showDialog(
+    useRootNavigator: false,
+    context: context,
+    builder: (context) {
+      return ContentDialog(
+        constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 450.0),
+        title: Text(&#39;createnewinstance-text&#39;.i18n()),
+        content: SingleChildScrollView(
+          child: CreateWidget(
+            nameController: nameController,
+            api: api,
+            autoSuggestBox: autoSuggestBox,
+            locationController: locationController,
+            userController: userController,
+          ),
+        ),
+        actions: [
+          Button(
+              child: Text(&#39;cancel-text&#39;.i18n()),
+              onPressed: () async {
+                Navigator.pop(context);
+              }),
+          Button(
+            onPressed: () async {
+              &#47;&#47; Run &quot;runner&quot; function from global key
+              GlobalVariable.root.currentState!.runner(
+                createInstance(
+                  nameController,
+                  locationController,
+                  api,
+                  autoSuggestBox,
+                  userController,
+                ),
+              );
+            },
+            child: Text(&#39;create-text&#39;.i18n()),
+          ),
+        ],
+      );
+    },
+  );
+}</code></pre>
+</section>
+
+
+  </div> <!-- /.main-content -->
+
+  <div id="dartdoc-sidebar-left" class="sidebar sidebar-offcanvas-left">
+    <header id="header-search-sidebar" class="hidden-l">
+  <form class="search-sidebar" role="search">
+    <input type="text" id="search-sidebar" autocomplete="off" disabled class="form-control typeahead" placeholder="Loading search...">
+  </form>
+</header>
+
+<ol class="breadcrumbs gt-separated dark hidden-l" id="sidebar-nav">
+  <li><a href="../index.html">wsl2distromanager</a></li>
+  <li><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html">create_dialog</a></li>
+  <li class="self-crumb">createDialog function</li>
+</ol>
+
+
+    <h5>create_dialog library</h5>
+    <ol>
+      <li class="section-title"><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html#classes">Classes</a></li>
+        <li><a href="../dialogs_create_dialog/CreateWidget-class.html">CreateWidget</a></li>
+
+
+
+
+
+      <li class="section-title"><a href="../dialogs_create_dialog/dialogs_create_dialog-library.html#functions">Functions</a></li>
+        <li><a href="../dialogs_create_dialog/createDialog.html">createDialog</a></li>
+        <li><a href="../dialogs_create_dialog/createInstance.html">createInstance</a></li>
+
+
+
+</ol>
+
+  </div><!--/.sidebar-offcanvas-left-->
+
+  <div id="dartdoc-sidebar-right" class="sidebar sidebar-offcanvas-right">
+  </div><!--/.sidebar-offcanvas-->
+
+</main>
+
+<footer>
+  <span class="no-break">
+    wsl2distromanager
+      1.8.7
+  </span>
+
+  
+</footer>
+
+
+
+<script src="../static-assets/highlight.pack.js?v1"></script>
+<script src="../static-assets/docs.dart.js"></script>
+
+
+
+</body>
+
+</html>
+
