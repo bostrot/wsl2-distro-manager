@@ -254,7 +254,6 @@ class _NavbarState extends State<Navbar> {
                 checked: FluentTheme.of(context).brightness.isDark,
                 onChanged: (v) {
                   // Notify settings page to save unsaved changes
-
                   customTheme = true;
                   if (v) {
                     appTheme.mode = ThemeMode.dark;
