@@ -19,6 +19,16 @@ initRoot(statusMsg) async {
   // First start with this version
   String? version = prefs.getString('version');
 
+  // Get system dark mode
+  var brightness =
+      WidgetsBinding.instance.platformDispatcher.platformBrightness;
+
+  if (brightness == Brightness.dark) {
+    AppTheme().mode = ThemeMode.dark;
+  } else if (brightness == Brightness.light) {
+    AppTheme().mode = ThemeMode.light;
+  }
+
   if (version == null) {
     // First start
     prefs.setString('version', currentVersion);
@@ -86,6 +96,10 @@ initRoot(statusMsg) async {
     }
   });
 
+  // if (kDebugMode) {
+  //   prefs.remove('LastMotd');
+  // }
+
   // Check motd Show once a day
   if (prefs.getString('LastMotd') !=
       DateTime.now().toString().substring(0, 10)) {
@@ -95,16 +109,5 @@ initRoot(statusMsg) async {
         Notify.message(motd, duration: const Duration(seconds: 60));
       }
     });
-  }
-
-  // if (kDebugMode) {
-  //   prefs.remove('LastMotd');
-  // }
-
-  // Get system dark mode
-  if (ThemeMode.system == ThemeMode.dark) {
-    AppTheme().mode = ThemeMode.dark;
-  } else if (ThemeMode.system == ThemeMode.light) {
-    AppTheme().mode = ThemeMode.light;
   }
 }

@@ -148,11 +148,11 @@ class ClickableDependency extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Button(
+          HyperlinkButton(
               onPressed: () =>
                   launchUrl(Uri.parse("https://pub.dev/packages/$name")),
               child: Text(name)),
-          Button(
+          HyperlinkButton(
               onPressed: () => launchUrl(
                   Uri.parse("https://pub.dev/packages/$name/license")),
               child: const Text("(LICENSE)")),
@@ -178,7 +178,7 @@ class ClickableUrl extends StatelessWidget {
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: Button(
+      child: HyperlinkButton(
           onPressed: () async {
             plausible.event(name: clickEvent);
             launchUrl(Uri.parse(url));
