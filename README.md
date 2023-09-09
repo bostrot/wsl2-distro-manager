@@ -38,8 +38,7 @@
 <details>
 <summary>Microsoft Store</summary>
 
-This app is available on the [Microsoft Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).\
-If you don't want to support this project by paying for it you can get a key when you join our [Discord community](https://discord.gg/fY5uE5WRTP) and write `/key` into the `codes` channel!
+This app is available on the [Microsoft Store](https://apps.microsoft.com/store/detail/wsl-manager/9NWS9K95NMJB?hl=en-us&gl=US).
 </details>
 
 <details>
