@@ -55,7 +55,7 @@ void logInfo(String msg) {
   File(getLogFilePath()).writeAsStringSync(msg, mode: FileMode.append);
 }
 
-/// Log an error to file and send to webhook if analytics are enabled
+/// Log an error to file
 void logError(Object error, StackTrace? stack, String? library) {
   // Print to console
   if (kDebugMode) {
@@ -66,14 +66,6 @@ void logError(Object error, StackTrace? stack, String? library) {
   logInfo('$error at $stack in $library');
   // Send to webhook if analytics are enabled
   if (!plausible.enabled) return;
-  Dio().post(
-    errorUrl,
-    data: {
-      'error': error.toString(),
-      'stack': stack.toString(),
-      'library': library.toString(),
-    },
-  );
 }
 
 /// Manually trigger upload of log file
