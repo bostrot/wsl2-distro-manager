@@ -154,5 +154,6 @@
     "move-text": "Move",
     "movebody-text": "Do you really want to move the distribution %s0 to the default distro path? This will export and re-import the distribution. This may take some time.",
     "moving-text": "Moving ...",
-    "moved-text": "Distribution moved successfully."
+    "moved-text": "Distribution moved successfully.",
+    "license-text": "License"
 }

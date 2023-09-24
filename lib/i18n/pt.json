@@ -155,5 +155,6 @@
     "move-text": "Mover",
     "movebody-text": "Você realmente deseja mover a distribuição %s0 para o caminho padrão da distribuição? Isso exportará e importará a distribuição novamente. Isso pode levar algum tempo.",
     "moving-text": "Movendo ...",
-    "moved-text": "A distribuição foi movida com sucesso."
+    "moved-text": "A distribuição foi movida com sucesso.",
+    "license-text": "Licença"
 }
