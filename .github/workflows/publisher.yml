@@ -20,7 +20,7 @@ jobs:
         if [[ ${{ github.event_name == 'workflow_dispatch' }} == true ]]; then
           TAG=${{ inputs.tag }}
         else
-          TAG=${{ env.RELEASE }}
+          TAG=${{ github.ref_name }}
         fi
         echo "TAG=$TAG" >> $GITHUB_ENV
         echo "Tag: $TAG"
