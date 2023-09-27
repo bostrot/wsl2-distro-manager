@@ -11,12 +11,12 @@
     <a href='./README.md'>English</a> | 简体中文 | <a href='./README_de.md'>Deutsch</a>
 </p>
 
-![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png)
+![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
 
 <details>
 <summary>Preview with Lightmode</summary>
 
-![Screenshot with Lightmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
+![Screenshot with Lightmode](https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png)
 
 </details>
 
