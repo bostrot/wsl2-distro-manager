@@ -1,6 +1,5 @@
 <h1 align="center">欢迎加入WSL Manager 👋</h1>
 
-![License](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub Release Date](https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub Workflow](https://img.shields.io/github/actions/workflow/status/bostrot/wsl2-distro-manager/releaser.yml?branch=main&label=nightly&style=for-the-badge)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
