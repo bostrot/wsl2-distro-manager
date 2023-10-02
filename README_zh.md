@@ -1,6 +1,5 @@
 <h1 align="center">欢迎加入WSL Manager 👋</h1>
 
-![License](https://img.shields.io/github/license/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub Release Date](https://img.shields.io/github/release-date/bostrot/wsl2-distro-manager?style=for-the-badge)
 ![GitHub Workflow](https://img.shields.io/github/actions/workflow/status/bostrot/wsl2-distro-manager/releaser.yml?branch=main&label=nightly&style=for-the-badge)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/bostrot/wsl2-distro-manager?style=for-the-badge)
@@ -11,12 +10,12 @@
     <a href='./README.md'>English</a> | 简体中文 | <a href='./README_de.md'>Deutsch</a>
 </p>
 
-![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png)
+![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
 
 <details>
 <summary>Preview with Lightmode</summary>
 
-![Screenshot with Lightmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
+![Screenshot with Lightmode](https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png)
 
 </details>
 

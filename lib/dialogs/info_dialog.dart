@@ -29,11 +29,6 @@ infoDialog(prefs, currentVersion) {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   ClickableUrl(
-                    clickEvent: "url_clicked",
-                    url: 'https://bostrot.com',
-                    text: 'createdby-text'.i18n(),
-                  ),
-                  ClickableUrl(
                       clickEvent: "git_clicked",
                       url: "https://github.com/bostrot/wsl2-distro-manager",
                       text: 'visitgithub-text'.i18n()),
@@ -62,6 +57,11 @@ infoDialog(prefs, currentVersion) {
                     text: 'dependencies-text'.i18n(),
                   ),
                   shareUsageData(prefs),
+                  ClickableUrl(
+                      clickEvent: "changelog_clicked",
+                      url: "https://github.com/bostrot/wsl2-distro-manager/"
+                          "releases",
+                      text: 'license-text'.i18n()),
                 ],
               ),
             ),
@@ -204,7 +204,7 @@ class ClickableText extends StatelessWidget {
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: Button(onPressed: onPressed, child: Text(text)),
+      child: HyperlinkButton(onPressed: onPressed, child: Text(text)),
     );
   }
 }
