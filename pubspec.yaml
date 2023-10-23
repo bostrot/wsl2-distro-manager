@@ -17,7 +17,7 @@ dependencies:
   chunked_downloader: ^0.0.2
   desktop_window: ^0.4.0
   dio: ^5.3.2
-  file_picker: ^5.3.3
+  file_picker: ^6.0.0
   fluent_ui: ^4.7.2
   flutter_acrylic: ^1.1.3
   flutter_localization: ^0.1.13
