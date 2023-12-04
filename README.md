@@ -9,7 +9,7 @@
 
 
 <p align='center'>
-    English | <a href='./README_zh.md'>简体中文</a> | <a href='./README_de.md'>Deutsch</a>
+    English | <a href='./README_zh.md'>简体中文</a> | <a href='./README_de.md'>Deutsch</a> | <a href='./README_es.md'>Español</a>
 </p>
 
 ![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
@@ -92,7 +92,7 @@ flutter run -d windows # run it
 👤 **Eric Trenkel**
 
 - Website: [erictrenkel.com](erictrenkel.com)
-- Github: [@bostrot](https://github.com/bostrot)
+- GitHub: [@bostrot](https://github.com/bostrot)
 - LinkedIn: [@erictrenkel](https://linkedin.com/in/erictrenkel)
 
 👥 **Contributors**
@@ -102,7 +102,7 @@ flutter run -d windows # run it
 ## 🤝 Contributing
 
 Contributions, issues and feature requests are welcome!\
-Feel free to check the [issues page](https://github.com/bostrot/wsl2-distro-manager/issues). 
+Feel free to check the [issues page](https://github.com/bostrot/wsl2-distro-manager/issues).
 You can also take a look at the [contributing guide](https://github.com/bostrot/wsl2-distro-manager/blob/main/CONTRIBUTING.md).
 
 ## Show your support
