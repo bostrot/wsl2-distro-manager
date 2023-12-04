@@ -7,7 +7,7 @@
 [![GitLab stars](https://img.shields.io/gitlab/stars/bostrot/wsl2-distro-manager?gitlab_url=https%3A%2F%2Fgitlab.com&label=GitLab&style=for-the-badge)](https://gitlab.com/bostrot/wsl2-distro-manager)
 
 <p align='center'>
-    <a href='./README.md'>English</a> | 简体中文 | <a href='./README_de.md'>Deutsch</a>
+    <a href='./README.md'>English</a> | 简体中文 | <a href='./README_de.md'>Deutsch</a> | <a href='./README_es.md'>Español</a>
 </p>
 
 ![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
@@ -85,7 +85,7 @@ choco install wsl2-distro-manager
 
 ```powershell
 flutter config --enable-windows-desktop
-flutter升级
+flutter upgrade
 
 flutter build windows # build it
 flutter run -d windows # run it
@@ -96,7 +96,7 @@ flutter run -d windows # run it
 👤 **Eric Trenkel**
 
 - 网站： [erictrenkel.com](erictrenkel.com)
-- Github： [@bostrot](https://github.com/bostrot)
+- GitHub： [@bostrot](https://github.com/bostrot)
 - LinkedIn： [@erictrenkel](https://linkedin.com/in/erictrenkel)
 
 👥 **贡献者**
