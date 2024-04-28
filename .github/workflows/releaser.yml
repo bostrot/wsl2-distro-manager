@@ -56,8 +56,8 @@ jobs:
         if: ${{ steps.get_version.outputs.exists == 'true' }}
         run: |
           Move-Item .\build\windows\x64\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
-          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
-          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
+          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/x64/runner/Release/
+          Compress-Archive -Path ./build/windows/x64/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
       - uses: actions/upload-artifact@v3
         name: Create nightly release (ZIP)
         if: ${{ steps.get_version.outputs.exists == 'true' }}
@@ -78,8 +78,8 @@ jobs:
         if: ${{ steps.get_version.outputs.exists == 'false' && github.ref == 'refs/heads/main' }}
         run: |
           Move-Item .\build\windows\x64\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-unsigned.msix
-          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/runner/Release/
-          Compress-Archive -Path ./build/windows/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip
+          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/x64/runner/Release/
+          Compress-Archive -Path ./build/windows/x64/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip
           gh release create v${{ steps.get_version.outputs.version }} .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}.zip .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-unsigned.msix  --generate-notes --notes "This is an automated release."
         shell: pwsh
         env:
