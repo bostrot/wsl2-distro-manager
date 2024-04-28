@@ -163,8 +163,7 @@ class SettingsPageState extends State<SettingsPage> {
 
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
-      prefs.setString(
-          "DistroPath", _settings['Default Distro Location']!.text);
+      prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
     }
     _settings.forEach((key, value) {
       if (key != 'Default Distro Location' && value.text.isNotEmpty) {
@@ -190,7 +189,8 @@ class SettingsPageState extends State<SettingsPage> {
               icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
               onPressed: () async {
                 String? path = await FilePicker.platform.getDirectoryPath(
-                  initialDirectory: prefs.getString("DistroPath") ?? defaultPath,
+                  initialDirectory:
+                      prefs.getString("DistroPath") ?? defaultPath,
                 );
                 if (path != null &&
                     _settings['Default Distro Location'] != null) {
@@ -380,10 +380,6 @@ class SettingsPageState extends State<SettingsPage> {
             title: 'swap', tooltip: 'swapinfo-text'.i18n(), placeholder: ''),
         settingsWidget(context,
             title: 'swapFile', tooltip: 'vhdinfo-text'.i18n(), placeholder: ''),
-        settingsWidget(context,
-            title: 'pageReporting',
-            tooltip: 'unusedmemoryinfo-text'.i18n(),
-            type: SettingsType.bool),
         settingsWidget(context,
             title: 'guiApplications',
             tooltip: 'guiinfo-text'.i18n(),
