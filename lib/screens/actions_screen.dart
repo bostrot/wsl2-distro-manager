@@ -1,11 +1,14 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
+import 'package:re_editor/re_editor.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
+import 'package:re_highlight/languages/bash.dart';
+import 'package:re_highlight/styles/atom-one-light.dart';
 
 class QuickPage extends StatefulWidget {
   const QuickPage({Key? key}) : super(key: key);
@@ -18,9 +21,9 @@ class QuickPageState extends State<QuickPage> {
   List<Widget> quickSettings = [];
   String lineNumbers = '';
   bool showInput = false;
-  ScrollController scrollController = ScrollController();
-  TextEditingController nameController = TextEditingController();
-  TextEditingController contentController = TextEditingController();
+  var scrollController = ScrollController();
+  var nameController = TextEditingController();
+  var contentController = CodeLineEditingController();
   int lineNum = 30;
 
   @override
@@ -81,7 +84,7 @@ class QuickPageState extends State<QuickPage> {
                     : Container(),
                 // TODO: Better line numbers
                 showInput
-                    ? CodeEditor(
+                    ? Editor(
                         contentController: contentController,
                         scrollController: scrollController,
                         lineNumbers: lineNumbers,
@@ -357,8 +360,8 @@ class QuickPageState extends State<QuickPage> {
   }
 }
 
-class CodeEditor extends StatelessWidget {
-  const CodeEditor({
+class Editor extends StatelessWidget {
+  const Editor({
     Key? key,
     required this.contentController,
     required this.scrollController,
@@ -366,7 +369,7 @@ class CodeEditor extends StatelessWidget {
     required this.lineNum,
   }) : super(key: key);
 
-  final TextEditingController contentController;
+  final CodeLineEditingController contentController;
   final ScrollController scrollController;
   final String lineNumbers;
   final int lineNum;
@@ -374,30 +377,30 @@ class CodeEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.72,
-      width: MediaQuery.of(context).size.width * 0.9,
-      child: TextBox(
-        controller: contentController,
-        scrollController: scrollController,
-        style: const TextStyle(
-          fontFamily: 'Consolas',
-          fontSize: 12.0,
-        ),
-        prefix: Padding(
-          padding: const EdgeInsets.only(left: 8.0, top: 3.0),
-          child: Text(
-            lineNumbers,
-            style: TextStyle(
-              color: AppTheme().color.normal,
-              fontFamily: 'Consolas',
-              fontSize: 12.0,
+        height: MediaQuery.of(context).size.height * 0.68,
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: CodeEditor(
+            hint: '# ${'yourcodehere-text'.i18n()}',
+            indicatorBuilder:
+                (context, editingController, chunkController, notifier) {
+              return Row(
+                children: [
+                  DefaultCodeLineNumber(
+                    controller: editingController,
+                    notifier: notifier,
+                  ),
+                  DefaultCodeChunkIndicator(
+                      width: 20,
+                      controller: chunkController,
+                      notifier: notifier)
+                ],
+              );
+            },
+            style: CodeEditorStyle(
+              codeTheme: CodeHighlightTheme(
+                  languages: {'bash': CodeHighlightThemeMode(mode: langBash)},
+                  theme: atomOneLightTheme),
             ),
-          ),
-        ),
-        minLines: lineNum,
-        maxLines: lineNum,
-        placeholder: '# ${'yourcodehere-text'.i18n()}',
-      ),
-    );
+            controller: contentController));
   }
 }
