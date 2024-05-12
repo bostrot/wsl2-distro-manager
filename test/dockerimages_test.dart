@@ -192,5 +192,55 @@ void main() {
     // Verify that the file exists and has > 2MB
     expect(await file.exists(), true);
     expect(await file.length(), greaterThan(2 * 1024 * 1024));
-  }, timeout: const Timeout(Duration(minutes: 2)));
+  }, timeout: const Timeout(Duration(minutes: 10)));
+
+  // Test almalinux latest
+  test('Create instance test almalinux:latest', () async {
+    TextEditingController nameController = TextEditingController(text: 'test');
+    TextEditingController locationController = TextEditingController(text: '');
+    TextEditingController autoSuggestBox =
+        TextEditingController(text: 'dockerhub:almalinux:latest');
+
+    final file =
+        File('C:/WSL2-Distros/distros/library_almalinux_latest.tar.gz');
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    // Delete the instance
+    await WSLApi().remove('test');
+
+    // Test build context
+    await createInstance(
+      nameController,
+      locationController,
+      WSLApi(),
+      autoSuggestBox,
+      TextEditingController(text: ''),
+    );
+
+    // Verify that the file exists and has > 2MB
+    expect(await file.exists(), true);
+    expect(await file.length(), greaterThan(2 * 1024 * 1024));
+    expect(await isInstance('test'), true);
+
+    // Delete the instance
+    await WSLApi().remove('test');
+
+    expect(await isInstance('test'), false);
+
+    // Test creating it without re-downloading the rootfs
+    await createInstance(
+      nameController,
+      locationController,
+      WSLApi(),
+      autoSuggestBox,
+      TextEditingController(text: ''),
+    );
+
+    expect(await isInstance('test'), true);
+
+    // Delete the instance
+    await WSLApi().remove('test');
+  }, timeout: const Timeout(Duration(minutes: 10)));
 }

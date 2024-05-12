@@ -3,12 +3,11 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:archive/archive.dart';
-import 'package:archive/archive_io.dart';
 import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/api/archive.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -433,12 +432,13 @@ class DockerImage {
     // Write the compressed tar file to disk.
     int retry = 0;
 
-    String outArchive = SafePath(distroPath).file('$imageName.tar.gz');
+    final parentPath = SafePath(tmpImagePath);
+    String outTar = parentPath.file('$imageName.tar');
+    String outTarGz = SafePath(distroPath).file('$imageName.tar.gz');
     while (retry < 2) {
       try {
-        Archive archive = Archive();
-
         // More than one layer
+        List<String> paths = [];
         if (layers != 1) {
           for (var i = 0; i < layers; i++) {
             // Read archives layers
@@ -448,34 +448,21 @@ class DockerImage {
             // progress(i, layers, -1, -1);
             Notify.message('Extracting layer $i of $layers');
 
-            // In memory
-            final tarfile = GZipDecoder().decodeBytes(
-                File(SafePath(tmpImagePath).file('layer_$i.tar.gz'))
-                    .readAsBytesSync());
-            final subArchive = TarDecoder().decodeBytes(tarfile);
-
-            // Add files to archive
-            for (final file in subArchive) {
-              archive.addFile(file);
-              if (kDebugMode && !file.name.contains('/')) {
-                if (kDebugMode) {
-                  print('Adding root file ${file.name}');
-                }
-              }
-            }
+            // Extract layer
+            final layerTarGz = parentPath.file('layer_$i.tar.gz');
+            await ArchiveApi.extract(layerTarGz, parentPath.path);
+            paths.add(parentPath.file('layer_$i.tar'));
           }
 
           // Archive as tar then gzip to disk
-          final tarfile = TarEncoder().encode(archive);
-          final gzData = GZipEncoder().encode(tarfile);
-          final fp = File(outArchive);
+          await ArchiveApi.merge(paths, outTar);
+          await ArchiveApi.compress(outTar, outTarGz);
 
           Notify.message('writingtodisk-text'.i18n());
-          fp.writeAsBytesSync(gzData!);
         } else if (layers == 1) {
           // Just copy the file
           File(SafePath(tmpImagePath).file('layer_0.tar.gz'))
-              .copySync(outArchive);
+              .copySync(outTarGz);
         }
 
         retry = 2;
@@ -495,7 +482,7 @@ class DockerImage {
     Notify.message('creatinginstance-text'.i18n());
 
     // Check if tar file is created
-    if (!File(outArchive).existsSync()) {
+    if (!File(outTarGz).existsSync()) {
       throw Exception('Tar file is not created');
     }
     // Wait for tar file to be created
