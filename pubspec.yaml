@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  archive: ^3.3.7
+  archive: ^3.5.1
   async: ^2.11.0
   chunked_downloader: ^0.0.2
   desktop_window: ^0.4.0

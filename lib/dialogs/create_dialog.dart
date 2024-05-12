@@ -67,6 +67,18 @@ createDialog() {
   );
 }
 
+progressFn(current, total, currentStep, totalStep) {
+  if (currentStep != -1) {
+    String progressInMB = (currentStep / 1024 / 1024).toStringAsFixed(2);
+    // String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
+    String percentage = (currentStep / totalStep * 100).toStringAsFixed(0);
+    Notify.message('${'downloading-text'.i18n()}'
+        ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB)');
+  } else {
+    Notify.message('extractinglayers-text'.i18n(['$current', '$total']));
+  }
+}
+
 Future<void> createInstance(
   TextEditingController nameController,
   TextEditingController locationController,
@@ -117,21 +129,12 @@ Future<void> createInstance(
         // Download image
         Notify.message('${'downloading-text'.i18n()}...');
         var docker = DockerImage()..distroName = distroName;
-        await docker.getRootfs(name, image, tag: tag,
-            progress: (current, total, currentStep, totalStep) {
-          if (currentStep != -1) {
-            String progressInMB =
-                (currentStep / 1024 / 1024).toStringAsFixed(2);
-            // String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
-            String percentage =
-                (currentStep / totalStep * 100).toStringAsFixed(0);
-            Notify.message('${'downloading-text'.i18n()}'
-                ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB)');
-          } else {
-            Notify.message(
-                'extractinglayers-text'.i18n(['$current', '$total']));
-          }
-        });
+        try {
+          await docker.getRootfs(name, image, tag: tag, progress: progressFn);
+        } catch (e) {
+          Notify.message('error-text'.i18n());
+          return;
+        }
         Notify.message('downloaded-text'.i18n());
         // Set distropath with distroName
         distroName = DockerImage().filename(image, tag);
