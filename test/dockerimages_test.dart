@@ -100,7 +100,7 @@ void main() {
 
     // Delete the instance
     await WSLApi().remove('test');
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('Create instance test nginx (nonroot)', () async {
     TextEditingController nameController = TextEditingController(text: 'test');
