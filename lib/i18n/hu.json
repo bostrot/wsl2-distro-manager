@@ -59,7 +59,7 @@
     "sharingdata-text": "Névtelen használati adatok meg vannak osztva",
     "allow-text": "Engedélyezés",
     "usagedata-text": "Használati adatok",
-    "usagedatawarning-text": "WARNING: Usage data is collected to help improve the extension. No personal information is collected. No data is shared with any third party. You can change this in the settings. Current status: %s | FIGYELEM: A használati adatok a program fejlesztésében segítenek. Személyes adatokat nem gyűjtünk. Az adatokat nem osztjuk meg harmadik féllel. Ezt a beállításokban módosíthatod. Jelenlegi állapot: %s",
+    "usagedatawarning-text": "FIGYELEM: A használati adatok a program fejlesztésében segítenek. Személyes adatokat nem gyűjtünk. Az adatokat nem osztjuk meg harmadik féllel. Ezt a beállításokban módosíthatod. Jelenlegi állapot: %s",
     "donotshare-text": "NE legyenek megosztva",
     "share-text": "Megosztás",
     "privacymodeenabled-text": "Privát mód engedélyezve",
