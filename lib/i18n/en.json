@@ -8,6 +8,7 @@
     "started-text": "started",
     "openwithexplorer-text": "Open with File Explorer",
     "openwithwt-text": "Open with Windows Terminal",
+    "openwithwt-not-found-error": "Windows Terminal not found. Launching in PowerShell instead.",
     "openwithvscode-text": "Open with VS Code",
     "copy-text": "Copy",
     "rename-text": "Rename",

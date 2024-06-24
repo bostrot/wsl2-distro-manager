@@ -12,6 +12,7 @@ import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 
 /// Used to store the instances of WSL in a list.
 class Instances {
@@ -200,11 +201,19 @@ class WSLApi {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
-  /// Start Windows Terminal
+  /// Start Windows Terminal\
+  /// *(falls back to PowerShell on exception)*
   void startWindowsTerminal(String distribution) async {
-    List<String> args = ['wt', 'wsl', '-d', distribution, '--cd', '~'];
-    Process.start('start', args,
-        mode: ProcessStartMode.normal, runInShell: true);
+    List<String> launchWslHome = ['wsl', '-d', distribution, '--cd', '~'];
+    try {
+      await Process.start('wt', launchWslHome);
+    } catch (_) {
+      // Windows Terminal not installed
+      Notify.message('openwithwt-not-found-error'.i18n());
+
+      var args = ['powershell', '-noexit', '-command', launchWslHome.join(' ')];
+      await Process.run('start', args, runInShell: true);
+    }
   }
 
   /// Copy a WSL distro by name
