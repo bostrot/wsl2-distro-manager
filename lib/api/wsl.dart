@@ -74,7 +74,8 @@ class WSLApi {
       {String startPath = '',
       String startUser = '',
       String startCmd = ''}) async {
-    List<String> args = ['wsl', '-d', distribution];
+    List<String> args = [];
+    args.addAll(['wsl', '-d', distribution]);
     if (startPath != '') {
       args.addAll(['--cd', startPath]);
     }
@@ -88,8 +89,10 @@ class WSLApi {
       // Run shell to keep open
       args.add(';/bin/sh');
     }
-    await Process.start('start', args,
-        mode: ProcessStartMode.detached, runInShell: true);
+    if (!(await startWindowsTerminal(args))) {
+      await Process.start('start', args,
+          mode: ProcessStartMode.detached, runInShell: true);
+    }
 
     if (kDebugMode) {
       print("Done starting $distribution");
@@ -201,10 +204,12 @@ class WSLApi {
   }
 
   /// Start Windows Terminal
-  void startWindowsTerminal(String distribution) async {
-    List<String> args = ['wt', 'wsl', '-d', distribution, '--cd', '~'];
-    Process.start('start', args,
-        mode: ProcessStartMode.normal, runInShell: true);
+  Future<bool> startWindowsTerminal(List<String> startCmd) async {
+    // Run windows terminal in same window wt -w 0 nt
+    List<String> args = ['wt', '-w', '0', 'nt'];
+    args.addAll(startCmd);
+    ProcessResult process = await Process.run('start', args);
+    return process.exitCode == 0;
   }
 
   /// Copy a WSL distro by name
