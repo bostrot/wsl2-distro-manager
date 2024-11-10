@@ -68,6 +68,7 @@ const supportedLocalesList = [
   Locale('en', ''), // English, no country code
   Locale('de', ''), // German, no country code
   Locale('pt', ''), // Portuguese, no country code
+  Locale('hu', ''), // Hungarian, no country code
   Locale('zh', ''), // Chinese, simplified
   Locale('zh', 'TW'), // Chinese, taiwan (traditional)
   Locale('zh', 'HK'), // Chinese, hongkong (traditional)
