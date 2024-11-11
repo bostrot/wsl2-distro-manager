@@ -14,7 +14,9 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('homepage-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.location != '/') router.pushNamed('home');
+      if (router.routerDelegate.currentConfiguration.uri.toString() != '/') {
+        router.pushNamed('home');
+      }
     },
   ),
   PaneItem(
@@ -23,7 +25,8 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('managequickactions-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.location != '/quickactions') {
+      if (router.routerDelegate.currentConfiguration.uri.toString() !=
+          '/quickactions') {
         router.pushNamed('quickactions');
       }
     },
@@ -34,7 +37,8 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('templates-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.location != '/templates') {
+      if (router.routerDelegate.currentConfiguration.uri.toString() !=
+          '/templates') {
         router.pushNamed('templates');
       }
     },
@@ -63,7 +67,8 @@ final List<NavigationPaneItem> footerItems = [
     title: Text('settings-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.location != '/settings') router.pushNamed('settings');
+      if (router.routerDelegate.currentConfiguration.uri.toString() !=
+          '/settings') router.pushNamed('settings');
     },
   ),
   LinkPaneItemAction(

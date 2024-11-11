@@ -105,7 +105,7 @@ class RootPageState extends State<RootPage> with WindowListener {
   }
 
   int _calculateSelectedIndex(BuildContext context) {
-    final location = router.location;
+    final location = router.routerDelegate.currentConfiguration.uri.toString();
     int indexOriginal = originalItems
         .toList()
         .indexWhere((element) => element.key == Key(location));

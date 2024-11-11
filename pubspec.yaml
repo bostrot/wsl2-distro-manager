@@ -20,30 +20,30 @@ dependencies:
   file_picker: ^8.0.3
   fluent_ui: ^4.7.2
   flutter_acrylic: ^1.1.3
-  flutter_localization: ^0.1.13
-  flutter_markdown: ^0.6.17+1
-  go_router: ^8.0.1
+  flutter_localization: ^0.2.2
+  flutter_markdown: ^0.7.4+1
+  go_router: ^14.4.1
   http: ^1.1.0
   localization: ^2.1.0
-  package_info_plus: ^4.1.0
+  package_info_plus: ^8.1.1
   plausible_analytics: ^0.3.0
   provider: ^6.0.5
   shared_preferences: ^2.2.0
   shelf: ^1.4.1
   shelf_static: ^1.1.2
   system_info2: ^4.0.0
-  system_theme: ^2.3.1
+  system_theme: ^3.1.2
   url_launcher: ^6.1.12
-  window_manager: ^0.3.5
+  window_manager: ^0.4.3
   yaml: ^3.1.2
-  re_editor: ^0.2.0
+  re_editor: ^0.6.0
   re_highlight: ^0.0.3
 dependency_overrides:
   http: ^1.1.0
 
 dev_dependencies:
-  flutter_lints: ^2.0.1
-  flutter_oss_licenses: ^2.0.1
+  flutter_lints: ^5.0.0
+  flutter_oss_licenses: ^3.0.2
   flutter_test:
     sdk: flutter
   msix: ^3.14.2
