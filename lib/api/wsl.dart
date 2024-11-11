@@ -75,7 +75,8 @@ class WSLApi {
       {String startPath = '',
       String startUser = '',
       String startCmd = ''}) async {
-    List<String> args = ['wsl', '-d', distribution];
+    List<String> args = [];
+    args.addAll(['wsl', '-d', distribution]);
     if (startPath != '') {
       args.addAll(['--cd', startPath]);
     }
@@ -91,7 +92,6 @@ class WSLApi {
     }
     await Process.start('start', args,
         mode: ProcessStartMode.detached, runInShell: true);
-
     if (kDebugMode) {
       print("Done starting $distribution");
     }
@@ -201,12 +201,15 @@ class WSLApi {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
-  /// Start Windows Terminal\
-  /// *(falls back to PowerShell on exception)*
+  /// Start Windows Terminal or PowerShell
   void startWindowsTerminal(String distribution) async {
     List<String> launchWslHome = ['wsl', '-d', distribution, '--cd', '~'];
     try {
-      await Process.start('wt', launchWslHome);
+      // Run windows terminal in same window wt -w 0 nt
+      var args = ['wt', '-w', '0', 'nt'];
+      args.addAll(launchWslHome);
+
+      await Process.run('start', args);
     } catch (_) {
       // Windows Terminal not installed
       Notify.message('openwithwt-not-found-error'.i18n());

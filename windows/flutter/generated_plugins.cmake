@@ -6,7 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_window
   flutter_acrylic
   flutter_localization
-  screen_retriever
+  screen_retriever_windows
   system_theme
   url_launcher_windows
   window_manager
