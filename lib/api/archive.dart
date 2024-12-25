@@ -1,24 +1,33 @@
 import 'dart:io';
 
-import 'package:archive/archive_io.dart';
-
-/// API for archive operations
+/// API for 7-Zip archive operations
 class ArchiveApi {
+  static const _exe = './7zip/7za.exe';
+
+  /// Get current path
+  static Future<String> get currentPath async {
+    // Get current path
+    try {
+      final result = await Process.run("cmd", ["/c", "cd"], runInShell: true);
+      return result.stdout.toString();
+    } catch (e) {
+      throw Exception('Failed to get current path: $e');
+    }
+  }
+
   /// Extracts the archive at [archivePath] to [destinationPath]
   static Future<void> extract(
       String archivePath, String destinationPath) async {
+    // 7zr.exe x layer2.tar.gz -olayer
     // Extract archive
-    final inputStream = InputFileStream(archivePath);
-    final extracted = GZipDecoder().decodeBuffer(inputStream);
-    // Write to destination
-    final outputFile = File(destinationPath);
-    outputFile.create(recursive: true);
-    await outputFile.writeAsBytes(extracted);
-    inputStream.close();
+    try {
+      await Process.run(_exe, ['x', archivePath, '-o$destinationPath']);
+    } catch (e) {
+      throw Exception('Failed to extract archive: $e');
+    }
   }
 
-  /// Merge the tar archives at [archivePaths] into [destinationPath]
-  /// Trailing zeros are removed from the files.
+  /// Merge the archives at [archivePaths] into [destinationPath]
   static Future<void> merge(
       List<String> archivePaths, String destinationPath) async {
     // Merge archives
@@ -56,13 +65,14 @@ class ArchiveApi {
   }
 
   /// Compress the tar archive at [filePath] to [destinationPath]
-  static void compress(String filePath, String destinationPath) {
-    // compress tar to gzip
-    final inputFileStream = InputFileStream(filePath);
-    final outputFileStream = OutputFileStream(destinationPath);
-    GZipEncoder().encode(inputFileStream,
-        output: outputFileStream, level: Deflate.BEST_SPEED);
-    inputFileStream.close();
-    outputFileStream.close();
+  static Future<void> compress(String filePath, String destinationPath) async {
+    // 7zr.exe a -tgzip full_image.tar.gz full_image.tar
+    // Compress tar archive
+    try {
+      // 7zr.exe a -ttar combined_image.tar merged\*
+      await Process.run(_exe, ['a', '-tgzip', destinationPath, filePath]);
+    } catch (e) {
+      throw Exception('Failed to compress tar archive: $e');
+    }
   }
 }
