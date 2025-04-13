@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  archive: ^3.5.1
+  archive: ^4.0.2
   async: ^2.11.0
   chunked_downloader: ^0.0.2
   desktop_window: ^0.4.0
@@ -20,7 +20,7 @@ dependencies:
   file_picker: ^8.0.3
   fluent_ui: ^4.7.2
   flutter_acrylic: ^1.1.3
-  flutter_localization: ^0.2.2
+  flutter_localization: ^0.3.0
   flutter_markdown: ^0.7.4+1
   go_router: ^14.4.1
   http: ^1.1.0
