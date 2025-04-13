@@ -157,5 +157,7 @@
     "movebody-text": "%s0 dağıtımını varsayılan dağıtım yolu üzerine taşımak istiyor musunuz? Bu, dağıtımı dışa aktarıp yeniden içe aktaracaktır. Bu biraz zaman alabilir.",
     "moving-text": "Taşınıyor ...",
     "moved-text": "Dağıtım başarıyla taşındı.",
-    "license-text": "Lisans"
+    "license-text": "Lisans",
+    "savesatemplatequestion-text": "Bir şablon olarak %s kaydetmek istiyor musunuz?",
+    "saveastemplatebody-text": "Bu, örneği kapatıp dışa aktarmanızla sonuçlanacaktır. Bu işlem biraz zaman alabilir ve bu süre zarfında örnek kullanılamaz."
 }

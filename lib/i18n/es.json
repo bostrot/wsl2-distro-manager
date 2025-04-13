@@ -155,5 +155,7 @@
     "movebody-text": "¿Realmente quieres mover la distribución %s0 a la ruta de distribución predeterminada? Esto exportará y volverá a importar la distribución. Esto puede tomar algo de tiempo.",
     "moving-text": "Moviendo ...",
     "moved-text": "Distribución movida con éxito.",
-    "license-text": "Licencia"
+    "license-text": "Licencia",
+    "savesatemplatequestion-text": "¿Quieres guardar %s como una plantilla?",
+    "saveastemplatebody-text": "Esto resultará en apagar la instancia y exportarla. Este proceso puede tomar algo de tiempo, durante el cual la instancia no estará disponible."
 }

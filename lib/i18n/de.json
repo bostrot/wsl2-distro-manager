@@ -157,5 +157,7 @@
     "movebody-text": "Möchten Sie die Distribution %s0 wirklich zum Standard Distro Pfad verschieben? Dies wird die Distribution exportieren und wieder importieren. Dies kann einige Zeit dauern.",
     "moving-text": "Verschieben ...",
     "moved-text": "Die Distribution wurde erfolgreich verschoben.",
-    "license-text": "Lizenz"
+    "license-text": "Lizenz",
+    "savesatemplatequestion-text": "Möchten Sie %s als Vorlage speichern?",
+    "saveastemplatebody-text": "Dies führt dazu, dass die Instanz heruntergefahren und exportiert wird. Dieser Vorgang kann einige Zeit in Anspruch nehmen, währenddessen die Instanz nicht nutzbar ist."
 }

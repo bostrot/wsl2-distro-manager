@@ -190,9 +190,22 @@ class Bar extends StatelessWidget {
                   cursor: SystemMouseCursors.click,
                   child: IconButton(
                     icon: const Icon(FluentIcons.save_template, size: 16.0),
-                    onPressed: () async {
-                      await Templates().saveTemplate(widget.item);
-                    },
+                    onPressed: () =>
+                        // Open remove dialog
+                        dialog(
+                            item: widget.item,
+                            title: 'savesatemplatequestion-text'
+                                .i18n([widget.item]),
+                            body: 'saveastemplatebody-text'.i18n(),
+                            submitText: 'saveastemplate-text'.i18n(),
+                            submitInput: false,
+                            submitStyle: ButtonStyle(
+                              backgroundColor: ButtonState.all(Colors.red),
+                              foregroundColor: ButtonState.all(Colors.white),
+                            ),
+                            onSubmit: (inputText) async {
+                              await Templates().saveTemplate(widget.item);
+                            }),
                   ),
                 ),
               ),
