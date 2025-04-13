@@ -33,7 +33,6 @@ class RootPage extends StatefulWidget {
 class RootPageState extends State<RootPage> with WindowListener {
   bool value = false;
 
-  // Global runner
   dynamic runner(dynamic func) {
     return func;
   }
@@ -48,7 +47,6 @@ class RootPageState extends State<RootPage> with WindowListener {
   bool statusLeading = true;
   Widget statusWidget = const Text('');
 
-  // Setup status bar
   void statusMsg(
     String msg, {
     Duration? duration,
@@ -58,9 +56,8 @@ class RootPageState extends State<RootPage> with WindowListener {
     bool leadingIcon = true,
     Widget widget = const Text(''),
   }) {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
+
     if (useWidget) {
       setState(() {
         status = 'WIDGET';
@@ -75,6 +72,7 @@ class RootPageState extends State<RootPage> with WindowListener {
         statusLeading = leadingIcon;
       });
     }
+
     if (duration != null) {
       Future.delayed(duration, () {
         if (mounted) {
@@ -90,9 +88,7 @@ class RootPageState extends State<RootPage> with WindowListener {
   @override
   void initState() {
     windowManager.addListener(this);
-
     initRoot(statusMsg);
-
     super.initState();
   }
 
@@ -105,20 +101,16 @@ class RootPageState extends State<RootPage> with WindowListener {
   }
 
   int _calculateSelectedIndex(BuildContext context) {
-    final location = router.routerDelegate.currentConfiguration.uri.toString();
-    int indexOriginal = originalItems
-        .toList()
-        .indexWhere((element) => element.key == Key(location));
+    final path = widget.state.uri.path;
+    int indexOriginal =
+        originalItems.indexWhere((element) => element.key == Key(path));
 
     if (indexOriginal == -1) {
-      int indexFooter = footerItems
-          .toList()
-          .indexWhere((element) => element.key == Key(location));
-      if (indexFooter == -1) {
-        return 0;
-      }
+      int indexFooter =
+          footerItems.indexWhere((element) => element.key == Key(path));
+      if (indexFooter == -1) return 0;
       indexFooter--;
-      return originalItems.toList().length + indexFooter;
+      return originalItems.length + indexFooter;
     } else {
       return indexOriginal;
     }
@@ -127,20 +119,18 @@ class RootPageState extends State<RootPage> with WindowListener {
   @override
   Widget build(BuildContext context) {
     final localizations = FluentLocalizations.of(context);
-
     final appTheme = context.watch<AppTheme>();
-    if (widget.shellContext != null) {
-      if (router.canPop() == false) {
-        setState(() {});
-      }
+
+    if (widget.shellContext != null && !router.canPop()) {
+      setState(() {});
     }
+
     return NavigationView(
       key: viewKey,
       appBar: NavigationAppBar(
         automaticallyImplyLeading: false,
         leading: () {
           final enabled = widget.shellContext != null && router.canPop();
-
           final onPressed = enabled
               ? () {
                   if (router.canPop()) {
@@ -149,6 +139,7 @@ class RootPageState extends State<RootPage> with WindowListener {
                   }
                 }
               : null;
+
           return NavigationPaneTheme(
             data: NavigationPaneTheme.of(context).merge(NavigationPaneThemeData(
               unselectedIconColor: ButtonState.resolveWith((states) {
@@ -191,7 +182,6 @@ class RootPageState extends State<RootPage> with WindowListener {
           );
         }(),
         actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          // Bug report button
           Padding(
               padding: const EdgeInsetsDirectional.only(end: 8.0),
               child: IconButton(
@@ -204,11 +194,7 @@ class RootPageState extends State<RootPage> with WindowListener {
               content: const Text('Dark Mode'),
               checked: FluentTheme.of(context).brightness.isDark,
               onChanged: (v) {
-                if (v) {
-                  appTheme.mode = ThemeMode.dark;
-                } else {
-                  appTheme.mode = ThemeMode.light;
-                }
+                appTheme.mode = v ? ThemeMode.dark : ThemeMode.light;
               },
             ),
           ),
@@ -224,11 +210,8 @@ class RootPageState extends State<RootPage> with WindowListener {
             children: [
               widget.child,
               statusBuilder(status, statusWidget, loading, () {
-                // Dismiss the info bar
-                setState(() {
-                  status = '';
-                });
-              })
+                setState(() => status = '');
+              }),
             ],
           ),
         );
@@ -248,9 +231,7 @@ class RootPageState extends State<RootPage> with WindowListener {
         items: originalItems,
         footerItems: footerItems,
       ),
-      onOpenSearch: () {
-        searchFocusNode.requestFocus();
-      },
+      onOpenSearch: () => searchFocusNode.requestFocus(),
     );
   }
 

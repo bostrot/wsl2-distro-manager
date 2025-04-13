@@ -156,5 +156,7 @@
     "movebody-text": "Você realmente deseja mover a distribuição %s0 para o caminho padrão da distribuição? Isso exportará e importará a distribuição novamente. Isso pode levar algum tempo.",
     "moving-text": "Movendo ...",
     "moved-text": "A distribuição foi movida com sucesso.",
-    "license-text": "Licença"
+    "license-text": "Licença",
+    "savesatemplatequestion-text": "Você quer salvar %s como um modelo?",
+    "saveastemplatebody-text": "Isso resultará no desligamento da instância e na exportação dela. Este processo pode levar algum tempo, durante o qual a instância não estará utilizável."
 }

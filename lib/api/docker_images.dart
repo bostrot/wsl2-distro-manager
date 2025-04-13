@@ -450,14 +450,13 @@ class DockerImage {
 
             // Extract layer
             final layerTarGz = parentPath.file('layer_$i.tar.gz');
-            final layerTar = parentPath.file('layer_$i.tar');
-            await ArchiveApi.extract(layerTarGz, layerTar);
-            paths.add(layerTar);
+            await ArchiveApi.extract(layerTarGz, parentPath.path);
+            paths.add(parentPath.file('layer_$i.tar'));
           }
 
           // Archive as tar then gzip to disk
           await ArchiveApi.merge(paths, outTar);
-          ArchiveApi.compress(outTar, outTarGz);
+          await ArchiveApi.compress(outTar, outTarGz);
 
           Notify.message('writingtodisk-text'.i18n());
         } else if (layers == 1) {

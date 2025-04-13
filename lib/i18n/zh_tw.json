@@ -156,5 +156,7 @@
     "movebody-text": "您確定要將發行版本 %s0 移動到預設發行版本路徑嗎？這將匯出並重新匯入發行版本。這可能需要一些時間。",
     "moving-text": "正在移動 ...",
     "moved-text": "發行版本已成功移動。",
-    "license-text": "許可證"
+    "license-text": "許可證",
+    "savesatemplatequestion-text": "您想要將 %s 儲存為範本嗎？",
+    "saveastemplatebody-text": "這將導致關閉安裝實體並匯出它。此過程可能需要一些時間，在此期間安裝實體將無法使用。"
 }

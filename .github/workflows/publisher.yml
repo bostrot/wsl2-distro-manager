@@ -17,13 +17,14 @@ jobs:
     # Setup variables
     - name: Save job output OR workflow dispatch to Env
       run: |
-        if [[ ${{ github.event_name == 'workflow_dispatch' }} == true ]]; then
-          TAG=${{ inputs.tag }}
+        if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+          TAG="${{ inputs.tag }}"
         else
-          TAG=${{ github.ref_name }}
+          TAG="${{ github.event.release.tag_name }}"
         fi
         echo "TAG=$TAG" >> $GITHUB_ENV
         echo "Tag: $TAG"
+        export TAG=$TAG
 
     # Download release asset
     - name: Download release asset

@@ -156,5 +156,7 @@
     "movebody-text": "Do you really want to move the distribution %s0 to the default distro path? This will export and re-import the distribution. This may take some time.",
     "moving-text": "Moving ...",
     "moved-text": "Distribution moved successfully.",
-    "license-text": "License"
+    "license-text": "License",
+    "savesatemplatequestion-text": "Do you want to save %s as a template?",
+    "saveastemplatebody-text": "This will result in shutting down the instance and exporting it. This process may take some time, during which the instance will not be usable."
 }

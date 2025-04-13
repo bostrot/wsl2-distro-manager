@@ -156,5 +156,7 @@
     "movebody-text": "您确定要将发行版 %s0 移动到默认发行版位置吗？这将导出并重新导入发行版。这可能需要一些时间。",
     "moving-text": "移动 ...",
     "moved-text": "发行版已成功移动。",
-    "license-text": "许可证"
+    "license-text": "许可证",
+    "savesatemplatequestion-text": "您想将 %s 保存为模板吗？",
+    "saveastemplatebody-text": "这将导致关闭实例并导出它。此过程可能需要一些时间，在此期间实例将不可用。"
 }

@@ -2,51 +2,51 @@ name: wsl2distromanager
 description: A GUI to quickly manage your WSL instances.
 
 publish_to: "none"
-version: 1.8.15 # Current version
+version: 1.8.16 # Current version
 
 environment:
   sdk: ">=2.17.0 <4.0.0"
 
 dependencies:
+  archive: ^4.0.5
+  async: ^2.12.0
+  chunked_downloader: ^0.0.2
+  desktop_window: ^0.4.2
+  dio: ^5.8.0+1
+  file_picker: ^10.1.2
+  fluent_ui: ^4.11.3
   flutter:
     sdk: flutter
+  flutter_acrylic: ^1.1.4
+  flutter_localization: ^0.3.2
   flutter_localizations:
     sdk: flutter
-  archive: ^3.5.1
-  async: ^2.11.0
-  chunked_downloader: ^0.0.2
-  desktop_window: ^0.4.0
-  dio: ^5.3.2
-  file_picker: ^8.0.3
-  fluent_ui: ^4.7.2
-  flutter_acrylic: ^1.1.3
-  flutter_localization: ^0.2.2
-  flutter_markdown: ^0.7.4+1
-  go_router: ^14.4.1
-  http: ^1.1.0
-  localization: ^2.1.0
-  package_info_plus: ^8.1.1
+  flutter_markdown: ^0.7.7
+  go_router: ^14.8.1
+  http: ^1.3.0
+  localization: ^2.1.1
+  package_info_plus: ^8.3.0
   plausible_analytics: ^0.3.0
-  provider: ^6.0.5
-  shared_preferences: ^2.2.0
-  shelf: ^1.4.1
-  shelf_static: ^1.1.2
+  provider: ^6.1.4
+  re_editor: ^0.7.0
+  re_highlight: ^0.0.3
+  shared_preferences: ^2.5.3
+  shelf: ^1.4.2
+  shelf_static: ^1.1.3
   system_info2: ^4.0.0
   system_theme: ^3.1.2
-  url_launcher: ^6.1.12
+  url_launcher: ^6.3.1
   window_manager: ^0.4.3
-  yaml: ^3.1.2
-  re_editor: ^0.6.0
-  re_highlight: ^0.0.3
+  yaml: ^3.1.3
 dependency_overrides:
   http: ^1.1.0
 
 dev_dependencies:
   flutter_lints: ^5.0.0
-  flutter_oss_licenses: ^3.0.2
+  flutter_oss_licenses: ^3.0.4
   flutter_test:
     sdk: flutter
-  msix: ^3.14.2
+  msix: ^3.16.8
 
 flutter:
   uses-material-design: true
@@ -65,6 +65,6 @@ msix_config:
   tile_icon_path: .\assets\logo_wsl_manager.png
   icons_background_color: transparent
   architecture: x64
-  capabilities: "internetClient"
+  capabilities: internetClient,privateNetworkClientServer,runFullTrust,broadFileSystemAccess
   store: true
   languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW, tr-TR
