@@ -58,6 +58,7 @@ createDialog() {
                   userController,
                 ),
               );
+              Navigator.pop(context);
             },
             child: Text('create-text'.i18n()),
           ),
