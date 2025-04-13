@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -25,36 +26,123 @@ String replaceSpecialChars(String name) {
   return name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
 }
 
-/// Initialize shared preferences
+/// Utility: Validate JSON content. Returns the decoded JSON on success,
+/// or `null` if the content is not valid JSON.
+dynamic tryDecodeJson(String content) {
+  try {
+    return json.decode(content);
+  } catch (e) {
+    debugPrint('JSON decode failed: $e');
+    return null;
+  }
+}
+
+/// Utility: Attempts to “fix” the content by trimming unexpected characters.
+/// Returns the fixed JSON string if successful, or the original if not.
+String fixJsonContent(String content) {
+  String trimmed = content.trim();
+  // Quick check: if it already starts with valid JSON tokens, use it.
+  if ((trimmed.startsWith('{') || trimmed.startsWith('[')) &&
+      (trimmed.endsWith('}') || trimmed.endsWith(']'))) {
+    return trimmed;
+  }
+  // Otherwise try removing first and/or last character
+  if (trimmed.length > 1) {
+    String candidate = trimmed.substring(1);
+    if (tryDecodeJson(candidate) != null) return candidate;
+    candidate = trimmed.substring(0, trimmed.length - 1);
+    if (tryDecodeJson(candidate) != null) return candidate;
+  }
+  // Return original in worst case.
+  return content;
+}
+
+/// Backs up a file by copying it to a new file with a `.bak` suffix.
+void backupFile(String path) {
+  try {
+    File(path).copySync('$path.bak');
+    debugPrint('Backed up file: $path to $path.bak');
+  } catch (e) {
+    debugPrint('Failed to backup file: $e');
+  }
+}
+
+/// Initialize shared preferences and perform any necessary file migration
+/// or repair operations.
 Future initPrefs() async {
-  prefs = await SharedPreferences.getInstance();
+  // Define app paths for migration.
+  final appData = Platform.environment['APPDATA']!;
+  final oldSafePath = SafePath(appData)
+    ..cd('com.bostrot')
+    ..cd('WSL Manager');
+  final newSafePath = SafePath(appData)
+    ..cd('com.bostrot')
+    ..cd('WSL Distro Manager');
 
-  // Fix for older versions and move the shared_preferences.json file
-  var oldPath = (SafePath(Platform.environment['APPDATA']!)
-        ..cd('com.bostrot')
-        ..cd('WSL Manager'))
-      .file('shared_preferences.json');
-  if (File(oldPath).existsSync()) {
-    var oldContent = File(oldPath).readAsStringSync();
-    oldContent = oldContent.substring(1, oldContent.length);
+  final oldFilePath = oldSafePath.file('shared_preferences.json');
+  final newFilePath = newSafePath.file('shared_preferences.json');
+  final oldFile = File(oldFilePath);
+  final newFile = File(newFilePath);
 
-    var newPath = (SafePath(Platform.environment['APPDATA']!)
-          ..cd('com.bostrot')
-          ..cd('WSL Distro Manager'))
-        .file('shared_preferences.json');
-
-    if (File(newPath).existsSync() && File(newPath).readAsStringSync() != '') {
-      var newContent = File(newPath).readAsStringSync();
-      newContent = newContent.substring(0, newContent.length - 1);
-      newContent = '$newContent,$oldContent';
-      // Backup old file
-      File(newPath).copySync('$newPath.bak');
-      File(newPath).deleteSync();
-      // Write new content
-      File(newPath).writeAsStringSync(newContent, mode: FileMode.writeOnly);
-      File(oldPath).copySync('$oldPath.bak');
-      File(oldPath).deleteSync();
+  // Migration: If the old file exists, try to incorporate its contents.
+  if (oldFile.existsSync()) {
+    try {
+      String oldContent = oldFile.readAsStringSync();
+      // Fix the content if there are small corruption issues.
+      oldContent = fixJsonContent(oldContent);
+      final oldJson = tryDecodeJson(oldContent);
+      if (oldJson == null) {
+        // Could not decode old file, back it up and delete.
+        backupFile(oldFilePath);
+        oldFile.deleteSync();
+      } else {
+        // If a new file exists, merge the data.
+        if (newFile.existsSync() && newFile.readAsStringSync().isNotEmpty) {
+          String newContent = newFile.readAsStringSync();
+          newContent = fixJsonContent(newContent);
+          final newJson = tryDecodeJson(newContent);
+          if (newJson != null) {
+            // For simplicity, assume both files contain maps.
+            if (newJson is Map && oldJson is Map) {
+              // Merge: old data supplements new data.
+              newJson.addAll(oldJson);
+            }
+            // Backup new file, then write merged contents.
+            backupFile(newFilePath);
+            newFile.writeAsStringSync(json.encode(newJson),
+                mode: FileMode.writeOnly);
+            // Backup and remove old file after migration.
+            backupFile(oldFilePath);
+            oldFile.deleteSync();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error during old file migration: $e');
     }
+  }
+
+  // Validate the new shared_preferences file.
+  if (newFile.existsSync()) {
+    try {
+      String content = newFile.readAsStringSync();
+      content = fixJsonContent(content);
+      if (tryDecodeJson(content) == null) {
+        // If new file is invalid, back it up and delete.
+        debugPrint('New shared_preferences.json is corrupted. Repairing...');
+        backupFile(newFilePath);
+        newFile.deleteSync();
+      }
+    } catch (e) {
+      debugPrint("Failed to validate new shared_preferences.json: $e");
+    }
+  }
+
+  // Now safely initialize SharedPreferences.
+  try {
+    prefs = await SharedPreferences.getInstance();
+  } catch (e) {
+    debugPrint("Error initializing SharedPreferences: $e");
   }
 
   initialized = true;
@@ -108,7 +196,6 @@ String getInstanceSize(String name) {
   var path = getInstancePath(name).file('ext4.vhdx');
   try {
     var size = File(path).lengthSync();
-
     if (size > 0) {
       var sizeGB = size / 1024 / 1024 / 1024;
       return '${sizeGB.toStringAsFixed(2)} GB';
