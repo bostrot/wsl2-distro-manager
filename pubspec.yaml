@@ -65,12 +65,6 @@ msix_config:
   tile_icon_path: .\assets\logo_wsl_manager.png
   icons_background_color: transparent
   architecture: x64
-  capabilities:
-    - internetClient                   # For downloading updates, distro files, etc.
-    - privateNetworkClientServer       # For local network communication
-    - runFullTrust                     # To run PowerShell/WSL/CLI commands outside sandbox
-    - broadFileSystemAccess            # Access to arbitrary folders (requires user opt-in)
-    - documentsLibrary                 # For default saving of backups/configs
-    - downloadsFolder                  # To access downloaded distros/scripts
-  store: true
+  capabilities: internetClient,privateNetworkClientServer,runFullTrust,broadFileSystemAccess
+  #store: true
   languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW, tr-TR
