@@ -65,6 +65,6 @@ msix_config:
   tile_icon_path: .\assets\logo_wsl_manager.png
   icons_background_color: transparent
   architecture: x64
-  capabilities: internetClient,privateNetworkClientServer,runFullTrust,broadFileSystemAccess
+  capabilities: internetClient,privateNetworkClientServer,runFullTrust
   store: true
   languages: en-US, en-GB, en-AU, de-DE, pt-BR, pt-PT, zh-CN, zh-TW, tr-TR
