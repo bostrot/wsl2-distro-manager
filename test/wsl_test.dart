@@ -172,10 +172,27 @@ void main() {
     );
 
     // Cleanup
-    await WSLApi().cleanup('test');
+    String result = await WSLApi().cleanup('test');
 
+    // Should return success message
+    expect(result, contains('Cleanup completed successfully'));
+    
     // Still exists
     expect(await isInstance('test'), true);
+    
+    // Check that export file is cleaned up (should not exist after successful cleanup)
+    var exportFile = File('C:/WSL2-Distros/test/export.tar.gz');
+    expect(await exportFile.exists(), false);
+  });
+
+  test('Cleanup test with nonexistent instance', () async {
+    // Try to cleanup a nonexistent instance
+    try {
+      await WSLApi().cleanup('nonexistent-instance');
+      fail('Expected cleanup to throw an exception for nonexistent instance');
+    } catch (e) {
+      expect(e.toString(), contains('Cleanup failed'));
+    }
   });
 
   test('Move distro', () async {

@@ -298,8 +298,22 @@ class Bar extends StatelessWidget {
                             ),
                             submitInput: false,
                             cancelText: 'cancel-text'.i18n(),
-                            onSubmit: (inputText) {
-                              WSLApi().cleanup(widget.item);
+                            onSubmit: (inputText) async {
+                              // Show initial notification
+                              Notify.message(
+                                  'Cleaning up ${widget.item}. Exporting, removing and importing back...',
+                                  loading: true);
+                              
+                              try {
+                                String result = await WSLApi().cleanup(widget.item);
+                                // Show success notification
+                                Notify.message(
+                                    'Successfully cleaned up ${widget.item}');
+                              } catch (error) {
+                                // Show error notification
+                                Notify.message(
+                                    'Failed to clean up ${widget.item}: ${error.toString()}');
+                              }
                             });
                       }),
                 ),
