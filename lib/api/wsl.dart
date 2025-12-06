@@ -265,6 +265,13 @@ class WSLApi {
     ProcessResult results = await Process.run(
         'wsl', ['--export', distribution, location],
         stdoutEncoding: null);
+    
+    // Check if the export command was successful
+    if (results.exitCode != 0) {
+      String errorMsg = utf8Convert(results.stderr ?? []);
+      throw Exception('WSL export failed with exit code ${results.exitCode}: $errorMsg');
+    }
+    
     return utf8Convert(results.stdout);
   }
 
@@ -272,6 +279,12 @@ class WSLApi {
   Future<String> remove(String distribution) async {
     ProcessResult results =
         await Process.run('wsl', ['--unregister', distribution]);
+    
+    // Check if the remove command was successful
+    if (results.exitCode != 0) {
+      String errorMsg = utf8Convert(results.stderr ?? []);
+      throw Exception('WSL unregister failed with exit code ${results.exitCode}: $errorMsg');
+    }
 
     // Check if folder is empty and delete
     String path = getInstancePath(distribution).path;
@@ -469,6 +482,13 @@ class WSLApi {
           'wsl', ['--import', distribution, installLocation, filename],
           stdoutEncoding: null);
     }
+    
+    // Check if the import command was successful
+    if (results.exitCode != 0) {
+      String errorMsg = utf8Convert(results.stderr ?? []);
+      throw Exception('WSL import failed with exit code ${results.exitCode}: $errorMsg');
+    }
+    
     return utf8Convert(results.stdout);
   }
 
@@ -563,11 +583,54 @@ class WSLApi {
     var instancePath = getInstancePath(distribution);
     var file = instancePath.file('export.tar.gz');
 
-    // Export, remove, and import
-    await export(distribution, file);
-    await remove(distribution);
+    try {
+      // Step 1: Export the distribution
+      String exportResult = await export(distribution, file);
+      
+      // Check if export was successful by verifying the file exists and has content
+      File exportFile = File(file);
+      if (!exportFile.existsSync()) {
+        throw Exception('Export failed: Export file was not created at $file');
+      }
+      
+      // Check if the export file has content (should be > 0 bytes)
+      int fileSize = exportFile.lengthSync();
+      if (fileSize == 0) {
+        // Clean up empty file and throw error
+        exportFile.deleteSync();
+        throw Exception('Export failed: Export file is empty');
+      }
 
-    return await import(distribution, instancePath.path, file);
+      // Step 2: Remove the distribution only after successful export
+      String removeResult = await remove(distribution);
+
+      // Step 3: Import the distribution back
+      String importResult = await import(distribution, instancePath.path, file);
+      
+      // Step 4: Clean up the temporary export file after successful import
+      try {
+        if (exportFile.existsSync()) {
+          exportFile.deleteSync();
+        }
+      } catch (cleanupError) {
+        // Log cleanup error but don't fail the overall operation
+        logDebug('Failed to clean up export file: $cleanupError', null, null);
+      }
+
+      return 'Cleanup completed successfully: $exportResult $removeResult $importResult';
+    } catch (error, stack) {
+      // Log the error
+      logError(error, stack, null);
+      
+      // If export file exists but cleanup failed, keep it for user recovery
+      File exportFile = File(file);
+      if (exportFile.existsSync()) {
+        logDebug('Export file preserved at: $file', null, null);
+      }
+      
+      // Re-throw the error to be handled by the caller
+      throw Exception('Cleanup failed: ${error.toString()}');
+    }
   }
 
   /// Returns list of WSL distros
