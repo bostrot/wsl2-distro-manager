@@ -15,10 +15,10 @@ import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
 
 class Navbar extends StatefulWidget {
   const Navbar({
-    Key? key,
+    super.key,
     required this.title,
     required this.child,
-  }) : super(key: key);
+  });
   final String title;
   final Widget child;
 
@@ -275,7 +275,7 @@ class _NavbarState extends State<Navbar> {
 }
 
 class WindowButtons extends StatelessWidget {
-  const WindowButtons({Key? key}) : super(key: key);
+  const WindowButtons({super.key});
 
   @override
   Widget build(BuildContext context) {

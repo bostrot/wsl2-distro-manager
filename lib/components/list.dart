@@ -10,7 +10,7 @@ import 'helpers.dart';
 /// The widget of distros in the main page. This is being refreshed every 5
 /// seconds using the reloadEvery5Seconds() function.
 class DistroList extends StatefulWidget {
-  const DistroList({Key? key, required this.api}) : super(key: key);
+  const DistroList({super.key, required this.api});
 
   final WSLApi api;
 

@@ -264,26 +264,29 @@ class WSLApi {
   Future<String> export(String distribution, String location) async {
     ProcessResult results = await Process.run(
         'wsl', ['--export', distribution, location],
-        stdoutEncoding: null);
-    
+        stdoutEncoding: null, stderrEncoding: null);
+
     // Check if the export command was successful
     if (results.exitCode != 0) {
       String errorMsg = utf8Convert(results.stderr ?? []);
-      throw Exception('WSL export failed with exit code ${results.exitCode}: $errorMsg');
+      throw Exception(
+          'WSL export failed with exit code ${results.exitCode}: $errorMsg');
     }
-    
+
     return utf8Convert(results.stdout);
   }
 
   /// Remove a WSL distro by name
   Future<String> remove(String distribution) async {
-    ProcessResult results =
-        await Process.run('wsl', ['--unregister', distribution]);
-    
+    ProcessResult results = await Process.run(
+        'wsl', ['--unregister', distribution],
+        stdoutEncoding: null, stderrEncoding: null);
+
     // Check if the remove command was successful
     if (results.exitCode != 0) {
       String errorMsg = utf8Convert(results.stderr ?? []);
-      throw Exception('WSL unregister failed with exit code ${results.exitCode}: $errorMsg');
+      throw Exception(
+          'WSL unregister failed with exit code ${results.exitCode}: $errorMsg');
     }
 
     // Check if folder is empty and delete
@@ -297,7 +300,7 @@ class WSLApi {
         }
       }
     });
-    return results.stdout;
+    return utf8Convert(results.stdout);
   }
 
   /// Install a WSL distro by name
@@ -476,19 +479,20 @@ class WSLApi {
     if (isVhd) {
       results = await Process.run(
           'wsl', ['--import', distribution, installLocation, filename, '--vhd'],
-          stdoutEncoding: null);
+          stdoutEncoding: null, stderrEncoding: null);
     } else {
       results = await Process.run(
           'wsl', ['--import', distribution, installLocation, filename],
-          stdoutEncoding: null);
+          stdoutEncoding: null, stderrEncoding: null);
     }
-    
+
     // Check if the import command was successful
     if (results.exitCode != 0) {
       String errorMsg = utf8Convert(results.stderr ?? []);
-      throw Exception('WSL import failed with exit code ${results.exitCode}: $errorMsg');
+      throw Exception(
+          'WSL import failed with exit code ${results.exitCode}: $errorMsg');
     }
-    
+
     return utf8Convert(results.stdout);
   }
 
@@ -586,13 +590,13 @@ class WSLApi {
     try {
       // Step 1: Export the distribution
       String exportResult = await export(distribution, file);
-      
+
       // Check if export was successful by verifying the file exists and has content
       File exportFile = File(file);
       if (!exportFile.existsSync()) {
         throw Exception('Export failed: Export file was not created at $file');
       }
-      
+
       // Check if the export file has content (should be > 0 bytes)
       int fileSize = exportFile.lengthSync();
       if (fileSize == 0) {
@@ -606,7 +610,7 @@ class WSLApi {
 
       // Step 3: Import the distribution back
       String importResult = await import(distribution, instancePath.path, file);
-      
+
       // Step 4: Clean up the temporary export file after successful import
       try {
         if (exportFile.existsSync()) {
@@ -621,13 +625,13 @@ class WSLApi {
     } catch (error, stack) {
       // Log the error
       logError(error, stack, null);
-      
+
       // If export file exists but cleanup failed, keep it for user recovery
       File exportFile = File(file);
       if (exportFile.existsSync()) {
         logDebug('Export file preserved at: $file', null, null);
       }
-      
+
       // Re-throw the error to be handled by the caller
       throw Exception('Cleanup failed: ${error.toString()}');
     }

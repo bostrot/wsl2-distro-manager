@@ -405,25 +405,60 @@ class DockerImage {
     // Create distro folder
 
     var layers = 0;
-    bool done = false;
 
     if (!skipDownload) {
-      await _download(image, tmpImagePath,
+      String result = await _download(image, tmpImagePath,
           (current, total, currentStep, totalStep) {
         layers = total;
         if (kDebugMode) {
           print('${current + 1}/$total');
         }
         progress(current, total, currentStep, totalStep);
-        if (current + 1 == total && currentStep == totalStep) {
-          done = true;
-        }
       }, tag: tag);
-    }
 
-    // Wait for download to finish
-    while (!done && !skipDownload) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      if (result == "false") {
+        throw Exception("Download failed");
+      }
+
+      // Ensure downloads have actually finished before proceeding to extraction.
+      // Poll for the expected layer files in the temporary image path with a timeout.
+      final parent = SafePath(tmpImagePath);
+      final timeout = const Duration(minutes: 5);
+      final pollInterval = const Duration(milliseconds: 500);
+      final startTime = DateTime.now();
+
+      if (layers > 0) {
+        while (true) {
+          var allExist = true;
+          for (var i = 0; i < layers; i++) {
+            if (!File(parent.file('layer_$i.tar.gz')).existsSync()) {
+              allExist = false;
+              break;
+            }
+          }
+          if (allExist) {
+            break;
+          }
+          if (DateTime.now().difference(startTime) > timeout) {
+            throw Exception('Download did not complete within timeout');
+          }
+          await Future.delayed(pollInterval);
+        }
+      } else {
+        // If layer count was not reported, wait for at least one layer or config.json to appear.
+        while (true) {
+          final hasLayer0 = File(parent.file('layer_0.tar.gz')).existsSync();
+          final hasConfig = File(parent.file('config.json')).existsSync();
+          if (hasLayer0 || hasConfig) {
+            break;
+          }
+          if (DateTime.now().difference(startTime) > timeout) {
+            throw Exception(
+                'Download did not produce expected files within timeout');
+          }
+          await Future.delayed(pollInterval);
+        }
+      }
     }
 
     Notify.message('Extracting layers ...');

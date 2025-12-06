@@ -12,11 +12,10 @@ import 'package:wsl2distromanager/dialogs/dialogs.dart';
 /// running distros.
 class ListItem extends StatefulWidget {
   const ListItem(
-      {Key? key,
+      {super.key,
       required this.item,
       required this.running,
-      required this.trailing})
-      : super(key: key);
+      required this.trailing});
   final List<String> running;
   final String item;
   final String trailing;
@@ -36,12 +35,8 @@ class _ListItemState extends State<ListItem> {
     });
   }
 
-  isRunning(String distroName, List<String> runningList) {
-    if (runningList.contains(distroName)) {
-      return true;
-    }
-    return false;
-  }
+  bool isRunning(String distroName, List<String> runningList) =>
+      runningList.contains(distroName);
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +121,7 @@ class _ListItemState extends State<ListItem> {
 }
 
 class Bar extends StatelessWidget {
-  const Bar({Key? key, required this.widget}) : super(key: key);
+  const Bar({super.key, required this.widget});
 
   final ListItem widget;
 
@@ -303,9 +298,10 @@ class Bar extends StatelessWidget {
                               Notify.message(
                                   'Cleaning up ${widget.item}. Exporting, removing and importing back...',
                                   loading: true);
-                              
+
                               try {
-                                String result = await WSLApi().cleanup(widget.item);
+                                String result =
+                                    await WSLApi().cleanup(widget.item);
                                 // Show success notification
                                 Notify.message(
                                     'Successfully cleaned up ${widget.item}');

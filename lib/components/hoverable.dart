@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/gestures.dart';
 
 class Hoverable extends StatefulWidget {
-  const Hoverable({Key? key, required this.child}) : super(key: key);
+  const Hoverable({super.key, required this.child});
   final Widget child;
 
   @override
