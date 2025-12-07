@@ -13,6 +13,7 @@
     "copy-text": "コピー",
     "rename-text": "名前を変更",
     "settings-text": "設定",
+    "defaulteditor-text": "既定のエディター",
     "noinstancesfound-text": "インスタンスが見つからないか、移行が進行中です",
     "distronotfound-text": "ディストロが見つかりません",
     "distroexists-text": "この名前のディストリビューションは既に存在します",

@@ -13,6 +13,7 @@
     "copy-text": "Másolás",
     "rename-text": "Átnevezés",
     "settings-text": "Beállítások",
+    "defaulteditor-text": "Alapértelmezett szerkesztő",
     "noinstancesfound-text": "Nem található példány vagy éppen migráció folyik",
     "distronotfound-text": "Disztró nem található",
     "distroexists-text": "Már létezik ilyen nevű disztribúció",

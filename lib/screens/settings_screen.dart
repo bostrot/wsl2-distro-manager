@@ -26,6 +26,7 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _syncIpTextController = TextEditingController();
   final TextEditingController _repoTextController = TextEditingController();
   final TextEditingController _dockerrepoController = TextEditingController();
+  final TextEditingController _editorController = TextEditingController();
   bool showDocker = false;
   BuildContext? currentContext;
 
@@ -62,6 +63,10 @@ class SettingsPageState extends State<SettingsPage> {
       if (dockerRepoLink != null && dockerRepoLink != '') {
         _dockerrepoController.text = dockerRepoLink;
       }
+    }
+    String? editor = prefs.getString('Editor');
+    if (editor != null && editor != '') {
+      _editorController.text = editor;
     }
     showDocker = prefs.getBool('showDocker') ?? false;
     if (!mounted) return;
@@ -170,6 +175,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("DockerRepoLink", "https://registry-1.docker.io");
     }
 
+    // Save editor
+    if (_editorController.text.isNotEmpty) {
+      prefs.setString("Editor", _editorController.text);
+    } else {
+      prefs.remove("Editor");
+    }
+
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
@@ -210,6 +222,40 @@ class SettingsPageState extends State<SettingsPage> {
               },
             ),
             placeholder: prefs.getString("DistroPath") ?? defaultPath),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Tooltip(
+              message: 'defaulteditor-text'.i18n(),
+              child: Text('defaulteditor-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'defaulteditor-text'.i18n(),
+                child: TextBox(
+                  controller: _editorController,
+                  placeholder: 'notepad.exe',
+                  suffix: IconButton(
+                    icon: const Icon(FluentIcons.open_folder_horizontal,
+                        size: 15.0),
+                    onPressed: () async {
+                      FilePickerResult? result =
+                          await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['exe'],
+                      );
+                      if (result != null) {
+                        _editorController.text = result.files.single.path!;
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.all(8.0),

@@ -12,6 +12,7 @@
     "copy-text": "Copiar",
     "rename-text": "Renomear",
     "settings-text": "Configurações",
+    "defaulteditor-text": "Editor padrão",
     "noinstancesfound-text": "Nenhuma instância encontrada ou há uma migração em andamento",
     "distronotfound-text": "Distro não encontrada",
     "distroexists-text": "Já existe uma distribuição com este nome",

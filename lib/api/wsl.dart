@@ -110,7 +110,8 @@ class WSLApi {
 
   /// Open bashrc with notepad from WSL
   Future<String> openBashrc(String distribution) async {
-    List<String> argsRc = ['wsl', '-d', distribution, 'notepad.exe', '.bashrc'];
+    String editor = prefs.getString('Editor') ?? 'notepad.exe';
+    List<String> argsRc = ['wsl', '-d', distribution, editor, '.bashrc'];
     Process results = await shell.start('start', argsRc,
         mode: ProcessStartMode.normal, runInShell: true);
     return results.stdout.toString();
@@ -193,7 +194,8 @@ class WSLApi {
 
   /// Open wslconfig file
   void editConfig() async {
-    shell.start('start', ['notepad.exe', getWslConfigPath()],
+    String editor = prefs.getString('Editor') ?? 'notepad.exe';
+    shell.start('start', ['""', editor, getWslConfigPath()],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 

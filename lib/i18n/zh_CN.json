@@ -12,6 +12,7 @@
     "copy-text": "复制",
     "rename-text": "重命名",
     "settings-text": "设置",
+    "defaulteditor-text": "默认编辑器",
     "noinstancesfound-text": "未找到实例或正在进行迁移",
     "distronotfound-text": "找不到发行版",
     "distroexists-text": "具有此名称的发行版已存在",

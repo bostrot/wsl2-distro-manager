@@ -53,6 +53,8 @@ class MockHttpClientAdapter implements HttpClientAdapter {
 
 class MockShell implements Shell {
   final List<String> distros = [];
+  List<String> lastStartArguments = [];
+  String lastStartExecutable = '';
 
   bool simulateExportFailure = false;
   bool simulatePermissionDenied = false;
@@ -141,6 +143,8 @@ class MockShell implements Shell {
       bool includeParentEnvironment = true,
       bool runInShell = false,
       ProcessStartMode mode = ProcessStartMode.normal}) async {
+    lastStartExecutable = executable;
+    lastStartArguments = arguments;
     // Return a dummy process
     return MockProcess();
   }

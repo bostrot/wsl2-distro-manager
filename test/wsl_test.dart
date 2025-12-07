@@ -240,4 +240,35 @@ void main() {
       await Directory('C:/WSL2-Distros/test-moved').delete(recursive: true);
     }
   });
+
+  test('Check if instance exists', () async {
+    expect(await isInstance('test'), false);
+  });
+
+  group('Editor Settings', () {
+    test('Default editor is notepad.exe', () async {
+      prefs.remove('Editor');
+      wslApi.editConfig();
+      // Wait for async execution
+      await Future.delayed(Duration.zero);
+
+      expect(mockShell.lastStartArguments, contains('notepad.exe'));
+    });
+
+    test('Custom editor is used', () async {
+      prefs.setString('Editor', 'code.exe');
+      wslApi.editConfig();
+      // Wait for async execution
+      await Future.delayed(Duration.zero);
+
+      expect(mockShell.lastStartArguments, contains('code.exe'));
+    });
+
+    test('Open bashrc uses custom editor', () async {
+      prefs.setString('Editor', 'vim.exe');
+      await wslApi.openBashrc('Ubuntu');
+
+      expect(mockShell.lastStartArguments, contains('vim.exe'));
+    });
+  });
 }
