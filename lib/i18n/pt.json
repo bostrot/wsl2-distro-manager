@@ -168,5 +168,7 @@
     "descriptionhint-text": "Descrição do modelo",
     "exporting-text": "Exportando ...",
     "removing-text": "Removendo ...",
-    "importing-text": "Importando ..."
+    "importing-text": "Importando ...",
+    "defaultdatalocation-text": "Localização geral de dados",
+    "datapath-text": "Caminho onde salvar modelos e downloads"
 }

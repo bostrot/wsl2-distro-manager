@@ -198,8 +198,14 @@ class SettingsPageState extends State<SettingsPage> {
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
     }
+    // Data location setting
+    if (_settings['General Data Location']!.text.isNotEmpty) {
+      prefs.setString("DataPath", _settings['General Data Location']!.text);
+    }
     _settings.forEach((key, value) {
-      if (key != 'Default Distro Location' && value.text.isNotEmpty) {
+      if (key != 'Default Distro Location' &&
+          key != 'General Data Location' &&
+          value.text.isNotEmpty) {
         WSLApi().setConfig('wsl2', key, value.text);
       }
     });
@@ -234,6 +240,29 @@ class SettingsPageState extends State<SettingsPage> {
               },
             ),
             placeholder: prefs.getString("DistroPath") ?? defaultPath),
+        settingsWidget(context,
+            title: 'defaultdatalocation-text'.i18n(),
+            name: 'General Data Location',
+            tooltip: 'datapath-text'.i18n(),
+            suffix: IconButton(
+              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+              onPressed: () async {
+                String? path = await FilePicker.platform.getDirectoryPath(
+                  initialDirectory: prefs.getString("DataPath") ??
+                      prefs.getString("DistroPath") ??
+                      defaultPath,
+                );
+                if (path != null &&
+                    _settings['General Data Location'] != null) {
+                  _settings['General Data Location']!.text = path;
+                } else {
+                  // User canceled the picker
+                }
+              },
+            ),
+            placeholder: prefs.getString("DataPath") ??
+                prefs.getString("DistroPath") ??
+                defaultPath),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Expander(

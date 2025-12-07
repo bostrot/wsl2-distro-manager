@@ -518,8 +518,9 @@ class WSLApi {
     }
 
     // Download
-    String downloadPath = getDistroPath().file('$filename.tar.gz');
-    String downloadPathTmp = getDistroPath().file('$filename.tar.gz.tmp');
+    var dataPath = getDataPath()..cd('distros');
+    String downloadPath = dataPath.file('$filename.tar.gz');
+    String downloadPathTmp = dataPath.file('$filename.tar.gz.tmp');
     bool fileExists = await File(downloadPath).exists();
     if (!image && distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;

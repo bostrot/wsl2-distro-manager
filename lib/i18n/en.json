@@ -168,5 +168,7 @@
     "descriptionhint-text": "Description of the template",
     "exporting-text": "Exporting ...",
     "removing-text": "Removing ...",
-    "importing-text": "Importing ..."
+    "importing-text": "Importing ...",
+    "defaultdatalocation-text": "General Data Location",
+    "datapath-text": "Path where to save templates and downloads"
 }

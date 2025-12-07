@@ -168,5 +168,7 @@
     "descriptionhint-text": "A sablon leírása",
     "exporting-text": "Exportálás ...",
     "removing-text": "Törlés ...",
-    "importing-text": "Importálás ..."
+    "importing-text": "Importálás ...",
+    "defaultdatalocation-text": "Általános adatmentési hely",
+    "datapath-text": "Sablonok és letöltések mentési helye"
 }

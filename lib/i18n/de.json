@@ -169,5 +169,7 @@
     "descriptionhint-text": "Beschreibung der Vorlage",
     "exporting-text": "Exportieren ...",
     "removing-text": "Entfernen ...",
-    "importing-text": "Importieren ..."
+    "importing-text": "Importieren ...",
+    "defaultdatalocation-text": "Allgemeiner Datenspeicherort",
+    "datapath-text": "Pfad zum Speichern von Vorlagen und Downloads"
 }

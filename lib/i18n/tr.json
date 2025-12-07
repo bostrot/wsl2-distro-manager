@@ -169,5 +169,7 @@
     "descriptionhint-text": "Şablonun açıklaması",
     "exporting-text": "Dışa aktarılıyor ...",
     "removing-text": "Kaldırılıyor ...",
-    "importing-text": "İçe aktarılıyor ..."
+    "importing-text": "İçe aktarılıyor ...",
+    "defaultdatalocation-text": "Genel Veri Konumu",
+    "datapath-text": "Şablonların ve indirmelerin kaydedileceği yol"
 }

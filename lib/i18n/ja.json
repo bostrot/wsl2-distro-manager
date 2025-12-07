@@ -168,5 +168,7 @@
     "descriptionhint-text": "テンプレートの説明",
     "exporting-text": "エクスポート中 ...",
     "removing-text": "削除中 ...",
-    "importing-text": "インポート中 ..."
+    "importing-text": "インポート中 ...",
+    "defaultdatalocation-text": "一般的なデータの場所",
+    "datapath-text": "テンプレートとダウンロードを保存するパス"
 }

@@ -77,9 +77,7 @@ class Templates {
   ///
   /// e.g. C:\WSL2-Distros\templates
   SafePath getTemplatePath() {
-    return getDistroPath()
-      ..cdUp()
-      ..cd('templates');
+    return getDataPath()..cd('templates');
   }
 
   /// Return the path to a template by [name].

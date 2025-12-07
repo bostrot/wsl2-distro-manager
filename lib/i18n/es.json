@@ -167,5 +167,7 @@
     "descriptionhint-text": "Descripción de la plantilla",
     "exporting-text": "Exportando ...",
     "removing-text": "Eliminando ...",
-    "importing-text": "Importando ..."
+    "importing-text": "Importando ...",
+    "defaultdatalocation-text": "Ubicación general de datos",
+    "datapath-text": "Ruta donde guardar plantillas y descargas"
 }

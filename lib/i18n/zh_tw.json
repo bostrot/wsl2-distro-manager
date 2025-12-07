@@ -168,5 +168,7 @@
     "descriptionhint-text": "範本描述",
     "exporting-text": "正在匯出 ...",
     "removing-text": "正在移除 ...",
-    "importing-text": "正在匯入 ..."
+    "importing-text": "正在匯入 ...",
+    "defaultdatalocation-text": "通用資料位置",
+    "datapath-text": "儲存範本和下載的路徑"
 }
