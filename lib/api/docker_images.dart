@@ -599,11 +599,15 @@ class DockerImage {
     return File(getDistroPath().file('${filename(image, tag)}.tar.gz'))
         .existsSync();
   }
-
+]
   /// Formate image and tag to filename format
   String filename(String image, String? tag) {
     if (image.isEmpty) {
       throw Exception('Image is not valid');
+    }
+    // Add library to image name
+    if (image.split('/').length == 1) {
+      image = 'library/$image';
     }
     final filename = image.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     if (tag == null) {

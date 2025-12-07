@@ -257,8 +257,11 @@ class MockHttpServer extends Stream<HttpRequest> implements HttpServer {
   }
 
   @override
-  StreamSubscription<HttpRequest> listen(void Function(HttpRequest event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  StreamSubscription<HttpRequest> listen(
+      void Function(HttpRequest event)? onData,
+      {Function? onError,
+      void Function()? onDone,
+      bool? cancelOnError}) {
     return const Stream<HttpRequest>.empty().listen(onData,
         onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
