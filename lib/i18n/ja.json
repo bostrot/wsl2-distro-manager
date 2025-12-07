@@ -165,5 +165,8 @@
     "move-error-text": "ディストリビューション '%s0' を '%s1' に移動できませんでした。\nエラー: %s2\n\n考えられる原因:\n- 権限が不足しています (管理者として実行してみてください)\n- 移動先のディスク容量が不足しています\n- 移動先のパスが無効かアクセスできません\n\n上記を確認して、もう一度お試しください。",
     "edittemplate-text": "テンプレートを編集",
     "description-text": "説明",
-    "descriptionhint-text": "テンプレートの説明"
+    "descriptionhint-text": "テンプレートの説明",
+    "exporting-text": "エクスポート中 ...",
+    "removing-text": "削除中 ...",
+    "importing-text": "インポート中 ..."
 }

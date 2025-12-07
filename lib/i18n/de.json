@@ -166,5 +166,8 @@
     "move-error-text": "Fehler beim Verschieben der Distribution '%s0' nach '%s1'.\nFehler: %s2\n\nMögliche Gründe:\n- Unzureichende Berechtigungen (versuchen Sie es als Administrator)\n- Nicht genügend Speicherplatz am Zielort\n- Ungültiger oder unzugänglicher Zielpfad\n\nBitte überprüfen Sie dies und versuchen Sie es erneut.",
     "edittemplate-text": "Vorlage bearbeiten",
     "description-text": "Beschreibung",
-    "descriptionhint-text": "Beschreibung der Vorlage"
+    "descriptionhint-text": "Beschreibung der Vorlage",
+    "exporting-text": "Exportieren ...",
+    "removing-text": "Entfernen ...",
+    "importing-text": "Importieren ..."
 }

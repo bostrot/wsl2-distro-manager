@@ -164,5 +164,8 @@
     "move-error-text": "Error al mover la distribución '%s0' a '%s1'.\nError: %s2\n\nPosibles razones:\n- Permisos insuficientes (intente ejecutar como Administrador)\n- Espacio en disco insuficiente en el destino\n- Ruta de destino inválida o inaccesible\n\nPor favor, verifique lo anterior e intente nuevamente.",
     "edittemplate-text": "Editar plantilla",
     "description-text": "Descripción",
-    "descriptionhint-text": "Descripción de la plantilla"
+    "descriptionhint-text": "Descripción de la plantilla",
+    "exporting-text": "Exportando ...",
+    "removing-text": "Eliminando ...",
+    "importing-text": "Importando ..."
 }

@@ -166,5 +166,8 @@
     "move-error-text": "'%s0' dağıtımı '%s1' konumuna taşınamadı.\nHata: %s2\n\nOlası nedenler:\n- Yetersiz izinler (Yönetici olarak çalıştırmayı deneyin)\n- Hedefte yeterli disk alanı yok\n- Geçersiz veya erişilemez hedef yolu\n\nLütfen yukarıdakileri kontrol edin ve tekrar deneyin.",
     "edittemplate-text": "Şablonu Düzenle",
     "description-text": "Açıklama",
-    "descriptionhint-text": "Şablonun açıklaması"
+    "descriptionhint-text": "Şablonun açıklaması",
+    "exporting-text": "Dışa aktarılıyor ...",
+    "removing-text": "Kaldırılıyor ...",
+    "importing-text": "İçe aktarılıyor ..."
 }

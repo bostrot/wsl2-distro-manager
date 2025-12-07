@@ -594,12 +594,14 @@ class WSLApi {
   }
 
   /// Clean up WSL distros. Exporting, deleting, and importing.
-  Future<String> cleanup(String distribution) async {
+  Future<String> cleanup(String distribution,
+      {Function(String)? onProgress}) async {
     var instancePath = getInstancePath(distribution);
     var file = instancePath.file('export.tar.gz');
 
     try {
       // Step 1: Export the distribution
+      onProgress?.call('exporting-text'.i18n());
       String exportResult = await export(distribution, file);
 
       // Check if export was successful by verifying the file exists and has content
@@ -617,9 +619,11 @@ class WSLApi {
       }
 
       // Step 2: Remove the distribution only after successful export
+      onProgress?.call('removing-text'.i18n());
       String removeResult = await remove(distribution);
 
       // Step 3: Import the distribution back
+      onProgress?.call('importing-text'.i18n());
       String importResult = await import(distribution, instancePath.path, file);
 
       // Step 4: Clean up the temporary export file after successful import

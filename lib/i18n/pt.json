@@ -165,5 +165,8 @@
     "move-error-text": "Falha ao mover a distribuição '%s0' para '%s1'.\nErro: %s2\n\nRazões possíveis:\n- Permissões insuficientes (tente executar como Administrador)\n- Espaço em disco insuficiente no destino\n- Caminho de destino inválido ou inacessível\n\nPor favor, verifique o acima e tente novamente.",
     "edittemplate-text": "Editar modelo",
     "description-text": "Descrição",
-    "descriptionhint-text": "Descrição do modelo"
+    "descriptionhint-text": "Descrição do modelo",
+    "exporting-text": "Exportando ...",
+    "removing-text": "Removendo ...",
+    "importing-text": "Importando ..."
 }
