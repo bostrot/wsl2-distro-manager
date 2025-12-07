@@ -13,6 +13,7 @@
     "rename-text": "Renombrar",
     "settings-text": "Ajustes",
     "defaulteditor-text": "Editor predeterminado",
+    "defaultterminal-text": "Terminal predeterminado",
     "noinstancesfound-text": "No se encontraron instancias o hay una migración en progreso",
     "distronotfound-text": "Distribución no encontrada",
     "distroexists-text": "Ya existe una distribución con este nombre",

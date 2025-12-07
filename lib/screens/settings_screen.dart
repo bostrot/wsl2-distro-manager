@@ -27,6 +27,7 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _repoTextController = TextEditingController();
   final TextEditingController _dockerrepoController = TextEditingController();
   final TextEditingController _editorController = TextEditingController();
+  final TextEditingController _terminalController = TextEditingController();
   bool showDocker = false;
   BuildContext? currentContext;
 
@@ -67,6 +68,10 @@ class SettingsPageState extends State<SettingsPage> {
     String? editor = prefs.getString('Editor');
     if (editor != null && editor != '') {
       _editorController.text = editor;
+    }
+    String? terminal = prefs.getString('Terminal');
+    if (terminal != null && terminal != '') {
+      _terminalController.text = terminal;
     }
     showDocker = prefs.getBool('showDocker') ?? false;
     if (!mounted) return;
@@ -182,6 +187,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("Editor");
     }
 
+    // Save terminal
+    if (_terminalController.text.isNotEmpty) {
+      prefs.setString("Terminal", _terminalController.text);
+    } else {
+      prefs.remove("Terminal");
+    }
+
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
@@ -248,6 +260,40 @@ class SettingsPageState extends State<SettingsPage> {
                       );
                       if (result != null) {
                         _editorController.text = result.files.single.path!;
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Tooltip(
+              message: 'defaultterminal-text'.i18n(),
+              child: Text('defaultterminal-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'defaultterminal-text'.i18n(),
+                child: TextBox(
+                  controller: _terminalController,
+                  placeholder: 'wt.exe',
+                  suffix: IconButton(
+                    icon: const Icon(FluentIcons.open_folder_horizontal,
+                        size: 15.0),
+                    onPressed: () async {
+                      FilePickerResult? result =
+                          await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['exe'],
+                      );
+                      if (result != null) {
+                        _terminalController.text = result.files.single.path!;
                       }
                     },
                   ),

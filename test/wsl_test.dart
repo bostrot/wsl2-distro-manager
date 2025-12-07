@@ -271,4 +271,29 @@ void main() {
       expect(mockShell.lastStartArguments, contains('vim.exe'));
     });
   });
+
+  group('Terminal Tests', () {
+    test('WSL start with custom terminal', () async {
+      prefs.setString('Terminal', 'custom_terminal.exe');
+      wslApi.start('Ubuntu');
+      // Wait for async
+      await Future.delayed(const Duration(milliseconds: 100));
+      expect(mockShell.lastStartExecutable, 'custom_terminal.exe');
+      expect(mockShell.lastStartArguments, contains('wsl'));
+      expect(mockShell.lastStartArguments, contains('-d'));
+      expect(mockShell.lastStartArguments, contains('Ubuntu'));
+      prefs.remove('Terminal');
+    });
+
+    test('WSL start with default terminal', () async {
+      prefs.remove('Terminal');
+      wslApi.start('Ubuntu');
+      // Wait for async
+      await Future.delayed(const Duration(milliseconds: 100));
+      expect(mockShell.lastStartExecutable, 'start');
+      expect(mockShell.lastStartArguments, contains('wsl'));
+      expect(mockShell.lastStartArguments, contains('-d'));
+      expect(mockShell.lastStartArguments, contains('Ubuntu'));
+    });
+  });
 }

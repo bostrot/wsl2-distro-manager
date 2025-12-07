@@ -94,7 +94,14 @@ class WSLApi {
       // Run shell to keep open
       args.add(';/bin/sh');
     }
-    await shell.start('start', args,
+
+    String executable = 'start';
+    String? terminal = prefs.getString('Terminal');
+    if (terminal != null && terminal.isNotEmpty) {
+      executable = terminal;
+    }
+
+    await shell.start(executable, args,
         mode: ProcessStartMode.detached, runInShell: true);
     if (kDebugMode) {
       print("Done starting $distribution");

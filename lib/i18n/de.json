@@ -14,6 +14,7 @@
     "rename-text": "Umbenennen",
     "settings-text": "Einstellungen",
     "defaulteditor-text": "Standard-Editor",
+    "defaultterminal-text": "Standard-Terminal",
     "noinstancesfound-text": "Keine Instanzen gefunden oder es wird gerade migriert",
     "distronotfound-text": "Distro nicht gefunden",
     "distroexists-text": "Distribution mit diesem Namen existiert bereits",
