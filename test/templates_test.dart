@@ -122,15 +122,15 @@ void main() {
     await templates.setTemplateDescription(
         'test_rename', 'Initial description');
 
-    expect(templates.getTemplateDescription('test_rename'),
-        'Initial description');
+    expect(
+        templates.getTemplateDescription('test_rename'), 'Initial description');
 
     await templates.renameTemplate('test_rename', 'test_renamed');
 
-    expect(File(templates.getTemplateFilePath('test_renamed')).existsSync(),
-        true);
-    expect(File(templates.getTemplateFilePath('test_rename')).existsSync(),
-        false);
+    expect(
+        File(templates.getTemplateFilePath('test_renamed')).existsSync(), true);
+    expect(
+        File(templates.getTemplateFilePath('test_rename')).existsSync(), false);
     expect(templates.getTemplateDescription('test_renamed'),
         'Initial description');
     expect(templates.getTemplateDescription('test_rename'), '');
