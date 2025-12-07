@@ -55,6 +55,7 @@ class MockShell implements Shell {
   final List<String> distros = [];
   List<String> lastStartArguments = [];
   String lastStartExecutable = '';
+  String? execCmdAsRootResponse;
 
   bool simulateExportFailure = false;
   bool simulatePermissionDenied = false;
@@ -121,6 +122,12 @@ class MockShell implements Shell {
 
     if (arguments.contains('ls') && arguments.contains('/testfile')) {
       stdout = '/testfile\n';
+    }
+
+    if (arguments.contains('cat') && arguments.contains('/etc/wsl.conf')) {
+      if (execCmdAsRootResponse != null) {
+        stdout = execCmdAsRootResponse!;
+      }
     }
 
     dynamic stdoutData = stdout;

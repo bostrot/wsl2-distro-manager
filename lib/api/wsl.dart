@@ -788,4 +788,27 @@ class WSLApi {
         onMsg: (msg) {}, onDone: () {}, showOutput: false);
     return true;
   }
+
+  /// Get wsl.conf settings
+  Future<Map<String, Map<String, String>>> getWSLConf(String distro) async {
+    String output = await execCmdAsRoot(distro, 'cat /etc/wsl.conf');
+    Map<String, Map<String, String>> config = {};
+    String currentSection = '';
+
+    for (String line in output.split('\n')) {
+      line = line.trim();
+      if (line.startsWith('[') && line.endsWith(']')) {
+        currentSection = line.substring(1, line.length - 1);
+        config[currentSection] = {};
+      } else if (line.contains('=')) {
+        List<String> parts = line.split('=');
+        String key = parts[0].trim();
+        String value = parts.sublist(1).join('=').trim();
+        if (currentSection.isNotEmpty) {
+          config[currentSection]![key] = value;
+        }
+      }
+    }
+    return config;
+  }
 }

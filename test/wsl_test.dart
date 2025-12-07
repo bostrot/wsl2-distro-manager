@@ -296,4 +296,30 @@ void main() {
       expect(mockShell.lastStartArguments, contains('Ubuntu'));
     });
   });
+
+  test('WSL getWSLConf parses correctly', () async {
+    // Mock execCmdAsRoot to return sample config
+    mockShell.execCmdAsRootResponse = '''
+[automount]
+enabled = true
+options = "metadata,uid=1000,gid=1000,umask=022,fmask=11,case=off"
+mountFsTab = true
+
+[network]
+generateHosts = true
+hostname = MyHost
+
+[boot]
+systemd = true
+''';
+
+    var config = await wslApi.getWSLConf('Ubuntu');
+
+    expect(config['automount']!['enabled'], 'true');
+    expect(config['automount']!['mountFsTab'], 'true');
+    expect(config['automount']!['options'], '"metadata,uid=1000,gid=1000,umask=022,fmask=11,case=off"');
+    expect(config['network']!['generateHosts'], 'true');
+    expect(config['network']!['hostname'], 'MyHost');
+    expect(config['boot']!['systemd'], 'true');
+  });
 }
