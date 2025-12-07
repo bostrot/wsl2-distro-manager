@@ -599,6 +599,14 @@ class WSLApi {
     var instancePath = getInstancePath(distribution);
     var file = instancePath.file('export.tar.gz');
 
+    // Get default user before export
+    String defaultUser = 'root';
+    try {
+      defaultUser = await getDefaultUser(distribution);
+    } catch (e) {
+      logDebug('Could not determine default user: $e', null, null);
+    }
+
     try {
       // Step 1: Export the distribution
       onProgress?.call('exporting-text'.i18n());
@@ -625,6 +633,15 @@ class WSLApi {
       // Step 3: Import the distribution back
       onProgress?.call('importing-text'.i18n());
       String importResult = await import(distribution, instancePath.path, file);
+
+      // Restore default user if it was not root
+      if (defaultUser != 'root') {
+        try {
+          await setSetting(distribution, 'user', 'default', defaultUser);
+        } catch (e) {
+          logDebug('Failed to restore default user: $e', null, null);
+        }
+      }
 
       // Step 4: Clean up the temporary export file after successful import
       try {
@@ -814,5 +831,18 @@ class WSLApi {
       }
     }
     return config;
+  }
+
+  /// Get default user of a distro
+  Future<String> getDefaultUser(String distribution) async {
+    ProcessResult result = await shell.run(
+        'wsl', ['-d', distribution, '-e', 'whoami'],
+        stdoutEncoding: null, stderrEncoding: null);
+
+    if (result.exitCode != 0) {
+      logDebug('Failed to get default user for $distribution', null, null);
+      return 'root';
+    }
+    return utf8Convert(result.stdout).trim();
   }
 }
