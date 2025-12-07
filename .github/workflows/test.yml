@@ -1,0 +1,30 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+        
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Analyze
+        run: flutter analyze
+        
+      - name: Run tests
+        run: flutter test
