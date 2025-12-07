@@ -91,9 +91,11 @@ Future<void> createInstance(
   TextEditingController locationController,
   WSLApi api,
   TextEditingController autoSuggestBox,
-  TextEditingController userController,
-) async {
+  TextEditingController userController, {
+  DockerImage? dockerImage,
+}) async {
   plausible.event(name: "wsl_create");
+  DockerImage docker = dockerImage ?? DockerImage();
   String label = nameController.text;
   // Replace all special characters with _
   String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
@@ -135,15 +137,15 @@ Future<void> createInstance(
 
       bool isDownloaded = false;
       // Check if image already downloaded
-      if (await DockerImage().isDownloaded(image, tag: tag)) {
+      if (await docker.isDownloaded(image, tag: tag)) {
         isDownloaded = true;
       }
 
       // Check if image exists
-      if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
+      if (!isDownloaded && await docker.hasImage(image, tag: tag)) {
         // Download image
         Notify.message('${'downloading-text'.i18n()}...');
-        var docker = DockerImage()..distroName = distroName;
+        docker.distroName = distroName;
         try {
           await docker.getRootfs(name, image, tag: tag, progress: progressFn);
         } catch (e) {
@@ -152,7 +154,7 @@ Future<void> createInstance(
         }
         Notify.message('downloaded-text'.i18n());
         // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
+        distroName = docker.filename(image, tag);
       } else if (!isDownloaded) {
         Notify.message('distronotfound-text'.i18n());
         return;
@@ -160,7 +162,7 @@ Future<void> createInstance(
 
       if (isDownloaded) {
         // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
+        distroName = docker.filename(image, tag);
       }
     }
 

@@ -11,7 +11,14 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 
+import 'mocks.dart';
+
+bool useRealIntegrations = Platform.environment['INTEGRATION_TESTS'] == 'true';
+
 void main() {
+  WSLApi api = useRealIntegrations ? WSLApi() : WSLApi(shell: MockShell());
+  Templates templates = Templates(wslApi: api);
+
   void statusMsg(
     String msg, {
     Duration? duration,
@@ -26,16 +33,17 @@ void main() {
     await createInstance(
       TextEditingController(text: name),
       TextEditingController(text: loc),
-      WSLApi(),
+      api,
       TextEditingController(text: image),
       TextEditingController(text: user),
+      dockerImage: useRealIntegrations ? null : MockDockerImage(),
     );
   }
 
   Future<bool> isInstance(String name) async {
     bool found = false;
     // Get list
-    var list = await WSLApi().list(false);
+    var list = await api.list(false);
     found = false;
 
     for (var item in list.all) {
@@ -48,20 +56,16 @@ void main() {
 
   // Stuff before tests
   setUpAll(() async {
-    // Init bindings for tests
     WidgetsFlutterBinding.ensureInitialized();
     DartPluginRegistrant.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
-    // Init prefs
     await initPrefs();
 
     Notify();
     Notify.message = statusMsg;
 
-    // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
 
-    // Create test instance
     await createDistro(
       'test',
       '',
@@ -71,46 +75,45 @@ void main() {
 
     expect(await isInstance('test'), true);
 
-    // Create file testfile in test instance
-    var res = await WSLApi().execCmdAsRoot('test', 'touch /testfile');
+    var res = await api.execCmdAsRoot('test', 'touch /testfile');
 
     expect(res, "");
   });
 
   tearDownAll(() {
     // Delete the instance
-    WSLApi().remove('test');
-    WSLApi().remove('test2');
-    Templates().deleteTemplate('test');
-    Templates().deleteTemplate('test-2');
-    Templates().deleteTemplate('test-3');
+    api.remove('test');
+    api.remove('test2');
+    templates.deleteTemplate('test');
+    templates.deleteTemplate('test-2');
+    templates.deleteTemplate('test-3');
   });
 
   test('Create template', () async {
-    await Templates().saveTemplate('test');
-    expect(File(Templates().getTemplateFilePath('test')).existsSync(), true);
+    await templates.saveTemplate('test');
+    expect(File(templates.getTemplateFilePath('test')).existsSync(), true);
   });
 
   test('Create template of already existent', () async {
-    await Templates().saveTemplate('test');
-    expect(File(Templates().getTemplateFilePath('test')).existsSync(), true);
-    await Templates().saveTemplate('test');
-    expect(File(Templates().getTemplateFilePath('test-2')).existsSync(), true);
-    await Templates().saveTemplate('test');
-    expect(File(Templates().getTemplateFilePath('test-3')).existsSync(), true);
+    await templates.saveTemplate('test');
+    expect(File(templates.getTemplateFilePath('test')).existsSync(), true);
+    await templates.saveTemplate('test');
+    expect(File(templates.getTemplateFilePath('test-2')).existsSync(), true);
+    await templates.saveTemplate('test');
+    expect(File(templates.getTemplateFilePath('test-3')).existsSync(), true);
   });
 
   test('Use template', () async {
-    await Templates().useTemplate('test', 'test2');
+    await templates.useTemplate('test', 'test2');
     expect(await isInstance('test2'), true);
 
     // Check if testfile exists
-    var res = await WSLApi().execCmdAsRoot('test2', 'ls /testfile');
+    var res = await api.execCmdAsRoot('test2', 'ls /testfile');
     expect(res, "/testfile\n");
   });
 
   test('Delete template', () async {
-    await Templates().deleteTemplate('test');
-    expect(File(Templates().getTemplateFilePath('test')).existsSync(), false);
+    await templates.deleteTemplate('test');
+    expect(File(templates.getTemplateFilePath('test')).existsSync(), false);
   });
 }

@@ -18,6 +18,10 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 
+import 'mocks.dart';
+
+bool useRealIntegrations = Platform.environment['INTEGRATION_TESTS'] == 'true';
+
 void main() {
   void statusMsg(
     String msg, {
@@ -31,21 +35,19 @@ void main() {
 
   // Stuff before tests
   setUpAll(() async {
-    // Init bindings for tests
     WidgetsFlutterBinding.ensureInitialized();
-    DartPluginRegistrant.ensureInitialized(); //<----FIX THE PROBLEM
+    DartPluginRegistrant.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
-    // Init prefs
     await initPrefs();
 
     Notify();
     Notify.message = statusMsg;
   });
 
-  Future<bool> isInstance(String name) async {
+  Future<bool> isInstance(String name, WSLApi api) async {
     bool found = false;
     // Get list
-    var list = await WSLApi().list(false);
+    var list = await api.list(false);
     found = false;
 
     for (var item in list.all) {
@@ -57,6 +59,9 @@ void main() {
   }
 
   test('Create instance test alpine', () async {
+    WSLApi api = useRealIntegrations ? WSLApi() : WSLApi(shell: MockShell());
+    DockerImage? dockerImage = useRealIntegrations ? null : MockDockerImage();
+
     TextEditingController nameController = TextEditingController(text: 'test');
     TextEditingController locationController = TextEditingController(text: '');
     TextEditingController autoSuggestBox =
@@ -71,38 +76,40 @@ void main() {
     await createInstance(
       nameController,
       locationController,
-      WSLApi(),
+      api,
       autoSuggestBox,
       TextEditingController(text: ''),
+      dockerImage: dockerImage,
     );
 
-    // Verify that the file exists and has > 2MB
     expect(await file.exists(), true);
     expect(await file.length(), greaterThan(2 * 1024 * 1024));
 
-    expect(await isInstance('test'), true);
+    expect(await isInstance('test', api), true);
 
-    // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
 
-    expect(await isInstance('test'), false);
+    expect(await isInstance('test', api), false);
 
-    // Test creating it without re-downloading the rootfs
     await createInstance(
       nameController,
       locationController,
-      WSLApi(),
+      api,
       autoSuggestBox,
       TextEditingController(text: ''),
+      dockerImage: dockerImage,
     );
 
-    expect(await isInstance('test'), true);
+    expect(await isInstance('test', api), true);
 
     // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
   });
 
   test('Create instance test nginx (nonroot)', () async {
+    WSLApi api = useRealIntegrations ? WSLApi() : WSLApi(shell: MockShell());
+    DockerImage? dockerImage = useRealIntegrations ? null : MockDockerImage();
+
     TextEditingController nameController = TextEditingController(text: 'test');
     TextEditingController locationController = TextEditingController(text: '');
     TextEditingController autoSuggestBox =
@@ -114,47 +121,51 @@ void main() {
     }
 
     // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
 
     // Test build context
     await createInstance(
       nameController,
       locationController,
-      WSLApi(),
+      api,
       autoSuggestBox,
       TextEditingController(text: ''),
+      dockerImage: dockerImage,
     );
 
     // Verify that the file exists and has > 2MB
     expect(await file.exists(), true);
     expect(await file.length(), greaterThan(2 * 1024 * 1024));
-    expect(await isInstance('test'), true);
+    expect(await isInstance('test', api), true);
 
     // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
 
-    expect(await isInstance('test'), false);
+    expect(await isInstance('test', api), false);
 
     // Test creating it without re-downloading the rootfs
     await createInstance(
       nameController,
       locationController,
-      WSLApi(),
+      api,
       autoSuggestBox,
       TextEditingController(text: ''),
+      dockerImage: dockerImage,
     );
 
-    expect(await isInstance('test'), true);
+    expect(await isInstance('test', api), true);
 
     // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
   }, timeout: const Timeout(Duration(minutes: 10)));
 
   test('Docker rootfs download single layer', () async {
+    DockerImage docker =
+        useRealIntegrations ? DockerImage() : MockDockerImage();
     const String image = 'library/alpine';
     const String tag = 'latest';
     const String distroPath = 'C:/WSL2-Distros/distros';
-    final String filename = DockerImage().filename(image, tag);
+    final String filename = docker.filename(image, tag);
 
     final file = File('$distroPath/$filename.tar.gz');
     if (await file.exists()) {
@@ -162,7 +173,7 @@ void main() {
     }
 
     // Get rootfs
-    await DockerImage().getRootfs("test", image, tag: tag,
+    await docker.getRootfs("test", image, tag: tag,
         progress: ((count, total, countStep, totalStep) {
       if (kDebugMode) {
         print('Downloading $count/$total ($countStep/$totalStep)');
@@ -176,12 +187,14 @@ void main() {
 
 // timeout test 2 minutes
   test('Docker rootfs download multi layer', () async {
+    DockerImage docker =
+        useRealIntegrations ? DockerImage() : MockDockerImage();
     const String image = 'jekyll/jekyll';
     const String tag = 'latest';
     const String distroPath = 'C:/WSL2-Distros/distros';
-    final String filename = DockerImage().filename(image, tag);
+    final String filename = docker.filename(image, tag);
     // Get rootfs
-    await DockerImage().getRootfs("test", image, tag: tag, skipDownload: false,
+    await docker.getRootfs("test", image, tag: tag, skipDownload: false,
         progress: ((count, total, countStep, totalStep) {
       if (kDebugMode) {
         print('Downloading $count/$total ($countStep/$totalStep)');
@@ -196,6 +209,9 @@ void main() {
 
   // Test almalinux latest
   test('Create instance test almalinux:latest', () async {
+    WSLApi api = useRealIntegrations ? WSLApi() : WSLApi(shell: MockShell());
+    DockerImage? dockerImage = useRealIntegrations ? null : MockDockerImage();
+
     TextEditingController nameController = TextEditingController(text: 'test');
     TextEditingController locationController = TextEditingController(text: '');
     TextEditingController autoSuggestBox =
@@ -208,39 +224,41 @@ void main() {
     }
 
     // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
 
     // Test build context
     await createInstance(
       nameController,
       locationController,
-      WSLApi(),
+      api,
       autoSuggestBox,
       TextEditingController(text: ''),
+      dockerImage: dockerImage,
     );
 
     // Verify that the file exists and has > 2MB
     expect(await file.exists(), true);
     expect(await file.length(), greaterThan(2 * 1024 * 1024));
-    expect(await isInstance('test'), true);
+    expect(await isInstance('test', api), true);
 
     // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
 
-    expect(await isInstance('test'), false);
+    expect(await isInstance('test', api), false);
 
     // Test creating it without re-downloading the rootfs
     await createInstance(
       nameController,
       locationController,
-      WSLApi(),
+      api,
       autoSuggestBox,
       TextEditingController(text: ''),
+      dockerImage: dockerImage,
     );
 
-    expect(await isInstance('test'), true);
+    expect(await isInstance('test', api), true);
 
     // Delete the instance
-    await WSLApi().remove('test');
+    await api.remove('test');
   }, timeout: const Timeout(Duration(minutes: 10)));
 }

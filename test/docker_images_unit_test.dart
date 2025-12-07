@@ -52,9 +52,7 @@ class MockChunkedDownloader extends cd.ChunkedDownloader {
 
   @override
   Future<cd.ChunkedDownloader> start() async {
-    // Simulate download
     onProgress?.call(100, 100, 1.0);
-    // Create dummy file
     File(saveFilePath).createSync(recursive: true);
     done = true;
     onDone?.call(File(saveFilePath));
@@ -64,9 +62,7 @@ class MockChunkedDownloader extends cd.ChunkedDownloader {
 
 class MockArchiveService implements ArchiveService {
   @override
-  Future<void> extract(String archivePath, String destinationPath) async {
-    // Create dummy extracted files if needed
-  }
+  Future<void> extract(String archivePath, String destinationPath) async {}
 
   @override
   Future<void> merge(List<String> archivePaths, String destinationPath) async {
