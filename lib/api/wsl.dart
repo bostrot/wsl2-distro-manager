@@ -6,9 +6,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 
+import 'package:path/path.dart' as p;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
+import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -27,7 +29,9 @@ bool inited = false;
 /// needed to interact with WSL based on Process.run and Process.start.
 /// Most functions will return the UTF8 converted stdout of the process.
 class WSLApi {
-  WSLApi() {
+  final Shell shell;
+
+  WSLApi({Shell? shell}) : shell = shell ?? ProcessShell() {
     if (!inited) {
       inited = true;
       App().getDistroLinks();
@@ -61,7 +65,7 @@ class WSLApi {
 
   /// Install WSL
   void installWSL() async {
-    Process.start(
+    shell.start(
         'powershell',
         [
           'Start-Process cmd -ArgumentList "/c wsl --install" -Verb RunAs',
@@ -90,7 +94,7 @@ class WSLApi {
       // Run shell to keep open
       args.add(';/bin/sh');
     }
-    await Process.start('start', args,
+    await shell.start('start', args,
         mode: ProcessStartMode.detached, runInShell: true);
     if (kDebugMode) {
       print("Done starting $distribution");
@@ -100,21 +104,21 @@ class WSLApi {
   /// Stop a WSL distro by name
   Future<String> stop(String distribution) async {
     ProcessResult results =
-        await Process.run('wsl', ['--terminate', distribution]);
+        await shell.run('wsl', ['--terminate', distribution]);
     return results.stdout;
   }
 
   /// Open bashrc with notepad from WSL
   Future<String> openBashrc(String distribution) async {
     List<String> argsRc = ['wsl', '-d', distribution, 'notepad.exe', '.bashrc'];
-    Process results = await Process.start('start', argsRc,
+    Process results = await shell.start('start', argsRc,
         mode: ProcessStartMode.normal, runInShell: true);
     return results.stdout.toString();
   }
 
   /// Shutdown WSL
   Future<String> shutdown() async {
-    ProcessResult results = await Process.run('wsl', ['--shutdown']);
+    ProcessResult results = await shell.run('wsl', ['--shutdown']);
     return results.stdout;
   }
 
@@ -124,8 +128,7 @@ class WSLApi {
     if (path != '') {
       args.add(path);
     }
-    Process.start('start', args,
-        mode: ProcessStartMode.normal, runInShell: true);
+    shell.start('start', args, mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Write wslconfig file
@@ -190,13 +193,13 @@ class WSLApi {
 
   /// Open wslconfig file
   void editConfig() async {
-    Process.start('start', ['notepad.exe', getWslConfigPath()],
+    shell.start('start', ['notepad.exe', getWslConfigPath()],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Start Explorer
   void startExplorer(String distribution) async {
-    await Process.start(
+    await shell.start(
         'start', ['explorer.exe', getInstancePath(distribution).path],
         mode: ProcessStartMode.normal, runInShell: true);
   }
@@ -209,13 +212,13 @@ class WSLApi {
       var args = ['wt', '-w', '0', 'nt'];
       args.addAll(launchWslHome);
 
-      await Process.run('start', args);
+      await shell.run('start', args);
     } catch (_) {
       // Windows Terminal not installed
       Notify.message('openwithwt-not-found-error'.i18n());
 
       var args = ['powershell', '-noexit', '-command', launchWslHome.join(' ')];
-      await Process.run('start', args, runInShell: true);
+      await shell.run('start', args, runInShell: true);
     }
   }
 
@@ -262,7 +265,7 @@ class WSLApi {
 
   /// Export a WSL distro by name
   Future<String> export(String distribution, String location) async {
-    ProcessResult results = await Process.run(
+    ProcessResult results = await shell.run(
         'wsl', ['--export', distribution, location],
         stdoutEncoding: null, stderrEncoding: null);
 
@@ -278,7 +281,7 @@ class WSLApi {
 
   /// Remove a WSL distro by name
   Future<String> remove(String distribution) async {
-    ProcessResult results = await Process.run(
+    ProcessResult results = await shell.run(
         'wsl', ['--unregister', distribution],
         stdoutEncoding: null, stderrEncoding: null);
 
@@ -306,7 +309,7 @@ class WSLApi {
   /// Install a WSL distro by name
   Future<String> install(String distribution) async {
     ProcessResult results =
-        await Process.run('wsl', ['--install', '-d', distribution]);
+        await shell.run('wsl', ['--install', '-d', distribution]);
     return results.stdout;
   }
 
@@ -329,7 +332,7 @@ class WSLApi {
     bool showOutput = true,
   }) async {
     List<int> processes = [];
-    Process result = await Process.start(
+    Process result = await shell.start(
         'wsl', ['-d', distribution, '-u', user ?? 'root'],
         mode: ProcessStartMode.normal, runInShell: true);
 
@@ -355,7 +358,7 @@ class WSLApi {
     // Log output to file
     result.stdin.writeln('script -B /tmp/currentsessionlog -f');
     // Start windows with output
-    await Process.start(
+    await shell.start(
         'wsl',
         [
           '-d',
@@ -387,7 +390,7 @@ class WSLApi {
     String? user,
   }) async {
     // Write commands to /tmp/cmds
-    Process fileProcess = await Process.start(
+    Process fileProcess = await shell.start(
         'wsl', ['-d', distribution, '-u', user ?? 'root'],
         mode: ProcessStartMode.normal, runInShell: true);
 
@@ -413,7 +416,7 @@ class WSLApi {
       '/tmp/wdmcmds'
     ];
 
-    Process results = await Process.start('wsl', args,
+    Process results = await shell.start('wsl', args,
         runInShell: true, mode: ProcessStartMode.detached);
 
     return results;
@@ -425,7 +428,7 @@ class WSLApi {
     for (var arg in cmd.split(' ')) {
       args.add(arg);
     }
-    ProcessResult results = await Process.run('wsl', args,
+    ProcessResult results = await shell.run('wsl', args,
         runInShell: true, stdoutEncoding: utf8, stderrEncoding: utf8);
     return results.stdout;
   }
@@ -441,7 +444,7 @@ class WSLApi {
         cmd.split(' ').forEach((String arg) {
           args.add(arg);
         });
-        Process result = await Process.start('start', args,
+        Process result = await shell.start('start', args,
             mode: ProcessStartMode.normal, runInShell: true);
         exitCode = await result.exitCode;
         processes.add(exitCode);
@@ -450,8 +453,7 @@ class WSLApi {
         cmd.split(' ').forEach((String arg) {
           args.add(arg);
         });
-        ProcessResult result =
-            await Process.run('wsl', args, runInShell: false);
+        ProcessResult result = await shell.run('wsl', args, runInShell: false);
         exitCode = result.exitCode;
         processes.add(exitCode);
       }
@@ -461,8 +463,8 @@ class WSLApi {
 
   /// Restart WSL
   Future<String> restart() async {
-    ProcessResult results = await Process.run('wsl', ['--shutdown']);
-    results = await Process.run('wsl', ['--shutdown']);
+    ProcessResult results = await shell.run('wsl', ['--shutdown']);
+    results = await shell.run('wsl', ['--shutdown']);
     return results.stdout;
   }
 
@@ -477,11 +479,11 @@ class WSLApi {
     }
     ProcessResult results;
     if (isVhd) {
-      results = await Process.run(
+      results = await shell.run(
           'wsl', ['--import', distribution, installLocation, filename, '--vhd'],
           stdoutEncoding: null, stderrEncoding: null);
     } else {
-      results = await Process.run(
+      results = await shell.run(
           'wsl', ['--import', distribution, installLocation, filename],
           stdoutEncoding: null, stderrEncoding: null);
     }
@@ -540,7 +542,7 @@ class WSLApi {
     }
 
     // Create from local file
-    ProcessResult results = await Process.run(
+    ProcessResult results = await shell.run(
         'wsl', ['--import', distribution, installPath, downloadPath],
         stdoutEncoding: null);
 
@@ -552,7 +554,7 @@ class WSLApi {
   /// Returns list of WSL distros
   Future<Instances> list(bool showDocker) async {
     ProcessResult results =
-        await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
+        await shell.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
     bool wslInstalled = true;
@@ -639,9 +641,8 @@ class WSLApi {
 
   /// Returns list of WSL distros
   Future<List<String>> listRunning() async {
-    ProcessResult results = await Process.run(
-        'wsl', ['--list', '--running', '--quiet'],
-        stdoutEncoding: null);
+    ProcessResult results = await shell
+        .run('wsl', ['--list', '--running', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
     output.split('\n').forEach((line) {
@@ -692,12 +693,53 @@ class WSLApi {
   /// Returns [ProcessResult] of the command.
   Future<String> move(String distro, String newPath) async {
     SafePath path = SafePath(newPath);
-    await export(distro, path.file('export.ext4'));
-    await remove(distro);
-    var res = await import(distro, newPath, path.file('export.ext4'));
-    await File(path.file('export.ext4')).delete();
+    String exportFilePath = path.file('export.ext4');
 
-    return res;
+    // Check if new path is same as old path (normalize + absolute paths, compare case-insensitive on Windows)
+    String currentPath = getInstancePath(distro).path;
+    String canonicalCurrent = p.canonicalize(currentPath);
+    String canonicalNew = p.canonicalize(path.path);
+    bool samePath;
+    if (Platform.isWindows) {
+      samePath = canonicalCurrent.toLowerCase() == canonicalNew.toLowerCase();
+    } else {
+      samePath = canonicalCurrent == canonicalNew;
+    }
+    if (samePath) {
+      throw Exception(
+          "Cannot move '$distro': new path must be different from current path ($canonicalCurrent).");
+    }
+
+    // Export
+    await export(distro, exportFilePath);
+
+    // Verify export
+    File exportFile = File(exportFilePath);
+    if (!exportFile.existsSync() || exportFile.lengthSync() == 0) {
+      if (exportFile.existsSync()) {
+        exportFile.deleteSync();
+      }
+      throw Exception("Export failed. Aborting move to prevent data loss.");
+    }
+
+    // Remove old
+    await remove(distro);
+
+    // Import new
+    try {
+      var res = await import(distro, newPath, exportFilePath);
+
+      // Cleanup export file only if import succeeded
+      await exportFile.delete();
+
+      // Update preference
+      prefs.setString('Path_$distro', newPath);
+
+      return res;
+    } catch (e) {
+      throw Exception(
+          "Import failed: $e. Your data is safe in: $exportFilePath. Please do not delete this file.");
+    }
   }
 
   /// Convert bytes to human readable string while removing non-ascii characters

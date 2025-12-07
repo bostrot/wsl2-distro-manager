@@ -1,5 +1,6 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -236,10 +237,20 @@ Column settingsColumn(
                   const Icon(FluentIcons.move),
                 ]),
             onPressed: () async {
+              // Pick directory
+              String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+                dialogTitle: 'move-text'.i18n(),
+                lockParentWindow: true,
+              );
+
+              if (selectedDirectory == null) {
+                return;
+              }
+
               dialog(
                   item: item,
                   title: '${'move-text'.i18n()} \'${distroLabel(item)}\'',
-                  body: 'movebody-text'.i18n([distroLabel(item)]),
+                  body: '${'movebody-text'.i18n([distroLabel(item)])}\n\nTarget: $selectedDirectory',
                   submitText: 'move-text'.i18n(),
                   submitStyle: ButtonStyle(
                     backgroundColor: ButtonState.all(Colors.red),
@@ -248,11 +259,15 @@ Column settingsColumn(
                   submitInput: false,
                   onSubmit: (inputText) async {
                     Notify.message(
-                        'moving-text'.i18n([distroLabel(item), inputText]),
+                        'moving-text'.i18n([distroLabel(item), selectedDirectory]),
                         loading: true);
-                    await WSLApi().move(item, getInstancePath(item).path);
-                    Notify.message(
-                        'moved-text'.i18n([distroLabel(item), inputText]));
+                    try {
+                      await WSLApi().move(item, selectedDirectory);
+                      Notify.message(
+                          'moved-text'.i18n([distroLabel(item), selectedDirectory]));
+                    } catch (e) {
+                      Notify.message('Error moving distro: $e');
+                    }
                   });
             },
           ),
