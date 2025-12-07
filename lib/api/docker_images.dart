@@ -151,10 +151,13 @@ class DockerImage {
       {Dio? dio,
       ChunkedDownloaderFactory? chunkedDownloaderFactory,
       ArchiveService? archiveService,
-      this.registryUrl = 'https://registry-1.docker.io',
+      String? registryUrl,
       this.authUrl = 'https://auth.docker.io',
       this.svcUrl = 'registry.docker.io'})
       : dio = dio ?? Dio(),
+        registryUrl = registryUrl ??
+            prefs.getString('DockerRepoLink') ??
+            'https://registry-1.docker.io',
         chunkedDownloaderFactory = chunkedDownloaderFactory ??
             ((
                     {required url,
@@ -172,7 +175,12 @@ class DockerImage {
                     onProgress: onProgress,
                     onDone: onDone,
                     onError: onError)),
-        archiveService = archiveService ?? ArchiveService();
+        archiveService = archiveService ?? ArchiveService() {
+    String? mirror = prefs.getString('DockerMirror');
+    if (mirror != null && mirror.isNotEmpty) {
+      registryUrl = mirror;
+    }
+  }
 
   /// Get auth token
   Future<String> _authenticate(String image) async {

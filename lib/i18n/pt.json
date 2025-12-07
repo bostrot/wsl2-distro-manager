@@ -170,5 +170,7 @@
     "removing-text": "Removendo ...",
     "importing-text": "Importando ...",
     "defaultdatalocation-text": "Localização geral de dados",
-    "datapath-text": "Caminho onde salvar modelos e downloads"
+    "datapath-text": "Caminho onde salvar modelos e downloads",
+    "dockermirror-text": "Espelho Docker",
+    "dockermirrorhint-text": "ex. https://mirror.gcr.io"
 }

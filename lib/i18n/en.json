@@ -170,5 +170,7 @@
     "removing-text": "Removing ...",
     "importing-text": "Importing ...",
     "defaultdatalocation-text": "General Data Location",
-    "datapath-text": "Path where to save templates and downloads"
+    "datapath-text": "Path where to save templates and downloads",
+    "dockermirror-text": "Docker Mirror",
+    "dockermirrorhint-text": "e.g. https://mirror.gcr.io"
 }

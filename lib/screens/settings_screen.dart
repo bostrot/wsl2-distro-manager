@@ -28,6 +28,7 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _dockerrepoController = TextEditingController();
   final TextEditingController _editorController = TextEditingController();
   final TextEditingController _terminalController = TextEditingController();
+  final TextEditingController _dockerMirrorController = TextEditingController();
   bool showDocker = false;
   BuildContext? currentContext;
 
@@ -72,6 +73,10 @@ class SettingsPageState extends State<SettingsPage> {
     String? terminal = prefs.getString('Terminal');
     if (terminal != null && terminal != '') {
       _terminalController.text = terminal;
+    }
+    String? dockerMirror = prefs.getString('DockerMirror');
+    if (dockerMirror != null && dockerMirror != '') {
+      _dockerMirrorController.text = dockerMirror;
     }
     showDocker = prefs.getBool('showDocker') ?? false;
     if (!mounted) return;
@@ -192,6 +197,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("Terminal", _terminalController.text);
     } else {
       prefs.remove("Terminal");
+    }
+
+    // Save docker mirror
+    if (_dockerMirrorController.text.isNotEmpty) {
+      prefs.setString("DockerMirror", _dockerMirrorController.text);
+    } else {
+      prefs.remove("DockerMirror");
     }
 
     // Distro location setting
@@ -331,6 +343,26 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Tooltip(
+              message: 'dockermirror-text'.i18n(),
+              child: Text('dockermirror-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'dockermirrorhint-text'.i18n(),
+                child: TextBox(
+                  controller: _dockerMirrorController,
+                  placeholder: 'https://mirror.gcr.io',
+                ),
+              ),
+            ),
+          ),
+        ),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -418,23 +450,23 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          // Padding(
-          //   padding: const EdgeInsets.all(8.0),
-          //   child: Expander(
-          //     header: Text('dockerrepo-text'.i18n(),
-          //         style: const TextStyle(fontWeight: FontWeight.w500)),
-          //     content: Padding(
-          //       padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-          //       child: Tooltip(
-          //         message: 'dockerrepo-text'.i18n(),
-          //         child: TextBox(
-          //           controller: _dockerrepoController,
-          //           placeholder: 'https://registry-1.docker.io',
-          //         ),
-          //       ),
-          //     ),
-          //   ),
-          // ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Expander(
+              header: Text('dockerrepo-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              content: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+                child: Tooltip(
+                  message: 'dockerrepo-text'.i18n(),
+                  child: TextBox(
+                    controller: _dockerrepoController,
+                    placeholder: 'https://registry-1.docker.io',
+                  ),
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(

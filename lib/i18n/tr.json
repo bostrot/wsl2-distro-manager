@@ -171,5 +171,7 @@
     "removing-text": "Kaldırılıyor ...",
     "importing-text": "İçe aktarılıyor ...",
     "defaultdatalocation-text": "Genel Veri Konumu",
-    "datapath-text": "Şablonların ve indirmelerin kaydedileceği yol"
+    "datapath-text": "Şablonların ve indirmelerin kaydedileceği yol",
+    "dockermirror-text": "Docker Aynası",
+    "dockermirrorhint-text": "örn. https://mirror.gcr.io"
 }

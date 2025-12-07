@@ -170,5 +170,7 @@
     "removing-text": "削除中 ...",
     "importing-text": "インポート中 ...",
     "defaultdatalocation-text": "一般的なデータの場所",
-    "datapath-text": "テンプレートとダウンロードを保存するパス"
+    "datapath-text": "テンプレートとダウンロードを保存するパス",
+    "dockermirror-text": "Docker ミラー",
+    "dockermirrorhint-text": "例: https://mirror.gcr.io"
 }
