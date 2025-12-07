@@ -25,6 +25,7 @@ distro: Ubuntu
 
   test('QuickActionItem.fromYamlString throws on invalid yaml', () {
     expect(() => QuickActionItem.fromYamlString('invalid'), throwsException);
-    expect(() => QuickActionItem.fromYamlString('name: 123'), throwsException); // name not string
+    expect(() => QuickActionItem.fromYamlString('name: 123'),
+        throwsException); // name not string
   });
 }

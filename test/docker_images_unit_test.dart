@@ -90,10 +90,11 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    
+
     // Mock Notify
     Notify();
-    Notify.message = (String msg, {
+    Notify.message = (
+      String msg, {
       Duration? duration,
       dynamic severity = "",
       bool loading = false,
@@ -112,7 +113,14 @@ void main() {
     dockerImage = DockerImage(
       dio: dio,
       registryUrl: customRegistry,
-      chunkedDownloaderFactory: ({required url, required saveFilePath, headers, chunkSize, onProgress, onDone, onError}) =>
+      chunkedDownloaderFactory: (
+              {required url,
+              required saveFilePath,
+              headers,
+              chunkSize,
+              onProgress,
+              onDone,
+              onError}) =>
           MockChunkedDownloader(
               url: url,
               saveFilePath: saveFilePath,
@@ -132,20 +140,24 @@ void main() {
   test('hasImage returns true if image exists', () async {
     adapter.responses['token'] = ResponseBody.fromString(
         jsonEncode({'token': 'dummy_token'}), 200,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType]
+        });
 
     // Mock manifest on custom registry
-    adapter.responses['$customRegistry/v2/library/alpine/manifests/latest'] = ResponseBody.fromString(
-        jsonEncode({}), 200,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+    adapter.responses['$customRegistry/v2/library/alpine/manifests/latest'] =
+        ResponseBody.fromString(jsonEncode({}), 200, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType]
+    });
 
     expect(await dockerImage.hasImage('library/alpine'), true);
   });
 
   test('hasImage returns false if token fails', () async {
-    adapter.responses['token'] = ResponseBody.fromString(
-        jsonEncode({'error': 'failed'}), 401,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+    adapter.responses['token'] =
+        ResponseBody.fromString(jsonEncode({'error': 'failed'}), 401, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType]
+    });
 
     expect(await dockerImage.hasImage('library/alpine'), false);
   });
@@ -154,7 +166,9 @@ void main() {
     // Mock token
     adapter.responses['token'] = ResponseBody.fromString(
         jsonEncode({'token': 'dummy_token'}), 200,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType]
+        });
 
     // Mock manifest (single arch)
     final manifest = {
@@ -173,11 +187,13 @@ void main() {
         }
       ]
     };
-    adapter.responses['$customRegistry/v2/library/alpine/manifests/latest'] = ResponseBody.fromString(
-        jsonEncode(manifest), 200,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+    adapter.responses['$customRegistry/v2/library/alpine/manifests/latest'] =
+        ResponseBody.fromString(jsonEncode(manifest), 200, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType]
+    });
 
-    await dockerImage.getRootfs('test', 'library/alpine', tag: 'latest', progress: (c, t, cs, ts) {});
+    await dockerImage.getRootfs('test', 'library/alpine',
+        tag: 'latest', progress: (c, t, cs, ts) {});
 
     // Verify output file exists
     final outFile = '${tempDir.path}/distros/library_alpine_latest.tar.gz';
@@ -185,12 +201,19 @@ void main() {
   });
 
   test('DockerImage uses custom registry', () async {
-    // This test is now redundant as all tests use the custom registry, 
+    // This test is now redundant as all tests use the custom registry,
     // but we can keep it to be explicit about the configuration capability.
     final customDockerImage = DockerImage(
       dio: dio,
       registryUrl: customRegistry,
-      chunkedDownloaderFactory: ({required url, required saveFilePath, headers, chunkSize, onProgress, onDone, onError}) =>
+      chunkedDownloaderFactory: (
+              {required url,
+              required saveFilePath,
+              headers,
+              chunkSize,
+              onProgress,
+              onDone,
+              onError}) =>
           MockChunkedDownloader(
               url: url,
               saveFilePath: saveFilePath,
@@ -205,7 +228,9 @@ void main() {
     // Mock token for custom registry (if needed, or just standard auth url if not changed)
     adapter.responses['token'] = ResponseBody.fromString(
         jsonEncode({'token': 'dummy_token'}), 200,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType]
+        });
 
     // Mock manifest on custom registry
     final manifest = {
@@ -218,11 +243,12 @@ void main() {
       },
       "layers": []
     };
-    
+
     // The URL should be constructed using the custom registry
-    adapter.responses['$customRegistry/v2/library/alpine/manifests/latest'] = ResponseBody.fromString(
-        jsonEncode(manifest), 200,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+    adapter.responses['$customRegistry/v2/library/alpine/manifests/latest'] =
+        ResponseBody.fromString(jsonEncode(manifest), 200, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType]
+    });
 
     expect(await customDockerImage.hasImage('library/alpine'), true);
   });

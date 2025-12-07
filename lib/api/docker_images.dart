@@ -156,13 +156,14 @@ class DockerImage {
       this.svcUrl = 'registry.docker.io'})
       : dio = dio ?? Dio(),
         chunkedDownloaderFactory = chunkedDownloaderFactory ??
-            (({required url,
-            required saveFilePath,
-            headers,
-            chunkSize,
-            onProgress,
-            onDone,
-            onError}) =>
+            ((
+                    {required url,
+                    required saveFilePath,
+                    headers,
+                    chunkSize,
+                    onProgress,
+                    onDone,
+                    onError}) =>
                 ChunkedDownloader(
                     url: url,
                     saveFilePath: saveFilePath,

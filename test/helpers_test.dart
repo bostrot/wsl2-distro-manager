@@ -37,7 +37,7 @@ void main() {
     expect(fixJsonContent(' {"key": "value"} '), '{"key": "value"}');
     // Assuming fixJsonContent logic handles these cases based on implementation
     // It tries removing first/last char if decode fails
-    expect(fixJsonContent('x{"key": "value"}'), '{"key": "value"}'); 
+    expect(fixJsonContent('x{"key": "value"}'), '{"key": "value"}');
     expect(fixJsonContent('{"key": "value"}x'), '{"key": "value"}');
   });
 }

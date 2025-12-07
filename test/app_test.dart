@@ -32,7 +32,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    
+
     dio = Dio();
     adapter = MockAdapter({});
     dio.httpClientAdapter = adapter;
@@ -50,15 +50,17 @@ void main() {
     final updateResponse = [
       {
         'tag_name': 'v2.0.0',
-        'published_at': DateTime.now().subtract(Duration(days: 3)).toIso8601String(),
+        'published_at':
+            DateTime.now().subtract(Duration(days: 3)).toIso8601String(),
         'html_url': 'https://example.com/update',
       }
     ];
 
-    adapter.responses['https://api.github.com/repos/bostrot/wsl2-distro-manager/releases'] =
+    adapter.responses[
+            'https://api.github.com/repos/bostrot/wsl2-distro-manager/releases'] =
         ResponseBody.fromString(jsonEncode(updateResponse), 200, headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        });
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    });
 
     final url = await app.checkUpdate('1.0.0');
     expect(url, 'https://example.com/update');
@@ -68,15 +70,17 @@ void main() {
     final updateResponse = [
       {
         'tag_name': 'v1.0.0',
-        'published_at': DateTime.now().subtract(Duration(days: 3)).toIso8601String(),
+        'published_at':
+            DateTime.now().subtract(Duration(days: 3)).toIso8601String(),
         'html_url': 'https://example.com/update',
       }
     ];
 
-    adapter.responses['https://api.github.com/repos/bostrot/wsl2-distro-manager/releases'] =
+    adapter.responses[
+            'https://api.github.com/repos/bostrot/wsl2-distro-manager/releases'] =
         ResponseBody.fromString(jsonEncode(updateResponse), 200, headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        });
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    });
 
     final url = await app.checkUpdate('1.0.0');
     expect(url, '');
@@ -85,10 +89,11 @@ void main() {
   test('checkMotd returns motd', () async {
     final motdResponse = {'motd': 'Hello World'};
 
-    adapter.responses['https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json'] =
+    adapter.responses[
+            'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/motd.json'] =
         ResponseBody.fromString(jsonEncode(motdResponse), 200, headers: {
-          Headers.contentTypeHeader: [Headers.textPlainContentType],
-        });
+      Headers.contentTypeHeader: [Headers.textPlainContentType],
+    });
 
     final motd = await app.checkMotd();
     expect(motd, 'Hello World');
@@ -98,10 +103,11 @@ void main() {
   test('getDistroLinks returns distros', () async {
     final distrosResponse = {'Ubuntu': 'url1', 'Debian': 'url2'};
 
-    adapter.responses['https://rawcdn.githack.com/bostrot/wsl2-distro-manager/main/images.json'] =
+    adapter.responses[
+            'https://rawcdn.githack.com/bostrot/wsl2-distro-manager/main/images.json'] =
         ResponseBody.fromString(jsonEncode(distrosResponse), 200, headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        });
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    });
 
     final distros = await app.getDistroLinks();
     expect(distros, {'Ubuntu': 'url1', 'Debian': 'url2'});

@@ -18,7 +18,9 @@ class MockWSLApi implements WSLApi {
   }
 
   @override
-  Future<String> import(String distroName, String installLocation, String fileName, {bool isVhd = false}) async {
+  Future<String> import(
+      String distroName, String installLocation, String fileName,
+      {bool isVhd = false}) async {
     return 'Imported';
   }
 
@@ -28,10 +30,14 @@ class MockWSLApi implements WSLApi {
 
 class MockPlausible implements Plausible {
   @override
-  Future<int> event({String? name, String? page, Map<String, String>? props, String? referrer}) async {
+  Future<int> event(
+      {String? name,
+      String? page,
+      Map<String, String>? props,
+      String? referrer}) async {
     return 200;
   }
-  
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -44,13 +50,14 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    
+
     // Mock Plausible
     plausible = MockPlausible();
 
     // Mock Notify
     Notify();
-    Notify.message = (String msg, {
+    Notify.message = (
+      String msg, {
       Duration? duration,
       dynamic severity = "",
       bool loading = false,
@@ -63,7 +70,7 @@ void main() {
     templates = Templates(wslApi: mockWSLApi);
 
     tempDir = await Directory.systemTemp.createTemp('templates_test');
-    
+
     // Mock getDistroPath
     prefs.setString('DistroPath', tempDir.path);
   });
@@ -74,12 +81,12 @@ void main() {
 
   test('saveTemplate saves template', () async {
     await templates.saveTemplate('test');
-    
+
     // Check if template file created (mock export creates it)
     // Path: tempDir/templates/test.ext4
     final templatePath = '${tempDir.path}/templates/test.ext4';
     expect(File(templatePath).existsSync(), true);
-    
+
     // Check prefs
     expect(prefs.getStringList('templates'), ['test']);
   });
@@ -87,7 +94,7 @@ void main() {
   test('saveTemplate handles duplicate names', () async {
     await templates.saveTemplate('test');
     await templates.saveTemplate('test');
-    
+
     expect(prefs.getStringList('templates'), ['test', 'test-2']);
     expect(File('${tempDir.path}/templates/test-2.ext4').existsSync(), true);
   });
@@ -105,13 +112,13 @@ void main() {
     expect(prefs.getStringList('templates'), []);
     expect(File('${tempDir.path}/templates/test.ext4').existsSync(), false);
   });
-  
+
   test('getTemplates returns list', () async {
     expect(templates.getTemplates(), []);
     await templates.saveTemplate('test');
     expect(templates.getTemplates(), ['test']);
   });
-  
+
   test('getTemplateSize returns size', () async {
     await templates.saveTemplate('test');
     // Mock file size is 0
