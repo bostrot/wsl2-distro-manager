@@ -65,4 +65,19 @@ void main() {
       Directory('C:\\test').deleteSync();
     }
   });
+
+  test('SafePath creation and normalization', () async {
+    String path = 'C:/test_safepath_creation';
+    // Ensure clean state
+    if (Directory(path).existsSync()) {
+      Directory(path).deleteSync(recursive: true);
+    }
+
+    SafePath safePath = SafePath(path);
+    expect(Directory(path).existsSync(), true);
+    // Expect path to match
+    expect(safePath.path.replaceAll('/', '\\'), path.replaceAll('/', '\\'));
+
+    Directory(path).deleteSync();
+  });
 }

@@ -2,7 +2,6 @@ name: 🐞 Bug
 description: File a bug/issue
 title: "[BUG] <title>"
 labels: [bug, needs triage]
-assignees: bostrot
 body:
 - type: checkboxes
   attributes:

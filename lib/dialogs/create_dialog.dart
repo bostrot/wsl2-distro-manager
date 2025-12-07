@@ -115,8 +115,8 @@ Future<void> createInstance(
     String location = locationController.text;
     if (location == '') {
       location = prefs.getString("DistroPath") ?? defaultPath;
-      location += '/$name';
     }
+    location += '${Platform.pathSeparator}$name';
 
     // Check if docker image
     bool isDockerImage = false;
@@ -175,7 +175,11 @@ Future<void> createInstance(
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
-      Notify.message(WSLApi().utf8Convert(result.stdout));
+      String error = WSLApi().utf8Convert(result.stdout);
+      if (error.isEmpty) {
+        error = result.stderr.toString();
+      }
+      Notify.message(error);
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');
       var groupCmds = prefs.getStringList('GroupCmds_$distroName');
