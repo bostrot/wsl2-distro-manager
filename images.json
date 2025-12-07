@@ -1,6 +1,6 @@
 {
-    "Ubuntu 24.04": "https://cloud-images.ubuntu.com/wsl/releases/24.04/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz",
-    "Ubuntu 22.04": "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64-root.tar.xz",
+    "Ubuntu 24.04": "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64-root.tar.xz",
+    "Ubuntu 22.04": "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64-root.tar.xz",
     "Ubuntu 21.04": "https://cloud-images.ubuntu.com/releases/hirsute/release/ubuntu-21.04-server-cloudimg-amd64-wsl.rootfs.tar.gz",
     "Fedora 37": "https://github.com/bostrot/wsl2-distro-manager/releases/download/v1.4.0/fedora-37-x86_64.tar",
     "Rocky Linux 9": "https://raw.githubusercontent.com/rocky-linux/sig-cloud-instance-images/Rocky-9.1.20230215-Base-x86_64/layer.tar.xz",
