@@ -15,9 +15,9 @@ void main() {
 
     expect(adapter, isA<IOHttpClientAdapter>());
     final ioAdapter = adapter as IOHttpClientAdapter;
-    
+
     expect(ioAdapter.createHttpClient, isNotNull);
-    
+
     final client = ioAdapter.createHttpClient!();
     expect(client, isA<HttpClient>());
   });
@@ -31,12 +31,13 @@ void main() {
 
     expect(adapter, isA<IOHttpClientAdapter>());
     final ioAdapter = adapter as IOHttpClientAdapter;
-    
+
     expect(ioAdapter.createHttpClient, isNull);
   });
 
   test('DockerImage configures registryUrl from prefs', () async {
-    SharedPreferences.setMockInitialValues({'DockerRepoLink': 'https://mirror.gcr.io'});
+    SharedPreferences.setMockInitialValues(
+        {'DockerRepoLink': 'https://mirror.gcr.io'});
     await initPrefs();
 
     final dockerImage = DockerImage();
