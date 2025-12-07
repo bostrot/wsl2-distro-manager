@@ -58,6 +58,8 @@ class Templates {
     if (templates == null) return;
     templates.remove(name);
     prefs.setStringList('templates', templates);
+    // Remove description
+    prefs.remove('template_description_$name');
     // Delete template file
     await File(getTemplateFilePath(name)).delete();
     Notify.message('deletedinstance-text'.i18n([name]));
@@ -94,5 +96,43 @@ class Templates {
     if (File(path).existsSync() == false) return '0 GB';
     var size = File(path).lengthSync();
     return '${(size / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+  }
+
+  /// Get template description by [name].
+  String getTemplateDescription(String name) {
+    return prefs.getString('template_description_$name') ?? '';
+  }
+
+  /// Set template description by [name].
+  Future<void> setTemplateDescription(String name, String description) async {
+    await prefs.setString('template_description_$name', description);
+  }
+
+  /// Rename a template from [oldName] to [newName].
+  Future<void> renameTemplate(String oldName, String newName) async {
+    if (oldName == newName) return;
+
+    // Rename file
+    File oldFile = File(getTemplateFilePath(oldName));
+    if (await oldFile.exists()) {
+      await oldFile.rename(getTemplateFilePath(newName));
+    }
+
+    // Update prefs list
+    var templates = prefs.getStringList('templates');
+    if (templates != null) {
+      int index = templates.indexOf(oldName);
+      if (index != -1) {
+        templates[index] = newName;
+        await prefs.setStringList('templates', templates);
+      }
+    }
+
+    // Move description
+    String? description = prefs.getString('template_description_$oldName');
+    if (description != null) {
+      await prefs.setString('template_description_$newName', description);
+      await prefs.remove('template_description_$oldName');
+    }
   }
 }

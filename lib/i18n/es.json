@@ -161,5 +161,8 @@
     "license-text": "Licencia",
     "savesatemplatequestion-text": "¿Quieres guardar %s como una plantilla?",
     "saveastemplatebody-text": "Esto resultará en apagar la instancia y exportarla. Este proceso puede tomar algún tiempo, durante el cual la instancia no será utilizable.",
-    "move-error-text": "Error al mover la distribución '%s0' a '%s1'.\nError: %s2\n\nPosibles razones:\n- Permisos insuficientes (intente ejecutar como Administrador)\n- Espacio en disco insuficiente en el destino\n- Ruta de destino inválida o inaccesible\n\nPor favor, verifique lo anterior e intente nuevamente."
+    "move-error-text": "Error al mover la distribución '%s0' a '%s1'.\nError: %s2\n\nPosibles razones:\n- Permisos insuficientes (intente ejecutar como Administrador)\n- Espacio en disco insuficiente en el destino\n- Ruta de destino inválida o inaccesible\n\nPor favor, verifique lo anterior e intente nuevamente.",
+    "edittemplate-text": "Editar plantilla",
+    "description-text": "Descripción",
+    "descriptionhint-text": "Descripción de la plantilla"
 }

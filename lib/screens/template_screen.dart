@@ -23,6 +23,65 @@ class _TemplatePageState extends State<TemplatePage> {
     _templates = Templates().getTemplates();
   }
 
+  void editTemplateDialog(String name) {
+    final context = GlobalVariable.infobox.currentContext!;
+    final nameController = TextEditingController(text: name);
+    final descriptionController =
+        TextEditingController(text: Templates().getTemplateDescription(name));
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ContentDialog(
+          title: Text('edittemplate-text'.i18n()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InfoLabel(
+                label: 'name-text'.i18n(),
+                child: TextBox(
+                  controller: nameController,
+                ),
+              ),
+              const SizedBox(height: 10),
+              InfoLabel(
+                label: 'description-text'.i18n(),
+                child: TextBox(
+                  controller: descriptionController,
+                  placeholder: 'descriptionhint-text'.i18n(),
+                  maxLines: 3,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Button(
+              child: Text('save-text'.i18n()),
+              onPressed: () async {
+                Navigator.pop(context);
+                String newName = nameController.text;
+                String description = descriptionController.text;
+
+                if (newName.isNotEmpty) {
+                  await Templates().renameTemplate(name, newName);
+                  await Templates()
+                      .setTemplateDescription(newName, description);
+                  setState(() {
+                    _templates = Templates().getTemplates();
+                  });
+                }
+              },
+            ),
+            Button(
+              child: Text('cancel-text'.i18n()),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_templates.isEmpty) {
@@ -38,35 +97,64 @@ class _TemplatePageState extends State<TemplatePage> {
           itemBuilder: (context, index) {
             var name = _templates[index];
             var size = Templates().getTemplateSize(name);
+            var description = Templates().getTemplateDescription(name);
+
             if (size == '0 GB') {
               return const SizedBox();
             }
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Expander(
-                header: Text('$name ($size)'),
+                header: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$name ($size)'),
+                    if (description.isNotEmpty)
+                      Text(
+                        description,
+                        style: FluentTheme.of(context).typography.caption,
+                      ),
+                  ],
+                ),
                 content: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Button(
-                        child: Row(
-                          children: [
-                            const Icon(FluentIcons.add),
-                            const SizedBox(
-                              width: 10.0,
+                    Row(
+                      children: [
+                        Button(
+                            child: Row(
+                              children: [
+                                const Icon(FluentIcons.add),
+                                const SizedBox(
+                                  width: 10.0,
+                                ),
+                                Text('createnewinstance-text'.i18n()),
+                              ],
                             ),
-                            Text('createnewinstance-text'.i18n()),
-                          ],
+                            onPressed: () => dialog(
+                                item: name,
+                                title: '${'copy-text'.i18n()} \'$name\'',
+                                body: 'copyinstance-text'
+                                    .i18n([distroLabel(name)]),
+                                submitText: 'copy-text'.i18n(),
+                                submitStyle: const ButtonStyle(),
+                                onSubmit: (inputText) async {
+                                  await Templates()
+                                      .useTemplate(name, inputText);
+                                })),
+                        const SizedBox(width: 10),
+                        Button(
+                          child: Row(
+                            children: [
+                              const Icon(FluentIcons.edit),
+                              const SizedBox(width: 10.0),
+                              Text('edittemplate-text'.i18n()),
+                            ],
+                          ),
+                          onPressed: () => editTemplateDialog(name),
                         ),
-                        onPressed: () => dialog(
-                            item: name,
-                            title: '${'copy-text'.i18n()} \'$name\'',
-                            body: 'copyinstance-text'.i18n([distroLabel(name)]),
-                            submitText: 'copy-text'.i18n(),
-                            submitStyle: const ButtonStyle(),
-                            onSubmit: (inputText) async {
-                              await Templates().useTemplate(name, inputText);
-                            })),
+                      ],
+                    ),
                     IconButton(
                       icon: const Icon(FluentIcons.delete),
                       onPressed: () {

@@ -116,4 +116,25 @@ void main() {
     await templates.deleteTemplate('test');
     expect(File(templates.getTemplateFilePath('test')).existsSync(), false);
   });
+
+  test('Rename template and set description', () async {
+    await templates.saveTemplate('test_rename');
+    await templates.setTemplateDescription(
+        'test_rename', 'Initial description');
+
+    expect(templates.getTemplateDescription('test_rename'),
+        'Initial description');
+
+    await templates.renameTemplate('test_rename', 'test_renamed');
+
+    expect(File(templates.getTemplateFilePath('test_renamed')).existsSync(),
+        true);
+    expect(File(templates.getTemplateFilePath('test_rename')).existsSync(),
+        false);
+    expect(templates.getTemplateDescription('test_renamed'),
+        'Initial description');
+    expect(templates.getTemplateDescription('test_rename'), '');
+
+    await templates.deleteTemplate('test_renamed');
+  });
 }

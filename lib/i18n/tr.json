@@ -163,5 +163,8 @@
     "license-text": "Lisans",
     "savesatemplatequestion-text": "Bir şablon olarak %s kaydetmek istiyor musunuz?",
     "saveastemplatebody-text": "Bu, örneği kapatıp dışa aktarmanızla sonuçlanacaktır. Bu işlem biraz zaman alabilir ve bu süre zarfında örnek kullanılamaz.",
-    "move-error-text": "'%s0' dağıtımı '%s1' konumuna taşınamadı.\nHata: %s2\n\nOlası nedenler:\n- Yetersiz izinler (Yönetici olarak çalıştırmayı deneyin)\n- Hedefte yeterli disk alanı yok\n- Geçersiz veya erişilemez hedef yolu\n\nLütfen yukarıdakileri kontrol edin ve tekrar deneyin."
+    "move-error-text": "'%s0' dağıtımı '%s1' konumuna taşınamadı.\nHata: %s2\n\nOlası nedenler:\n- Yetersiz izinler (Yönetici olarak çalıştırmayı deneyin)\n- Hedefte yeterli disk alanı yok\n- Geçersiz veya erişilemez hedef yolu\n\nLütfen yukarıdakileri kontrol edin ve tekrar deneyin.",
+    "edittemplate-text": "Şablonu Düzenle",
+    "description-text": "Açıklama",
+    "descriptionhint-text": "Şablonun açıklaması"
 }

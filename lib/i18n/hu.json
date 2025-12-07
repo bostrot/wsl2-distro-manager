@@ -162,5 +162,8 @@
     "license-text": "Licensz",
     "savesatemplatequestion-text": "Szeretnéd %s sablonként menteni?",
     "saveastemplatebody-text": "Ez leállítja a példányt és exportálja azt. Ez a folyamat eltarthat egy ideig, amely alatt a példány nem lesz használható.",
-    "move-error-text": "Nem sikerült áthelyezni a(z) '%s0' disztribúciót ide: '%s1'.\nHiba: %s2\n\nLehetséges okok:\n- Nincs megfelelő jogosultság (próbálja meg rendszergazdaként futtatni)\n- Nincs elég lemezterület a célhelyen\n- Érvénytelen vagy elérhetetlen célútvonal\n\nKérjük, ellenőrizze a fentieket, és próbálja újra."
+    "move-error-text": "Nem sikerült áthelyezni a(z) '%s0' disztribúciót ide: '%s1'.\nHiba: %s2\n\nLehetséges okok:\n- Nincs megfelelő jogosultság (próbálja meg rendszergazdaként futtatni)\n- Nincs elég lemezterület a célhelyen\n- Érvénytelen vagy elérhetetlen célútvonal\n\nKérjük, ellenőrizze a fentieket, és próbálja újra.",
+    "edittemplate-text": "Sablon szerkesztése",
+    "description-text": "Leírás",
+    "descriptionhint-text": "A sablon leírása"
 }

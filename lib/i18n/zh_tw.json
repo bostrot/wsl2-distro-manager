@@ -162,5 +162,8 @@
     "license-text": "許可證",
     "savesatemplatequestion-text": "您想要將 %s 儲存為範本嗎？",
     "saveastemplatebody-text": "這將導致關閉安裝實體並匯出它。此過程可能需要一些時間，在此期間安裝實體將無法使用。",
-    "move-error-text": "無法將發行版本 '%s0' 移動到 '%s1'。\n錯誤：%s2\n\n可能的原因：\n- 權限不足（嘗試以系統管理員身分執行）\n- 目標磁碟空間不足\n- 目標路徑無效或無法存取\n\n請檢查上述內容並重試。"
+    "move-error-text": "無法將發行版本 '%s0' 移動到 '%s1'。\n錯誤：%s2\n\n可能的原因：\n- 權限不足（嘗試以系統管理員身分執行）\n- 目標磁碟空間不足\n- 目標路徑無效或無法存取\n\n請檢查上述內容並重試。",
+    "edittemplate-text": "編輯範本",
+    "description-text": "描述",
+    "descriptionhint-text": "範本描述"
 }

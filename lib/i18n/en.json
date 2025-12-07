@@ -162,5 +162,8 @@
     "license-text": "License",
     "savesatemplatequestion-text": "Do you want to save %s as a template?",
     "saveastemplatebody-text": "This will result in shutting down the instance and exporting it. This process can take some time, during which the instance will not be usable.",
-    "move-error-text": "Failed to move distro '%s0' to '%s1'.\nError: %s2\n\nPossible reasons:\n- Insufficient permissions (try running as Administrator)\n- Not enough disk space on destination\n- Invalid or inaccessible destination path\n\nPlease check the above and try again."
+    "move-error-text": "Failed to move distro '%s0' to '%s1'.\nError: %s2\n\nPossible reasons:\n- Insufficient permissions (try running as Administrator)\n- Not enough disk space on destination\n- Invalid or inaccessible destination path\n\nPlease check the above and try again.",
+    "edittemplate-text": "Edit Template",
+    "description-text": "Description",
+    "descriptionhint-text": "Description of the template"
 }
