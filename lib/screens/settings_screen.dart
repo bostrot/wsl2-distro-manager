@@ -90,47 +90,56 @@ class SettingsPageState extends State<SettingsPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Button(
-                  style: ButtonStyle(
-                      padding: ButtonState.all(const EdgeInsets.only(
-                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                  onPressed: () {
-                    WSLApi().editConfig();
-                  },
-                  child: Text('editwslconfig-text'.i18n())),
+              Tooltip(
+                message: 'editwslconfig-text'.i18n(),
+                child: Button(
+                    style: ButtonStyle(
+                        padding: ButtonState.all(const EdgeInsets.only(
+                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+                    onPressed: () {
+                      WSLApi().editConfig();
+                    },
+                    child: Text('editwslconfig-text'.i18n())),
+              ),
               const SizedBox(
                 width: 10.0,
               ),
               Row(
                 children: [
-                  Button(
-                      style: ButtonStyle(
-                          padding: ButtonState.all(const EdgeInsets.only(
-                              left: 15.0,
-                              right: 15.0,
-                              top: 10.0,
-                              bottom: 10.0))),
-                      onPressed: () {
-                        WSLApi().restart();
-                        hasPushed = false;
+                  Tooltip(
+                    message: 'stopwsl-text'.i18n(),
+                    child: Button(
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 15.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () {
+                          WSLApi().restart();
+                          hasPushed = false;
 
-                        Navigator.popAndPushNamed(context, '/');
-                      },
-                      child: Text('stopwsl-text'.i18n())),
+                          Navigator.popAndPushNamed(context, '/');
+                        },
+                        child: Text('stopwsl-text'.i18n())),
+                  ),
                   const SizedBox(
                     width: 10.0,
                   ),
-                  Button(
-                      style: ButtonStyle(
-                          padding: ButtonState.all(const EdgeInsets.only(
-                              left: 15.0,
-                              right: 20.0,
-                              top: 10.0,
-                              bottom: 10.0))),
-                      onPressed: () {
-                        saveSettings(context);
-                      },
-                      child: Text('save-text'.i18n())),
+                  Tooltip(
+                    message: 'save-text'.i18n(),
+                    child: Button(
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 20.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () {
+                          saveSettings(context);
+                        },
+                        child: Text('save-text'.i18n())),
+                  ),
                 ],
               ),
             ],
@@ -205,8 +214,11 @@ class SettingsPageState extends State<SettingsPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('showdockershort-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              header: Tooltip(
+                message: 'showdockershort-text'.i18n(),
+                child: Text('showdockershort-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Row(
@@ -236,8 +248,11 @@ class SettingsPageState extends State<SettingsPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('language-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              header: Tooltip(
+                message: 'language-text'.i18n(),
+                child: Text('language-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Tooltip(
@@ -302,8 +317,11 @@ class SettingsPageState extends State<SettingsPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('syncipaddress-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              header: Tooltip(
+                message: 'syncipaddress-text'.i18n(),
+                child: Text('syncipaddress-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Tooltip(
@@ -319,8 +337,11 @@ class SettingsPageState extends State<SettingsPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('repofordistro-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              header: Tooltip(
+                message: 'repofordistro-text'.i18n(),
+                child: Text('repofordistro-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Tooltip(
@@ -423,8 +444,11 @@ class SettingsPageState extends State<SettingsPage> {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Expander(
-        header:
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        header: Tooltip(
+          message: tooltip,
+          child:
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        ),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

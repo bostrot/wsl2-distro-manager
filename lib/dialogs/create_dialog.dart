@@ -41,26 +41,32 @@ createDialog() {
           ),
         ),
         actions: [
-          Button(
-              child: Text('cancel-text'.i18n()),
+          Tooltip(
+            message: 'cancel-text'.i18n(),
+            child: Button(
+                child: Text('cancel-text'.i18n()),
+                onPressed: () async {
+                  Navigator.pop(context);
+                }),
+          ),
+          Tooltip(
+            message: 'create-text'.i18n(),
+            child: Button(
               onPressed: () async {
+                // Run "runner" function from global key
+                GlobalVariable.root.currentState!.runner(
+                  createInstance(
+                    nameController,
+                    locationController,
+                    api,
+                    autoSuggestBox,
+                    userController,
+                  ),
+                );
                 Navigator.pop(context);
-              }),
-          Button(
-            onPressed: () async {
-              // Run "runner" function from global key
-              GlobalVariable.root.currentState!.runner(
-                createInstance(
-                  nameController,
-                  locationController,
-                  api,
-                  autoSuggestBox,
-                  userController,
-                ),
-              );
-              Navigator.pop(context);
-            },
-            child: Text('create-text'.i18n()),
+              },
+              child: Text('create-text'.i18n()),
+            ),
           ),
         ],
       );
