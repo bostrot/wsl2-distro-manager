@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
@@ -46,6 +47,7 @@ class RootPageState extends State<RootPage> with WindowListener {
   bool loading = false;
   bool statusLeading = true;
   Widget statusWidget = const Text('');
+  Timer? _messageTimer;
 
   void statusMsg(
     String msg, {
@@ -57,6 +59,8 @@ class RootPageState extends State<RootPage> with WindowListener {
     Widget widget = const Text(''),
   }) {
     if (!mounted) return;
+
+    _messageTimer?.cancel();
 
     if (useWidget) {
       setState(() {
@@ -74,7 +78,7 @@ class RootPageState extends State<RootPage> with WindowListener {
     }
 
     if (duration != null) {
-      Future.delayed(duration, () {
+      _messageTimer = Timer(duration, () {
         if (mounted) {
           setState(() {
             status = '';

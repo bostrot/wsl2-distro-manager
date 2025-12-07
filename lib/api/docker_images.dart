@@ -599,7 +599,7 @@ class DockerImage {
     return File(getDistroPath().file('${filename(image, tag)}.tar.gz'))
         .existsSync();
   }
-]
+
   /// Formate image and tag to filename format
   String filename(String image, String? tag) {
     if (image.isEmpty) {
