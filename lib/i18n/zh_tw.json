@@ -14,6 +14,7 @@
     "settings-text": "設定",
     "noinstancesfound-text": "沒有找到安裝實體或正在進行遷移",
     "distronotfound-text": "找不到發行版本",
+    "distroexists-text": "具有此名稱的發行版已存在",
     "syncipnotset-text": "沒有設定同步 IP 位址，請在設定頁面中輸入",
     "shuttingdownwsl-text": "關閉 WSL",
     "connectingtoip-text": "連線到 IP",

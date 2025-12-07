@@ -15,6 +15,7 @@
     "settings-text": "設定",
     "noinstancesfound-text": "インスタンスが見つからないか、移行が進行中です",
     "distronotfound-text": "ディストロが見つかりません",
+    "distroexists-text": "この名前のディストリビューションは既に存在します",
     "syncipnotset-text": "同期 IP が設定されていません。設定で設定してください",
     "shuttingdownwsl-text": "WSL をシャットダウン中",
     "connectingtoip-text": "IP に接続中",

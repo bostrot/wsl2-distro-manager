@@ -15,6 +15,7 @@
     "settings-text": "Einstellungen",
     "noinstancesfound-text": "Keine Instanzen gefunden oder es wird gerade migriert",
     "distronotfound-text": "Distro nicht gefunden",
+    "distroexists-text": "Distribution mit diesem Namen existiert bereits",
     "syncipnotset-text": "Sync-IP nicht festgelegt. Bitte in den Einstellungen festlegen",
     "shuttingdownwsl-text": "WSL wird heruntergefahren",
     "connectingtoip-text": "Verbinde mit IP",

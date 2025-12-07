@@ -14,6 +14,7 @@
     "settings-text": "Ajustes",
     "noinstancesfound-text": "No se encontraron instancias o hay una migración en progreso",
     "distronotfound-text": "Distribución no encontrada",
+    "distroexists-text": "Ya existe una distribución con este nombre",
     "syncipnotset-text": "IP de sincronización no configurada. Por favor, configúrala en los ajustes",
     "shuttingdownwsl-text": "Apagando WSL",
     "connectingtoip-text": "Conectando a IP",

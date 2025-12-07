@@ -98,6 +98,14 @@ Future<void> createInstance(
   // Replace all special characters with _
   String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
   if (name != '') {
+    // Check if distro exists
+    var instances = await api.list(true);
+    if (instances.all
+        .any((element) => element.toLowerCase() == name.toLowerCase())) {
+      Notify.message('distroexists-text'.i18n());
+      return;
+    }
+
     String distroName = autoSuggestBox.text;
 
     // Set paths
@@ -262,6 +270,47 @@ class _CreateWidgetState extends State<CreateWidget> {
   bool turnkey = false;
   bool docker = false;
   FocusNode node = FocusNode();
+  List<String> existingDistros = [];
+  bool nameExists = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDistros();
+    widget.nameController.addListener(_checkName);
+  }
+
+  @override
+  void dispose() {
+    widget.nameController.removeListener(_checkName);
+    super.dispose();
+  }
+
+  void _fetchDistros() async {
+    var instances = await widget.api.list(true);
+    if (mounted) {
+      setState(() {
+        existingDistros = instances.all;
+        _checkName();
+      });
+    }
+  }
+
+  void _checkName() {
+    String name = widget.nameController.text;
+    String sanitizedName = name.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
+    bool exists = false;
+    if (sanitizedName.isNotEmpty) {
+      exists = existingDistros.any(
+          (element) => element.toLowerCase() == sanitizedName.toLowerCase());
+    }
+
+    if (exists != nameExists) {
+      setState(() {
+        nameExists = exists;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -287,6 +336,15 @@ class _CreateWidgetState extends State<CreateWidget> {
             ),
           ),
         ),
+        if (nameExists)
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+            child: Text(
+              'distroexists-text'.i18n(),
+              style: TextStyle(
+                  color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
         Container(
           height: 10.0,
         ),

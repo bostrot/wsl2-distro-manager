@@ -15,6 +15,7 @@
     "settings-text": "Beállítások",
     "noinstancesfound-text": "Nem található példány vagy éppen migráció folyik",
     "distronotfound-text": "Disztró nem található",
+    "distroexists-text": "Már létezik ilyen nevű disztribúció",
     "syncipnotset-text": "Sync IP cím nincs beállítva. Állítsd be a beállításokban",
     "shuttingdownwsl-text": "WSL leállítása folyamatban",
     "connectingtoip-text": "Csatlakozás az IP címhez",

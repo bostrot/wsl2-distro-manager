@@ -14,6 +14,7 @@
     "settings-text": "Ayarlar",
     "noinstancesfound-text": "Hiçbir örnek bulunamadı ya da bir taşıma işlemi devam ediyor",
     "distronotfound-text": "Dağıtım bulunamadı",
+    "distroexists-text": "Bu isme sahip bir dağıtım zaten mevcut",
     "syncipnotset-text": "Senkronizasyon IP'si ayarlanmadı. Lütfen ayarlarda belirleyin",
     "shuttingdownwsl-text": "WSL kapatılıyor",
     "connectingtoip-text": "IP'ye bağlanıyor",
