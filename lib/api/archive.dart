@@ -1,5 +1,19 @@
 import 'dart:io';
 
+class ArchiveService {
+  Future<void> extract(String archivePath, String destinationPath) async {
+    await ArchiveApi.extract(archivePath, destinationPath);
+  }
+
+  Future<void> merge(List<String> archivePaths, String destinationPath) async {
+    await ArchiveApi.merge(archivePaths, destinationPath);
+  }
+
+  Future<void> compress(String filePath, String destinationPath) async {
+    await ArchiveApi.compress(filePath, destinationPath);
+  }
+}
+
 /// API for 7-Zip archive operations
 class ArchiveApi {
   static const _exe = './7zip/7za.exe';
@@ -34,6 +48,10 @@ class ArchiveApi {
     try {
       // remove trailing zeros from the files
       final outputFile = File(destinationPath);
+      if (await outputFile.exists()) {
+        await outputFile.delete();
+      }
+
       for (var i = 0; i < archivePaths.length; i++) {
         final fileName = archivePaths[i];
         // Read file as byte stream
@@ -43,7 +61,7 @@ class ArchiveApi {
 
         // Last layer
         if (i == archivePaths.length - 1) {
-          await outputFile.writeAsBytes(bytes);
+          await outputFile.writeAsBytes(bytes, mode: FileMode.append);
           break;
         }
 
@@ -57,7 +75,8 @@ class ArchiveApi {
         }
 
         // Write to new file
-        await outputFile.writeAsBytes(bytes.sublist(0, lastBytePos + 1));
+        await outputFile.writeAsBytes(bytes.sublist(0, lastBytePos + 1),
+            mode: FileMode.append);
       }
     } catch (e) {
       throw Exception('Failed to merge archives: $e');

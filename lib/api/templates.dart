@@ -11,6 +11,10 @@ import 'package:wsl2distromanager/components/notify.dart';
 /// Templates are distros that are saved as ext4 files with additional metadata
 /// saved in the SharedPreferences.
 class Templates {
+  final WSLApi wslApi;
+
+  Templates({WSLApi? wslApi}) : wslApi = wslApi ?? WSLApi();
+
   /// Save a distro as a template by [name]
   Future<void> saveTemplate(String name) async {
     String templateName = name;
@@ -30,7 +34,7 @@ class Templates {
     plausible.event(name: "wsl_saveastemplate");
     Notify.message('$templateName ${'savingastemplate-text'.i18n()}.',
         loading: true);
-    await WSLApi().export(name, getTemplatePath().file('$templateName.ext4'));
+    await wslApi.export(name, getTemplatePath().file('$templateName.ext4'));
     templates ??= [];
     templates.add(templateName);
     prefs.setStringList('templates', templates);
@@ -41,7 +45,7 @@ class Templates {
   /// Use a template by [templateName] and create a new instance with [newName].
   Future<void> useTemplate(String templateName, String newName) async {
     Notify.message('creatinginstance-text'.i18n([newName]), loading: true);
-    var result = await WSLApi().import(newName, getInstancePath(newName).path,
+    var result = await wslApi.import(newName, getInstancePath(newName).path,
         getTemplateFilePath(templateName));
     Notify.message(result);
   }
