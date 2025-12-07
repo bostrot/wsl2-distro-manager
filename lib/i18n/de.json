@@ -159,5 +159,6 @@
     "moved-text": "Die Distribution wurde erfolgreich verschoben.",
     "license-text": "Lizenz",
     "savesatemplatequestion-text": "Möchten Sie %s als Vorlage speichern?",
-    "saveastemplatebody-text": "Dies führt dazu, dass die Instanz heruntergefahren und exportiert wird. Dieser Vorgang kann einige Zeit in Anspruch nehmen, währenddessen die Instanz nicht nutzbar ist."
+    "saveastemplatebody-text": "Dies führt dazu, dass die Instanz heruntergefahren und exportiert wird. Dieser Vorgang kann einige Zeit in Anspruch nehmen, währenddessen die Instanz nicht nutzbar ist.",
+    "move-error-text": "Fehler beim Verschieben der Distribution '%s0' nach '%s1'.\nFehler: %s2\n\nMögliche Gründe:\n- Unzureichende Berechtigungen (versuchen Sie es als Administrator)\n- Nicht genügend Speicherplatz am Zielort\n- Ungültiger oder unzugänglicher Zielpfad\n\nBitte überprüfen Sie dies und versuchen Sie es erneut."
 }

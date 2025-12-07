@@ -238,7 +238,8 @@ Column settingsColumn(
                 ]),
             onPressed: () async {
               // Pick directory
-              String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+              String? selectedDirectory =
+                  await FilePicker.platform.getDirectoryPath(
                 dialogTitle: 'move-text'.i18n(),
                 lockParentWindow: true,
               );
@@ -250,7 +251,9 @@ Column settingsColumn(
               dialog(
                   item: item,
                   title: '${'move-text'.i18n()} \'${distroLabel(item)}\'',
-                  body: '${'movebody-text'.i18n([distroLabel(item)])}\n\nTarget: $selectedDirectory',
+                  body: '${'movebody-text'.i18n([
+                        distroLabel(item)
+                      ])}\n\nTarget: $selectedDirectory',
                   submitText: 'move-text'.i18n(),
                   submitStyle: ButtonStyle(
                     backgroundColor: ButtonState.all(Colors.red),
@@ -259,14 +262,19 @@ Column settingsColumn(
                   submitInput: false,
                   onSubmit: (inputText) async {
                     Notify.message(
-                        'moving-text'.i18n([distroLabel(item), selectedDirectory]),
+                        'moving-text'
+                            .i18n([distroLabel(item), selectedDirectory]),
                         loading: true);
                     try {
                       await WSLApi().move(item, selectedDirectory);
-                      Notify.message(
-                          'moved-text'.i18n([distroLabel(item), selectedDirectory]));
+                      Notify.message('moved-text'
+                          .i18n([distroLabel(item), selectedDirectory]));
                     } catch (e) {
-                      Notify.message('Error moving distro: $e');
+                      Notify.message('move-error-text'.i18n([
+                        distroLabel(item),
+                        selectedDirectory,
+                        e.toString()
+                      ]));
                     }
                   });
             },
