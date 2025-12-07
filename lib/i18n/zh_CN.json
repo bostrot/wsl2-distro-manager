@@ -115,7 +115,7 @@
     "processorinfo-text": "分配给 WSL 2 VM 的处理器数量。",
     "wildcardinfo-text": "布尔值，指定绑定到 WSL 2 VM 中的通配符或 localhost 的端口是否应该可以通过 localhost:port 从主机连接。",
     "kernelcmdinfo-text": "额外的内核命令行参数。",
-    "swapinfo-text": "向 WSL 2 VM 添加多少交换空间，0 表示没有交换文件。交换存储是在内存需求超过硬件设备限制时使用的基于磁盘的 RAM。",
+    "swapinfo-text": "向 WSL 2 VM 添加多少交换空间，0 表示没有交换文件。交换存储是在内存需求超过硬件设备限制时使用的基于磁盘的 RAM。(例如 8GB, 512MB)",
     "vhdinfo-text": "交换虚拟硬盘的绝对 Windows 路径。",
     "unusedmemoryinfo-text": "默认 true 设置使 Windows 能够回收分配给 WSL 2 虚拟机的未使用内存。",
     "guiinfo-text": "在 WSL 中打开或关闭对 GUI 应用程序 (WSLg) 的支持的布尔值。仅适用于 Windows 11。",

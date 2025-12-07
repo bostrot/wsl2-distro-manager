@@ -116,7 +116,7 @@
     "processorinfo-text": "WSL 2 VM'ye atanacak işlemci sayısı.",
     "wildcardinfo-text": "WSL 2 VM'de joker karakter veya yerel ağa bağlanmış portların ana makine üzerinden localhost:port aracılığıyla bağlanabilir olup olmadığını belirten boolean.",
     "kernelcmdinfo-text": "Ek çekirdek komut satırı argümanları.",
-    "swapinfo-text": "WSL 2 VM'ye eklenecek takas alanı miktarı, 0 takas dosyası için. Takas depolaması, donanım cihazındaki bellek talebi limiti aşıldığında kullanılan disk tabanlı RAM'dır.",
+    "swapinfo-text": "WSL 2 VM'ye eklenecek takas alanı miktarı, 0 takas dosyası için. Takas depolaması, donanım cihazındaki bellek talebi limiti aşıldığında kullanılan disk tabanlı RAM'dır. (ör. 8GB, 512MB)",
     "vhdinfo-text": "Takas sanal sabit diskinin mutlak Windows yolu.",
     "unusedmemoryinfo-text": "Varsayılan olarak ayarlanmış doğru, Windows'un WSL 2 sanal makinesine ayrılmış kullanılmayan belleği geri almasını sağlar.",
     "guiinfo-text": "WSL'de GUI uygulamaları için desteği açıp kapatmak için boolean. Yalnızca Windows 11 için geçerlidir.",

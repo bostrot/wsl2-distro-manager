@@ -116,7 +116,7 @@
     "processorinfo-text": "WSL 2 VM に割り当てるプロセッサの数。",
     "wildcardinfo-text": "WSL 2 VM でワイルドカードまたは localhost にバインドされたポートが localhost:port 経由でホストから接続できるかどうかを指定するブール値。",
     "kernelcmdinfo-text": "追加のカーネルコマンドライン引数。",
-    "swapinfo-text": "WSL 2 VM に追加するスワップ領域の量。スワップファイルなしの場合は 0。スワップストレージは、メモリ需要がハードウェアデバイスの制限を超えたときに使用されるディスクベースの RAM です。",
+    "swapinfo-text": "WSL 2 VM に追加するスワップ領域の量。スワップファイルなしの場合は 0。スワップストレージは、メモリ需要がハードウェアデバイスの制限を超えたときに使用されるディスクベースの RAM です。(例: 8GB, 512MB)",
     "vhdinfo-text": "スワップ仮想ハードディスクへの絶対 Windows パス。",
     "unusedmemoryinfo-text": "デフォルトの true 設定により、Windows は WSL 2 仮想マシンに割り当てられた未使用のメモリを再利用できます。",
     "guiinfo-text": "WSL で GUI アプリケーション (WSLg) のサポートをオンまたはオフにするブール値。Windows 11 でのみ使用できます。",

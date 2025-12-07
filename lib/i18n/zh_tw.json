@@ -115,7 +115,7 @@
     "processorinfo-text": "分配給 WSL 2 VM 的處理器數量。",
     "wildcardinfo-text": "布林值，指定綁定到 WSL 2 VM 中的通用匹配符號 (*) 或 localhost 的埠號是否應該可以透過 localhost:port 從主機連線。",
     "kernelcmdinfo-text": "額外的核心命令行參數。",
-    "swapinfo-text": "向 WSL 2 VM 新增多少置換空間，0 表示没有置換空間檔案。置換空間是在主記憶體需求超過硬體設備限制時使用基於磁碟的虛擬記憶體。",
+    "swapinfo-text": "向 WSL 2 VM 新增多少置換空間，0 表示没有置換空間檔案。置換空間是在主記憶體需求超過硬體設備限制時使用基於磁碟的虛擬記憶體。(例如 8GB, 512MB)",
     "vhdinfo-text": "置換虛擬硬碟檔案的 Windows 絕對路徑。",
     "unusedmemoryinfo-text": "預設 true 設定使 Windows 能夠收回分配給 WSL 2 虛擬機器的未使用主記憶體。",
     "guiinfo-text": "在 WSL 中開啟或關閉對 GUI 應用程式 (WSLg) 的支援的布林值。僅適用於 Windows 11。",

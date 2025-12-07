@@ -115,7 +115,7 @@
     "processorinfo-text": "Cuántos procesadores asignar a la VM de WSL 2.",
     "wildcardinfo-text": "Booleano que especifica si los puertos vinculados a comodín o localhost en la VM de WSL 2 deben ser accesibles desde el host a través de localhost:puerto.",
     "kernelcmdinfo-text": "Argumentos adicionales de la línea de comandos del kernel.",
-    "swapinfo-text": "Cuánto espacio de intercambio (swap) agregar a la VM de WSL 2, 0 para no tener archivo de intercambio. El almacenamiento de intercambio es RAM basada en disco utilizada cuando la demanda de memoria excede el límite en el dispositivo de hardware.",
+    "swapinfo-text": "Cuánto espacio de intercambio (swap) agregar a la VM de WSL 2, 0 para no tener archivo de intercambio. El almacenamiento de intercambio es RAM basada en disco utilizada cuando la demanda de memoria excede el límite en el dispositivo de hardware. (p.ej. 8GB, 512MB)",
     "vhdinfo-text": "Una ruta absoluta de Windows al disco duro virtual de intercambio.",
     "unusedmemoryinfo-text": "La configuración predeterminada verdadera permite a Windows recuperar la memoria no utilizada asignada a la máquina virtual de WSL 2.",
     "guiinfo-text": "Booleano para activar o desactivar el soporte para aplicaciones GUI (WSLg) en WSL. Solo disponible para Windows 11.",

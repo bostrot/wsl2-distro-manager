@@ -116,7 +116,7 @@
     "processorinfo-text": "How many processors to assign to the WSL 2 VM.",
     "wildcardinfo-text": "Boolean specifying if ports bound to wildcard or localhost in the WSL 2 VM should be connectable from the host via localhost:port.",
     "kernelcmdinfo-text": "Additional kernel command line arguments.",
-    "swapinfo-text": "How much swap space to add to the WSL 2 VM, 0 for no swap file. Swap storage is disk-based RAM used when memory demand exceeds limit on hardware device.",
+    "swapinfo-text": "How much swap space to add to the WSL 2 VM, 0 for no swap file. Swap storage is disk-based RAM used when memory demand exceeds limit on hardware device. (e.g. 8GB, 512MB)",
     "vhdinfo-text": "An absolute Windows path to the swap virtual hard disk.",
     "unusedmemoryinfo-text": "Default true setting enables Windows to reclaim unused memory allocated to WSL 2 virtual machine.",
     "guiinfo-text": "Boolean to turn on or off support for GUI applications (WSLg) in WSL. Only available for Windows 11.",

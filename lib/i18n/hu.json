@@ -116,7 +116,7 @@
     "processorinfo-text": "Ennyi processzort rendeljen a WSL 2 VM-hez.",
     "wildcardinfo-text": "Igaz/hamis érték, ami azt jelzi, hogy a WSL 2 VM-ben a wildcard vagy a localhost-hoz kötött portok elérhetőek-e a hostról a localhost:port-on keresztül.",
     "kernelcmdinfo-text": "További kernel parancssori argumentumok.",
-    "swapinfo-text": "Ennyi swap tárhelyet használjon a WSL 2 virtuális géphez (0: nincs swap fájl). A swap tárhellyel lemezterületet alkalmazhatunk a RAM helyett, amikor a memóriakérés meghaladja a hardveres eszközön a limitet.",
+    "swapinfo-text": "Ennyi swap tárhelyet használjon a WSL 2 virtuális géphez (0: nincs swap fájl). A swap tárhellyel lemezterületet alkalmazhatunk a RAM helyett, amikor a memóriakérés meghaladja a hardveres eszközön a limitet. (pl. 8GB, 512MB)",
     "vhdinfo-text": "Egy abszolút Windows-útvonal a swap virtuális merevlemezhez.",
     "unusedmemoryinfo-text": "Az alapértelmezett igaz beállítás lehetővé teszi a Windows számára, hogy visszaszerezze a WSL 2 virtuális géphez hozzárendelt fel nem használt memóriát.",
     "guiinfo-text": "Igaz/hamis érték, amely be- vagy kikapcsolja a GUI alkalmazások támogatását (WSLg) a WSL-ben. Csak Windows 11-hez érhető el.",
