@@ -109,6 +109,8 @@
     "defaultdistrolocation-text": "Alapértelmezett disztróhely",
     "distropath-text": "Alapértelmezetten ide kerülnek a másolt disztrók",
     "syncipaddress-text": "Szinkronizálási célpont IP címe",
+    "syncpassword-text": "Szinkronizálási jelszó",
+    "syncpasswordhint-text": "Jelszó a szinkronizálási hitelesítéshez",
     "repofordistro-text": "Extra disztró-repó",
     "globalconfiguration-text": "Globális konfiguráció",
     "globalconfigurationinfo-text": "Megjegyzés: A globális konfigurációs beállítások a .wslconfig fájlban csak az 19041-es és újabb Windows verziókban futó WSL 2 disztrók esetén érhetők el. Ne feledd, hogy a változtatások érvénybe lépéséhez le kell állítanod a WSL 2 virtuális gépet a wsl --shutdown paranccsal, majd újra kell indítanod a WSL példányt.",

@@ -109,6 +109,8 @@
     "defaultdistrolocation-text": "デフォルトのディストロの場所",
     "distropath-text": "デフォルトでコピーされたディストロを保存するパス",
     "syncipaddress-text": "同期ターゲットの IP アドレス",
+    "syncpassword-text": "同期パスワード",
+    "syncpasswordhint-text": "同期認証用のパスワード",
     "repofordistro-text": "ディストロ用の追加リポジトリ",
     "globalconfiguration-text": "グローバル設定",
     "globalconfigurationinfo-text": "注: .wslconfig を使用したグローバル設定オプションは、Windows ビルド 19041 以降で WSL 2 として実行されているディストリビューションでのみ使用できます。これらの変更を有効にするには、wsl --shutdown を実行して WSL 2 VM をシャットダウンし、WSL インスタンスを再起動する必要がある場合があることに注意してください。",

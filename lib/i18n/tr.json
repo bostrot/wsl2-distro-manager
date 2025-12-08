@@ -109,6 +109,8 @@
     "defaultdistrolocation-text": "Varsayılan Dağıtım Konumu",
     "distropath-text": "Kopyalanan dağıtımların varsayılan olarak kaydedileceği yol",
     "syncipaddress-text": "Senkronizasyon hedefi IP Adresi",
+    "syncpassword-text": "Senkronizasyon Şifresi",
+    "syncpasswordhint-text": "Senkronizasyon kimlik doğrulaması için şifre",
     "repofordistro-text": "Dağıtımlar için Ek repo",
     "globalconfiguration-text": "Küresel Yapılandırma",
     "globalconfigurationinfo-text": "Not: .wslconfig ile küresel yapılandırma seçenekleri yalnızca Windows Build 19041 ve sonrasında WSL 2 olarak çalışan dağıtımlar için geçerlidir. Unutmayın, bu değişikliklerin etkili olması için WSL 2 VM'yi kapatmak ve WSL örneğinizi yeniden başlatmak gerekebilir.",

@@ -108,6 +108,8 @@
     "defaultdistrolocation-text": "默认发行版位置",
     "distropath-text": "默认情况下保存复制发行版的路径",
     "syncipaddress-text": "同步目标的 IP 地址",
+    "syncpassword-text": "同步密码",
+    "syncpasswordhint-text": "用于同步验证的密码",
     "repofordistro-text": "发行版的外部仓库",
     "globalconfiguration-text": "全局配置",
     "globalconfigurationinfo-text": "注意：带有 .wslconfig 的全局配置选项仅适用于在 Windows Build 19041 及更高版本中作为 WSL 2 运行的发行版。请记住，您可能需要运行 wsl --shutdown 来关闭 WSL 2 VM，然后重新启动您的 WSL 实例以使这些更改生效。",

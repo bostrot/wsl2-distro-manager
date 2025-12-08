@@ -24,6 +24,7 @@ class SettingsPageState extends State<SettingsPage> {
       <String, TextEditingController>{};
 
   final TextEditingController _syncIpTextController = TextEditingController();
+  final TextEditingController _syncPasswordController = TextEditingController();
   final TextEditingController _repoTextController = TextEditingController();
   final TextEditingController _dockerrepoController = TextEditingController();
   final TextEditingController _editorController = TextEditingController();
@@ -55,6 +56,10 @@ class SettingsPageState extends State<SettingsPage> {
     String? syncIP = prefs.getString('SyncIP');
     if (syncIP != null && syncIP != '') {
       _syncIpTextController.text = syncIP;
+    }
+    String? syncPassword = prefs.getString('SyncPassword');
+    if (syncPassword != null && syncPassword != '') {
+      _syncPasswordController.text = syncPassword;
     }
     String? repoLink = prefs.getString('RepoLink');
     if (repoLink != null && repoLink != '') {
@@ -169,6 +174,13 @@ class SettingsPageState extends State<SettingsPage> {
     // Sync target ip setting _syncIpTextController
     if (_syncIpTextController.text.isNotEmpty) {
       prefs.setString("SyncIP", _syncIpTextController.text);
+    }
+
+    // Sync password
+    if (_syncPasswordController.text.isNotEmpty) {
+      prefs.setString("SyncPassword", _syncPasswordController.text);
+    } else {
+      prefs.remove("SyncPassword");
     }
 
     // Save repo link
@@ -482,6 +494,27 @@ class SettingsPageState extends State<SettingsPage> {
                   child: TextBox(
                     controller: _syncIpTextController,
                     placeholder: '192.168.1.20',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Expander(
+              header: Tooltip(
+                message: 'syncpassword-text'.i18n(),
+                child: Text('syncpassword-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
+              content: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+                child: Tooltip(
+                  message: 'syncpasswordhint-text'.i18n(),
+                  child: TextBox(
+                    controller: _syncPasswordController,
+                    placeholder: 'SecretPassword123',
+                    obscureText: true,
                   ),
                 ),
               ),

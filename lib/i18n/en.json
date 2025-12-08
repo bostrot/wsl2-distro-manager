@@ -109,6 +109,8 @@
     "defaultdistrolocation-text": "Default Distro Location",
     "distropath-text": "Path where to save copied distros by default",
     "syncipaddress-text": "IP Address of sync target",
+    "syncpassword-text": "Sync Password",
+    "syncpasswordhint-text": "Password for sync authentication",
     "repofordistro-text": "Extra repo for Distros",
     "globalconfiguration-text": "Global Configuration",
     "globalconfigurationinfo-text": "Note: Global configuration options with .wslconfig are only available for distributions running as WSL 2 in Windows Build 19041 and ,later. Keep in mind you may need to run wsl --shutdown to shut down the WSL 2 VM and then restart your WSL instance for these changes to take affect.",

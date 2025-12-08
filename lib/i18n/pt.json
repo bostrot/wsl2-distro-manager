@@ -108,6 +108,8 @@
     "defaultdistrolocation-text": "Local de distribuição padrão",
     "distropath-text": "Caminho onde salvar distribuições copiadas por padrão",
     "syncipaddress-text": "Endereço IP do destino de sincronização",
+    "syncpassword-text": "Senha de sincronização",
+    "syncpasswordhint-text": "Senha para autenticação de sincronização",
     "repofordistro-text": "Repo extra para distribuições",
     "globalconfiguration-text": "Configuração global",
     "globalconfigurationinfo-text": "Observação: as opções de configuração global com .wslconfig só estão disponíveis para distribuições executadas como WSL 2 no Windows Build 19041 e posteriores. Lembre-se de que pode ser necessário executar wsl --shutdown para encerrar a VM do WSL 2 e, em seguida, reiniciar sua instância do WSL para que essas alterações tenham efeito.",

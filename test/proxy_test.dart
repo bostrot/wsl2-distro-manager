@@ -1,38 +1,27 @@
-import 'dart:io';
-import 'package:dio/io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 void main() {
-  test('DockerImage configures proxy from prefs', () async {
-    SharedPreferences.setMockInitialValues({'Proxy': 'http://127.0.0.1:8080'});
+  test('DockerImage configures mirror from prefs', () async {
+    SharedPreferences.setMockInitialValues(
+        {'DockerMirror': 'https://mirror.gcr.io'});
     await initPrefs();
 
     final dockerImage = DockerImage();
-    final adapter = dockerImage.dio.httpClientAdapter;
-
-    expect(adapter, isA<IOHttpClientAdapter>());
-    final ioAdapter = adapter as IOHttpClientAdapter;
-
-    expect(ioAdapter.createHttpClient, isNotNull);
-
-    final client = ioAdapter.createHttpClient!();
-    expect(client, isA<HttpClient>());
+    expect(dockerImage.registryUrl, equals('https://mirror.gcr.io'));
   });
 
-  test('DockerImage does not configure proxy if pref is missing', () async {
-    SharedPreferences.setMockInitialValues({});
+  test('DockerImage mirror overrides repo link', () async {
+    SharedPreferences.setMockInitialValues({
+      'DockerRepoLink': 'https://registry-1.docker.io',
+      'DockerMirror': 'https://mirror.gcr.io'
+    });
     await initPrefs();
 
     final dockerImage = DockerImage();
-    final adapter = dockerImage.dio.httpClientAdapter;
-
-    expect(adapter, isA<IOHttpClientAdapter>());
-    final ioAdapter = adapter as IOHttpClientAdapter;
-
-    expect(ioAdapter.createHttpClient, isNull);
+    expect(dockerImage.registryUrl, equals('https://mirror.gcr.io'));
   });
 
   test('DockerImage configures registryUrl from prefs', () async {

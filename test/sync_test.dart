@@ -78,6 +78,7 @@ void main() {
       chunkedDownloaderFactory: ({
         required String url,
         required String saveFilePath,
+        Map<String, String>? headers,
         Function(int, int, double)? onProgress,
         Function(dynamic)? onError,
       }) {

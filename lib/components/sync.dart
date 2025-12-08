@@ -12,6 +12,7 @@ import 'helpers.dart';
 typedef ChunkedDownloaderFactory = ChunkedDownloader Function({
   required String url,
   required String saveFilePath,
+  Map<String, String>? headers,
   Function(int, int, double)? onProgress,
   Function(dynamic)? onError,
 });
@@ -22,12 +23,14 @@ typedef ServerFactory = Future<HttpServer> Function(
 ChunkedDownloader _defaultChunkedDownloaderFactory({
   required String url,
   required String saveFilePath,
+  Map<String, String>? headers,
   Function(int, int, double)? onProgress,
   Function(dynamic)? onError,
 }) {
   return ChunkedDownloader(
     url: url,
     saveFilePath: saveFilePath,
+    headers: headers,
     onProgress: onProgress,
     onError: onError,
   );
@@ -77,8 +80,23 @@ class Sync {
     var handler = createFileHandler(
         getInstancePath(distroName).file('ext4.vhdx'),
         contentType: "application/octet-stream");
+
+    String? syncPassword = prefs.getString('SyncPassword');
+    Handler finalHandler = handler;
+
+    if (syncPassword != null && syncPassword.isNotEmpty) {
+      finalHandler = const Pipeline().addMiddleware((innerHandler) {
+        return (request) {
+          if (request.headers['x-sync-password'] != syncPassword) {
+            return Response.forbidden('Access denied');
+          }
+          return innerHandler(request);
+        };
+      }).addHandler(handler);
+    }
+
     try {
-      server = await serverFactory(handler, '0.0.0.0', 59132);
+      server = await serverFactory(finalHandler, '0.0.0.0', 59132);
     } catch (e) {
       // Do nothing
     }
@@ -109,6 +127,10 @@ class Sync {
     var downloader = chunkedDownloaderFactory(
         url: 'http://$syncIP:59132/ext4.vhdx',
         saveFilePath: vhdxPathTmp,
+        headers: prefs.getString('SyncPassword') != null &&
+                prefs.getString('SyncPassword')!.isNotEmpty
+            ? {'x-sync-password': prefs.getString('SyncPassword')!}
+            : null,
         onProgress: (progress, total, speed) {
           String rec = (progress / 1024 / 1024).toStringAsFixed(2);
           String tot = (total / 1024 / 1024).toStringAsFixed(2);
