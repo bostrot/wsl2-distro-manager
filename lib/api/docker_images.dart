@@ -128,15 +128,63 @@ typedef ProgressCallback = void Function(int count, int total);
 typedef TotalProgressCallback = void Function(
     int count, int total, int countStep, int totalStep);
 
+typedef ChunkedDownloaderFactory = ChunkedDownloader Function({
+  required String url,
+  required String saveFilePath,
+  Map<String, String>? headers,
+  int? chunkSize,
+  Function(int, int, double)? onProgress,
+  Function(File)? onDone,
+  Function(dynamic)? onError,
+});
+
 class DockerImage {
-  static String registryUrl = 'https://registry-1.docker.io';
-  static const String authUrl = 'https://auth.docker.io';
-  static const String svcUrl = 'registry.docker.io';
+  String registryUrl;
+  String authUrl;
+  String svcUrl;
   String? distroName;
+  final Dio dio;
+  final ChunkedDownloaderFactory chunkedDownloaderFactory;
+  final ArchiveService archiveService;
+
+  DockerImage(
+      {Dio? dio,
+      ChunkedDownloaderFactory? chunkedDownloaderFactory,
+      ArchiveService? archiveService,
+      String? registryUrl,
+      this.authUrl = 'https://auth.docker.io',
+      this.svcUrl = 'registry.docker.io'})
+      : dio = dio ?? Dio(),
+        registryUrl = registryUrl ??
+            prefs.getString('DockerRepoLink') ??
+            'https://registry-1.docker.io',
+        chunkedDownloaderFactory = chunkedDownloaderFactory ??
+            ((
+                    {required url,
+                    required saveFilePath,
+                    headers,
+                    chunkSize,
+                    onProgress,
+                    onDone,
+                    onError}) =>
+                ChunkedDownloader(
+                    url: url,
+                    saveFilePath: saveFilePath,
+                    headers: headers,
+                    chunkSize: chunkSize ?? 1024 * 1024,
+                    onProgress: onProgress,
+                    onDone: onDone,
+                    onError: onError)),
+        archiveService = archiveService ?? ArchiveService() {
+    String? mirror = prefs.getString('DockerMirror');
+    if (mirror != null && mirror.isNotEmpty) {
+      this.registryUrl = mirror;
+    }
+  }
 
   /// Get auth token
   Future<String> _authenticate(String image) async {
-    Response<dynamic> response = await Dio().get(
+    Response<dynamic> response = await dio.get(
       '$authUrl/token?service=$svcUrl&scope=repository:$image:pull',
     );
     if (response.data == null) {
@@ -155,7 +203,7 @@ class DockerImage {
     if (!image.contains("/")) {
       image = "library/$image";
     }
-    Response<dynamic> response = await Dio().get(
+    Response<dynamic> response = await dio.get(
       '$registryUrl/v2/$image/manifests/${digest ?? 'latest'}', // https://registry-1.docker.io/v2/nginx/manifests/latest
       // accept application/json
       options: Options(headers: {
@@ -182,7 +230,7 @@ class DockerImage {
   /// Download blob to file
   Future<bool> _downloadBlob(String image, String token, String digest,
       String file, ProgressCallback progressCallback) async {
-    var downloader = ChunkedDownloader(
+    var downloader = chunkedDownloaderFactory(
       url: '$registryUrl/v2/$image/blobs/$digest',
       saveFilePath: file,
       headers: {
@@ -405,25 +453,60 @@ class DockerImage {
     // Create distro folder
 
     var layers = 0;
-    bool done = false;
 
     if (!skipDownload) {
-      await _download(image, tmpImagePath,
+      String result = await _download(image, tmpImagePath,
           (current, total, currentStep, totalStep) {
         layers = total;
         if (kDebugMode) {
           print('${current + 1}/$total');
         }
         progress(current, total, currentStep, totalStep);
-        if (current + 1 == total && currentStep == totalStep) {
-          done = true;
-        }
       }, tag: tag);
-    }
 
-    // Wait for download to finish
-    while (!done && !skipDownload) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      if (result == "false") {
+        throw Exception("Download failed");
+      }
+
+      // Ensure downloads have actually finished before proceeding to extraction.
+      // Poll for the expected layer files in the temporary image path with a timeout.
+      final parent = SafePath(tmpImagePath);
+      final timeout = const Duration(minutes: 5);
+      final pollInterval = const Duration(milliseconds: 500);
+      final startTime = DateTime.now();
+
+      if (layers > 0) {
+        while (true) {
+          var allExist = true;
+          for (var i = 0; i < layers; i++) {
+            if (!File(parent.file('layer_$i.tar.gz')).existsSync()) {
+              allExist = false;
+              break;
+            }
+          }
+          if (allExist) {
+            break;
+          }
+          if (DateTime.now().difference(startTime) > timeout) {
+            throw Exception('Download did not complete within timeout');
+          }
+          await Future.delayed(pollInterval);
+        }
+      } else {
+        // If layer count was not reported, wait for at least one layer or config.json to appear.
+        while (true) {
+          final hasLayer0 = File(parent.file('layer_0.tar.gz')).existsSync();
+          final hasConfig = File(parent.file('config.json')).existsSync();
+          if (hasLayer0 || hasConfig) {
+            break;
+          }
+          if (DateTime.now().difference(startTime) > timeout) {
+            throw Exception(
+                'Download did not produce expected files within timeout');
+          }
+          await Future.delayed(pollInterval);
+        }
+      }
     }
 
     Notify.message('Extracting layers ...');
@@ -450,13 +533,13 @@ class DockerImage {
 
             // Extract layer
             final layerTarGz = parentPath.file('layer_$i.tar.gz');
-            await ArchiveApi.extract(layerTarGz, parentPath.path);
+            await archiveService.extract(layerTarGz, parentPath.path);
             paths.add(parentPath.file('layer_$i.tar'));
           }
 
           // Archive as tar then gzip to disk
-          await ArchiveApi.merge(paths, outTar);
-          await ArchiveApi.compress(outTar, outTarGz);
+          await archiveService.merge(paths, outTar);
+          await archiveService.compress(outTar, outTarGz);
 
           Notify.message('writingtodisk-text'.i18n());
         } else if (layers == 1) {
@@ -529,6 +612,10 @@ class DockerImage {
   String filename(String image, String? tag) {
     if (image.isEmpty) {
       throw Exception('Image is not valid');
+    }
+    // Add library to image name
+    if (image.split('/').length == 1) {
+      image = 'library/$image';
     }
     final filename = image.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     if (tag == null) {

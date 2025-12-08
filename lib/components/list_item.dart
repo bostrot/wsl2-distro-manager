@@ -12,11 +12,10 @@ import 'package:wsl2distromanager/dialogs/dialogs.dart';
 /// running distros.
 class ListItem extends StatefulWidget {
   const ListItem(
-      {Key? key,
+      {super.key,
       required this.item,
       required this.running,
-      required this.trailing})
-      : super(key: key);
+      required this.trailing});
   final List<String> running;
   final String item;
   final String trailing;
@@ -27,6 +26,7 @@ class ListItem extends StatefulWidget {
 class _ListItemState extends State<ListItem> {
   Map<String, bool> hover = {};
   bool isSyncing = false;
+  bool isCleaning = false;
   bool showBar = false;
   bool hovered = false;
 
@@ -36,12 +36,8 @@ class _ListItemState extends State<ListItem> {
     });
   }
 
-  isRunning(String distroName, List<String> runningList) {
-    if (runningList.contains(distroName)) {
-      return true;
-    }
-    return false;
-  }
+  bool isRunning(String distroName, List<String> runningList) =>
+      runningList.contains(distroName);
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +86,14 @@ class _ListItemState extends State<ListItem> {
           ),
           content: Bar(
             widget: widget,
+            isCleaning: isCleaning,
+            onCleaningChanged: (value) {
+              if (mounted) {
+                setState(() {
+                  isCleaning = value;
+                });
+              }
+            },
           )),
     );
   }
@@ -126,9 +130,15 @@ class _ListItemState extends State<ListItem> {
 }
 
 class Bar extends StatelessWidget {
-  const Bar({Key? key, required this.widget}) : super(key: key);
+  const Bar(
+      {super.key,
+      required this.widget,
+      required this.isCleaning,
+      required this.onCleaningChanged});
 
   final ListItem widget;
+  final bool isCleaning;
+  final Function(bool) onCleaningChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -286,36 +296,49 @@ class Bar extends StatelessWidget {
                   cursor: SystemMouseCursors.click,
                   child: IconButton(
                       icon: const Icon(FluentIcons.broom, size: 16.0),
-                      onPressed: () {
-                        dialog(
-                            item: widget.item,
-                            title: 'cleanuptitle-text'.i18n([widget.item]),
-                            body: 'cleanupbody-text'.i18n(),
-                            submitText: 'continue-text'.i18n(),
-                            submitStyle: ButtonStyle(
-                              backgroundColor: ButtonState.all(Colors.red),
-                              foregroundColor: ButtonState.all(Colors.white),
-                            ),
-                            submitInput: false,
-                            cancelText: 'cancel-text'.i18n(),
-                            onSubmit: (inputText) async {
-                              // Show initial notification
-                              Notify.message(
-                                  'Cleaning up ${widget.item}. Exporting, removing and importing back...',
-                                  loading: true);
-                              
-                              try {
-                                String result = await WSLApi().cleanup(widget.item);
-                                // Show success notification
-                                Notify.message(
-                                    'Successfully cleaned up ${widget.item}');
-                              } catch (error) {
-                                // Show error notification
-                                Notify.message(
-                                    'Failed to clean up ${widget.item}: ${error.toString()}');
-                              }
-                            });
-                      }),
+                      onPressed: isCleaning
+                          ? null
+                          : () {
+                              dialog(
+                                  item: widget.item,
+                                  title:
+                                      'cleanuptitle-text'.i18n([widget.item]),
+                                  body: 'cleanupbody-text'.i18n(),
+                                  submitText: 'continue-text'.i18n(),
+                                  submitStyle: ButtonStyle(
+                                    backgroundColor:
+                                        ButtonState.all(Colors.red),
+                                    foregroundColor:
+                                        ButtonState.all(Colors.white),
+                                  ),
+                                  submitInput: false,
+                                  cancelText: 'cancel-text'.i18n(),
+                                  onSubmit: (inputText) async {
+                                    onCleaningChanged(true);
+                                    // Show initial notification
+                                    Notify.message(
+                                        'Cleaning up ${widget.item}. Exporting, removing and importing back...',
+                                        loading: true);
+
+                                    try {
+                                      await WSLApi().cleanup(widget.item,
+                                          onProgress: (status) {
+                                        Notify.message(
+                                            'Cleaning up ${widget.item}: $status',
+                                            loading: true);
+                                      });
+                                      // Show success notification
+                                      Notify.message(
+                                          'Successfully cleaned up ${widget.item}');
+                                    } catch (error) {
+                                      // Show error notification
+                                      Notify.message(
+                                          'Failed to clean up ${widget.item}: ${error.toString()}');
+                                    } finally {
+                                      onCleaningChanged(false);
+                                    }
+                                  });
+                            }),
                 ),
               ),
               Tooltip(

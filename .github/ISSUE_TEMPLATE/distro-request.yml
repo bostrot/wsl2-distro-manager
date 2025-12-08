@@ -2,7 +2,6 @@ name: 📩 Distro Request
 description: Suggest a new distribution to be added
 title: "[DISTRO] <title>"
 labels: [distro request]
-assignees: bostrot
 body:
 - type: checkboxes
   attributes:

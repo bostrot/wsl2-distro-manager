@@ -112,26 +112,32 @@ class QuickPageState extends State<QuickPage> {
       child: Column(
         children: [
           !showInput
-              ? Button(
-                  style: ButtonStyle(
-                      padding: ButtonState.all<EdgeInsets>(
-                          const EdgeInsets.only(
-                              top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
-                  onPressed: () {
-                    // Open qa_dialog
-                    communityDialog(() => setState(
-                          () {},
-                        ));
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(FluentIcons.cloud_download),
-                      const SizedBox(
-                        width: 10.0,
-                      ),
-                      Text('addcommunityactions-text'.i18n()),
-                    ],
+              ? Tooltip(
+                  message: 'addcommunityactions-text'.i18n(),
+                  child: Button(
+                    style: ButtonStyle(
+                        padding: ButtonState.all<EdgeInsets>(
+                            const EdgeInsets.only(
+                                top: 8.0,
+                                bottom: 8.0,
+                                left: 20.0,
+                                right: 20.0))),
+                    onPressed: () {
+                      // Open qa_dialog
+                      communityDialog(() => setState(
+                            () {},
+                          ));
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(FluentIcons.cloud_download),
+                        const SizedBox(
+                          width: 10.0,
+                        ),
+                        Text('addcommunityactions-text'.i18n()),
+                      ],
+                    ),
                   ),
                 )
               : Container(),
@@ -152,91 +158,98 @@ class QuickPageState extends State<QuickPage> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             showInput
-                ? Button(
-                    style: ButtonStyle(
-                        padding: ButtonState.all<EdgeInsets>(
-                            const EdgeInsets.only(
-                                top: 8.0,
-                                bottom: 8.0,
-                                left: 20.0,
-                                right: 20.0))),
-                    onPressed: () {
-                      setState(() {
-                        showInput = false;
-                      });
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(FluentIcons.chrome_close),
-                        const SizedBox(
-                          width: 10.0,
-                        ),
-                        Text('close-text'.i18n()),
-                      ],
+                ? Tooltip(
+                    message: 'close-text'.i18n(),
+                    child: Button(
+                      style: ButtonStyle(
+                          padding: ButtonState.all<EdgeInsets>(
+                              const EdgeInsets.only(
+                                  top: 8.0,
+                                  bottom: 8.0,
+                                  left: 20.0,
+                                  right: 20.0))),
+                      onPressed: () {
+                        setState(() {
+                          showInput = false;
+                        });
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(FluentIcons.chrome_close),
+                          const SizedBox(
+                            width: 10.0,
+                          ),
+                          Text('close-text'.i18n()),
+                        ],
+                      ),
                     ),
                   )
                 : Container(),
             const SizedBox(
               width: 10.0,
             ),
-            Button(
-              style: ButtonStyle(
-                  padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
-                      top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
-              onPressed: () {
-                if (!showInput) {
-                  setState(() {
-                    showInput = true;
-                  });
-                } else if (nameController.text.isNotEmpty &&
-                    contentController.text.isNotEmpty) {
-                  plausible.event(page: 'add_action');
+            Tooltip(
+              message:
+                  showInput ? 'save-text'.i18n() : 'addquickaction-text'.i18n(),
+              child: Button(
+                style: ButtonStyle(
+                    padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
+                        top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
+                onPressed: () {
+                  if (!showInput) {
+                    setState(() {
+                      showInput = true;
+                    });
+                  } else if (nameController.text.isNotEmpty &&
+                      contentController.text.isNotEmpty) {
+                    plausible.event(page: 'add_action');
 
-                  // Load data
-                  List<String>? titles =
-                      prefs.getStringList('quickSettingsTitles');
-                  titles ??= [];
-                  List<String>? contents =
-                      prefs.getStringList('quickSettingsContents');
-                  contents ??= [];
+                    // Load data
+                    List<String>? titles =
+                        prefs.getStringList('quickSettingsTitles');
+                    titles ??= [];
+                    List<String>? contents =
+                        prefs.getStringList('quickSettingsContents');
+                    contents ??= [];
 
-                  // Override if already exists
-                  if (titles.contains(nameController.text)) {
-                    int pos = titles.indexOf(nameController.text);
-                    titles.removeAt(pos);
-                    contents.removeAt(pos);
+                    // Override if already exists
+                    if (titles.contains(nameController.text)) {
+                      int pos = titles.indexOf(nameController.text);
+                      titles.removeAt(pos);
+                      contents.removeAt(pos);
+                    }
+
+                    // Add title to list
+                    titles.add(nameController.text);
+                    prefs.setStringList('quickSettingsTitles', titles);
+
+                    // Add content to list
+                    contents.add(contentController.text);
+                    prefs.setStringList('quickSettingsContents', contents);
+
+                    setState(() {
+                      showInput = false;
+                    });
+                  } else {
+                    // Error
                   }
-
-                  // Add title to list
-                  titles.add(nameController.text);
-                  prefs.setStringList('quickSettingsTitles', titles);
-
-                  // Add content to list
-                  contents.add(contentController.text);
-                  prefs.setStringList('quickSettingsContents', contents);
-
-                  setState(() {
-                    showInput = false;
-                  });
-                } else {
-                  // Error
-                }
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  showInput
-                      ? Text('save-text'.i18n())
-                      : Text('addquickaction-text'.i18n()),
-                  const SizedBox(
-                    width: 10.0,
-                  ),
-                  Icon(
-                    showInput ? FluentIcons.save : FluentIcons.settings_add,
-                    size: 15.0,
-                  ),
-                ],
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    showInput
+                        ? Text('save-text'.i18n())
+                        : Text('addquickaction-text'.i18n()),
+                    const SizedBox(
+                      width: 10.0,
+                    ),
+                    Icon(
+                      showInput ? FluentIcons.save : FluentIcons.settings_add,
+                      size: 15.0,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -291,37 +304,46 @@ class QuickPageState extends State<QuickPage> {
                     ),
                     trailing: Row(
                       children: [
-                        IconButton(
-                          icon: const Icon(FluentIcons.edit),
-                          onPressed: () {
-                            setState(() {
-                              showInput = true;
-                              nameController.text = quickActions[i].name;
-                              contentController.text = quickActions[i].content;
-                            });
-                          },
+                        Tooltip(
+                          message: 'edit-text'.i18n(),
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.edit),
+                            onPressed: () {
+                              setState(() {
+                                showInput = true;
+                                nameController.text = quickActions[i].name;
+                                contentController.text =
+                                    quickActions[i].content;
+                              });
+                            },
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(FluentIcons.delete),
-                          onPressed: () {
-                            // Open remove dialog
-                            dialog(
-                                item: quickActions[i],
-                                title: 'deleteinstancequestion-text'
-                                    .i18n([quickActions[i].name]),
-                                body: 'deleteinstancebody-text'.i18n(),
-                                submitText: 'delete-text'.i18n(),
-                                submitInput: false,
-                                submitStyle: ButtonStyle(
-                                  backgroundColor: ButtonState.all(Colors.red),
-                                  foregroundColor:
-                                      ButtonState.all(Colors.white),
-                                ),
-                                onSubmit: (inputText) {
-                                  QuickAction.removeFromPrefs(quickActions[i]);
-                                  setState(() {});
-                                });
-                          },
+                        Tooltip(
+                          message: 'delete-text'.i18n(),
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.delete),
+                            onPressed: () {
+                              // Open remove dialog
+                              dialog(
+                                  item: quickActions[i],
+                                  title: 'deleteinstancequestion-text'
+                                      .i18n([quickActions[i].name]),
+                                  body: 'deleteinstancebody-text'.i18n(),
+                                  submitText: 'delete-text'.i18n(),
+                                  submitInput: false,
+                                  submitStyle: ButtonStyle(
+                                    backgroundColor:
+                                        ButtonState.all(Colors.red),
+                                    foregroundColor:
+                                        ButtonState.all(Colors.white),
+                                  ),
+                                  onSubmit: (inputText) {
+                                    QuickAction.removeFromPrefs(
+                                        quickActions[i]);
+                                    setState(() {});
+                                  });
+                            },
+                          ),
                         ),
                       ],
                     ),

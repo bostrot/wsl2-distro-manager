@@ -1,5 +1,6 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -43,7 +44,6 @@ settingsDialog(item) {
   final userController = TextEditingController();
   userController.text = prefs.getString('StartUser_$item') ?? '';
   plausible.event(page: 'settings_dialog');
-  bool isSyncing = false;
 
   showDialog(
     context: context,
@@ -51,12 +51,12 @@ settingsDialog(item) {
       return ContentDialog(
         constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 500.0),
         title: Text(title),
-        content: StatefulBuilder(builder: (BuildContext context, setState) {
-          return SingleChildScrollView(
-            child: settingsColumn(pathController, startCmdController,
-                userController, context, item, isSyncing, setState),
-          );
-        }),
+        content: SettingsDialogContent(
+          item: item,
+          pathController: pathController,
+          startCmdController: startCmdController,
+          userController: userController,
+        ),
         actions: [
           Button(
               child: Text('cancel-text'.i18n()),
@@ -236,10 +236,23 @@ Column settingsColumn(
                   const Icon(FluentIcons.move),
                 ]),
             onPressed: () async {
+              // Pick directory
+              String? selectedDirectory =
+                  await FilePicker.platform.getDirectoryPath(
+                dialogTitle: 'move-text'.i18n(),
+                lockParentWindow: true,
+              );
+
+              if (selectedDirectory == null) {
+                return;
+              }
+
               dialog(
                   item: item,
                   title: '${'move-text'.i18n()} \'${distroLabel(item)}\'',
-                  body: 'movebody-text'.i18n([distroLabel(item)]),
+                  body: '${'movebody-text'.i18n([
+                        distroLabel(item)
+                      ])}\n\nTarget: $selectedDirectory',
                   submitText: 'move-text'.i18n(),
                   submitStyle: ButtonStyle(
                     backgroundColor: ButtonState.all(Colors.red),
@@ -248,11 +261,20 @@ Column settingsColumn(
                   submitInput: false,
                   onSubmit: (inputText) async {
                     Notify.message(
-                        'moving-text'.i18n([distroLabel(item), inputText]),
+                        'moving-text'
+                            .i18n([distroLabel(item), selectedDirectory]),
                         loading: true);
-                    await WSLApi().move(item, getInstancePath(item).path);
-                    Notify.message(
-                        'moved-text'.i18n([distroLabel(item), inputText]));
+                    try {
+                      await WSLApi().move(item, selectedDirectory);
+                      Notify.message('moved-text'
+                          .i18n([distroLabel(item), selectedDirectory]));
+                    } catch (e) {
+                      Notify.message('move-error-text'.i18n([
+                        distroLabel(item),
+                        selectedDirectory,
+                        e.toString()
+                      ]));
+                    }
                   });
             },
           ),
@@ -328,9 +350,9 @@ Widget settingSwitch(item, Function setState, String parent, String setting) {
     child: Row(
       children: [
         ToggleSwitch(
-          checked: prefs.getBool('$item-$setting') ?? false,
+          checked: prefs.getBool('$item-$parent-$setting') ?? false,
           onChanged: (value) {
-            prefs.setBool('$item-$setting', value);
+            prefs.setBool('$item-$parent-$setting', value);
             setState(() {});
             // Execute command in WSL
             WSLApi().setSetting(item, parent, setting, value.toString());
@@ -347,8 +369,8 @@ Widget settingSwitch(item, Function setState, String parent, String setting) {
 
 Widget settingText(item, Function setState, String parent, String setting) {
   final name = setting.uppercaseFirst();
-  final controller =
-      TextEditingController(text: prefs.getString('$item-$setting') ?? "");
+  final controller = TextEditingController(
+      text: prefs.getString('$item-$parent-$setting') ?? "");
   return Padding(
     padding: const EdgeInsets.all(8.0),
     child: Row(
@@ -363,7 +385,7 @@ Widget settingText(item, Function setState, String parent, String setting) {
           child: TextBox(
             controller: controller,
             onChanged: (value) {
-              prefs.setString('$item-$setting', value);
+              prefs.setString('$item-$parent-$setting', value);
               // Execute command in WSL
               WSLApi().setSetting(item, parent, setting, value);
             },
@@ -372,4 +394,74 @@ Widget settingText(item, Function setState, String parent, String setting) {
       ],
     ),
   );
+}
+
+Future<void> loadDistroSettings(String item) async {
+  var config = await WSLApi().getWSLConf(item);
+  config.forEach((section, settings) {
+    settings.forEach((key, value) {
+      // Handle booleans
+      if (value == 'true') {
+        prefs.setBool('$item-$section-$key', true);
+      } else if (value == 'false') {
+        prefs.setBool('$item-$section-$key', false);
+      } else {
+        prefs.setString('$item-$section-$key', value);
+      }
+    });
+  });
+}
+
+class SettingsDialogContent extends StatefulWidget {
+  final String item;
+  final TextEditingController pathController;
+  final TextEditingController startCmdController;
+  final TextEditingController userController;
+
+  const SettingsDialogContent({
+    Key? key,
+    required this.item,
+    required this.pathController,
+    required this.startCmdController,
+    required this.userController,
+  }) : super(key: key);
+
+  @override
+  State<SettingsDialogContent> createState() => _SettingsDialogContentState();
+}
+
+class _SettingsDialogContentState extends State<SettingsDialogContent> {
+  late Future<void> _loadFuture;
+  bool isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFuture = loadDistroSettings(widget.item);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _loadFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 200,
+            child: Center(child: ProgressRing()),
+          );
+        }
+        return SingleChildScrollView(
+          child: settingsColumn(
+              widget.pathController,
+              widget.startCmdController,
+              widget.userController,
+              context,
+              widget.item,
+              isSyncing,
+              setState),
+        );
+      },
+    );
+  }
 }

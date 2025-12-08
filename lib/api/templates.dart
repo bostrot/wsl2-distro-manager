@@ -11,6 +11,10 @@ import 'package:wsl2distromanager/components/notify.dart';
 /// Templates are distros that are saved as ext4 files with additional metadata
 /// saved in the SharedPreferences.
 class Templates {
+  final WSLApi wslApi;
+
+  Templates({WSLApi? wslApi}) : wslApi = wslApi ?? WSLApi();
+
   /// Save a distro as a template by [name]
   Future<void> saveTemplate(String name) async {
     String templateName = name;
@@ -30,7 +34,7 @@ class Templates {
     plausible.event(name: "wsl_saveastemplate");
     Notify.message('$templateName ${'savingastemplate-text'.i18n()}.',
         loading: true);
-    await WSLApi().export(name, getTemplatePath().file('$templateName.ext4'));
+    await wslApi.export(name, getTemplatePath().file('$templateName.ext4'));
     templates ??= [];
     templates.add(templateName);
     prefs.setStringList('templates', templates);
@@ -41,7 +45,7 @@ class Templates {
   /// Use a template by [templateName] and create a new instance with [newName].
   Future<void> useTemplate(String templateName, String newName) async {
     Notify.message('creatinginstance-text'.i18n([newName]), loading: true);
-    var result = await WSLApi().import(newName, getInstancePath(newName).path,
+    var result = await wslApi.import(newName, getInstancePath(newName).path,
         getTemplateFilePath(templateName));
     Notify.message(result);
   }
@@ -54,6 +58,8 @@ class Templates {
     if (templates == null) return;
     templates.remove(name);
     prefs.setStringList('templates', templates);
+    // Remove description
+    prefs.remove('template_description_$name');
     // Delete template file
     await File(getTemplateFilePath(name)).delete();
     Notify.message('deletedinstance-text'.i18n([name]));
@@ -71,9 +77,7 @@ class Templates {
   ///
   /// e.g. C:\WSL2-Distros\templates
   SafePath getTemplatePath() {
-    return getDistroPath()
-      ..cdUp()
-      ..cd('templates');
+    return getDataPath()..cd('templates');
   }
 
   /// Return the path to a template by [name].
@@ -90,5 +94,43 @@ class Templates {
     if (File(path).existsSync() == false) return '0 GB';
     var size = File(path).lengthSync();
     return '${(size / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+  }
+
+  /// Get template description by [name].
+  String getTemplateDescription(String name) {
+    return prefs.getString('template_description_$name') ?? '';
+  }
+
+  /// Set template description by [name].
+  Future<void> setTemplateDescription(String name, String description) async {
+    await prefs.setString('template_description_$name', description);
+  }
+
+  /// Rename a template from [oldName] to [newName].
+  Future<void> renameTemplate(String oldName, String newName) async {
+    if (oldName == newName) return;
+
+    // Rename file
+    File oldFile = File(getTemplateFilePath(oldName));
+    if (await oldFile.exists()) {
+      await oldFile.rename(getTemplateFilePath(newName));
+    }
+
+    // Update prefs list
+    var templates = prefs.getStringList('templates');
+    if (templates != null) {
+      int index = templates.indexOf(oldName);
+      if (index != -1) {
+        templates[index] = newName;
+        await prefs.setStringList('templates', templates);
+      }
+    }
+
+    // Move description
+    String? description = prefs.getString('template_description_$oldName');
+    if (description != null) {
+      await prefs.setString('template_description_$newName', description);
+      await prefs.remove('template_description_$oldName');
+    }
   }
 }

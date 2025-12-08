@@ -41,26 +41,32 @@ createDialog() {
           ),
         ),
         actions: [
-          Button(
-              child: Text('cancel-text'.i18n()),
+          Tooltip(
+            message: 'cancel-text'.i18n(),
+            child: Button(
+                child: Text('cancel-text'.i18n()),
+                onPressed: () async {
+                  Navigator.pop(context);
+                }),
+          ),
+          Tooltip(
+            message: 'create-text'.i18n(),
+            child: Button(
               onPressed: () async {
+                // Run "runner" function from global key
+                GlobalVariable.root.currentState!.runner(
+                  createInstance(
+                    nameController,
+                    locationController,
+                    api,
+                    autoSuggestBox,
+                    userController,
+                  ),
+                );
                 Navigator.pop(context);
-              }),
-          Button(
-            onPressed: () async {
-              // Run "runner" function from global key
-              GlobalVariable.root.currentState!.runner(
-                createInstance(
-                  nameController,
-                  locationController,
-                  api,
-                  autoSuggestBox,
-                  userController,
-                ),
-              );
-              Navigator.pop(context);
-            },
-            child: Text('create-text'.i18n()),
+              },
+              child: Text('create-text'.i18n()),
+            ),
           ),
         ],
       );
@@ -85,13 +91,23 @@ Future<void> createInstance(
   TextEditingController locationController,
   WSLApi api,
   TextEditingController autoSuggestBox,
-  TextEditingController userController,
-) async {
+  TextEditingController userController, {
+  DockerImage? dockerImage,
+}) async {
   plausible.event(name: "wsl_create");
+  DockerImage docker = dockerImage ?? DockerImage();
   String label = nameController.text;
   // Replace all special characters with _
   String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
   if (name != '') {
+    // Check if distro exists
+    var instances = await api.list(true);
+    if (instances.all
+        .any((element) => element.toLowerCase() == name.toLowerCase())) {
+      Notify.message('distroexists-text'.i18n());
+      return;
+    }
+
     String distroName = autoSuggestBox.text;
 
     // Set paths
@@ -99,8 +115,8 @@ Future<void> createInstance(
     String location = locationController.text;
     if (location == '') {
       location = prefs.getString("DistroPath") ?? defaultPath;
-      location += '/$name';
     }
+    location += '${Platform.pathSeparator}$name';
 
     // Check if docker image
     bool isDockerImage = false;
@@ -121,15 +137,15 @@ Future<void> createInstance(
 
       bool isDownloaded = false;
       // Check if image already downloaded
-      if (await DockerImage().isDownloaded(image, tag: tag)) {
+      if (await docker.isDownloaded(image, tag: tag)) {
         isDownloaded = true;
       }
 
       // Check if image exists
-      if (!isDownloaded && await DockerImage().hasImage(image, tag: tag)) {
+      if (!isDownloaded && await docker.hasImage(image, tag: tag)) {
         // Download image
         Notify.message('${'downloading-text'.i18n()}...');
-        var docker = DockerImage()..distroName = distroName;
+        docker.distroName = distroName;
         try {
           await docker.getRootfs(name, image, tag: tag, progress: progressFn);
         } catch (e) {
@@ -138,7 +154,7 @@ Future<void> createInstance(
         }
         Notify.message('downloaded-text'.i18n());
         // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
+        distroName = docker.filename(image, tag);
       } else if (!isDownloaded) {
         Notify.message('distronotfound-text'.i18n());
         return;
@@ -146,7 +162,7 @@ Future<void> createInstance(
 
       if (isDownloaded) {
         // Set distropath with distroName
-        distroName = DockerImage().filename(image, tag);
+        distroName = docker.filename(image, tag);
       }
     }
 
@@ -159,7 +175,11 @@ Future<void> createInstance(
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
-      Notify.message(WSLApi().utf8Convert(result.stdout));
+      String error = WSLApi().utf8Convert(result.stdout);
+      if (error.isEmpty) {
+        error = result.stderr.toString();
+      }
+      Notify.message(error);
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');
       var groupCmds = prefs.getStringList('GroupCmds_$distroName');
@@ -256,6 +276,47 @@ class _CreateWidgetState extends State<CreateWidget> {
   bool turnkey = false;
   bool docker = false;
   FocusNode node = FocusNode();
+  List<String> existingDistros = [];
+  bool nameExists = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDistros();
+    widget.nameController.addListener(_checkName);
+  }
+
+  @override
+  void dispose() {
+    widget.nameController.removeListener(_checkName);
+    super.dispose();
+  }
+
+  void _fetchDistros() async {
+    var instances = await widget.api.list(true);
+    if (mounted) {
+      setState(() {
+        existingDistros = instances.all;
+        _checkName();
+      });
+    }
+  }
+
+  void _checkName() {
+    String name = widget.nameController.text;
+    String sanitizedName = name.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
+    bool exists = false;
+    if (sanitizedName.isNotEmpty) {
+      exists = existingDistros.any(
+          (element) => element.toLowerCase() == sanitizedName.toLowerCase());
+    }
+
+    if (exists != nameExists) {
+      setState(() {
+        nameExists = exists;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -281,6 +342,15 @@ class _CreateWidgetState extends State<CreateWidget> {
             ),
           ),
         ),
+        if (nameExists)
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+            child: Text(
+              'distroexists-text'.i18n(),
+              style: TextStyle(
+                  color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
         Container(
           height: 10.0,
         ),

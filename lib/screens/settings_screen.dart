@@ -24,8 +24,12 @@ class SettingsPageState extends State<SettingsPage> {
       <String, TextEditingController>{};
 
   final TextEditingController _syncIpTextController = TextEditingController();
+  final TextEditingController _syncPasswordController = TextEditingController();
   final TextEditingController _repoTextController = TextEditingController();
   final TextEditingController _dockerrepoController = TextEditingController();
+  final TextEditingController _editorController = TextEditingController();
+  final TextEditingController _terminalController = TextEditingController();
+  final TextEditingController _dockerMirrorController = TextEditingController();
   bool showDocker = false;
   BuildContext? currentContext;
 
@@ -53,6 +57,10 @@ class SettingsPageState extends State<SettingsPage> {
     if (syncIP != null && syncIP != '') {
       _syncIpTextController.text = syncIP;
     }
+    String? syncPassword = prefs.getString('SyncPassword');
+    if (syncPassword != null && syncPassword != '') {
+      _syncPasswordController.text = syncPassword;
+    }
     String? repoLink = prefs.getString('RepoLink');
     if (repoLink != null && repoLink != '') {
       _repoTextController.text = repoLink;
@@ -62,6 +70,18 @@ class SettingsPageState extends State<SettingsPage> {
       if (dockerRepoLink != null && dockerRepoLink != '') {
         _dockerrepoController.text = dockerRepoLink;
       }
+    }
+    String? editor = prefs.getString('Editor');
+    if (editor != null && editor != '') {
+      _editorController.text = editor;
+    }
+    String? terminal = prefs.getString('Terminal');
+    if (terminal != null && terminal != '') {
+      _terminalController.text = terminal;
+    }
+    String? dockerMirror = prefs.getString('DockerMirror');
+    if (dockerMirror != null && dockerMirror != '') {
+      _dockerMirrorController.text = dockerMirror;
     }
     showDocker = prefs.getBool('showDocker') ?? false;
     if (!mounted) return;
@@ -90,47 +110,56 @@ class SettingsPageState extends State<SettingsPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Button(
-                  style: ButtonStyle(
-                      padding: ButtonState.all(const EdgeInsets.only(
-                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                  onPressed: () {
-                    WSLApi().editConfig();
-                  },
-                  child: Text('editwslconfig-text'.i18n())),
+              Tooltip(
+                message: 'editwslconfig-text'.i18n(),
+                child: Button(
+                    style: ButtonStyle(
+                        padding: ButtonState.all(const EdgeInsets.only(
+                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
+                    onPressed: () {
+                      WSLApi().editConfig();
+                    },
+                    child: Text('editwslconfig-text'.i18n())),
+              ),
               const SizedBox(
                 width: 10.0,
               ),
               Row(
                 children: [
-                  Button(
-                      style: ButtonStyle(
-                          padding: ButtonState.all(const EdgeInsets.only(
-                              left: 15.0,
-                              right: 15.0,
-                              top: 10.0,
-                              bottom: 10.0))),
-                      onPressed: () {
-                        WSLApi().restart();
-                        hasPushed = false;
+                  Tooltip(
+                    message: 'stopwsl-text'.i18n(),
+                    child: Button(
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 15.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () {
+                          WSLApi().restart();
+                          hasPushed = false;
 
-                        Navigator.popAndPushNamed(context, '/');
-                      },
-                      child: Text('stopwsl-text'.i18n())),
+                          Navigator.popAndPushNamed(context, '/');
+                        },
+                        child: Text('stopwsl-text'.i18n())),
+                  ),
                   const SizedBox(
                     width: 10.0,
                   ),
-                  Button(
-                      style: ButtonStyle(
-                          padding: ButtonState.all(const EdgeInsets.only(
-                              left: 15.0,
-                              right: 20.0,
-                              top: 10.0,
-                              bottom: 10.0))),
-                      onPressed: () {
-                        saveSettings(context);
-                      },
-                      child: Text('save-text'.i18n())),
+                  Tooltip(
+                    message: 'save-text'.i18n(),
+                    child: Button(
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 20.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () {
+                          saveSettings(context);
+                        },
+                        child: Text('save-text'.i18n())),
+                  ),
                 ],
               ),
             ],
@@ -147,6 +176,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("SyncIP", _syncIpTextController.text);
     }
 
+    // Sync password
+    if (_syncPasswordController.text.isNotEmpty) {
+      prefs.setString("SyncPassword", _syncPasswordController.text);
+    } else {
+      prefs.remove("SyncPassword");
+    }
+
     // Save repo link
     if (_repoTextController.text.isNotEmpty) {
       prefs.setString("RepoLink", _repoTextController.text);
@@ -161,12 +197,39 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("DockerRepoLink", "https://registry-1.docker.io");
     }
 
+    // Save editor
+    if (_editorController.text.isNotEmpty) {
+      prefs.setString("Editor", _editorController.text);
+    } else {
+      prefs.remove("Editor");
+    }
+
+    // Save terminal
+    if (_terminalController.text.isNotEmpty) {
+      prefs.setString("Terminal", _terminalController.text);
+    } else {
+      prefs.remove("Terminal");
+    }
+
+    // Save docker mirror
+    if (_dockerMirrorController.text.isNotEmpty) {
+      prefs.setString("DockerMirror", _dockerMirrorController.text);
+    } else {
+      prefs.remove("DockerMirror");
+    }
+
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
     }
+    // Data location setting
+    if (_settings['General Data Location']!.text.isNotEmpty) {
+      prefs.setString("DataPath", _settings['General Data Location']!.text);
+    }
     _settings.forEach((key, value) {
-      if (key != 'Default Distro Location' && value.text.isNotEmpty) {
+      if (key != 'Default Distro Location' &&
+          key != 'General Data Location' &&
+          value.text.isNotEmpty) {
         WSLApi().setConfig('wsl2', key, value.text);
       }
     });
@@ -201,12 +264,126 @@ class SettingsPageState extends State<SettingsPage> {
               },
             ),
             placeholder: prefs.getString("DistroPath") ?? defaultPath),
+        settingsWidget(context,
+            title: 'defaultdatalocation-text'.i18n(),
+            name: 'General Data Location',
+            tooltip: 'datapath-text'.i18n(),
+            suffix: IconButton(
+              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+              onPressed: () async {
+                String? path = await FilePicker.platform.getDirectoryPath(
+                  initialDirectory: prefs.getString("DataPath") ??
+                      prefs.getString("DistroPath") ??
+                      defaultPath,
+                );
+                if (path != null &&
+                    _settings['General Data Location'] != null) {
+                  _settings['General Data Location']!.text = path;
+                } else {
+                  // User canceled the picker
+                }
+              },
+            ),
+            placeholder: prefs.getString("DataPath") ??
+                prefs.getString("DistroPath") ??
+                defaultPath),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Tooltip(
+              message: 'defaulteditor-text'.i18n(),
+              child: Text('defaulteditor-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'defaulteditor-text'.i18n(),
+                child: TextBox(
+                  controller: _editorController,
+                  placeholder: 'notepad.exe',
+                  suffix: IconButton(
+                    icon: const Icon(FluentIcons.open_folder_horizontal,
+                        size: 15.0),
+                    onPressed: () async {
+                      FilePickerResult? result =
+                          await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['exe'],
+                      );
+                      if (result != null) {
+                        _editorController.text = result.files.single.path!;
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Tooltip(
+              message: 'defaultterminal-text'.i18n(),
+              child: Text('defaultterminal-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'defaultterminal-text'.i18n(),
+                child: TextBox(
+                  controller: _terminalController,
+                  placeholder: 'wt.exe',
+                  suffix: IconButton(
+                    icon: const Icon(FluentIcons.open_folder_horizontal,
+                        size: 15.0),
+                    onPressed: () async {
+                      FilePickerResult? result =
+                          await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['exe'],
+                      );
+                      if (result != null) {
+                        _terminalController.text = result.files.single.path!;
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Tooltip(
+              message: 'dockermirror-text'.i18n(),
+              child: Text('dockermirror-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'dockermirrorhint-text'.i18n(),
+                child: TextBox(
+                  controller: _dockerMirrorController,
+                  placeholder: 'https://mirror.gcr.io',
+                ),
+              ),
+            ),
+          ),
+        ),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('showdockershort-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              header: Tooltip(
+                message: 'showdockershort-text'.i18n(),
+                child: Text('showdockershort-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Row(
@@ -236,8 +413,11 @@ class SettingsPageState extends State<SettingsPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('language-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              header: Tooltip(
+                message: 'language-text'.i18n(),
+                child: Text('language-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Tooltip(
@@ -282,28 +462,31 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          // Padding(
-          //   padding: const EdgeInsets.all(8.0),
-          //   child: Expander(
-          //     header: Text('dockerrepo-text'.i18n(),
-          //         style: const TextStyle(fontWeight: FontWeight.w500)),
-          //     content: Padding(
-          //       padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-          //       child: Tooltip(
-          //         message: 'dockerrepo-text'.i18n(),
-          //         child: TextBox(
-          //           controller: _dockerrepoController,
-          //           placeholder: 'https://registry-1.docker.io',
-          //         ),
-          //       ),
-          //     ),
-          //   ),
-          // ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('syncipaddress-text'.i18n(),
+              header: Text('dockerrepo-text'.i18n(),
                   style: const TextStyle(fontWeight: FontWeight.w500)),
+              content: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+                child: Tooltip(
+                  message: 'dockerrepo-text'.i18n(),
+                  child: TextBox(
+                    controller: _dockerrepoController,
+                    placeholder: 'https://registry-1.docker.io',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Expander(
+              header: Tooltip(
+                message: 'syncipaddress-text'.i18n(),
+                child: Text('syncipaddress-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Tooltip(
@@ -319,8 +502,32 @@ class SettingsPageState extends State<SettingsPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Expander(
-              header: Text('repofordistro-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              header: Tooltip(
+                message: 'syncpassword-text'.i18n(),
+                child: Text('syncpassword-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
+              content: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+                child: Tooltip(
+                  message: 'syncpasswordhint-text'.i18n(),
+                  child: TextBox(
+                    controller: _syncPasswordController,
+                    placeholder: 'SecretPassword123',
+                    obscureText: true,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Expander(
+              header: Tooltip(
+                message: 'repofordistro-text'.i18n(),
+                child: Text('repofordistro-text'.i18n(),
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
               content: Padding(
                 padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
                 child: Tooltip(
@@ -423,8 +630,11 @@ class SettingsPageState extends State<SettingsPage> {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Expander(
-        header:
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        header: Tooltip(
+          message: tooltip,
+          child:
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        ),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

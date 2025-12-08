@@ -6,9 +6,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
 
+import 'package:path/path.dart' as p;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
+import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -27,7 +29,9 @@ bool inited = false;
 /// needed to interact with WSL based on Process.run and Process.start.
 /// Most functions will return the UTF8 converted stdout of the process.
 class WSLApi {
-  WSLApi() {
+  final Shell shell;
+
+  WSLApi({Shell? shell}) : shell = shell ?? ProcessShell() {
     if (!inited) {
       inited = true;
       App().getDistroLinks();
@@ -61,7 +65,7 @@ class WSLApi {
 
   /// Install WSL
   void installWSL() async {
-    Process.start(
+    shell.start(
         'powershell',
         [
           'Start-Process cmd -ArgumentList "/c wsl --install" -Verb RunAs',
@@ -90,7 +94,14 @@ class WSLApi {
       // Run shell to keep open
       args.add(';/bin/sh');
     }
-    await Process.start('start', args,
+
+    String executable = 'start';
+    String? terminal = prefs.getString('Terminal');
+    if (terminal != null && terminal.isNotEmpty) {
+      executable = terminal;
+    }
+
+    await shell.start(executable, args,
         mode: ProcessStartMode.detached, runInShell: true);
     if (kDebugMode) {
       print("Done starting $distribution");
@@ -100,21 +111,22 @@ class WSLApi {
   /// Stop a WSL distro by name
   Future<String> stop(String distribution) async {
     ProcessResult results =
-        await Process.run('wsl', ['--terminate', distribution]);
+        await shell.run('wsl', ['--terminate', distribution]);
     return results.stdout;
   }
 
   /// Open bashrc with notepad from WSL
   Future<String> openBashrc(String distribution) async {
-    List<String> argsRc = ['wsl', '-d', distribution, 'notepad.exe', '.bashrc'];
-    Process results = await Process.start('start', argsRc,
+    String editor = prefs.getString('Editor') ?? 'notepad.exe';
+    List<String> argsRc = ['wsl', '-d', distribution, editor, '.bashrc'];
+    Process results = await shell.start('start', argsRc,
         mode: ProcessStartMode.normal, runInShell: true);
     return results.stdout.toString();
   }
 
   /// Shutdown WSL
   Future<String> shutdown() async {
-    ProcessResult results = await Process.run('wsl', ['--shutdown']);
+    ProcessResult results = await shell.run('wsl', ['--shutdown']);
     return results.stdout;
   }
 
@@ -124,8 +136,7 @@ class WSLApi {
     if (path != '') {
       args.add(path);
     }
-    Process.start('start', args,
-        mode: ProcessStartMode.normal, runInShell: true);
+    shell.start('start', args, mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Write wslconfig file
@@ -190,13 +201,14 @@ class WSLApi {
 
   /// Open wslconfig file
   void editConfig() async {
-    Process.start('start', ['notepad.exe', getWslConfigPath()],
+    String editor = prefs.getString('Editor') ?? 'notepad.exe';
+    shell.start('start', ['""', editor, getWslConfigPath()],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Start Explorer
   void startExplorer(String distribution) async {
-    await Process.start(
+    await shell.start(
         'start', ['explorer.exe', getInstancePath(distribution).path],
         mode: ProcessStartMode.normal, runInShell: true);
   }
@@ -209,13 +221,13 @@ class WSLApi {
       var args = ['wt', '-w', '0', 'nt'];
       args.addAll(launchWslHome);
 
-      await Process.run('start', args);
+      await shell.run('start', args);
     } catch (_) {
       // Windows Terminal not installed
       Notify.message('openwithwt-not-found-error'.i18n());
 
       var args = ['powershell', '-noexit', '-command', launchWslHome.join(' ')];
-      await Process.run('start', args, runInShell: true);
+      await shell.run('start', args, runInShell: true);
     }
   }
 
@@ -262,28 +274,31 @@ class WSLApi {
 
   /// Export a WSL distro by name
   Future<String> export(String distribution, String location) async {
-    ProcessResult results = await Process.run(
+    ProcessResult results = await shell.run(
         'wsl', ['--export', distribution, location],
-        stdoutEncoding: null);
-    
+        stdoutEncoding: null, stderrEncoding: null);
+
     // Check if the export command was successful
     if (results.exitCode != 0) {
       String errorMsg = utf8Convert(results.stderr ?? []);
-      throw Exception('WSL export failed with exit code ${results.exitCode}: $errorMsg');
+      throw Exception(
+          'WSL export failed with exit code ${results.exitCode}: $errorMsg');
     }
-    
+
     return utf8Convert(results.stdout);
   }
 
   /// Remove a WSL distro by name
   Future<String> remove(String distribution) async {
-    ProcessResult results =
-        await Process.run('wsl', ['--unregister', distribution]);
-    
+    ProcessResult results = await shell.run(
+        'wsl', ['--unregister', distribution],
+        stdoutEncoding: null, stderrEncoding: null);
+
     // Check if the remove command was successful
     if (results.exitCode != 0) {
       String errorMsg = utf8Convert(results.stderr ?? []);
-      throw Exception('WSL unregister failed with exit code ${results.exitCode}: $errorMsg');
+      throw Exception(
+          'WSL unregister failed with exit code ${results.exitCode}: $errorMsg');
     }
 
     // Check if folder is empty and delete
@@ -297,13 +312,13 @@ class WSLApi {
         }
       }
     });
-    return results.stdout;
+    return utf8Convert(results.stdout);
   }
 
   /// Install a WSL distro by name
   Future<String> install(String distribution) async {
     ProcessResult results =
-        await Process.run('wsl', ['--install', '-d', distribution]);
+        await shell.run('wsl', ['--install', '-d', distribution]);
     return results.stdout;
   }
 
@@ -326,7 +341,7 @@ class WSLApi {
     bool showOutput = true,
   }) async {
     List<int> processes = [];
-    Process result = await Process.start(
+    Process result = await shell.start(
         'wsl', ['-d', distribution, '-u', user ?? 'root'],
         mode: ProcessStartMode.normal, runInShell: true);
 
@@ -352,7 +367,7 @@ class WSLApi {
     // Log output to file
     result.stdin.writeln('script -B /tmp/currentsessionlog -f');
     // Start windows with output
-    await Process.start(
+    await shell.start(
         'wsl',
         [
           '-d',
@@ -384,7 +399,7 @@ class WSLApi {
     String? user,
   }) async {
     // Write commands to /tmp/cmds
-    Process fileProcess = await Process.start(
+    Process fileProcess = await shell.start(
         'wsl', ['-d', distribution, '-u', user ?? 'root'],
         mode: ProcessStartMode.normal, runInShell: true);
 
@@ -410,7 +425,7 @@ class WSLApi {
       '/tmp/wdmcmds'
     ];
 
-    Process results = await Process.start('wsl', args,
+    Process results = await shell.start('wsl', args,
         runInShell: true, mode: ProcessStartMode.detached);
 
     return results;
@@ -422,7 +437,7 @@ class WSLApi {
     for (var arg in cmd.split(' ')) {
       args.add(arg);
     }
-    ProcessResult results = await Process.run('wsl', args,
+    ProcessResult results = await shell.run('wsl', args,
         runInShell: true, stdoutEncoding: utf8, stderrEncoding: utf8);
     return results.stdout;
   }
@@ -438,7 +453,7 @@ class WSLApi {
         cmd.split(' ').forEach((String arg) {
           args.add(arg);
         });
-        Process result = await Process.start('start', args,
+        Process result = await shell.start('start', args,
             mode: ProcessStartMode.normal, runInShell: true);
         exitCode = await result.exitCode;
         processes.add(exitCode);
@@ -447,8 +462,7 @@ class WSLApi {
         cmd.split(' ').forEach((String arg) {
           args.add(arg);
         });
-        ProcessResult result =
-            await Process.run('wsl', args, runInShell: false);
+        ProcessResult result = await shell.run('wsl', args, runInShell: false);
         exitCode = result.exitCode;
         processes.add(exitCode);
       }
@@ -458,8 +472,8 @@ class WSLApi {
 
   /// Restart WSL
   Future<String> restart() async {
-    ProcessResult results = await Process.run('wsl', ['--shutdown']);
-    results = await Process.run('wsl', ['--shutdown']);
+    ProcessResult results = await shell.run('wsl', ['--shutdown']);
+    results = await shell.run('wsl', ['--shutdown']);
     return results.stdout;
   }
 
@@ -474,21 +488,22 @@ class WSLApi {
     }
     ProcessResult results;
     if (isVhd) {
-      results = await Process.run(
+      results = await shell.run(
           'wsl', ['--import', distribution, installLocation, filename, '--vhd'],
-          stdoutEncoding: null);
+          stdoutEncoding: null, stderrEncoding: null);
     } else {
-      results = await Process.run(
+      results = await shell.run(
           'wsl', ['--import', distribution, installLocation, filename],
-          stdoutEncoding: null);
+          stdoutEncoding: null, stderrEncoding: null);
     }
-    
+
     // Check if the import command was successful
     if (results.exitCode != 0) {
       String errorMsg = utf8Convert(results.stderr ?? []);
-      throw Exception('WSL import failed with exit code ${results.exitCode}: $errorMsg');
+      throw Exception(
+          'WSL import failed with exit code ${results.exitCode}: $errorMsg');
     }
-    
+
     return utf8Convert(results.stdout);
   }
 
@@ -503,8 +518,9 @@ class WSLApi {
     }
 
     // Download
-    String downloadPath = getDistroPath().file('$filename.tar.gz');
-    String downloadPathTmp = getDistroPath().file('$filename.tar.gz.tmp');
+    var dataPath = getDataPath()..cd('distros');
+    String downloadPath = dataPath.file('$filename.tar.gz');
+    String downloadPathTmp = dataPath.file('$filename.tar.gz.tmp');
     bool fileExists = await File(downloadPath).exists();
     if (!image && distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
@@ -536,7 +552,7 @@ class WSLApi {
     }
 
     // Create from local file
-    ProcessResult results = await Process.run(
+    ProcessResult results = await shell.run(
         'wsl', ['--import', distribution, installPath, downloadPath],
         stdoutEncoding: null);
 
@@ -548,7 +564,7 @@ class WSLApi {
   /// Returns list of WSL distros
   Future<Instances> list(bool showDocker) async {
     ProcessResult results =
-        await Process.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
+        await shell.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
     bool wslInstalled = true;
@@ -579,20 +595,30 @@ class WSLApi {
   }
 
   /// Clean up WSL distros. Exporting, deleting, and importing.
-  Future<String> cleanup(String distribution) async {
+  Future<String> cleanup(String distribution,
+      {Function(String)? onProgress}) async {
     var instancePath = getInstancePath(distribution);
     var file = instancePath.file('export.tar.gz');
 
+    // Get default user before export
+    String defaultUser = 'root';
+    try {
+      defaultUser = await getDefaultUser(distribution);
+    } catch (e) {
+      logDebug('Could not determine default user: $e', null, null);
+    }
+
     try {
       // Step 1: Export the distribution
+      onProgress?.call('exporting-text'.i18n());
       String exportResult = await export(distribution, file);
-      
+
       // Check if export was successful by verifying the file exists and has content
       File exportFile = File(file);
       if (!exportFile.existsSync()) {
         throw Exception('Export failed: Export file was not created at $file');
       }
-      
+
       // Check if the export file has content (should be > 0 bytes)
       int fileSize = exportFile.lengthSync();
       if (fileSize == 0) {
@@ -602,11 +628,22 @@ class WSLApi {
       }
 
       // Step 2: Remove the distribution only after successful export
+      onProgress?.call('removing-text'.i18n());
       String removeResult = await remove(distribution);
 
       // Step 3: Import the distribution back
+      onProgress?.call('importing-text'.i18n());
       String importResult = await import(distribution, instancePath.path, file);
-      
+
+      // Restore default user if it was not root
+      if (defaultUser != 'root') {
+        try {
+          await setSetting(distribution, 'user', 'default', defaultUser);
+        } catch (e) {
+          logDebug('Failed to restore default user: $e', null, null);
+        }
+      }
+
       // Step 4: Clean up the temporary export file after successful import
       try {
         if (exportFile.existsSync()) {
@@ -621,13 +658,13 @@ class WSLApi {
     } catch (error, stack) {
       // Log the error
       logError(error, stack, null);
-      
+
       // If export file exists but cleanup failed, keep it for user recovery
       File exportFile = File(file);
       if (exportFile.existsSync()) {
         logDebug('Export file preserved at: $file', null, null);
       }
-      
+
       // Re-throw the error to be handled by the caller
       throw Exception('Cleanup failed: ${error.toString()}');
     }
@@ -635,9 +672,8 @@ class WSLApi {
 
   /// Returns list of WSL distros
   Future<List<String>> listRunning() async {
-    ProcessResult results = await Process.run(
-        'wsl', ['--list', '--running', '--quiet'],
-        stdoutEncoding: null);
+    ProcessResult results = await shell
+        .run('wsl', ['--list', '--running', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
     output.split('\n').forEach((line) {
@@ -688,12 +724,80 @@ class WSLApi {
   /// Returns [ProcessResult] of the command.
   Future<String> move(String distro, String newPath) async {
     SafePath path = SafePath(newPath);
-    await export(distro, path.file('export.ext4'));
-    await remove(distro);
-    var res = await import(distro, newPath, path.file('export.ext4'));
-    await File(path.file('export.ext4')).delete();
+    String exportFilePath = path.file('export.ext4');
 
-    return res;
+    // Check if new path is same as old path (normalize + absolute paths, compare case-insensitive on Windows)
+    String currentPath = getInstancePath(distro).path;
+    String canonicalCurrent = p.canonicalize(currentPath);
+    String canonicalNew = p.canonicalize(path.path);
+    bool samePath;
+    if (Platform.isWindows) {
+      samePath = canonicalCurrent.toLowerCase() == canonicalNew.toLowerCase();
+    } else {
+      samePath = canonicalCurrent == canonicalNew;
+    }
+    if (samePath) {
+      throw Exception(
+          "Cannot move '$distro': new path must be different from current path ($canonicalCurrent).");
+    }
+
+    // Export
+    await export(distro, exportFilePath);
+
+    // Verify export
+    File exportFile = File(exportFilePath);
+
+    // Get original VHDX size to determine safety threshold
+    int vhdxSize = 0;
+    try {
+      File vhdxFile = File(getInstancePath(distro).file('ext4.vhdx'));
+      if (vhdxFile.existsSync()) {
+        vhdxSize = vhdxFile.lengthSync();
+      }
+    } catch (e) {
+      logDebug('Could not get VHDX size for $distro: $e', null, null);
+    }
+
+    // Determine minimum safe size based on original VHDX
+    // If VHDX is large (>1GB), expect at least 10MB export to catch "header-only" corruptions.
+    // Otherwise, expect at least 1MB to support minimal distros like Alpine.
+    int minSize =
+        (vhdxSize > 1024 * 1024 * 1024) ? 10 * 1024 * 1024 : 1024 * 1024;
+
+    if (!exportFile.existsSync() || exportFile.lengthSync() < minSize) {
+      if (exportFile.existsSync()) {
+        exportFile.deleteSync();
+      }
+      throw Exception(
+          "Export failed or file too small (<${minSize ~/ (1024 * 1024)}MB). Aborting move to prevent data loss.");
+    }
+
+    // Set recovery marker
+    await prefs.setString('MoveOp_Distro', distro);
+    await prefs.setString('MoveOp_BackupPath', exportFilePath);
+
+    // Remove old
+    await remove(distro);
+
+    // Import new
+    try {
+      var res = await import(distro, newPath, exportFilePath);
+
+      // Cleanup export file only if import succeeded
+      await exportFile.delete();
+
+      // Update preference
+      prefs.setString('Path_$distro', newPath);
+
+      // Clear recovery marker
+      await prefs.remove('MoveOp_Distro');
+      await prefs.remove('MoveOp_BackupPath');
+
+      return res;
+    } catch (e) {
+      throw Exception(
+          "Import failed: $e. Your data is safe in: $exportFilePath. Please do not delete this file.");
+    }
   }
 
   /// Convert bytes to human readable string while removing non-ascii characters
@@ -732,5 +836,41 @@ class WSLApi {
     await execCmds(distro, scriptLines,
         onMsg: (msg) {}, onDone: () {}, showOutput: false);
     return true;
+  }
+
+  /// Get wsl.conf settings
+  Future<Map<String, Map<String, String>>> getWSLConf(String distro) async {
+    String output = await execCmdAsRoot(distro, 'cat /etc/wsl.conf');
+    Map<String, Map<String, String>> config = {};
+    String currentSection = '';
+
+    for (String line in output.split('\n')) {
+      line = line.trim();
+      if (line.startsWith('[') && line.endsWith(']')) {
+        currentSection = line.substring(1, line.length - 1);
+        config[currentSection] = {};
+      } else if (line.contains('=')) {
+        List<String> parts = line.split('=');
+        String key = parts[0].trim();
+        String value = parts.sublist(1).join('=').trim();
+        if (currentSection.isNotEmpty) {
+          config[currentSection]![key] = value;
+        }
+      }
+    }
+    return config;
+  }
+
+  /// Get default user of a distro
+  Future<String> getDefaultUser(String distribution) async {
+    ProcessResult result = await shell.run(
+        'wsl', ['-d', distribution, '-e', 'whoami'],
+        stdoutEncoding: null, stderrEncoding: null);
+
+    if (result.exitCode != 0) {
+      logDebug('Failed to get default user for $distribution', null, null);
+      return 'root';
+    }
+    return utf8Convert(result.stdout).trim();
   }
 }

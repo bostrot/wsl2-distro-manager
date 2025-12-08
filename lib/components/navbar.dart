@@ -15,10 +15,10 @@ import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
 
 class Navbar extends StatefulWidget {
   const Navbar({
-    Key? key,
+    super.key,
     required this.title,
     required this.child,
-  }) : super(key: key);
+  });
   final String title;
   final Widget child;
 
@@ -171,13 +171,19 @@ class _NavbarState extends State<Navbar> {
               },
               items: [
                 PaneItem(
-                  icon: const Icon(FluentIcons.home),
+                  icon: Tooltip(
+                    message: 'homepage-text'.i18n(),
+                    child: const Icon(FluentIcons.home),
+                  ),
                   title: Text('homepage-text'.i18n(),
                       style: TextStyle(color: textColor)),
                   body: widget.child,
                 ),
                 PaneItemAction(
-                  icon: const Icon(FluentIcons.info),
+                  icon: Tooltip(
+                    message: 'about-text'.i18n(),
+                    child: const Icon(FluentIcons.info),
+                  ),
                   title: Text('about-text'.i18n(),
                       style: TextStyle(color: textColor)),
                   onTap: () {
@@ -187,19 +193,28 @@ class _NavbarState extends State<Navbar> {
                   },
                 ),
                 PaneItem(
-                  icon: const Icon(FluentIcons.settings),
+                  icon: Tooltip(
+                    message: 'settings-text'.i18n(),
+                    child: const Icon(FluentIcons.settings),
+                  ),
                   title: Text('settings-text'.i18n(),
                       style: TextStyle(color: textColor)),
                   body: const SettingsPage(),
                 ),
                 PaneItem(
-                  icon: const Icon(FluentIcons.settings_add),
+                  icon: Tooltip(
+                    message: 'managequickactions-text'.i18n(),
+                    child: const Icon(FluentIcons.settings_add),
+                  ),
                   title: Text('managequickactions-text'.i18n(),
                       style: TextStyle(color: textColor)),
                   body: const QuickPage(),
                 ),
                 PaneItemAction(
-                  icon: const Icon(FluentIcons.add),
+                  icon: Tooltip(
+                    message: 'addinstance-text'.i18n(),
+                    child: const Icon(FluentIcons.add),
+                  ),
                   title: Text('addinstance-text'.i18n(),
                       style: TextStyle(color: textColor)),
                   onTap: () {
@@ -210,7 +225,10 @@ class _NavbarState extends State<Navbar> {
                 ),
                 // Help button
                 PaneItemAction(
-                  icon: const Icon(FluentIcons.help),
+                  icon: Tooltip(
+                    message: 'documentation-text'.i18n(),
+                    child: const Icon(FluentIcons.help),
+                  ),
                   title: Text('documentation-text'.i18n(),
                       style: TextStyle(color: textColor)),
                   onTap: () {
@@ -222,9 +240,12 @@ class _NavbarState extends State<Navbar> {
                 ),
                 // Sponsor button
                 PaneItemAction(
-                  icon: appTheme.mode == ThemeMode.dark
-                      ? const Icon(FluentIcons.heart)
-                      : const Icon(FluentIcons.heart_fill),
+                  icon: Tooltip(
+                    message: 'sponsor-text'.i18n(),
+                    child: appTheme.mode == ThemeMode.dark
+                        ? const Icon(FluentIcons.heart)
+                        : const Icon(FluentIcons.heart_fill),
+                  ),
                   title: Text('sponsor-text'.i18n(),
                       // Dark mode color red otherwise white
                       style: TextStyle(
@@ -275,7 +296,7 @@ class _NavbarState extends State<Navbar> {
 }
 
 class WindowButtons extends StatelessWidget {
-  const WindowButtons({Key? key}) : super(key: key);
+  const WindowButtons({super.key});
 
   @override
   Widget build(BuildContext context) {

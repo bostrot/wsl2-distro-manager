@@ -5,6 +5,10 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 class App {
+  final Dio dio;
+
+  App({Dio? dio}) : dio = dio ?? Dio();
+
   /// Returns an int of the string
   /// '1.2.3' -> 123
   double versionToDouble(String version) {
@@ -19,7 +23,7 @@ class App {
   /// Returns an url as String when the app is not up-to-date otherwise empty string
   Future<String> checkUpdate(String version) async {
     try {
-      var response = await Dio().get(updateUrl);
+      var response = await dio.get(updateUrl);
       if (response.data.length > 0) {
         var latest = response.data[0];
         String tagName = latest['tag_name'];
@@ -40,7 +44,7 @@ class App {
   /// Returns the message of the day
   Future<String> checkMotd() async {
     try {
-      var response = await Dio().get(motdUrl);
+      var response = await dio.get(motdUrl);
       if (response.data.length > 0) {
         var jsonData = json.decode(response.data);
         String motd = jsonData['motd'];
@@ -60,7 +64,7 @@ class App {
   /// Get list of distros from Repo
   Future<Map<String, String>> getDistroLinks() async {
     try {
-      var response = await Dio().get(gitRepoLink);
+      var response = await dio.get(gitRepoLink);
       if (response.statusCode != null && response.statusCode! < 300) {
         var jsonData = response.data;
         Map<String, String> distros = {};

@@ -169,9 +169,7 @@ SafePath getDistroPath() {
 ///
 /// e.g. C:\WSL2-Distros\tmp
 SafePath getTmpPath() {
-  return getDistroPath()
-    ..cdUp()
-    ..cd('tmp');
+  return getDataPath()..cd('tmp');
 }
 
 /// Get the instance path for the [name] instance.
@@ -211,4 +209,18 @@ String getInstanceSize(String name) {
 String getWslConfigPath() {
   return SafePath('C:\\Users\\${Platform.environment['USERNAME']}')
       .file('.wslconfig');
+}
+
+/// Return the general data path. Templates and downloads are saved here by default.
+/// It will be created if it does not exist.
+///
+/// e.g. C:\WSL2-Distros
+SafePath getDataPath() {
+  String? path = prefs.getString('DataPath');
+  if (path != null && path.isNotEmpty) {
+    return SafePath(path);
+  }
+  // Fallback to DistroPath logic (Root Path)
+  String distroPath = prefs.getString('DistroPath') ?? defaultPath;
+  return SafePath(distroPath);
 }
