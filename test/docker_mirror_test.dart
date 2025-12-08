@@ -7,7 +7,7 @@ void main() {
   test('DockerImage configures mirror from prefs', () async {
     SharedPreferences.setMockInitialValues(
         {'DockerMirror': 'https://mirror.gcr.io'});
-    await initPrefs();
+    prefs = await SharedPreferences.getInstance();
 
     final dockerImage = DockerImage();
     expect(dockerImage.registryUrl, equals('https://mirror.gcr.io'));
@@ -18,7 +18,7 @@ void main() {
       'DockerRepoLink': 'https://registry-1.docker.io',
       'DockerMirror': 'https://mirror.gcr.io'
     });
-    await initPrefs();
+    prefs = await SharedPreferences.getInstance();
 
     final dockerImage = DockerImage();
     expect(dockerImage.registryUrl, equals('https://mirror.gcr.io'));

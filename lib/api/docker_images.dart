@@ -178,7 +178,7 @@ class DockerImage {
         archiveService = archiveService ?? ArchiveService() {
     String? mirror = prefs.getString('DockerMirror');
     if (mirror != null && mirror.isNotEmpty) {
-      registryUrl = mirror;
+      this.registryUrl = mirror;
     }
   }
 
