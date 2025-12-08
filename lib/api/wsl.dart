@@ -746,12 +746,29 @@ class WSLApi {
 
     // Verify export
     File exportFile = File(exportFilePath);
-    if (!exportFile.existsSync() || exportFile.lengthSync() < 10 * 1024 * 1024) {
+    
+    // Get original VHDX size to determine safety threshold
+    int vhdxSize = 0;
+    try {
+      File vhdxFile = File(getInstancePath(distro).file('ext4.vhdx'));
+      if (vhdxFile.existsSync()) {
+        vhdxSize = vhdxFile.lengthSync();
+      }
+    } catch (e) {
+      logDebug('Could not get VHDX size for $distro: $e', null, null);
+    }
+
+    // Determine minimum safe size based on original VHDX
+    // If VHDX is large (>1GB), expect at least 10MB export to catch "header-only" corruptions.
+    // Otherwise, expect at least 1MB to support minimal distros like Alpine.
+    int minSize = (vhdxSize > 1024 * 1024 * 1024) ? 10 * 1024 * 1024 : 1024 * 1024;
+
+    if (!exportFile.existsSync() || exportFile.lengthSync() < minSize) {
       if (exportFile.existsSync()) {
         exportFile.deleteSync();
       }
       throw Exception(
-          "Export failed or file too small (<10MB). Aborting move to prevent data loss.");
+          "Export failed or file too small (<${minSize ~/ (1024 * 1024)}MB). Aborting move to prevent data loss.");
     }
 
     // Set recovery marker
