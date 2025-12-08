@@ -419,12 +419,11 @@ class SettingsDialogContent extends StatefulWidget {
   final TextEditingController userController;
 
   const SettingsDialogContent({
-    Key? key,
     required this.item,
     required this.pathController,
     required this.startCmdController,
     required this.userController,
-  }) : super(key: key);
+  }) : super.key();
 
   @override
   State<SettingsDialogContent> createState() => _SettingsDialogContentState();
