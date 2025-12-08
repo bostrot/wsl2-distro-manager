@@ -60,6 +60,8 @@ class MockShell implements Shell {
   bool simulateExportFailure = false;
   bool simulatePermissionDenied = false;
   bool simulateInvalidPath = false;
+  bool simulateSmallExport = false;
+  bool simulateRemoveFailure = false;
 
   @override
   Future<ProcessResult> run(String executable, List<String> arguments,
@@ -77,6 +79,15 @@ class MockShell implements Shell {
       stdout = distros.join('\n');
     }
 
+    if (arguments.contains('--unregister')) {
+      if (simulateRemoveFailure) {
+        stderr = 'Unregister failed';
+        exitCode = 1;
+      } else {
+        distros.remove(arguments[1]);
+      }
+    }
+
     if (arguments.contains('--export')) {
       String location = arguments[2];
       if (simulatePermissionDenied) {
@@ -87,7 +98,14 @@ class MockShell implements Shell {
         exitCode = 2;
       } else {
         File(location).createSync(recursive: true);
-        File(location).writeAsStringSync('dummy content');
+        // Create a file large enough to pass the >10MB safety check
+        final f = File(location).openSync(mode: FileMode.write);
+        if (simulateSmallExport) {
+          f.truncateSync(1024); // 1KB
+        } else {
+          f.truncateSync(10 * 1024 * 1024 + 100); // 10MB + 100 bytes
+        }
+        f.closeSync();
       }
     }
 

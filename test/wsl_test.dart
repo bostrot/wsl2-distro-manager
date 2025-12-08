@@ -323,4 +323,62 @@ systemd = true
     expect(config['network']!['hostname'], 'MyHost');
     expect(config['boot']!['systemd'], 'true');
   });
+
+  test('Move distro fails if export is too small', () async {
+    mockShell.distros.add('test-small');
+    mockShell.simulateSmallExport = true;
+    File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
+
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+
+    try {
+      await wslApi.move('test-small', 'C:/WSL2-Distros/test-moved-small');
+      fail('Should have thrown exception');
+    } catch (e) {
+      expect(e.toString(), contains('Export failed or file too small'));
+    }
+
+    // Verify markers are NOT set (failed before setting them)
+    expect(prefs.getString('MoveOp_Distro'), null);
+    expect(prefs.getString('MoveOp_BackupPath'), null);
+  });
+
+  test('Move distro sets recovery markers on failure during remove', () async {
+    mockShell.distros.add('test-fail-remove');
+    mockShell.simulateRemoveFailure = true;
+    File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
+
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+
+    try {
+      await wslApi.move('test-fail-remove', 'C:/WSL2-Distros/test-moved-fail');
+      fail('Should have thrown exception');
+    } catch (e) {
+      // Expected failure from remove
+    }
+
+    // Verify markers ARE set (failed after setting them but before clearing)
+    expect(prefs.getString('MoveOp_Distro'), 'test-fail-remove');
+    expect(prefs.getString('MoveOp_BackupPath'), contains('export.ext4'));
+  });
+
+  test('Move distro clears recovery markers on success', () async {
+    mockShell.distros.add('test-success');
+    File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
+
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+
+    // Manually set markers to ensure they get cleared
+    await prefs.setString('MoveOp_Distro', 'test-success');
+    await prefs.setString('MoveOp_BackupPath', 'dummy/path');
+
+    await wslApi.move('test-success', 'C:/WSL2-Distros/test-moved-success');
+
+    // Verify markers are CLEARED
+    expect(prefs.getString('MoveOp_Distro'), null);
+    expect(prefs.getString('MoveOp_BackupPath'), null);
+  });
 }

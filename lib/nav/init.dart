@@ -50,12 +50,35 @@ initRoot(statusMsg) async {
       changelogDialog(prefs, tagName, body);
     }
   }
-  // if (kDebugMode) {
-  //   prefs.remove('version');
-  // }
-  // if (kDebugMode) {
-  //   prefs.setString('version', '1.8.0');
-  // }
+
+  // Check for interrupted move operation
+  String? moveOpDistro = prefs.getString('MoveOp_Distro');
+  String? moveOpBackupPath = prefs.getString('MoveOp_BackupPath');
+  if (moveOpDistro != null && moveOpBackupPath != null) {
+    while (GlobalVariable.infobox.currentContext == null) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    // Show recovery dialog
+    showDialog(
+      context: GlobalVariable.infobox.currentContext!,
+      builder: (context) => ContentDialog(
+        title: const Text('Recovery Detected'),
+        content: Text(
+            'It appears that a move operation for "$moveOpDistro" was interrupted.\n\nYour data should be safe in:\n$moveOpBackupPath\n\nPlease verify this file exists and try importing it manually or moving it to a safe location.'),
+        actions: [
+          Button(
+            child: const Text('OK'),
+            onPressed: () {
+              // Clear the marker so we don't show this again
+              prefs.remove('MoveOp_Distro');
+              prefs.remove('MoveOp_BackupPath');
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   // Check updates
   App app = App();

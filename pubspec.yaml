@@ -26,6 +26,7 @@ dependencies:
   http: ^1.6.0
   localization: ^2.1.1
   package_info_plus: ^9.0.0
+  path: ^1.9.1
   plausible_analytics: ^0.3.0
   provider: ^6.1.5
   re_editor: ^0.8.0

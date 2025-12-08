@@ -746,12 +746,17 @@ class WSLApi {
 
     // Verify export
     File exportFile = File(exportFilePath);
-    if (!exportFile.existsSync() || exportFile.lengthSync() == 0) {
+    if (!exportFile.existsSync() || exportFile.lengthSync() < 10 * 1024 * 1024) {
       if (exportFile.existsSync()) {
         exportFile.deleteSync();
       }
-      throw Exception("Export failed. Aborting move to prevent data loss.");
+      throw Exception(
+          "Export failed or file too small (<10MB). Aborting move to prevent data loss.");
     }
+
+    // Set recovery marker
+    await prefs.setString('MoveOp_Distro', distro);
+    await prefs.setString('MoveOp_BackupPath', exportFilePath);
 
     // Remove old
     await remove(distro);
@@ -765,6 +770,10 @@ class WSLApi {
 
       // Update preference
       prefs.setString('Path_$distro', newPath);
+
+      // Clear recovery marker
+      await prefs.remove('MoveOp_Distro');
+      await prefs.remove('MoveOp_BackupPath');
 
       return res;
     } catch (e) {
