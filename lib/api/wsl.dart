@@ -746,7 +746,7 @@ class WSLApi {
 
     // Verify export
     File exportFile = File(exportFilePath);
-    
+
     // Get original VHDX size to determine safety threshold
     int vhdxSize = 0;
     try {
@@ -761,7 +761,8 @@ class WSLApi {
     // Determine minimum safe size based on original VHDX
     // If VHDX is large (>1GB), expect at least 10MB export to catch "header-only" corruptions.
     // Otherwise, expect at least 1MB to support minimal distros like Alpine.
-    int minSize = (vhdxSize > 1024 * 1024 * 1024) ? 10 * 1024 * 1024 : 1024 * 1024;
+    int minSize =
+        (vhdxSize > 1024 * 1024 * 1024) ? 10 * 1024 * 1024 : 1024 * 1024;
 
     if (!exportFile.existsSync() || exportFile.lengthSync() < minSize) {
       if (exportFile.existsSync()) {
