@@ -100,7 +100,14 @@ class WSLApi {
     if (terminal != null && terminal.isNotEmpty) {
       executable = terminal;
     }
-
+    // If using Windows Terminal, open in new tab of existing window
+    if (executable.toLowerCase().endsWith('wt.exe') ||
+        executable.toLowerCase() == 'wt') {
+      // -w 0 targets the existing window (or creates one if none exists)
+      // nt (new-tab) creates a new tab
+      // We insert these at the beginning of the arguments list
+      args.insertAll(0, ['-w', '0', 'nt']);
+    }
     await shell.start(executable, args,
         mode: ProcessStartMode.detached, runInShell: true);
     if (kDebugMode) {
