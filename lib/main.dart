@@ -56,7 +56,7 @@ void main() async {
 
   // Init logging
   initLogging();
-  initPrefs();
+  await initPrefs();
 
   // Error logging
   FlutterError.onError = (details) {
@@ -86,8 +86,6 @@ class WSLManager extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AppTheme(),
       builder: (context, _) {
-        // Wait for prefs to be initialized
-        while (!initialized) {}
         final appTheme = context.watch<AppTheme>();
         var selectedLang = prefs.getString('language');
         return FluentApp.router(

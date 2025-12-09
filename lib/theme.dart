@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 
 enum NavigationIndicators { sticky, end }
 
@@ -9,6 +10,22 @@ class ThemeModeManager {}
 
 class AppTheme extends ChangeNotifier {
   static var themeMode = ThemeMode.system;
+
+  AppTheme() {
+    _loadTheme();
+  }
+
+  void _loadTheme() {
+    String? theme = prefs.getString('themeMode');
+    if (theme == 'dark') {
+      _mode = ThemeMode.dark;
+    } else if (theme == 'light') {
+      _mode = ThemeMode.light;
+    } else {
+      _mode = ThemeMode.system;
+    }
+    themeMode = _mode;
+  }
 
   AccentColor _color = systemAccentColor;
   AccentColor get color => _color;
@@ -36,6 +53,13 @@ class AppTheme extends ChangeNotifier {
   set mode(ThemeMode mode) {
     _mode = mode;
     themeMode = mode;
+    if (mode == ThemeMode.dark) {
+      prefs.setString('themeMode', 'dark');
+    } else if (mode == ThemeMode.light) {
+      prefs.setString('themeMode', 'light');
+    } else {
+      prefs.setString('themeMode', 'system');
+    }
     notifyListeners();
   }
 
