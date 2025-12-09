@@ -15,6 +15,7 @@
     "settings-text": "設定",
     "defaulteditor-text": "既定のエディター",
     "defaultterminal-text": "既定のターミナル",
+    "defaultvscode-text": "デフォルトのVS Codeコマンド",
     "noinstancesfound-text": "インスタンスが見つからないか、移行が進行中です",
     "distronotfound-text": "ディストロが見つかりません",
     "distroexists-text": "この名前のディストリビューションは既に存在します",

@@ -132,7 +132,12 @@ class WSLApi {
 
   /// Start VSCode
   void startVSCode(String distribution, {String path = ''}) async {
-    List<String> args = ['wsl', '-d', distribution, 'code'];
+    String codeCmd = prefs.getString('VSCodeCmd') ?? 'code';
+    if (codeCmd.isEmpty) {
+      codeCmd = 'code';
+    }
+
+    List<String> args = ['wsl', '-d', distribution, codeCmd];
     if (path != '') {
       args.add(path);
     }

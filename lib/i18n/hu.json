@@ -15,6 +15,7 @@
     "settings-text": "Beállítások",
     "defaulteditor-text": "Alapértelmezett szerkesztő",
     "defaultterminal-text": "Alapértelmezett terminál",
+    "defaultvscode-text": "Alapértelmezett VS Code parancs",
     "noinstancesfound-text": "Nem található példány vagy éppen migráció folyik",
     "distronotfound-text": "Disztró nem található",
     "distroexists-text": "Már létezik ilyen nevű disztribúció",

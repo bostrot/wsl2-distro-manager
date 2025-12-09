@@ -15,6 +15,7 @@
     "settings-text": "Einstellungen",
     "defaulteditor-text": "Standard-Editor",
     "defaultterminal-text": "Standard-Terminal",
+    "defaultvscode-text": "Standard VS Code Befehl",
     "noinstancesfound-text": "Keine Instanzen gefunden oder es wird gerade migriert",
     "distronotfound-text": "Distro nicht gefunden",
     "distroexists-text": "Distribution mit diesem Namen existiert bereits",

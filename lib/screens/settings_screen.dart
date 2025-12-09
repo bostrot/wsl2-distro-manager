@@ -29,6 +29,7 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _dockerrepoController = TextEditingController();
   final TextEditingController _editorController = TextEditingController();
   final TextEditingController _terminalController = TextEditingController();
+  final TextEditingController _vscodeController = TextEditingController();
   final TextEditingController _dockerMirrorController = TextEditingController();
   bool showDocker = false;
   BuildContext? currentContext;
@@ -78,6 +79,10 @@ class SettingsPageState extends State<SettingsPage> {
     String? terminal = prefs.getString('Terminal');
     if (terminal != null && terminal != '') {
       _terminalController.text = terminal;
+    }
+    String? vscodeCmd = prefs.getString('VSCodeCmd');
+    if (vscodeCmd != null && vscodeCmd != '') {
+      _vscodeController.text = vscodeCmd;
     }
     String? dockerMirror = prefs.getString('DockerMirror');
     if (dockerMirror != null && dockerMirror != '') {
@@ -209,6 +214,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("Terminal", _terminalController.text);
     } else {
       prefs.remove("Terminal");
+    }
+
+    // Save vscode command
+    if (_vscodeController.text.isNotEmpty) {
+      prefs.setString("VSCodeCmd", _vscodeController.text);
+    } else {
+      prefs.remove("VSCodeCmd");
     }
 
     // Save docker mirror
@@ -350,6 +362,26 @@ class SettingsPageState extends State<SettingsPage> {
                       }
                     },
                   ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Expander(
+            header: Tooltip(
+              message: 'defaultvscode-text'.i18n(),
+              child: Text('defaultvscode-text'.i18n(),
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+              child: Tooltip(
+                message: 'defaultvscode-text'.i18n(),
+                child: TextBox(
+                  controller: _vscodeController,
+                  placeholder: 'code',
                 ),
               ),
             ),

@@ -15,6 +15,7 @@
     "settings-text": "Settings",
     "defaulteditor-text": "Default Editor",
     "defaultterminal-text": "Default Terminal",
+    "defaultvscode-text": "Default VS Code Command",
     "noinstancesfound-text": "No instances found or there is a migration in progress",
     "distronotfound-text": "Distro not found",
     "distroexists-text": "Distro with this name already exists",
