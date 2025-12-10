@@ -706,21 +706,20 @@ class WSLApi {
     try {
       await Dio().get(repo).then((value) => {
             value.data.split('\n').forEach((line) {
-              if (line.contains('tar.gz"') &&
-                  line.contains('href=') &&
-                  (line.contains('debian-10') || line.contains('debian-11'))) {
-                String name = line
-                    .split('href="')[1]
-                    .split('"')[0]
-                    .toString()
+              if (line.contains('tar.gz') && line.contains('href=')) {
+                var parts = line.split(RegExp(r'href=["' ']'));
+                if (parts.length < 2) return;
+                String filename = parts[1].split(RegExp(r'["' ']'))[0];
+
+                if (!filename.endsWith('.tar.gz')) return;
+
+                String name = filename
                     .replaceAll('.tar.gz', '')
                     .replaceAll('1_amd64', '')
                     .replaceAll(RegExp(r'-|_'), ' ')
                     .replaceAllMapped(RegExp(r' .|^.'),
                         (Match m) => m[0].toString().toUpperCase());
-                distroRootfsLinks.addAll({
-                  name: repo + line.split('href="')[1].split('"')[0].toString()
-                });
+                distroRootfsLinks.addAll({name: repo + filename});
               }
             })
           });
