@@ -298,6 +298,8 @@ class _CreateWidgetState extends State<CreateWidget> {
   FocusNode node = FocusNode();
   List<String> existingDistros = [];
   bool nameExists = false;
+  bool customLocation = false;
+  bool createUser = false;
 
   @override
   void initState() {
@@ -524,24 +526,40 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
-        Tooltip(
-          message: 'savelocationhint-text'.i18n(),
-          child: TextBox(
-            controller: widget.locationController,
-            placeholder: 'savelocationplaceholder-text'.i18n(),
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
-              onPressed: () async {
-                String? path = await FilePicker.platform.getDirectoryPath();
-                if (path != null) {
-                  widget.locationController.text = path;
-                } else {
-                  // User canceled the picker
-                }
-              },
+        ToggleSwitch(
+          checked: customLocation,
+          content: Text('savelocationhint-text'.i18n()),
+          onChanged: (v) {
+            setState(() {
+              customLocation = v;
+              if (!v) widget.locationController.clear();
+            });
+          },
+        ),
+        if (customLocation) ...[
+          Container(
+            height: 10.0,
+          ),
+          Tooltip(
+            message: 'savelocationhint-text'.i18n(),
+            child: TextBox(
+              controller: widget.locationController,
+              placeholder: 'savelocationplaceholder-text'.i18n(),
+              suffix: IconButton(
+                icon:
+                    const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+                onPressed: () async {
+                  String? path = await FilePicker.platform.getDirectoryPath();
+                  if (path != null) {
+                    widget.locationController.text = path;
+                  } else {
+                    // User canceled the picker
+                  }
+                },
+              ),
             ),
           ),
-        ),
+        ],
         Container(
           height: 10.0,
         ),
@@ -550,30 +568,31 @@ class _CreateWidgetState extends State<CreateWidget> {
                 style: const TextStyle(fontStyle: FontStyle.italic))
             : Container(),
         !turnkey && sourceType != CreateSourceType.docker
-            ? Container(height: 15.0)
+            ? ToggleSwitch(
+                checked: createUser,
+                content: Text('createuser-text'.i18n()),
+                onChanged: (v) {
+                  setState(() {
+                    createUser = v;
+                    if (!v) widget.userController.clear();
+                  });
+                },
+              )
             : Container(),
-        !turnkey && sourceType != CreateSourceType.docker
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        !turnkey && sourceType != CreateSourceType.docker && createUser
+            ? Column(
                 children: [
-                  Text(
-                    '${'createuser-text'.i18n()}:',
+                  Container(
+                    height: 10.0,
+                  ),
+                  Tooltip(
+                    message: 'optionalusername-text'.i18n(),
+                    child: TextBox(
+                      controller: widget.userController,
+                      placeholder: 'optionaluser-text'.i18n(),
+                    ),
                   ),
                 ],
-              )
-            : Container(),
-        !turnkey && sourceType != CreateSourceType.docker
-            ? Container(
-                height: 5.0,
-              )
-            : Container(),
-        !turnkey && sourceType != CreateSourceType.docker
-            ? Tooltip(
-                message: 'optionalusername-text'.i18n(),
-                child: TextBox(
-                  controller: widget.userController,
-                  placeholder: 'optionaluser-text'.i18n(),
-                ),
               )
             : Container(),
       ],
