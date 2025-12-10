@@ -175,5 +175,6 @@
     "defaultdatalocation-text": "通用数据位置",
     "datapath-text": "保存模板和下载的路径",
     "dockermirror-text": "Docker 镜像",
-    "dockermirrorhint-text": "例如 https://mirror.gcr.io"
+    "dockermirrorhint-text": "例如 https://mirror.gcr.io",
+    "error-text": "错误"
 }

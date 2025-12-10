@@ -47,7 +47,8 @@
     "turnkeywarning-text": "Uyarı: Turnkey bir konteyner seçtiniz. [Deneysel]\nBunların çoğu systemd kullanır ve WSL şu anda systemd'yi kutudan çıkartmaz, bu nedenle fake_systemd'nin bir çatalı ile değiştirilecektir. Bu, uygulamaların başlangıçta değil konsol açılışında başlatılmasını sağlar. Daha fazla bilgi için GitHub projesinin README'sini kontrol edin.\nHizmete erişmek için \"ip a | grep inet\" kullanarak ip'yi bulabilir ve ardından tarayıcınızda WSL-IP:PORT'a giderek erişebilirsiniz",
     "createuser-text": "Varsayılan kullanıcı oluştur (sadece Debian/Ubuntu'da)",
 
-    "optionaluser-text": "(İsteğe bağlı) kullanıcı",
+        "optionaluser-text": "(İsteğe bağlı) kullanıcı",
+    "error-text": "Hata",
     "size-text": "Boyut",
     "deleteinstancequestion-text": "%s örneğini kalıcı olarak silmek istiyor musunuz?",
     "deleteinstancebody-text": "Bu Dağıtımı silerseniz geri alamazsınız. Silmek istiyor musunuz?",
