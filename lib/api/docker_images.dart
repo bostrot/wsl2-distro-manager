@@ -152,7 +152,7 @@ class DockerImage {
       ChunkedDownloaderFactory? chunkedDownloaderFactory,
       ArchiveService? archiveService,
       String? registryUrl,
-      this.authUrl = 'https://auth.docker.io',
+      this.authUrl = 'https://auth.docker.io/token',
       this.svcUrl = 'registry.docker.io'})
       : dio = dio ?? Dio(),
         registryUrl = registryUrl ??
@@ -182,11 +182,62 @@ class DockerImage {
     }
   }
 
+  /// Setup registry and auth for custom images
+  Future<String> _setupRegistry(String image) async {
+    final parts = image.split('/');
+    if (parts.length > 1 &&
+        (parts[0].contains('.') ||
+            parts[0].contains(':') ||
+            parts[0] == 'localhost')) {
+      String registry = parts[0];
+      String repo = parts.sublist(1).join('/');
+
+      // Update registry URL
+      if (!registry.startsWith('http')) {
+        registryUrl = 'https://$registry';
+      } else {
+        registryUrl = registry;
+      }
+
+      // Discover auth endpoint
+      try {
+        await dio.get('$registryUrl/v2/');
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          final authHeader = e.response?.headers.value('www-authenticate');
+          if (authHeader != null) {
+            final realmMatch =
+                RegExp(r'realm="([^"]+)"').firstMatch(authHeader);
+            final serviceMatch =
+                RegExp(r'service="([^"]+)"').firstMatch(authHeader);
+
+            if (realmMatch != null) {
+              authUrl = realmMatch.group(1)!;
+            }
+            if (serviceMatch != null) {
+              svcUrl = serviceMatch.group(1)!;
+            } else {
+              svcUrl = '';
+            }
+          }
+        }
+      }
+      return repo;
+    }
+    return image;
+  }
+
   /// Get auth token
   Future<String> _authenticate(String image) async {
-    Response<dynamic> response = await dio.get(
-      '$authUrl/token?service=$svcUrl&scope=repository:$image:pull',
-    );
+    Uri uri = Uri.parse(authUrl);
+    Map<String, String> queryParameters = Map.from(uri.queryParameters);
+    queryParameters['scope'] = 'repository:$image:pull';
+    if (svcUrl.isNotEmpty) {
+      queryParameters['service'] = svcUrl;
+    }
+    uri = uri.replace(queryParameters: queryParameters);
+
+    Response<dynamic> response = await dio.get(uri.toString());
     if (response.data == null) {
       throw Exception('No response data');
     }
@@ -257,6 +308,9 @@ class DockerImage {
   Future<String> _download(
       String image, String path, TotalProgressCallback progressCallback,
       {String? tag}) async {
+    // Handle custom registry
+    image = await _setupRegistry(image);
+
     // Get token
     final token = await _authenticate(image);
 
@@ -587,6 +641,7 @@ class DockerImage {
 
   /// Check if registry has image tag
   Future<bool> hasImage(String image, {String? tag}) async {
+    image = await _setupRegistry(image);
     bool hasImage = await _hasImageOnly(image);
     if (tag == null) {
       return hasImage;
