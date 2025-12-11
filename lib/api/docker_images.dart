@@ -7,7 +7,7 @@ import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
-import 'package:wsl2distromanager/api/archive.dart';
+import 'package:wsl2distromanager/api/layer_processor.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -145,12 +145,10 @@ class DockerImage {
   String? distroName;
   final Dio dio;
   final ChunkedDownloaderFactory chunkedDownloaderFactory;
-  final ArchiveService archiveService;
 
   DockerImage(
       {Dio? dio,
       ChunkedDownloaderFactory? chunkedDownloaderFactory,
-      ArchiveService? archiveService,
       String? registryUrl,
       this.authUrl = 'https://auth.docker.io/token',
       this.svcUrl = 'registry.docker.io'})
@@ -174,8 +172,7 @@ class DockerImage {
                     chunkSize: chunkSize ?? 1024 * 1024,
                     onProgress: onProgress,
                     onDone: onDone,
-                    onError: onError)),
-        archiveService = archiveService ?? ArchiveService() {
+                    onError: onError)) {
     String? mirror = prefs.getString('DockerMirror');
     if (mirror != null && mirror.isNotEmpty) {
       this.registryUrl = mirror;
@@ -349,8 +346,85 @@ class DockerImage {
             ImageManifest.fromMap(await _getManifest(image, token, digest));
 
         final config = imageManifest.config.digest;
-        await _downloadBlob(image, token, config,
-            SafePath(path).file('config.json'), (p0, p1) {});
+        final configPath = SafePath(path).file('config.json');
+        await _downloadBlob(image, token, config, configPath, (p0, p1) {});
+
+        // Parse config.json for metadata (V2)
+        try {
+          if (await File(configPath).exists()) {
+            final configContent = await File(configPath).readAsString();
+            final configJson = json.decode(configContent);
+
+            if (configJson['config'] != null) {
+              final parsedConfig = configJson['config'];
+              final env = parsedConfig['Env'];
+              final cmd = parsedConfig['Cmd'];
+              final entrypoint = parsedConfig['Entrypoint'];
+              final user = parsedConfig['User'];
+
+              // Handle User
+              if (user != null && user is String && user.isNotEmpty) {
+                var userStr = user;
+                if (userStr.contains(':')) {
+                  userStr = userStr.split(':')[0];
+                }
+                if (int.tryParse(userStr) == null) {
+                  prefs.setString('StartUser_$distroName', userStr);
+                } else {
+                  Notify.message(
+                      'Not implemented yet: Docker USER is a number.');
+                }
+              }
+
+              // Handle Env, Entrypoint, Cmd
+              var entrypointCmd = '';
+              if (entrypoint != null && entrypoint is List) {
+                entrypointCmd = entrypoint.map((e) => e.toString()).join(' ');
+              }
+
+              String exportEnv = '';
+              if (env != null && env is List) {
+                exportEnv = env.map((e) => 'export $e;').join(' ');
+              }
+
+              // Use distroName for StartCmd so it applies to the instance
+              if (cmd != null && cmd is List) {
+                prefs.setString('StartCmd_$distroName',
+                    '$exportEnv $entrypointCmd; ${cmd.map((e) => e.toString()).join(' ')}');
+              } else if (entrypointCmd.isNotEmpty) {
+                prefs.setString(
+                    'StartCmd_$distroName', '$exportEnv $entrypointCmd');
+              }
+            }
+
+            // Handle history for UserCmds/GroupCmds
+            // These need to be saved under image filename to be picked up by create_dialog
+            String imageName = filename(image, tag);
+            List<String> userCmds = [];
+            List<String> groupCmds = [];
+
+            if (configJson['history'] != null &&
+                configJson['history'] is List) {
+              for (var item in configJson['history']) {
+                final createdBy = item['created_by'] as String?;
+                if (createdBy != null) {
+                  if (createdBy.contains('adduser') ||
+                      createdBy.contains('useradd')) {
+                    userCmds.add(createdBy);
+                  }
+                  if (createdBy.contains('groupadd') ||
+                      createdBy.contains('addgroup')) {
+                    groupCmds.add(createdBy);
+                  }
+                }
+              }
+            }
+            prefs.setStringList('UserCmds_$imageName', userCmds);
+            prefs.setStringList('GroupCmds_$imageName', groupCmds);
+          }
+        } catch (e, stack) {
+          logDebug(e, stack, 'Failed to parse V2 config');
+        }
       } catch (e, stackTrace) {
         if (kDebugMode) {
           print(e);
@@ -456,8 +530,8 @@ class DockerImage {
       // Set image specific commands
       String name = filename(image, tag);
       if (cmd != null) {
-        prefs.setString(
-            'StartCmd_$name', '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+        prefs.setString('StartCmd_$distroName',
+            '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
       }
       prefs.setStringList('UserCmds_$name', userCmds);
       prefs.setStringList('GroupCmds_$name', groupCmds);
@@ -570,37 +644,16 @@ class DockerImage {
     int retry = 0;
 
     final parentPath = SafePath(tmpImagePath);
-    String outTar = parentPath.file('$imageName.tar');
     String outTarGz = SafePath(distroPath).file('$imageName.tar.gz');
     while (retry < 2) {
       try {
-        // More than one layer
-        List<String> paths = [];
-        if (layers != 1) {
-          for (var i = 0; i < layers; i++) {
-            // Read archives layers
-            if (kDebugMode) {
-              print('Extracting layer $i of $layers');
-            }
-            // progress(i, layers, -1, -1);
-            Notify.message('Extracting layer $i of $layers');
-
-            // Extract layer
-            final layerTarGz = parentPath.file('layer_$i.tar.gz');
-            await archiveService.extract(layerTarGz, parentPath.path);
-            paths.add(parentPath.file('layer_$i.tar'));
-          }
-
-          // Archive as tar then gzip to disk
-          await archiveService.merge(paths, outTar);
-          await archiveService.compress(outTar, outTarGz);
-
-          Notify.message('writingtodisk-text'.i18n());
-        } else if (layers == 1) {
-          // Just copy the file
-          File(SafePath(tmpImagePath).file('layer_0.tar.gz'))
-              .copySync(outTarGz);
+        List<String> layerPaths = [];
+        for (var i = 0; i < layers; i++) {
+          layerPaths.add(parentPath.file('layer_$i.tar.gz'));
         }
+
+        await LayerProcessor()
+            .mergeLayers(layerPaths, outTarGz, (msg) => Notify.message(msg));
 
         retry = 2;
         break;

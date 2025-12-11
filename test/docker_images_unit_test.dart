@@ -125,7 +125,6 @@ void main() {
               onProgress: onProgress,
               onDone: onDone,
               onError: onError),
-      archiveService: MockArchiveService(),
     );
   });
 
@@ -218,7 +217,6 @@ void main() {
               onProgress: onProgress,
               onDone: onDone,
               onError: onError),
-      archiveService: MockArchiveService(),
     );
 
     // Mock token for custom registry (if needed, or just standard auth url if not changed)
