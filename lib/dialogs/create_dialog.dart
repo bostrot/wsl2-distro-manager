@@ -296,6 +296,7 @@ class _CreateWidgetState extends State<CreateWidget> {
   bool turnkey = false;
   CreateSourceType sourceType = CreateSourceType.repo;
   FocusNode node = FocusNode();
+  final GlobalKey<AutoSuggestBoxState<String>> _autoSuggestBoxKey = GlobalKey();
   List<String> existingDistros = [];
   bool nameExists = false;
   bool customLocation = false;
@@ -307,13 +308,21 @@ class _CreateWidgetState extends State<CreateWidget> {
     _fetchDistros();
     widget.nameController.addListener(_checkName);
     widget.sourceType.addListener(_onSourceTypeChanged);
+    node.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
     widget.nameController.removeListener(_checkName);
     widget.sourceType.removeListener(_onSourceTypeChanged);
+    node.removeListener(_onFocusChange);
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (node.hasFocus) {
+      _autoSuggestBoxKey.currentState?.showOverlay();
+    }
   }
 
   void _onSourceTypeChanged() {
@@ -446,6 +455,8 @@ class _CreateWidgetState extends State<CreateWidget> {
               }
             } else if (snapshot.hasError) {}
             return AutoSuggestBox(
+              key: _autoSuggestBoxKey,
+              focusNode: node,
               placeholder: sourceType == CreateSourceType.docker
                   ? 'Docker Image (e.g. ubuntu:latest)'
                   : sourceType == CreateSourceType.local
