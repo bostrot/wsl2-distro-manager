@@ -94,6 +94,9 @@ class WSLManager extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           color: appTheme.color,
           darkTheme: FluentThemeData(
+            tooltipTheme: const TooltipThemeData(
+              waitDuration: Duration(milliseconds: 50),
+            ),
             brightness: Brightness.dark,
             accentColor: appTheme.color,
             visualDensity: VisualDensity.standard,
@@ -102,6 +105,9 @@ class WSLManager extends StatelessWidget {
             ),
           ),
           theme: FluentThemeData(
+            tooltipTheme: const TooltipThemeData(
+              waitDuration: Duration(milliseconds: 50),
+            ),
             accentColor: appTheme.color,
             visualDensity: VisualDensity.standard,
             focusTheme: FocusThemeData(
