@@ -176,5 +176,6 @@
     "datapath-text": "保存模板和下载的路径",
     "dockermirror-text": "Docker 镜像",
     "dockermirrorhint-text": "例如 https://mirror.gcr.io",
-    "error-text": "错误"
+    "error-text": "错误",
+    "dockerrepo-text": "Docker 仓库"
 }

@@ -176,5 +176,6 @@
     "datapath-text": "儲存範本和下載的路徑",
     "dockermirror-text": "Docker 鏡像",
     "dockermirrorhint-text": "例如 https://mirror.gcr.io",
-    "error-text": "錯誤"
+    "error-text": "錯誤",
+    "dockerrepo-text": "Docker 儲存庫"
 }

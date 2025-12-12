@@ -176,5 +176,6 @@
     "defaultdatalocation-text": "一般的なデータの場所",
     "datapath-text": "テンプレートとダウンロードを保存するパス",
     "dockermirror-text": "Docker ミラー",
-    "dockermirrorhint-text": "例: https://mirror.gcr.io"
+    "dockermirrorhint-text": "例: https://mirror.gcr.io",
+    "dockerrepo-text": "Docker リポジトリ"
 }

@@ -175,5 +175,6 @@
     "defaultdatalocation-text": "Ubicación general de datos",
     "datapath-text": "Ruta donde guardar plantillas y descargas",
     "dockermirror-text": "Espejo Docker",
-    "dockermirrorhint-text": "p.ej. https://mirror.gcr.io"
+    "dockermirrorhint-text": "p.ej. https://mirror.gcr.io",
+    "dockerrepo-text": "Repositorio Docker"
 }

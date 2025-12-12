@@ -177,5 +177,6 @@
     "defaultdatalocation-text": "Allgemeiner Datenspeicherort",
     "datapath-text": "Pfad zum Speichern von Vorlagen und Downloads",
     "dockermirror-text": "Docker Mirror",
-    "dockermirrorhint-text": "z.B. https://mirror.gcr.io"
+    "dockermirrorhint-text": "z.B. https://mirror.gcr.io",
+    "dockerrepo-text": "Docker Repository"
 }

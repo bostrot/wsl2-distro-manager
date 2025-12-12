@@ -177,5 +177,6 @@
     "defaultdatalocation-text": "Genel Veri Konumu",
     "datapath-text": "Şablonların ve indirmelerin kaydedileceği yol",
     "dockermirror-text": "Docker Aynası",
-    "dockermirrorhint-text": "örn. https://mirror.gcr.io"
+    "dockermirrorhint-text": "örn. https://mirror.gcr.io",
+    "dockerrepo-text": "Docker Reposu"
 }

@@ -176,5 +176,6 @@
     "defaultdatalocation-text": "Localização geral de dados",
     "datapath-text": "Caminho onde salvar modelos e downloads",
     "dockermirror-text": "Espelho Docker",
-    "dockermirrorhint-text": "ex. https://mirror.gcr.io"
+    "dockermirrorhint-text": "ex. https://mirror.gcr.io",
+    "dockerrepo-text": "Repositório Docker"
 }
