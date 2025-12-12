@@ -1,6 +1,3 @@
-/// API to download docker images from DockerHub and extract them
-/// into a rootfs.
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:chunked_downloader/chunked_downloader.dart';
@@ -13,6 +10,8 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
+/// API to download docker images from DockerHub and extract them
+/// into a rootfs.
 class Manifests {
   List<Manifest> manifests = [];
   String mediaType = '';
