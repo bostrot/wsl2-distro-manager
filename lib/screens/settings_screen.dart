@@ -301,33 +301,27 @@ class SettingsPageState extends State<SettingsPage> {
                 defaultPath),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Expander(
-            header: Tooltip(
+          child: InfoLabel(
+            label: 'defaulteditor-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
               message: 'defaulteditor-text'.i18n(),
-              child: Text('defaulteditor-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            content: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-              child: Tooltip(
-                message: 'defaulteditor-text'.i18n(),
-                child: TextBox(
-                  controller: _editorController,
-                  placeholder: 'notepad.exe',
-                  suffix: IconButton(
-                    icon: const Icon(FluentIcons.open_folder_horizontal,
-                        size: 15.0),
-                    onPressed: () async {
-                      FilePickerResult? result =
-                          await FilePicker.platform.pickFiles(
-                        type: FileType.custom,
-                        allowedExtensions: ['exe'],
-                      );
-                      if (result != null) {
-                        _editorController.text = result.files.single.path!;
-                      }
-                    },
-                  ),
+              child: TextBox(
+                controller: _editorController,
+                placeholder: 'notepad.exe',
+                suffix: IconButton(
+                  icon: const Icon(FluentIcons.open_folder_horizontal,
+                      size: 15.0),
+                  onPressed: () async {
+                    FilePickerResult? result =
+                        await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['exe'],
+                    );
+                    if (result != null) {
+                      _editorController.text = result.files.single.path!;
+                    }
+                  },
                 ),
               ),
             ),
@@ -335,33 +329,27 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Expander(
-            header: Tooltip(
+          child: InfoLabel(
+            label: 'defaultterminal-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
               message: 'defaultterminal-text'.i18n(),
-              child: Text('defaultterminal-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            content: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-              child: Tooltip(
-                message: 'defaultterminal-text'.i18n(),
-                child: TextBox(
-                  controller: _terminalController,
-                  placeholder: 'wt.exe',
-                  suffix: IconButton(
-                    icon: const Icon(FluentIcons.open_folder_horizontal,
-                        size: 15.0),
-                    onPressed: () async {
-                      FilePickerResult? result =
-                          await FilePicker.platform.pickFiles(
-                        type: FileType.custom,
-                        allowedExtensions: ['exe'],
-                      );
-                      if (result != null) {
-                        _terminalController.text = result.files.single.path!;
-                      }
-                    },
-                  ),
+              child: TextBox(
+                controller: _terminalController,
+                placeholder: 'wt.exe',
+                suffix: IconButton(
+                  icon: const Icon(FluentIcons.open_folder_horizontal,
+                      size: 15.0),
+                  onPressed: () async {
+                    FilePickerResult? result =
+                        await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['exe'],
+                    );
+                    if (result != null) {
+                      _terminalController.text = result.files.single.path!;
+                    }
+                  },
                 ),
               ),
             ),
@@ -369,40 +357,28 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Expander(
-            header: Tooltip(
+          child: InfoLabel(
+            label: 'defaultvscode-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
               message: 'defaultvscode-text'.i18n(),
-              child: Text('defaultvscode-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            content: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-              child: Tooltip(
-                message: 'defaultvscode-text'.i18n(),
-                child: TextBox(
-                  controller: _vscodeController,
-                  placeholder: 'code',
-                ),
+              child: TextBox(
+                controller: _vscodeController,
+                placeholder: 'code',
               ),
             ),
           ),
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Expander(
-            header: Tooltip(
-              message: 'dockermirror-text'.i18n(),
-              child: Text('dockermirror-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            content: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-              child: Tooltip(
-                message: 'dockermirrorhint-text'.i18n(),
-                child: TextBox(
-                  controller: _dockerMirrorController,
-                  placeholder: 'https://mirror.gcr.io',
-                ),
+          child: InfoLabel(
+            label: 'dockermirror-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'dockermirrorhint-text'.i18n(),
+              child: TextBox(
+                controller: _dockerMirrorController,
+                placeholder: 'https://mirror.gcr.io',
               ),
             ),
           ),
@@ -410,33 +386,27 @@ class SettingsPageState extends State<SettingsPage> {
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
-                message: 'showdockershort-text'.i18n(),
-                child: Text('showdockershort-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Row(
-                  children: [
-                    Tooltip(
-                        message: 'showdockershort-text'.i18n(),
-                        child: ToggleSwitch(
-                          checked: showDocker,
-                          onChanged: (value) {
-                            setState(() {
-                              showDocker = value;
-                              prefs.setBool('showDocker', value);
-                            });
-                          },
-                        )),
-                    const SizedBox(
-                      width: 10.0,
-                    ),
-                    Text('showdockerlong-text'.i18n()),
-                  ],
-                ),
+            child: InfoLabel(
+              label: 'showdockershort-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  Tooltip(
+                      message: 'showdockershort-text'.i18n(),
+                      child: ToggleSwitch(
+                        checked: showDocker,
+                        onChanged: (value) {
+                          setState(() {
+                            showDocker = value;
+                            prefs.setBool('showDocker', value);
+                          });
+                        },
+                      )),
+                  const SizedBox(
+                    width: 10.0,
+                  ),
+                  Text('showdockerlong-text'.i18n()),
+                ],
               ),
             ),
           ),
@@ -444,130 +414,103 @@ class SettingsPageState extends State<SettingsPage> {
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
-                message: 'language-text'.i18n(),
-                child: Text('language-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                    message: 'language-text'.i18n(),
-                    // Menu
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'languagechange-text'.i18n(),
-                        ),
-                        const SizedBox(
-                          height: 20.0,
-                        ),
-                        Builder(
-                          builder: (context) {
-                            var lang =
-                                Localizations.localeOf(context).languageCode;
-                            var selectedLanguage =
-                                prefs.getString('language') ?? lang;
+            child: InfoLabel(
+              label: 'language-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Tooltip(
+                  message: 'language-text'.i18n(),
+                  // Menu
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'languagechange-text'.i18n(),
+                      ),
+                      const SizedBox(
+                        height: 20.0,
+                      ),
+                      Builder(
+                        builder: (context) {
+                          var lang =
+                              Localizations.localeOf(context).languageCode;
+                          var selectedLanguage =
+                              prefs.getString('language') ?? lang;
 
-                            // Language menu
-                            return ComboBox<String>(
-                                value: selectedLanguage,
-                                items: supportedLocalesList
-                                    .map((e) => ComboBoxItem(
-                                        value: e.languageCode,
-                                        child: Text(e.toString())))
-                                    .toList(),
-                                onChanged: (language) {
-                                  String curLanguage = language ?? lang;
-                                  prefs.setString('language', curLanguage);
-                                  setState(() {
-                                    selectedLanguage = curLanguage;
-                                  });
+                          // Language menu
+                          return ComboBox<String>(
+                              value: selectedLanguage,
+                              items: supportedLocalesList
+                                  .map((e) => ComboBoxItem(
+                                      value: e.languageCode,
+                                      child: Text(e.toString())))
+                                  .toList(),
+                              onChanged: (language) {
+                                String curLanguage = language ?? lang;
+                                prefs.setString('language', curLanguage);
+                                setState(() {
+                                  selectedLanguage = curLanguage;
                                 });
-                          },
-                        ),
-                      ],
-                    )),
-              ),
+                              });
+                        },
+                      ),
+                    ],
+                  )),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Text('dockerrepo-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'dockerrepo-text'.i18n(),
-                  child: TextBox(
-                    controller: _dockerrepoController,
-                    placeholder: 'https://registry-1.docker.io',
-                  ),
+            child: InfoLabel(
+              label: 'dockerrepo-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Tooltip(
+                message: 'dockerrepo-text'.i18n(),
+                child: TextBox(
+                  controller: _dockerrepoController,
+                  placeholder: 'https://registry-1.docker.io',
                 ),
               ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
+            child: InfoLabel(
+              label: 'syncipaddress-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Tooltip(
                 message: 'syncipaddress-text'.i18n(),
-                child: Text('syncipaddress-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'syncipaddress-text'.i18n(),
-                  child: TextBox(
-                    controller: _syncIpTextController,
-                    placeholder: '192.168.1.20',
-                  ),
+                child: TextBox(
+                  controller: _syncIpTextController,
+                  placeholder: '192.168.1.20',
                 ),
               ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
-                message: 'syncpassword-text'.i18n(),
-                child: Text('syncpassword-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'syncpasswordhint-text'.i18n(),
-                  child: TextBox(
-                    controller: _syncPasswordController,
-                    placeholder: 'SecretPassword123',
-                    obscureText: true,
-                  ),
+            child: InfoLabel(
+              label: 'syncpassword-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Tooltip(
+                message: 'syncpasswordhint-text'.i18n(),
+                child: TextBox(
+                  controller: _syncPasswordController,
+                  placeholder: 'SecretPassword123',
+                  obscureText: true,
                 ),
               ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
+            child: InfoLabel(
+              label: 'repofordistro-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Tooltip(
                 message: 'repofordistro-text'.i18n(),
-                child: Text('repofordistro-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'repofordistro-text'.i18n(),
-                  child: TextBox(
-                    controller: _repoTextController,
-                    placeholder: defaultRepoLink,
-                  ),
+                child: TextBox(
+                  controller: _repoTextController,
+                  placeholder: defaultRepoLink,
                 ),
               ),
             ),
@@ -661,18 +604,20 @@ class SettingsPageState extends State<SettingsPage> {
     title = title.replaceFirst(title[0], title[0].toUpperCase());
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Expander(
-        header: Tooltip(
-          message: tooltip,
-          child:
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        ),
-        content: Column(
+      child: InfoLabel(
+        label: title,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(tooltip),
+            if (tooltip.isNotEmpty && tooltip != title)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(tooltip,
+                    style: TextStyle(color: Colors.grey[100], fontSize: 12)),
+              ),
             Padding(
-              padding: const EdgeInsets.only(top: 8.0),
+              padding: const EdgeInsets.only(top: 0.0),
               child: Builder(
                 builder: (context) {
                   double size = double.tryParse(
