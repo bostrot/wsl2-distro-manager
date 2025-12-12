@@ -11,6 +11,7 @@ import 'package:wsl2distromanager/nav/root_screen.dart';
 late String language;
 late SharedPreferences prefs;
 bool initialized = false;
+bool hasPushed = false;
 
 /// Get distro label from [item].
 String distroLabel(String item) {

@@ -4,7 +4,6 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
