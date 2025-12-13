@@ -123,19 +123,78 @@ Future initPrefs() async {
     }
   }
 
-  // Validate the new shared_preferences file.
+  final backupFilePath = '$newFilePath.backup';
+  final prefsBackupFile = File(backupFilePath);
+
   if (newFile.existsSync()) {
+    bool isCorrupted = false;
     try {
       String content = newFile.readAsStringSync();
       content = fixJsonContent(content);
       if (tryDecodeJson(content) == null) {
-        // If new file is invalid, back it up and delete.
-        debugPrint('New shared_preferences.json is corrupted. Repairing...');
-        backupFile(newFilePath);
-        newFile.deleteSync();
+        isCorrupted = true;
       }
     } catch (e) {
       debugPrint("Failed to validate new shared_preferences.json: $e");
+      isCorrupted = true;
+    }
+
+    if (!isCorrupted) {
+      // File is valid, create/update backup
+      try {
+        newFile.copySync(backupFilePath);
+      } catch (e) {
+        debugPrint("Failed to create preferences backup: $e");
+      }
+    } else {
+      // File is corrupted
+      debugPrint('New shared_preferences.json is corrupted.');
+
+      // Backup the corrupted file for analysis (creates .bak)
+      backupFile(newFilePath);
+
+      // Try to restore from good backup
+      bool restored = false;
+      if (prefsBackupFile.existsSync()) {
+        try {
+          // Validate backup before restoring
+          String backupContent = prefsBackupFile.readAsStringSync();
+          backupContent = fixJsonContent(backupContent);
+          if (tryDecodeJson(backupContent) != null) {
+            debugPrint('Restoring preferences from valid backup...');
+            prefsBackupFile.copySync(newFilePath);
+            restored = true;
+          } else {
+            debugPrint('Backup file is also corrupted. Ignoring.');
+          }
+        } catch (e) {
+          debugPrint("Failed to validate or restore from backup: $e");
+        }
+      }
+
+      if (!restored) {
+        debugPrint('No valid backup found. Deleting corrupted file...');
+        try {
+          newFile.deleteSync();
+        } catch (e) {
+          debugPrint("Failed to delete corrupted preferences file: $e");
+        }
+      }
+    }
+  } else if (prefsBackupFile.existsSync()) {
+    // File doesn't exist, try to restore from backup if available
+    debugPrint('Preferences file missing. Restoring from backup...');
+    try {
+      // Validate backup before restoring
+      String backupContent = prefsBackupFile.readAsStringSync();
+      backupContent = fixJsonContent(backupContent);
+      if (tryDecodeJson(backupContent) != null) {
+        prefsBackupFile.copySync(newFilePath);
+      } else {
+        debugPrint('Backup file is corrupted. Cannot restore.');
+      }
+    } catch (e) {
+      debugPrint("Failed to restore from backup: $e");
     }
   }
 
@@ -144,6 +203,18 @@ Future initPrefs() async {
     prefs = await SharedPreferences.getInstance();
   } catch (e) {
     debugPrint("Error initializing SharedPreferences: $e");
+    // Retry once after deleting the file if it exists
+    if (newFile.existsSync()) {
+      try {
+        debugPrint(
+            "Retrying SharedPreferences initialization after cleanup...");
+        backupFile(newFilePath);
+        newFile.deleteSync();
+        prefs = await SharedPreferences.getInstance();
+      } catch (e2) {
+        debugPrint("Fatal error initializing SharedPreferences: $e2");
+      }
+    }
   }
 
   initialized = true;
