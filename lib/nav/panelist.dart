@@ -4,6 +4,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
+import 'package:wsl2distromanager/dialogs/mount_dialog.dart';
 import 'package:wsl2distromanager/nav/linkaction.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -48,6 +49,15 @@ final List<NavigationPaneItem> originalItems = [
     body: const SizedBox.shrink(),
     onTap: () {
       createDialog();
+    },
+  ),
+  PaneItem(
+    key: const Key('/mount'),
+    icon: const Icon(FluentIcons.hard_drive),
+    title: Text('mountdisk-text'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      showMountDialog();
     },
   ),
 ];

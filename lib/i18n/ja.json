@@ -178,4 +178,21 @@
     "dockermirror-text": "Docker ミラー",
     "dockermirrorhint-text": "例: https://mirror.gcr.io",
     "dockerrepo-text": "Docker リポジトリ"
+,
+    "mountdisk-text": "Mount Disk",
+    "physicaldisk-text": "Physical Disk",
+    "vhdimage-text": "VHD Image",
+    "unmount-text": "Unmount",
+    "selectdisk-text": "Select Disk",
+    "partition-text": "Partition (Optional)",
+    "filesystemtype-text": "Filesystem Type (Optional)",
+    "vhdpath-text": "VHD Path",
+    "diskpathtounmount-text": "Disk Path to Unmount",
+    "unmountpathhint-text": "Enter the exact path used when mounting.",
+    "nodisksfound-text": "No physical disks found or failed to list.",
+    "refresh-text": "Refresh",
+    "mount-text": "Mount",
+    "diskmounted-text": "Disk mounted successfully.",
+    "vhdmounted-text": "VHD mounted successfully.",
+    "diskunmounted-text": "Disk unmounted successfully."
 }
