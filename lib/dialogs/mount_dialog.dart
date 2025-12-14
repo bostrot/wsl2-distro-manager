@@ -444,7 +444,7 @@ class _MountDialogState extends State<MountDialog> {
         Checkbox(
           checked: _vhdBare,
           onChanged: (v) => setState(() => _vhdBare = v ?? false),
-          content: const Text('Bare (Attach only, do not mount)'),
+          content: Text('bare-text'.i18n()),
         ),
         if (!_vhdBare) ...[
           const SizedBox(height: 10),

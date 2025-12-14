@@ -242,8 +242,9 @@ if %errorlevel% neq 0 (
 
     if (!success) {
       // If output is empty but failed, provide a generic error
-      if (output.isEmpty)
+      if (output.isEmpty) {
         output = 'unknownmounterror-text'.i18n();
+      }
       throw Exception(output);
     }
   }
