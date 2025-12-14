@@ -103,8 +103,7 @@ void main() {
   test('getDistroLinks returns distros', () async {
     final distrosResponse = {'Ubuntu': 'url1', 'Debian': 'url2'};
 
-    adapter.responses[
-            'https://rawcdn.githack.com/bostrot/wsl2-distro-manager/main/images.json'] =
+    adapter.responses['https://n8n.aachen.dev/webhook/cdn/images.json'] =
         ResponseBody.fromString(jsonEncode(distrosResponse), 200, headers: {
       Headers.contentTypeHeader: [Headers.jsonContentType],
     });

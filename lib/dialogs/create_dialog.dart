@@ -4,13 +4,15 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/app.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
-import 'package:wsl2distromanager/dialogs/dialogs.dart';
 import 'package:wsl2distromanager/theme.dart';
+
+enum CreateSourceType { repo, turnkey, local, docker, vhdx }
 
 /// Create Dialog
 createDialog() {
@@ -19,6 +21,7 @@ createDialog() {
   final locationController = TextEditingController();
   final nameController = TextEditingController();
   final userController = TextEditingController();
+  final sourceType = ValueNotifier<CreateSourceType>(CreateSourceType.repo);
   plausible.event(page: 'create');
 
   // Get root context by Key
@@ -38,6 +41,7 @@ createDialog() {
             autoSuggestBox: autoSuggestBox,
             locationController: locationController,
             userController: userController,
+            sourceType: sourceType,
           ),
         ),
         actions: [
@@ -61,6 +65,8 @@ createDialog() {
                     api,
                     autoSuggestBox,
                     userController,
+                    isDocker: sourceType.value == CreateSourceType.docker,
+                    isVhdx: sourceType.value == CreateSourceType.vhdx,
                   ),
                 );
                 Navigator.pop(context);
@@ -93,6 +99,8 @@ Future<void> createInstance(
   TextEditingController autoSuggestBox,
   TextEditingController userController, {
   DockerImage? dockerImage,
+  bool isDocker = false,
+  bool isVhdx = false,
 }) async {
   plausible.event(name: "wsl_create");
   DockerImage docker = dockerImage ?? DockerImage();
@@ -119,11 +127,23 @@ Future<void> createInstance(
     location += '${Platform.pathSeparator}$name';
 
     // Check if docker image
-    bool isDockerImage = false;
-    if (distroName.startsWith('dockerhub:')) {
-      isDockerImage = true;
+    bool isDockerImage = isDocker;
+    if (!isDockerImage && !isVhdx) {
+      if (distroName.startsWith('dockerhub:') ||
+          distroName.startsWith('docker:')) {
+        isDockerImage = true;
+      } else if (distroName.contains(':') && !distroName.contains('\\')) {
+        isDockerImage = true;
+      }
+    }
+
+    if (isDockerImage) {
       // Remove prefix
-      distroName = autoSuggestBox.text.split('dockerhub:')[1];
+      if (distroName.startsWith('dockerhub:')) {
+        distroName = autoSuggestBox.text.split('dockerhub:')[1];
+      } else if (distroName.startsWith('docker:')) {
+        distroName = autoSuggestBox.text.split('docker:')[1];
+      }
       // Get tag
       if (!distroName.contains(':')) {
         distroName += ':latest';
@@ -171,7 +191,7 @@ Future<void> createInstance(
     // Create instance
     ProcessResult result = await api.create(
         name, distroName, location, (String msg) => Notify.message(msg),
-        image: isDockerImage);
+        image: isDockerImage, isVhd: isVhdx);
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
@@ -260,6 +280,7 @@ class CreateWidget extends StatefulWidget {
     required this.autoSuggestBox,
     required this.locationController,
     required this.userController,
+    required this.sourceType,
   }) : super(key: key);
 
   final TextEditingController nameController;
@@ -267,6 +288,7 @@ class CreateWidget extends StatefulWidget {
   final TextEditingController autoSuggestBox;
   final TextEditingController locationController;
   final TextEditingController userController;
+  final ValueNotifier<CreateSourceType> sourceType;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -274,22 +296,43 @@ class CreateWidget extends StatefulWidget {
 
 class _CreateWidgetState extends State<CreateWidget> {
   bool turnkey = false;
-  bool docker = false;
+  CreateSourceType sourceType = CreateSourceType.repo;
   FocusNode node = FocusNode();
+  final GlobalKey<AutoSuggestBoxState<String>> _autoSuggestBoxKey = GlobalKey();
   List<String> existingDistros = [];
   bool nameExists = false;
+  bool customLocation = false;
+  bool createUser = false;
 
   @override
   void initState() {
     super.initState();
     _fetchDistros();
     widget.nameController.addListener(_checkName);
+    widget.sourceType.addListener(_onSourceTypeChanged);
+    node.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
     widget.nameController.removeListener(_checkName);
+    widget.sourceType.removeListener(_onSourceTypeChanged);
+    node.removeListener(_onFocusChange);
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (node.hasFocus) {
+      _autoSuggestBoxKey.currentState?.showOverlay();
+    }
+  }
+
+  void _onSourceTypeChanged() {
+    if (mounted) {
+      setState(() {
+        sourceType = widget.sourceType.value;
+      });
+    }
   }
 
   void _fetchDistros() async {
@@ -357,161 +400,226 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 5.0,
         ),
-        Tooltip(
-          message: 'pathtorootfshint-text'.i18n(),
-          child: FutureBuilder<List<String>>(
-              future: widget.api.getDownloadable(
-                  (prefs.getString('RepoLink') ??
-                      'http://ftp.halifax.rwth-aachen.de/'
-                          'turnkeylinux/images/proxmox/'),
-                  (e) => Notify.message(e)),
-              builder: (context, snapshot) {
-                List<AutoSuggestBoxItem<String>> list = [];
-                if (snapshot.hasData) {
-                  for (var i = 0; i < snapshot.data!.length; i++) {
-                    list.add(AutoSuggestBoxItem<String>(
-                      value: snapshot.data![i],
-                      label: snapshot.data![i],
-                    ));
-                  }
-                } else if (snapshot.hasError) {}
-                return AutoSuggestBox(
-                  placeholder: 'distroname-text'.i18n(),
-                  controller: widget.autoSuggestBox,
-                  items: list,
-                  noResultsFoundBuilder: (context) =>
-                      Builder(builder: (context) {
-                    String text = 'noresultsfound-text'.i18n();
-                    if (docker) {
-                      text = widget.autoSuggestBox.text;
-                      String image = text;
-                      String tag = 'latest';
-                      bool error = false;
-                      try {
-                        image = text.split(':')[1];
-                      } catch (e) {
-                        text = 'Check the image name and tag';
-                        error = true;
-                      }
-                      try {
-                        tag = text.split(':')[2];
-                      } catch (e) {
-                        // ignore
-                      }
-                      if (!error) {
-                        text = 'Docker Image: $image:$tag';
-                      }
-                    } else {
-                      text = 'No results found';
-                    }
-                    return Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Text(
-                        text,
-                        style: TextStyle(
-                          color: AppTheme().textColor,
-                        ),
-                      ),
-                    );
-                  }),
-                  onChanged: (String value, TextChangedReason reason) {
-                    if (value.contains('Turnkey')) {
-                      if (!turnkey) {
-                        setState(() {
-                          turnkey = true;
-                        });
-                      }
-                    } else if (turnkey) {
-                      setState(() {
-                        turnkey = false;
-                      });
-                    }
-                    if (value.startsWith('dockerhub:')) {
-                      setState(() {
-                        docker = true;
-                      });
-                    } else {
-                      setState(() {
-                        docker = false;
-                      });
-                    }
-                  },
-                  trailingIcon: IconButton(
-                    icon: const Icon(FluentIcons.open_folder_horizontal,
-                        size: 15.0),
-                    onPressed: () async {
-                      FilePickerResult? result =
-                          await FilePicker.platform.pickFiles(
-                        type: FileType.custom,
-                        allowedExtensions: ['*'],
-                      );
-
-                      if (result != null) {
-                        widget.autoSuggestBox.text = result.files.single.path!;
-                      } else {
-                        // User canceled the picker
-                      }
-                    },
-                  ),
-                );
-              }),
-        ),
-        ClickableUrl(
-          clickEvent: 'docker_wiki_clicked',
-          url: wikiDocker,
-          text: 'usedistrofromdockerhub-text'.i18n(),
-        ),
-        Container(
-          height: 5.0,
-        ),
-        Tooltip(
-          message: 'savelocationhint-text'.i18n(),
-          child: TextBox(
-            controller: widget.locationController,
-            placeholder: 'savelocationplaceholder-text'.i18n(),
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
-              onPressed: () async {
-                String? path = await FilePicker.platform.getDirectoryPath();
-                if (path != null) {
-                  widget.locationController.text = path;
-                } else {
-                  // User canceled the picker
-                }
-              },
-            ),
+        InfoLabel(
+          label: 'sourcetype-text'.i18n(),
+          child: ComboBox<CreateSourceType>(
+            placeholder: Text('selectsourcetype-text'.i18n()),
+            isExpanded: true,
+            value: sourceType,
+            items: [
+              ComboBoxItem(
+                value: CreateSourceType.repo,
+                child: Text('downloadfromrepo-text'.i18n()),
+              ),
+              ComboBoxItem(
+                value: CreateSourceType.turnkey,
+                child: Text('turnkeylinux-text'.i18n()),
+              ),
+              ComboBoxItem(
+                value: CreateSourceType.local,
+                child: Text('localrootfsfile-text'.i18n()),
+              ),
+              ComboBoxItem(
+                value: CreateSourceType.docker,
+                child: Text('dockerimage-text'.i18n()),
+              ),
+              ComboBoxItem(
+                value: CreateSourceType.vhdx,
+                child: Text('importvhdx-text'.i18n()),
+              ),
+            ],
+            onChanged: (v) {
+              if (v != null) widget.sourceType.value = v;
+            },
           ),
         ),
         Container(
           height: 10.0,
         ),
-        turnkey
+        Tooltip(
+          message: 'pathtorootfshint-text'.i18n(),
+          child: FutureBuilder<List<String>>(future: () async {
+            if (sourceType == CreateSourceType.repo) {
+              var map = await App().getDistroLinks();
+              return map.keys.toList();
+            } else if (sourceType == CreateSourceType.turnkey) {
+              var repo = await App().getDistroLinks();
+              var all = await widget.api.getDownloadable(
+                  (prefs.getString('RepoLink') ?? defaultRepoLink),
+                  (e) => Notify.message(e));
+              return all.where((x) => !repo.containsKey(x)).toList();
+            }
+            return <String>[];
+          }(), builder: (context, snapshot) {
+            List<AutoSuggestBoxItem<String>> list = [];
+            if (snapshot.hasData) {
+              for (var i = 0; i < snapshot.data!.length; i++) {
+                list.add(AutoSuggestBoxItem<String>(
+                  value: snapshot.data![i],
+                  label: snapshot.data![i],
+                ));
+              }
+            } else if (snapshot.hasError) {}
+            return AutoSuggestBox(
+              key: _autoSuggestBoxKey,
+              focusNode: node,
+              placeholder: sourceType == CreateSourceType.docker
+                  ? 'dockerimageplaceholder-text'.i18n()
+                  : sourceType == CreateSourceType.local
+                      ? 'pathtorootfsarchive-text'.i18n()
+                      : sourceType == CreateSourceType.vhdx
+                          ? 'pathtovhdxfile-text'.i18n()
+                          : 'distroname-text'.i18n(),
+              controller: widget.autoSuggestBox,
+              items: list,
+              noResultsFoundBuilder: (context) => Builder(builder: (context) {
+                String text = 'noresultsfound-text'.i18n();
+                if (sourceType == CreateSourceType.docker) {
+                  text = widget.autoSuggestBox.text;
+                  if (text.startsWith('dockerhub:')) {
+                    text = text.split('dockerhub:')[1];
+                  } else if (text.startsWith('docker:')) {
+                    text = text.split('docker:')[1];
+                  }
+                  String image = text;
+                  String tag = 'latest';
+                  bool error = false;
+                  try {
+                    if (text.contains(':')) {
+                      image = text.split(':')[0];
+                      tag = text.split(':')[1];
+                    }
+                  } catch (e) {
+                    text = 'Check the image name and tag';
+                    error = true;
+                  }
+                  if (!error) {
+                    text = 'Docker Image: $image:$tag';
+                  }
+                } else if (sourceType == CreateSourceType.local) {
+                  text = 'selectlocalfile-text'.i18n();
+                } else if (sourceType == CreateSourceType.vhdx) {
+                  text = 'selectvhdxfile-text'.i18n();
+                } else {
+                  text = 'noresultsfound-text'.i18n();
+                }
+                return Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      color: AppTheme().textColor,
+                    ),
+                  ),
+                );
+              }),
+              onChanged: (String value, TextChangedReason reason) {
+                if (value.startsWith('dockerhub:') ||
+                    value.startsWith('docker:')) {
+                  widget.sourceType.value = CreateSourceType.docker;
+                }
+              },
+              trailingIcon: sourceType == CreateSourceType.local ||
+                      sourceType == CreateSourceType.vhdx
+                  ? IconButton(
+                      icon: const Icon(FluentIcons.open_folder_horizontal,
+                          size: 15.0),
+                      onPressed: () async {
+                        FilePickerResult? result =
+                            await FilePicker.platform.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: sourceType == CreateSourceType.vhdx
+                              ? ['vhdx']
+                              : ['*'],
+                        );
+
+                        if (result != null) {
+                          widget.autoSuggestBox.text =
+                              result.files.single.path!;
+                        } else {
+                          // User canceled the picker
+                        }
+                      },
+                    )
+                  : null,
+            );
+          }),
+        ),
+        Container(
+          height: 10.0,
+        ),
+        ToggleSwitch(
+          checked: customLocation,
+          content: Text('savelocationhint-text'.i18n()),
+          onChanged: (v) {
+            setState(() {
+              customLocation = v;
+              if (!v) widget.locationController.clear();
+            });
+          },
+        ),
+        if (customLocation) ...[
+          Container(
+            height: 10.0,
+          ),
+          Tooltip(
+            message: 'savelocationhint-text'.i18n(),
+            child: TextBox(
+              controller: widget.locationController,
+              placeholder: 'savelocationplaceholder-text'.i18n(),
+              suffix: IconButton(
+                icon:
+                    const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+                onPressed: () async {
+                  String? path = await FilePicker.platform.getDirectoryPath();
+                  if (path != null) {
+                    widget.locationController.text = path;
+                  } else {
+                    // User canceled the picker
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
+        Container(
+          height: 10.0,
+        ),
+        sourceType == CreateSourceType.turnkey
             ? Text('turnkeywarning-text'.i18n(),
                 style: const TextStyle(fontStyle: FontStyle.italic))
             : Container(),
-        !turnkey && !docker ? Container(height: 15.0) : Container(),
-        !turnkey && !docker
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        sourceType != CreateSourceType.turnkey &&
+                sourceType != CreateSourceType.docker &&
+                sourceType != CreateSourceType.vhdx
+            ? ToggleSwitch(
+                checked: createUser,
+                content: Text('createuser-text'.i18n()),
+                onChanged: (v) {
+                  setState(() {
+                    createUser = v;
+                    if (!v) widget.userController.clear();
+                  });
+                },
+              )
+            : Container(),
+        sourceType != CreateSourceType.turnkey &&
+                sourceType != CreateSourceType.docker &&
+                sourceType != CreateSourceType.vhdx &&
+                createUser
+            ? Column(
                 children: [
-                  Text(
-                    '${'createuser-text'.i18n()}:',
+                  Container(
+                    height: 10.0,
+                  ),
+                  Tooltip(
+                    message: 'optionalusername-text'.i18n(),
+                    child: TextBox(
+                      controller: widget.userController,
+                      placeholder: 'optionaluser-text'.i18n(),
+                    ),
                   ),
                 ],
-              )
-            : Container(),
-        !turnkey && !docker
-            ? Container(
-                height: 5.0,
-              )
-            : Container(),
-        !turnkey && !docker
-            ? Tooltip(
-                message: 'optionalusername-text'.i18n(),
-                child: TextBox(
-                  controller: widget.userController,
-                  placeholder: 'optionaluser-text'.i18n(),
-                ),
               )
             : Container(),
       ],

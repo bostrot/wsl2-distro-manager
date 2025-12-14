@@ -397,6 +397,26 @@ Widget settingText(item, Function setState, String parent, String setting) {
 }
 
 Future<void> loadDistroSettings(String item) async {
+  // Clear known wsl.conf settings to avoid stale data
+  final List<String> knownKeys = [
+    'boot-systemd',
+    'boot-command',
+    'automount-enabled',
+    'automount-mountFsTab',
+    'automount-root',
+    'automount-options',
+    'network-generateHosts',
+    'network-generateResolvConf',
+    'network-hostname',
+    'interop-enabled',
+    'interop-appendWindowsPath',
+    'user-default'
+  ];
+
+  for (var key in knownKeys) {
+    await prefs.remove('$item-$key');
+  }
+
   var config = await WSLApi().getWSLConf(item);
   config.forEach((section, settings) {
     settings.forEach((key, value) {

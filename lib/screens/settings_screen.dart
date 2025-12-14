@@ -4,7 +4,6 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/components/navbar.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
@@ -29,6 +28,7 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _dockerrepoController = TextEditingController();
   final TextEditingController _editorController = TextEditingController();
   final TextEditingController _terminalController = TextEditingController();
+  final TextEditingController _vscodeController = TextEditingController();
   final TextEditingController _dockerMirrorController = TextEditingController();
   bool showDocker = false;
   BuildContext? currentContext;
@@ -78,6 +78,10 @@ class SettingsPageState extends State<SettingsPage> {
     String? terminal = prefs.getString('Terminal');
     if (terminal != null && terminal != '') {
       _terminalController.text = terminal;
+    }
+    String? vscodeCmd = prefs.getString('VSCodeCmd');
+    if (vscodeCmd != null && vscodeCmd != '') {
+      _vscodeController.text = vscodeCmd;
     }
     String? dockerMirror = prefs.getString('DockerMirror');
     if (dockerMirror != null && dockerMirror != '') {
@@ -211,6 +215,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("Terminal");
     }
 
+    // Save vscode command
+    if (_vscodeController.text.isNotEmpty) {
+      prefs.setString("VSCodeCmd", _vscodeController.text);
+    } else {
+      prefs.remove("VSCodeCmd");
+    }
+
     // Save docker mirror
     if (_dockerMirrorController.text.isNotEmpty) {
       prefs.setString("DockerMirror", _dockerMirrorController.text);
@@ -226,11 +237,26 @@ class SettingsPageState extends State<SettingsPage> {
     if (_settings['General Data Location']!.text.isNotEmpty) {
       prefs.setString("DataPath", _settings['General Data Location']!.text);
     }
+
+    final experimentalKeys = [
+      'autoMemoryReclaim',
+      'sparseVhd',
+      'bestEffortDnsParsing',
+      'dnsTunnelingIpAddress',
+      'initialAutoProxyTimeout',
+      'ignoredPorts',
+      'hostAddressLoopback'
+    ];
+
     _settings.forEach((key, value) {
       if (key != 'Default Distro Location' &&
           key != 'General Data Location' &&
           value.text.isNotEmpty) {
-        WSLApi().setConfig('wsl2', key, value.text);
+        String section = 'wsl2';
+        if (experimentalKeys.contains(key)) {
+          section = 'experimental';
+        }
+        WSLApi().setConfig(section, key, value.text);
       }
     });
     hasPushed = false;
@@ -241,6 +267,38 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Widget settingsList(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expander(
+          header: Text('generalsettings-text'.i18n()),
+          content: _buildGeneralSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('dockersettings-text'.i18n()),
+          content: _buildDockerSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('syncsettings-text'.i18n()),
+          content: _buildSyncSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('globalconfiguration-text'.i18n()),
+          content: _buildGlobalConfigSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('experimental-text'.i18n()),
+          content: _buildExperimentalSettings(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGeneralSettings(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -289,33 +347,27 @@ class SettingsPageState extends State<SettingsPage> {
                 defaultPath),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Expander(
-            header: Tooltip(
+          child: InfoLabel(
+            label: 'defaulteditor-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
               message: 'defaulteditor-text'.i18n(),
-              child: Text('defaulteditor-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            content: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-              child: Tooltip(
-                message: 'defaulteditor-text'.i18n(),
-                child: TextBox(
-                  controller: _editorController,
-                  placeholder: 'notepad.exe',
-                  suffix: IconButton(
-                    icon: const Icon(FluentIcons.open_folder_horizontal,
-                        size: 15.0),
-                    onPressed: () async {
-                      FilePickerResult? result =
-                          await FilePicker.platform.pickFiles(
-                        type: FileType.custom,
-                        allowedExtensions: ['exe'],
-                      );
-                      if (result != null) {
-                        _editorController.text = result.files.single.path!;
-                      }
-                    },
-                  ),
+              child: TextBox(
+                controller: _editorController,
+                placeholder: 'notepad.exe',
+                suffix: IconButton(
+                  icon: const Icon(FluentIcons.open_folder_horizontal,
+                      size: 15.0),
+                  onPressed: () async {
+                    FilePickerResult? result =
+                        await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['exe'],
+                    );
+                    if (result != null) {
+                      _editorController.text = result.files.single.path!;
+                    }
+                  },
                 ),
               ),
             ),
@@ -323,33 +375,27 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Expander(
-            header: Tooltip(
+          child: InfoLabel(
+            label: 'defaultterminal-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
               message: 'defaultterminal-text'.i18n(),
-              child: Text('defaultterminal-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            content: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-              child: Tooltip(
-                message: 'defaultterminal-text'.i18n(),
-                child: TextBox(
-                  controller: _terminalController,
-                  placeholder: 'wt.exe',
-                  suffix: IconButton(
-                    icon: const Icon(FluentIcons.open_folder_horizontal,
-                        size: 15.0),
-                    onPressed: () async {
-                      FilePickerResult? result =
-                          await FilePicker.platform.pickFiles(
-                        type: FileType.custom,
-                        allowedExtensions: ['exe'],
-                      );
-                      if (result != null) {
-                        _terminalController.text = result.files.single.path!;
-                      }
-                    },
-                  ),
+              child: TextBox(
+                controller: _terminalController,
+                placeholder: 'wt.exe',
+                suffix: IconButton(
+                  icon: const Icon(FluentIcons.open_folder_horizontal,
+                      size: 15.0),
+                  onPressed: () async {
+                    FilePickerResult? result =
+                        await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['exe'],
+                    );
+                    if (result != null) {
+                      _terminalController.text = result.files.single.path!;
+                    }
+                  },
                 ),
               ),
             ),
@@ -357,197 +403,184 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Expander(
-            header: Tooltip(
-              message: 'dockermirror-text'.i18n(),
-              child: Text('dockermirror-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            content: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-              child: Tooltip(
-                message: 'dockermirrorhint-text'.i18n(),
-                child: TextBox(
-                  controller: _dockerMirrorController,
-                  placeholder: 'https://mirror.gcr.io',
-                ),
+          child: InfoLabel(
+            label: 'defaultvscode-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'defaultvscode-text'.i18n(),
+              child: TextBox(
+                controller: _vscodeController,
+                placeholder: 'code',
               ),
             ),
           ),
         ),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
-                message: 'showdockershort-text'.i18n(),
-                child: Text('showdockershort-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Row(
-                  children: [
-                    Tooltip(
-                        message: 'showdockershort-text'.i18n(),
-                        child: ToggleSwitch(
-                          checked: showDocker,
-                          onChanged: (value) {
-                            setState(() {
-                              showDocker = value;
-                              prefs.setBool('showDocker', value);
-                            });
-                          },
-                        )),
-                    const SizedBox(
-                      width: 10.0,
-                    ),
-                    Text('showdockerlong-text'.i18n()),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ]),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'language-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
                 message: 'language-text'.i18n(),
-                child: Text('language-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                    message: 'language-text'.i18n(),
-                    // Menu
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'languagechange-text'.i18n(),
-                        ),
-                        const SizedBox(
-                          height: 20.0,
-                        ),
-                        Builder(
-                          builder: (context) {
-                            var lang =
-                                Localizations.localeOf(context).languageCode;
-                            var selectedLanguage =
-                                prefs.getString('language') ?? lang;
+                // Menu
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'languagechange-text'.i18n(),
+                    ),
+                    const SizedBox(
+                      height: 20.0,
+                    ),
+                    Builder(
+                      builder: (context) {
+                        var lang = Localizations.localeOf(context).languageCode;
+                        var selectedLanguage =
+                            prefs.getString('language') ?? lang;
 
-                            // Language menu
-                            return ComboBox<String>(
-                                value: selectedLanguage,
-                                items: supportedLocalesList
-                                    .map((e) => ComboBoxItem(
-                                        value: e.languageCode,
-                                        child: Text(e.toString())))
-                                    .toList(),
-                                onChanged: (language) {
-                                  String curLanguage = language ?? lang;
-                                  prefs.setString('language', curLanguage);
-                                  setState(() {
-                                    selectedLanguage = curLanguage;
-                                  });
-                                });
-                          },
-                        ),
-                      ],
+                        // Language menu
+                        return ComboBox<String>(
+                            value: selectedLanguage,
+                            items: supportedLocalesList
+                                .map((e) => ComboBoxItem(
+                                    value: e.languageCode,
+                                    child: Text(e.toString())))
+                                .toList(),
+                            onChanged: (language) {
+                              String curLanguage = language ?? lang;
+                              prefs.setString('language', curLanguage);
+                              setState(() {
+                                selectedLanguage = curLanguage;
+                              });
+                            });
+                      },
+                    ),
+                  ],
+                )),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDockerSettings(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'showdockershort-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                Tooltip(
+                    message: 'showdockershort-text'.i18n(),
+                    child: ToggleSwitch(
+                      checked: showDocker,
+                      onChanged: (value) {
+                        setState(() {
+                          showDocker = value;
+                          prefs.setBool('showDocker', value);
+                        });
+                      },
                     )),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Text('dockerrepo-text'.i18n(),
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'dockerrepo-text'.i18n(),
-                  child: TextBox(
-                    controller: _dockerrepoController,
-                    placeholder: 'https://registry-1.docker.io',
-                  ),
+                const SizedBox(
+                  width: 10.0,
                 ),
-              ),
+                Text('showdockerlong-text'.i18n()),
+              ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
-                message: 'syncipaddress-text'.i18n(),
-                child: Text('syncipaddress-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'syncipaddress-text'.i18n(),
-                  child: TextBox(
-                    controller: _syncIpTextController,
-                    placeholder: '192.168.1.20',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
-                message: 'syncpassword-text'.i18n(),
-                child: Text('syncpassword-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'syncpasswordhint-text'.i18n(),
-                  child: TextBox(
-                    controller: _syncPasswordController,
-                    placeholder: 'SecretPassword123',
-                    obscureText: true,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Expander(
-              header: Tooltip(
-                message: 'repofordistro-text'.i18n(),
-                child: Text('repofordistro-text'.i18n(),
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
-                child: Tooltip(
-                  message: 'repofordistro-text'.i18n(),
-                  child: TextBox(
-                    controller: _repoTextController,
-                    placeholder: defaultRepoLink,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ]),
-        const Padding(
-          padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
-          child: Divider(),
         ),
-        Center(
-          child: Text("globalconfiguration-text".i18n()),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'dockermirror-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'dockermirrorhint-text'.i18n(),
+              child: TextBox(
+                controller: _dockerMirrorController,
+                placeholder: 'https://mirror.gcr.io',
+              ),
+            ),
+          ),
         ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'dockerrepo-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'dockerrepo-text'.i18n(),
+              child: TextBox(
+                controller: _dockerrepoController,
+                placeholder: 'https://registry-1.docker.io',
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSyncSettings(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'syncipaddress-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'syncipaddress-text'.i18n(),
+              child: TextBox(
+                controller: _syncIpTextController,
+                placeholder: '192.168.1.20',
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'syncpassword-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'syncpasswordhint-text'.i18n(),
+              child: TextBox(
+                controller: _syncPasswordController,
+                placeholder: 'SecretPassword123',
+                obscureText: true,
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'repofordistro-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'repofordistro-text'.i18n(),
+              child: TextBox(
+                controller: _repoTextController,
+                placeholder: defaultRepoLink,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlobalConfigSettings(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Padding(
           padding: const EdgeInsets.all(10.0),
           child: Text(
@@ -559,6 +592,22 @@ class SettingsPageState extends State<SettingsPage> {
             title: 'kernel',
             tooltip: 'absolutewindowspath-text'.i18n(),
             placeholder: ''),
+        settingsWidget(context,
+            title: 'kernelModules',
+            tooltip: 'kernelmodulesinfo-text'.i18n(),
+            placeholder: '',
+            suffix: IconButton(
+              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+              onPressed: () async {
+                FilePickerResult? result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['vhdx'],
+                );
+                if (result != null) {
+                  _settings['kernelModules']!.text = result.files.single.path!;
+                }
+              },
+            )),
         settingsWidget(context,
             title: 'memory',
             tooltip: 'memoryinfo-text'.i18n(),
@@ -584,6 +633,10 @@ class SettingsPageState extends State<SettingsPage> {
             tooltip: 'kernelcmdinfo-text'.i18n(),
             placeholder: ''),
         settingsWidget(context,
+            title: 'safeMode',
+            tooltip: 'safemodeinfo-text'.i18n(),
+            type: SettingsType.bool),
+        settingsWidget(context,
             title: 'swap', tooltip: 'swapinfo-text'.i18n(), placeholder: ''),
         settingsWidget(context,
             title: 'swapFile', tooltip: 'vhdinfo-text'.i18n(), placeholder: ''),
@@ -603,6 +656,70 @@ class SettingsPageState extends State<SettingsPage> {
             title: 'vmIdleTimeout',
             tooltip: 'vmidleinfo-text'.i18n(),
             placeholder: ''),
+        settingsWidget(context,
+            title: 'maxCrashDumpCount',
+            tooltip: 'maxcrashdumpcountinfo-text'.i18n(),
+            placeholder: ''),
+        settingsWidget(context,
+            title: 'dnsProxy',
+            tooltip: 'dnsproxyinfo-text'.i18n(),
+            type: SettingsType.bool),
+        settingsWidget(context,
+            title: 'networkingMode',
+            tooltip: 'networkingmodeinfo-text'.i18n(),
+            placeholder: 'nat'),
+        settingsWidget(context,
+            title: 'firewall',
+            tooltip: 'firewallinfo-text'.i18n(),
+            type: SettingsType.bool),
+        settingsWidget(context,
+            title: 'dnsTunneling',
+            tooltip: 'dnstunnelinginfo-text'.i18n(),
+            type: SettingsType.bool),
+        settingsWidget(context,
+            title: 'autoProxy',
+            tooltip: 'autoproxyinfo-text'.i18n(),
+            type: SettingsType.bool),
+        settingsWidget(context,
+            title: 'defaultVhdSize',
+            tooltip: 'defaultvhdsizeinfo-text'.i18n(),
+            placeholder: ''),
+      ],
+    );
+  }
+
+  Widget _buildExperimentalSettings(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        settingsWidget(context,
+            title: 'autoMemoryReclaim',
+            tooltip: 'automemoryreclaiminfo-text'.i18n(),
+            placeholder: ''),
+        settingsWidget(context,
+            title: 'sparseVhd',
+            tooltip: 'sparsevhdinfo-text'.i18n(),
+            type: SettingsType.bool),
+        settingsWidget(context,
+            title: 'bestEffortDnsParsing',
+            tooltip: 'besteffortdnsparsinginfo-text'.i18n(),
+            type: SettingsType.bool),
+        settingsWidget(context,
+            title: 'dnsTunnelingIpAddress',
+            tooltip: 'dnstunnelingipaddressinfo-text'.i18n(),
+            placeholder: ''),
+        settingsWidget(context,
+            title: 'initialAutoProxyTimeout',
+            tooltip: 'initialautoproxytimeoutinfo-text'.i18n(),
+            placeholder: ''),
+        settingsWidget(context,
+            title: 'ignoredPorts',
+            tooltip: 'ignoredportsinfo-text'.i18n(),
+            placeholder: ''),
+        settingsWidget(context,
+            title: 'hostAddressLoopback',
+            tooltip: 'hostaddressloopbackinfo-text'.i18n(),
+            type: SettingsType.bool),
       ],
     );
   }
@@ -629,18 +746,20 @@ class SettingsPageState extends State<SettingsPage> {
     title = title.replaceFirst(title[0], title[0].toUpperCase());
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Expander(
-        header: Tooltip(
-          message: tooltip,
-          child:
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        ),
-        content: Column(
+      child: InfoLabel(
+        label: title,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(tooltip),
+            if (tooltip.isNotEmpty && tooltip != title)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(tooltip,
+                    style: TextStyle(color: Colors.grey[100], fontSize: 12)),
+              ),
             Padding(
-              padding: const EdgeInsets.only(top: 8.0),
+              padding: const EdgeInsets.only(top: 0.0),
               child: Builder(
                 builder: (context) {
                   double size = double.tryParse(

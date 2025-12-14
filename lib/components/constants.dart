@@ -15,8 +15,7 @@ const String motdUrl =
 const String defaultRepoLink =
     'http://ftp.halifax.rwth-aachen.de/turnkeylinux/images/proxmox/';
 
-const String gitRepoLink =
-    'https://rawcdn.githack.com/bostrot/wsl2-distro-manager/main/images.json';
+const String gitRepoLink = 'https://n8n.aachen.dev/webhook/cdn/images.json';
 
 String gitApiScriptsLink =
     'https://api.github.com/repos/bostrot/wsl-scripts/contents/scripts';

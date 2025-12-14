@@ -1,18 +1,17 @@
-/// API to download docker images from DockerHub and extract them
-/// into a rootfs.
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
-import 'package:wsl2distromanager/api/archive.dart';
+import 'package:wsl2distromanager/api/layer_processor.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
+/// API to download docker images from DockerHub and extract them
+/// into a rootfs.
 class Manifests {
   List<Manifest> manifests = [];
   String mediaType = '';
@@ -145,14 +144,12 @@ class DockerImage {
   String? distroName;
   final Dio dio;
   final ChunkedDownloaderFactory chunkedDownloaderFactory;
-  final ArchiveService archiveService;
 
   DockerImage(
       {Dio? dio,
       ChunkedDownloaderFactory? chunkedDownloaderFactory,
-      ArchiveService? archiveService,
       String? registryUrl,
-      this.authUrl = 'https://auth.docker.io',
+      this.authUrl = 'https://auth.docker.io/token',
       this.svcUrl = 'registry.docker.io'})
       : dio = dio ?? Dio(),
         registryUrl = registryUrl ??
@@ -174,19 +171,69 @@ class DockerImage {
                     chunkSize: chunkSize ?? 1024 * 1024,
                     onProgress: onProgress,
                     onDone: onDone,
-                    onError: onError)),
-        archiveService = archiveService ?? ArchiveService() {
+                    onError: onError)) {
     String? mirror = prefs.getString('DockerMirror');
     if (mirror != null && mirror.isNotEmpty) {
       this.registryUrl = mirror;
     }
   }
 
+  /// Setup registry and auth for custom images
+  Future<String> _setupRegistry(String image) async {
+    final parts = image.split('/');
+    if (parts.length > 1 &&
+        (parts[0].contains('.') ||
+            parts[0].contains(':') ||
+            parts[0] == 'localhost')) {
+      String registry = parts[0];
+      String repo = parts.sublist(1).join('/');
+
+      // Update registry URL
+      if (!registry.startsWith('http')) {
+        registryUrl = 'https://$registry';
+      } else {
+        registryUrl = registry;
+      }
+
+      // Discover auth endpoint
+      try {
+        await dio.get('$registryUrl/v2/');
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          final authHeader = e.response?.headers.value('www-authenticate');
+          if (authHeader != null) {
+            final realmMatch =
+                RegExp(r'realm="([^"]+)"').firstMatch(authHeader);
+            final serviceMatch =
+                RegExp(r'service="([^"]+)"').firstMatch(authHeader);
+
+            if (realmMatch != null) {
+              authUrl = realmMatch.group(1)!;
+            }
+            if (serviceMatch != null) {
+              svcUrl = serviceMatch.group(1)!;
+            } else {
+              svcUrl = '';
+            }
+          }
+        }
+      }
+      return repo;
+    }
+    return image;
+  }
+
   /// Get auth token
   Future<String> _authenticate(String image) async {
-    Response<dynamic> response = await dio.get(
-      '$authUrl/token?service=$svcUrl&scope=repository:$image:pull',
-    );
+    Uri uri = Uri.parse(authUrl);
+    Map<String, String> queryParameters = Map.from(uri.queryParameters);
+    queryParameters['scope'] = 'repository:$image:pull';
+    if (svcUrl.isNotEmpty) {
+      queryParameters['service'] = svcUrl;
+    }
+    uri = uri.replace(queryParameters: queryParameters);
+
+    Response<dynamic> response = await dio.get(uri.toString());
     if (response.data == null) {
       throw Exception('No response data');
     }
@@ -257,6 +304,9 @@ class DockerImage {
   Future<String> _download(
       String image, String path, TotalProgressCallback progressCallback,
       {String? tag}) async {
+    // Handle custom registry
+    image = await _setupRegistry(image);
+
     // Get token
     final token = await _authenticate(image);
 
@@ -295,8 +345,85 @@ class DockerImage {
             ImageManifest.fromMap(await _getManifest(image, token, digest));
 
         final config = imageManifest.config.digest;
-        await _downloadBlob(image, token, config,
-            SafePath(path).file('config.json'), (p0, p1) {});
+        final configPath = SafePath(path).file('config.json');
+        await _downloadBlob(image, token, config, configPath, (p0, p1) {});
+
+        // Parse config.json for metadata (V2)
+        try {
+          if (await File(configPath).exists()) {
+            final configContent = await File(configPath).readAsString();
+            final configJson = json.decode(configContent);
+
+            if (configJson['config'] != null) {
+              final parsedConfig = configJson['config'];
+              final env = parsedConfig['Env'];
+              final cmd = parsedConfig['Cmd'];
+              final entrypoint = parsedConfig['Entrypoint'];
+              final user = parsedConfig['User'];
+
+              // Handle User
+              if (user != null && user is String && user.isNotEmpty) {
+                var userStr = user;
+                if (userStr.contains(':')) {
+                  userStr = userStr.split(':')[0];
+                }
+                if (int.tryParse(userStr) == null) {
+                  prefs.setString('StartUser_$distroName', userStr);
+                } else {
+                  Notify.message(
+                      'Not implemented yet: Docker USER is a number.');
+                }
+              }
+
+              // Handle Env, Entrypoint, Cmd
+              var entrypointCmd = '';
+              if (entrypoint != null && entrypoint is List) {
+                entrypointCmd = entrypoint.map((e) => e.toString()).join(' ');
+              }
+
+              String exportEnv = '';
+              if (env != null && env is List) {
+                exportEnv = env.map((e) => 'export $e;').join(' ');
+              }
+
+              // Use distroName for StartCmd so it applies to the instance
+              if (cmd != null && cmd is List) {
+                prefs.setString('StartCmd_$distroName',
+                    '$exportEnv $entrypointCmd; ${cmd.map((e) => e.toString()).join(' ')}');
+              } else if (entrypointCmd.isNotEmpty) {
+                prefs.setString(
+                    'StartCmd_$distroName', '$exportEnv $entrypointCmd');
+              }
+            }
+
+            // Handle history for UserCmds/GroupCmds
+            // These need to be saved under image filename to be picked up by create_dialog
+            String imageName = filename(image, tag);
+            List<String> userCmds = [];
+            List<String> groupCmds = [];
+
+            if (configJson['history'] != null &&
+                configJson['history'] is List) {
+              for (var item in configJson['history']) {
+                final createdBy = item['created_by'] as String?;
+                if (createdBy != null) {
+                  if (createdBy.contains('adduser') ||
+                      createdBy.contains('useradd')) {
+                    userCmds.add(createdBy);
+                  }
+                  if (createdBy.contains('groupadd') ||
+                      createdBy.contains('addgroup')) {
+                    groupCmds.add(createdBy);
+                  }
+                }
+              }
+            }
+            prefs.setStringList('UserCmds_$imageName', userCmds);
+            prefs.setStringList('GroupCmds_$imageName', groupCmds);
+          }
+        } catch (e, stack) {
+          logDebug(e, stack, 'Failed to parse V2 config');
+        }
       } catch (e, stackTrace) {
         if (kDebugMode) {
           print(e);
@@ -402,8 +529,8 @@ class DockerImage {
       // Set image specific commands
       String name = filename(image, tag);
       if (cmd != null) {
-        prefs.setString(
-            'StartCmd_$name', '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
+        prefs.setString('StartCmd_$distroName',
+            '$exportEnv $entrypointCmd; ${cmd.join(' ')}');
       }
       prefs.setStringList('UserCmds_$name', userCmds);
       prefs.setStringList('GroupCmds_$name', groupCmds);
@@ -516,37 +643,16 @@ class DockerImage {
     int retry = 0;
 
     final parentPath = SafePath(tmpImagePath);
-    String outTar = parentPath.file('$imageName.tar');
     String outTarGz = SafePath(distroPath).file('$imageName.tar.gz');
     while (retry < 2) {
       try {
-        // More than one layer
-        List<String> paths = [];
-        if (layers != 1) {
-          for (var i = 0; i < layers; i++) {
-            // Read archives layers
-            if (kDebugMode) {
-              print('Extracting layer $i of $layers');
-            }
-            // progress(i, layers, -1, -1);
-            Notify.message('Extracting layer $i of $layers');
-
-            // Extract layer
-            final layerTarGz = parentPath.file('layer_$i.tar.gz');
-            await archiveService.extract(layerTarGz, parentPath.path);
-            paths.add(parentPath.file('layer_$i.tar'));
-          }
-
-          // Archive as tar then gzip to disk
-          await archiveService.merge(paths, outTar);
-          await archiveService.compress(outTar, outTarGz);
-
-          Notify.message('writingtodisk-text'.i18n());
-        } else if (layers == 1) {
-          // Just copy the file
-          File(SafePath(tmpImagePath).file('layer_0.tar.gz'))
-              .copySync(outTarGz);
+        List<String> layerPaths = [];
+        for (var i = 0; i < layers; i++) {
+          layerPaths.add(parentPath.file('layer_$i.tar.gz'));
         }
+
+        await LayerProcessor()
+            .mergeLayers(layerPaths, outTarGz, (msg) => Notify.message(msg));
 
         retry = 2;
         break;
@@ -554,6 +660,8 @@ class DockerImage {
         retry++;
         if (retry == 2) {
           logDebug(e, stackTrace, null);
+          Notify.message('${'error-text'.i18n()}: $e');
+          return false;
         }
         await Future.delayed(const Duration(seconds: 1));
         if (kDebugMode) {
@@ -587,6 +695,7 @@ class DockerImage {
 
   /// Check if registry has image tag
   Future<bool> hasImage(String image, {String? tag}) async {
+    image = await _setupRegistry(image);
     bool hasImage = await _hasImageOnly(image);
     if (tag == null) {
       return hasImage;

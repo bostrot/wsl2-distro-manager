@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
+import 'package:wsl2distromanager/dialogs/mount_dialog.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/theme.dart';
@@ -151,7 +152,8 @@ class _NavbarState extends State<Navbar> {
         ),
         child: NavigationView(
           pane: NavigationPane(
-              displayMode: PaneDisplayMode.auto,
+              size: const NavigationPaneSize(openWidth: 220),
+              displayMode: PaneDisplayMode.open,
               selected: () {
                 // Default to first item as we are using popups for the rest
                 return index;
@@ -220,6 +222,19 @@ class _NavbarState extends State<Navbar> {
                   onTap: () {
                     lockFor500Ms(onDone: () {
                       createDialog();
+                    });
+                  },
+                ),
+                PaneItemAction(
+                  icon: Tooltip(
+                    message: 'mountdisk-text'.i18n(),
+                    child: const Icon(FluentIcons.hard_drive),
+                  ),
+                  title: Text('mountdisk-text'.i18n(),
+                      style: TextStyle(color: textColor)),
+                  onTap: () {
+                    lockFor500Ms(onDone: () {
+                      showMountDialog();
                     });
                   },
                 ),

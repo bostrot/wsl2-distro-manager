@@ -100,7 +100,14 @@ class WSLApi {
     if (terminal != null && terminal.isNotEmpty) {
       executable = terminal;
     }
-
+    // If using Windows Terminal, open in new tab of existing window
+    if (executable.toLowerCase().endsWith('wt.exe') ||
+        executable.toLowerCase() == 'wt') {
+      // -w 0 targets the existing window (or creates one if none exists)
+      // nt (new-tab) creates a new tab
+      // We insert these at the beginning of the arguments list
+      args.insertAll(0, ['-w', '0', 'nt']);
+    }
     await shell.start(executable, args,
         mode: ProcessStartMode.detached, runInShell: true);
     if (kDebugMode) {
@@ -132,7 +139,12 @@ class WSLApi {
 
   /// Start VSCode
   void startVSCode(String distribution, {String path = ''}) async {
-    List<String> args = ['wsl', '-d', distribution, 'code'];
+    String codeCmd = prefs.getString('VSCodeCmd') ?? 'code';
+    if (codeCmd.isEmpty) {
+      codeCmd = 'code';
+    }
+
+    List<String> args = ['wsl', '-d', distribution, codeCmd];
     if (path != '') {
       args.add(path);
     }
@@ -510,7 +522,7 @@ class WSLApi {
   /// Import a WSL distro by name
   Future<dynamic> create(String distribution, String filename,
       String installPath, Function(String) status,
-      {bool image = false}) async {
+      {bool image = false, bool isVhd = false}) async {
     if (installPath == '') {
       installPath = getInstancePath(distribution).path;
     } else {
@@ -552,9 +564,12 @@ class WSLApi {
     }
 
     // Create from local file
-    ProcessResult results = await shell.run(
-        'wsl', ['--import', distribution, installPath, downloadPath],
-        stdoutEncoding: null);
+    List<String> args = ['--import', distribution, installPath, downloadPath];
+    if (isVhd) {
+      args.add('--vhd');
+    }
+
+    ProcessResult results = await shell.run('wsl', args, stdoutEncoding: null);
 
     return results;
   }
@@ -694,21 +709,20 @@ class WSLApi {
     try {
       await Dio().get(repo).then((value) => {
             value.data.split('\n').forEach((line) {
-              if (line.contains('tar.gz"') &&
-                  line.contains('href=') &&
-                  (line.contains('debian-10') || line.contains('debian-11'))) {
-                String name = line
-                    .split('href="')[1]
-                    .split('"')[0]
-                    .toString()
+              if (line.contains('tar.gz') && line.contains('href=')) {
+                var parts = line.split(RegExp(r'href=["' ']'));
+                if (parts.length < 2) return;
+                String filename = parts[1].split(RegExp(r'["' ']'))[0];
+
+                if (!filename.endsWith('.tar.gz')) return;
+
+                String name = filename
                     .replaceAll('.tar.gz', '')
                     .replaceAll('1_amd64', '')
                     .replaceAll(RegExp(r'-|_'), ' ')
                     .replaceAllMapped(RegExp(r' .|^.'),
                         (Match m) => m[0].toString().toUpperCase());
-                distroRootfsLinks.addAll({
-                  name: repo + line.split('href="')[1].split('"')[0].toString()
-                });
+                distroRootfsLinks.addAll({name: repo + filename});
               }
             })
           });

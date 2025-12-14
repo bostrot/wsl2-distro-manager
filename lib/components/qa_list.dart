@@ -43,7 +43,7 @@ class QaListState extends State<QaList> {
         String name = selectedList[i].name;
         // Get Script
         Response<dynamic> contentFile =
-            await Dio().get('$repoScripts/$name/script.noshell');
+            await Dio().get("$repoScripts/$name/script.noshell");
         QuickActionItem item = selectedList[i];
         item.content = contentFile.data.toString();
         QuickAction.addToPrefs(item);

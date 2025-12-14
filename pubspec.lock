@@ -947,7 +947,7 @@ packages:
     source: hosted
     version: "0.0.3"
   tar:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: tar
       sha256: b338bacfd24dae6cf527acb4242003a71fc88ce183a9002376fabbc4ebda30c9

@@ -62,6 +62,8 @@ class MockShell implements Shell {
   bool simulateInvalidPath = false;
   bool simulateSmallExport = false;
   bool simulateRemoveFailure = false;
+  bool simulateCodeMissing = false;
+  bool simulateCodiumMissing = false;
 
   @override
   Future<ProcessResult> run(String executable, List<String> arguments,
@@ -74,6 +76,19 @@ class MockShell implements Shell {
     String stdout = '';
     String stderr = '';
     int exitCode = 0;
+
+    if (arguments.contains('sh') && arguments.contains('-c')) {
+      String cmd = arguments.last;
+      if (cmd == 'command -v code') {
+        if (simulateCodeMissing) {
+          exitCode = 1;
+        }
+      } else if (cmd == 'command -v codium') {
+        if (simulateCodiumMissing) {
+          exitCode = 1;
+        }
+      }
+    }
 
     if (arguments.contains('--list')) {
       stdout = distros.join('\n');

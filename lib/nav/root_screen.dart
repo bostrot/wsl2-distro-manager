@@ -221,6 +221,7 @@ class RootPageState extends State<RootPage> with WindowListener {
         );
       },
       pane: NavigationPane(
+        size: const NavigationPaneSize(openWidth: 220),
         selected: _calculateSelectedIndex(context),
         displayMode: appTheme.displayMode,
         indicator: () {

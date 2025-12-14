@@ -47,7 +47,7 @@ void main() async {
         windowButtonVisibility: false,
       );
       await windowManager.setMinimumSize(const Size(574, 450));
-      await windowManager.setSize(const Size(700, 500));
+      await windowManager.setSize(const Size(800, 600));
       await windowManager.show();
       await windowManager.setPreventClose(true);
       await windowManager.setSkipTaskbar(false);
@@ -56,7 +56,7 @@ void main() async {
 
   // Init logging
   initLogging();
-  initPrefs();
+  await initPrefs();
 
   // Error logging
   FlutterError.onError = (details) {
@@ -86,8 +86,6 @@ class WSLManager extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AppTheme(),
       builder: (context, _) {
-        // Wait for prefs to be initialized
-        while (!initialized) {}
         final appTheme = context.watch<AppTheme>();
         var selectedLang = prefs.getString('language');
         return FluentApp.router(
@@ -96,6 +94,9 @@ class WSLManager extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           color: appTheme.color,
           darkTheme: FluentThemeData(
+            tooltipTheme: const TooltipThemeData(
+              waitDuration: Duration(milliseconds: 50),
+            ),
             brightness: Brightness.dark,
             accentColor: appTheme.color,
             visualDensity: VisualDensity.standard,
@@ -104,6 +105,9 @@ class WSLManager extends StatelessWidget {
             ),
           ),
           theme: FluentThemeData(
+            tooltipTheme: const TooltipThemeData(
+              waitDuration: Duration(milliseconds: 50),
+            ),
             accentColor: appTheme.color,
             visualDensity: VisualDensity.standard,
             focusTheme: FocusThemeData(

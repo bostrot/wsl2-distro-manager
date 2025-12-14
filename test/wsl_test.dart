@@ -381,4 +381,26 @@ systemd = true
     expect(prefs.getString('MoveOp_Distro'), null);
     expect(prefs.getString('MoveOp_BackupPath'), null);
   });
+
+  test('startVSCode uses preference if set', () async {
+    SharedPreferences.setMockInitialValues({'VSCodeCmd': 'custom-code'});
+    prefs = await SharedPreferences.getInstance();
+
+    wslApi.startVSCode('Ubuntu');
+
+    // Wait for async execution (startVSCode is async void)
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    expect(mockShell.lastStartArguments, contains('custom-code'));
+  });
+
+  test('startVSCode defaults to code if not set', () async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+
+    wslApi.startVSCode('Ubuntu');
+    await Future.delayed(const Duration(milliseconds: 10));
+
+    expect(mockShell.lastStartArguments, contains('code'));
+  });
 }
