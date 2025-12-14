@@ -176,8 +176,7 @@
     "datapath-text": "Ruta donde guardar plantillas y descargas",
     "dockermirror-text": "Espejo Docker",
     "dockermirrorhint-text": "p.ej. https://mirror.gcr.io",
-    "dockerrepo-text": "Repositorio Docker"
-,
+    "dockerrepo-text": "Repositorio Docker",
     "mountdisk-text": "Mount Disk",
     "physicaldisk-text": "Physical Disk",
     "vhdimage-text": "VHD Image",

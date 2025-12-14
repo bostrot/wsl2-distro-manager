@@ -178,8 +178,7 @@
     "datapath-text": "Pfad zum Speichern von Vorlagen und Downloads",
     "dockermirror-text": "Docker Mirror",
     "dockermirrorhint-text": "z.B. https://mirror.gcr.io",
-    "dockerrepo-text": "Docker Repository"
-,
+    "dockerrepo-text": "Docker Repository",
     "mountdisk-text": "Datenträger einbinden",
     "physicaldisk-text": "Physischer Datenträger",
     "vhdimage-text": "VHD Abbild",

@@ -177,8 +177,7 @@
     "dockermirror-text": "Docker 镜像",
     "dockermirrorhint-text": "例如 https://mirror.gcr.io",
     "error-text": "错误",
-    "dockerrepo-text": "Docker 仓库"
-,
+    "dockerrepo-text": "Docker 仓库",
     "mountdisk-text": "Mount Disk",
     "physicaldisk-text": "Physical Disk",
     "vhdimage-text": "VHD Image",

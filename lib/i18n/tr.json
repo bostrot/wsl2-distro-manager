@@ -178,8 +178,7 @@
     "datapath-text": "Şablonların ve indirmelerin kaydedileceği yol",
     "dockermirror-text": "Docker Aynası",
     "dockermirrorhint-text": "örn. https://mirror.gcr.io",
-    "dockerrepo-text": "Docker Reposu"
-,
+    "dockerrepo-text": "Docker Reposu",
     "mountdisk-text": "Mount Disk",
     "physicaldisk-text": "Physical Disk",
     "vhdimage-text": "VHD Image",

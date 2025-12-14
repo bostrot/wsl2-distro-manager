@@ -177,8 +177,7 @@
     "datapath-text": "テンプレートとダウンロードを保存するパス",
     "dockermirror-text": "Docker ミラー",
     "dockermirrorhint-text": "例: https://mirror.gcr.io",
-    "dockerrepo-text": "Docker リポジトリ"
-,
+    "dockerrepo-text": "Docker リポジトリ",
     "mountdisk-text": "Mount Disk",
     "physicaldisk-text": "Physical Disk",
     "vhdimage-text": "VHD Image",
