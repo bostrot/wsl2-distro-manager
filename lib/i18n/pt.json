@@ -256,5 +256,17 @@
     "generalsettings-text": "Configurações Gerais",
     "dockersettings-text": "Configurações do Docker",
     "syncsettings-text": "Configurações de Sincronização",
-    "experimental-text": "Configurações Experimentais"
+    "experimental-text": "Configurações Experimentais",
+    "sourcetype-text": "Tipo de Fonte",
+    "selectsourcetype-text": "Selecionar tipo de fonte",
+    "downloadfromrepo-text": "Baixar do Repositório",
+    "turnkeylinux-text": "Turnkey Linux (LXC)",
+    "localrootfsfile-text": "Arquivo RootFS Local",
+    "dockerimage-text": "Imagem Docker",
+    "importvhdx-text": "Importar VHDX",
+    "dockerimageplaceholder-text": "Imagem Docker (ex: ubuntu:latest)",
+    "pathtorootfsarchive-text": "Caminho para o Arquivo RootFS",
+    "pathtovhdxfile-text": "Caminho para o Arquivo VHDX",
+    "selectlocalfile-text": "Selecionar um arquivo local",
+    "selectvhdxfile-text": "Selecionar um arquivo VHDX"
 }

@@ -12,7 +12,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/theme.dart';
 
-enum CreateSourceType { repo, turnkey, local, docker }
+enum CreateSourceType { repo, turnkey, local, docker, vhdx }
 
 /// Create Dialog
 createDialog() {
@@ -66,6 +66,7 @@ createDialog() {
                     autoSuggestBox,
                     userController,
                     isDocker: sourceType.value == CreateSourceType.docker,
+                    isVhdx: sourceType.value == CreateSourceType.vhdx,
                   ),
                 );
                 Navigator.pop(context);
@@ -99,6 +100,7 @@ Future<void> createInstance(
   TextEditingController userController, {
   DockerImage? dockerImage,
   bool isDocker = false,
+  bool isVhdx = false,
 }) async {
   plausible.event(name: "wsl_create");
   DockerImage docker = dockerImage ?? DockerImage();
@@ -126,7 +128,7 @@ Future<void> createInstance(
 
     // Check if docker image
     bool isDockerImage = isDocker;
-    if (!isDockerImage) {
+    if (!isDockerImage && !isVhdx) {
       if (distroName.startsWith('dockerhub:') ||
           distroName.startsWith('docker:')) {
         isDockerImage = true;
@@ -189,7 +191,7 @@ Future<void> createInstance(
     // Create instance
     ProcessResult result = await api.create(
         name, distroName, location, (String msg) => Notify.message(msg),
-        image: isDockerImage);
+        image: isDockerImage, isVhd: isVhdx);
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
@@ -399,27 +401,31 @@ class _CreateWidgetState extends State<CreateWidget> {
           height: 5.0,
         ),
         InfoLabel(
-          label: 'Source Type',
+          label: 'sourcetype-text'.i18n(),
           child: ComboBox<CreateSourceType>(
-            placeholder: const Text('Select source type'),
+            placeholder: Text('selectsourcetype-text'.i18n()),
             isExpanded: true,
             value: sourceType,
-            items: const [
+            items: [
               ComboBoxItem(
                 value: CreateSourceType.repo,
-                child: Text('Download from Repo'),
+                child: Text('downloadfromrepo-text'.i18n()),
               ),
               ComboBoxItem(
                 value: CreateSourceType.turnkey,
-                child: Text('Turnkey Linux (LXC)'),
+                child: Text('turnkeylinux-text'.i18n()),
               ),
               ComboBoxItem(
                 value: CreateSourceType.local,
-                child: Text('Local RootFS File'),
+                child: Text('localrootfsfile-text'.i18n()),
               ),
               ComboBoxItem(
                 value: CreateSourceType.docker,
-                child: Text('Docker Image'),
+                child: Text('dockerimage-text'.i18n()),
+              ),
+              ComboBoxItem(
+                value: CreateSourceType.vhdx,
+                child: Text('importvhdx-text'.i18n()),
               ),
             ],
             onChanged: (v) {
@@ -458,10 +464,12 @@ class _CreateWidgetState extends State<CreateWidget> {
               key: _autoSuggestBoxKey,
               focusNode: node,
               placeholder: sourceType == CreateSourceType.docker
-                  ? 'Docker Image (e.g. ubuntu:latest)'
+                  ? 'dockerimageplaceholder-text'.i18n()
                   : sourceType == CreateSourceType.local
-                      ? 'Path to RootFS Archive'
-                      : 'distroname-text'.i18n(),
+                      ? 'pathtorootfsarchive-text'.i18n()
+                      : sourceType == CreateSourceType.vhdx
+                          ? 'pathtovhdxfile-text'.i18n()
+                          : 'distroname-text'.i18n(),
               controller: widget.autoSuggestBox,
               items: list,
               noResultsFoundBuilder: (context) => Builder(builder: (context) {
@@ -489,9 +497,11 @@ class _CreateWidgetState extends State<CreateWidget> {
                     text = 'Docker Image: $image:$tag';
                   }
                 } else if (sourceType == CreateSourceType.local) {
-                  text = 'Select a local file';
+                  text = 'selectlocalfile-text'.i18n();
+                } else if (sourceType == CreateSourceType.vhdx) {
+                  text = 'selectvhdxfile-text'.i18n();
                 } else {
-                  text = 'No results found';
+                  text = 'noresultsfound-text'.i18n();
                 }
                 return Container(
                   padding: const EdgeInsets.all(10.0),
@@ -509,7 +519,8 @@ class _CreateWidgetState extends State<CreateWidget> {
                   widget.sourceType.value = CreateSourceType.docker;
                 }
               },
-              trailingIcon: sourceType == CreateSourceType.local
+              trailingIcon: sourceType == CreateSourceType.local ||
+                      sourceType == CreateSourceType.vhdx
                   ? IconButton(
                       icon: const Icon(FluentIcons.open_folder_horizontal,
                           size: 15.0),
@@ -517,7 +528,9 @@ class _CreateWidgetState extends State<CreateWidget> {
                         FilePickerResult? result =
                             await FilePicker.platform.pickFiles(
                           type: FileType.custom,
-                          allowedExtensions: ['*'],
+                          allowedExtensions: sourceType == CreateSourceType.vhdx
+                              ? ['vhdx']
+                              : ['*'],
                         );
 
                         if (result != null) {
@@ -577,7 +590,8 @@ class _CreateWidgetState extends State<CreateWidget> {
                 style: const TextStyle(fontStyle: FontStyle.italic))
             : Container(),
         sourceType != CreateSourceType.turnkey &&
-                sourceType != CreateSourceType.docker
+                sourceType != CreateSourceType.docker &&
+                sourceType != CreateSourceType.vhdx
             ? ToggleSwitch(
                 checked: createUser,
                 content: Text('createuser-text'.i18n()),
@@ -591,6 +605,7 @@ class _CreateWidgetState extends State<CreateWidget> {
             : Container(),
         sourceType != CreateSourceType.turnkey &&
                 sourceType != CreateSourceType.docker &&
+                sourceType != CreateSourceType.vhdx &&
                 createUser
             ? Column(
                 children: [

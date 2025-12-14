@@ -256,5 +256,17 @@
     "generalsettings-text": "一般設定",
     "dockersettings-text": "Docker設定",
     "syncsettings-text": "同期設定",
-    "experimental-text": "実験的設定"
+    "experimental-text": "実験的設定",
+    "sourcetype-text": "ソースタイプ",
+    "selectsourcetype-text": "ソースタイプを選択",
+    "downloadfromrepo-text": "リポジトリからダウンロード",
+    "turnkeylinux-text": "Turnkey Linux (LXC)",
+    "localrootfsfile-text": "ローカルRootFSファイル",
+    "dockerimage-text": "Dockerイメージ",
+    "importvhdx-text": "VHDXをインポート",
+    "dockerimageplaceholder-text": "Dockerイメージ (例: ubuntu:latest)",
+    "pathtorootfsarchive-text": "RootFSアーカイブへのパス",
+    "pathtovhdxfile-text": "VHDXファイルへのパス",
+    "selectlocalfile-text": "ローカルファイルを選択",
+    "selectvhdxfile-text": "VHDXファイルを選択"
 }

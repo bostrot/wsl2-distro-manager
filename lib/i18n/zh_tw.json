@@ -256,5 +256,17 @@
     "generalsettings-text": "一般設定",
     "dockersettings-text": "Docker 設定",
     "syncsettings-text": "同步設定",
-    "experimental-text": "實驗性設定"
+    "experimental-text": "實驗性設定",
+    "sourcetype-text": "來源類型",
+    "selectsourcetype-text": "選擇來源類型",
+    "downloadfromrepo-text": "從倉庫下載",
+    "turnkeylinux-text": "Turnkey Linux (LXC)",
+    "localrootfsfile-text": "本地 RootFS 檔案",
+    "dockerimage-text": "Docker 映像檔",
+    "importvhdx-text": "匯入 VHDX",
+    "dockerimageplaceholder-text": "Docker 映像檔 (例如 ubuntu:latest)",
+    "pathtorootfsarchive-text": "RootFS 封存檔路徑",
+    "pathtovhdxfile-text": "VHDX 檔案路徑",
+    "selectlocalfile-text": "選擇本地檔案",
+    "selectvhdxfile-text": "選擇 VHDX 檔案"
 }

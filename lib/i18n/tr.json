@@ -257,5 +257,17 @@
     "generalsettings-text": "Genel Ayarlar",
     "dockersettings-text": "Docker Ayarları",
     "syncsettings-text": "Senkronizasyon Ayarları",
-    "experimental-text": "Deneysel Ayarlar"
+    "experimental-text": "Deneysel Ayarlar",
+    "sourcetype-text": "Kaynak Türü",
+    "selectsourcetype-text": "Kaynak türünü seçin",
+    "downloadfromrepo-text": "Depodan İndir",
+    "turnkeylinux-text": "Turnkey Linux (LXC)",
+    "localrootfsfile-text": "Yerel RootFS Dosyası",
+    "dockerimage-text": "Docker Görüntüsü",
+    "importvhdx-text": "VHDX İçe Aktar",
+    "dockerimageplaceholder-text": "Docker Görüntüsü (ör. ubuntu:latest)",
+    "pathtorootfsarchive-text": "RootFS Arşiv Yolu",
+    "pathtovhdxfile-text": "VHDX Dosya Yolu",
+    "selectlocalfile-text": "Yerel bir dosya seçin",
+    "selectvhdxfile-text": "Bir VHDX dosyası seçin"
 }

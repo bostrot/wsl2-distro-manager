@@ -522,7 +522,7 @@ class WSLApi {
   /// Import a WSL distro by name
   Future<dynamic> create(String distribution, String filename,
       String installPath, Function(String) status,
-      {bool image = false}) async {
+      {bool image = false, bool isVhd = false}) async {
     if (installPath == '') {
       installPath = getInstancePath(distribution).path;
     } else {
@@ -564,9 +564,12 @@ class WSLApi {
     }
 
     // Create from local file
-    ProcessResult results = await shell.run(
-        'wsl', ['--import', distribution, installPath, downloadPath],
-        stdoutEncoding: null);
+    List<String> args = ['--import', distribution, installPath, downloadPath];
+    if (isVhd) {
+      args.add('--vhd');
+    }
+
+    ProcessResult results = await shell.run('wsl', args, stdoutEncoding: null);
 
     return results;
   }

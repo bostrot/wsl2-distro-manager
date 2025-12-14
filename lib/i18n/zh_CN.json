@@ -256,5 +256,17 @@
     "generalsettings-text": "常规设置",
     "dockersettings-text": "Docker 设置",
     "syncsettings-text": "同步设置",
-    "experimental-text": "实验性设置"
+    "experimental-text": "实验性设置",
+    "sourcetype-text": "来源类型",
+    "selectsourcetype-text": "选择来源类型",
+    "downloadfromrepo-text": "从仓库下载",
+    "turnkeylinux-text": "Turnkey Linux (LXC)",
+    "localrootfsfile-text": "本地 RootFS 文件",
+    "dockerimage-text": "Docker 镜像",
+    "importvhdx-text": "导入 VHDX",
+    "dockerimageplaceholder-text": "Docker 镜像 (例如 ubuntu:latest)",
+    "pathtorootfsarchive-text": "RootFS 归档路径",
+    "pathtovhdxfile-text": "VHDX 文件路径",
+    "selectlocalfile-text": "选择本地文件",
+    "selectvhdxfile-text": "选择 VHDX 文件"
 }

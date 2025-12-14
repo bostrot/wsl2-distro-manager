@@ -256,5 +256,17 @@
     "generalsettings-text": "Általános Beállítások",
     "dockersettings-text": "Docker Beállítások",
     "syncsettings-text": "Szinkronizálási Beállítások",
-    "experimental-text": "Kísérleti Beállítások"
+    "experimental-text": "Kísérleti Beállítások",
+    "sourcetype-text": "Forrás Típusa",
+    "selectsourcetype-text": "Válasszon forrástípust",
+    "downloadfromrepo-text": "Letöltés a Repóból",
+    "turnkeylinux-text": "Turnkey Linux (LXC)",
+    "localrootfsfile-text": "Helyi RootFS Fájl",
+    "dockerimage-text": "Docker Képfájl",
+    "importvhdx-text": "VHDX Importálása",
+    "dockerimageplaceholder-text": "Docker Képfájl (pl. ubuntu:latest)",
+    "pathtorootfsarchive-text": "Útvonal a RootFS Archívumhoz",
+    "pathtovhdxfile-text": "Útvonal a VHDX Fájlhoz",
+    "selectlocalfile-text": "Válasszon egy helyi fájlt",
+    "selectvhdxfile-text": "Válasszon egy VHDX fájlt"
 }
