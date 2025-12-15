@@ -123,14 +123,10 @@ initRoot(statusMsg) async {
   //   prefs.remove('LastMotd');
   // }
 
-  // Check motd Show once a day
-  if (prefs.getString('LastMotd') !=
-      DateTime.now().toString().substring(0, 10)) {
-    prefs.setString('LastMotd', DateTime.now().toString().substring(0, 10));
-    app.checkMotd().then((String motd) {
-      if (motd != '') {
-        Notify.message(motd, duration: const Duration(seconds: 60));
-      }
-    });
-  }
+  // Check motd
+  app.checkMotd().then((String motd) {
+    if (motd != '') {
+      Notify.message(motd, duration: const Duration(seconds: 60));
+    }
+  });
 }
