@@ -87,4 +87,51 @@ void main() {
     SafePath safePath = SafePath('M:\\non_existent_path_test_12345');
     expect(safePath.path, 'M:\\non_existent_path_test_12345');
   });
+
+  test('SafePath special characters', () {
+    // Using the character from the issue: ¤
+    String path = '${Directory.current.path}\\test_special_¤_char';
+    Directory(path).createSync(recursive: true);
+
+    try {
+      SafePath safePath = SafePath(path);
+      expect(safePath.path, path);
+      expect(Directory(path).existsSync(), true);
+    } finally {
+      if (Directory(path).existsSync()) {
+        Directory(path).deleteSync(recursive: true);
+      }
+    }
+  });
+
+  test('SafePath unicode characters', () {
+    // Unicode characters
+    String path = '${Directory.current.path}\\test_unicode_😊';
+    Directory(path).createSync(recursive: true);
+
+    try {
+      SafePath safePath = SafePath(path);
+      expect(safePath.path, path);
+    } finally {
+      if (Directory(path).existsSync()) {
+        Directory(path).deleteSync(recursive: true);
+      }
+    }
+  });
+
+  test('SafePath file with special characters', () {
+    String folder = '${Directory.current.path}\\test_special_¤_folder';
+    Directory(folder).createSync(recursive: true);
+    String filePath = '$folder\\test_file.txt';
+    File(filePath).writeAsStringSync('test');
+
+    try {
+      SafePath safePath = SafePath(filePath);
+      expect(safePath.path, filePath);
+    } finally {
+      if (Directory(folder).existsSync()) {
+        Directory(folder).deleteSync(recursive: true);
+      }
+    }
+  });
 }

@@ -1,5 +1,6 @@
 import 'dart:io';
-import 'package:wsl2distromanager/components/logging.dart';
+
+import 'package:flutter/foundation.dart';
 
 /// Safe path handling.
 class SafePath {
@@ -12,15 +13,35 @@ class SafePath {
     // Check if path exists and see if it is a file or a folder
     Directory dir = Directory(_path);
     File file = File(_path);
-    if (!dir.existsSync()) {
-      if (file.existsSync()) {
+    bool dirExists = false;
+    try {
+      dirExists = dir.existsSync();
+    } catch (e) {
+      if (kDebugMode) {
+        print('SafePath: Error checking directory $_path: $e');
+      }
+    }
+
+    if (!dirExists) {
+      bool fileExists = false;
+      try {
+        fileExists = file.existsSync();
+      } catch (e) {
+        if (kDebugMode) {
+          print('SafePath: Error checking file $_path: $e');
+        }
+      }
+
+      if (fileExists) {
         isFile = true;
       } else {
         // Create path
         try {
           dir.createSync(recursive: true);
-        } catch (e, stackTrace) {
-          logError(e, stackTrace, null);
+        } catch (e) {
+          if (kDebugMode) {
+            print('SafePath: Could not create directory $_path: $e');
+          }
         }
       }
     }
@@ -78,9 +99,20 @@ class SafePath {
       String path = '$_path\\$name';
       // Check if path exists
       Directory dir = Directory(path);
-      if (!dir.existsSync()) {
+      bool dirExists = false;
+      try {
+        dirExists = dir.existsSync();
+      } catch (_) {}
+
+      if (!dirExists) {
         // Create path
-        dir.createSync(recursive: true);
+        try {
+          dir.createSync(recursive: true);
+        } catch (e) {
+          if (kDebugMode) {
+            print('SafePath: Could not create directory $path: $e');
+          }
+        }
       }
       _path = dir.path;
     }
