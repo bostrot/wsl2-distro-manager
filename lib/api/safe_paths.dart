@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:wsl2distromanager/components/logging.dart';
 
 /// Safe path handling.
 class SafePath {
@@ -16,7 +17,11 @@ class SafePath {
         isFile = true;
       } else {
         // Create path
-        dir.createSync(recursive: true);
+        try {
+          dir.createSync(recursive: true);
+        } catch (e, stackTrace) {
+          logError(e, stackTrace, null);
+        }
       }
     }
 

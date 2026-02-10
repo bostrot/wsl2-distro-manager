@@ -80,4 +80,11 @@ void main() {
 
     Directory(path).deleteSync();
   });
+
+  test('SafePath non-existent drive', () {
+    // Should not throw even if drive M doesn't exist
+    // Using a drive letter that is unlikely to exist
+    SafePath safePath = SafePath('M:\\non_existent_path_test_12345');
+    expect(safePath.path, 'M:\\non_existent_path_test_12345');
+  });
 }
