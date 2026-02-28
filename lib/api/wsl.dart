@@ -609,78 +609,58 @@ class WSLApi {
     }
   }
 
-  /// Clean up WSL distros. Exporting, deleting, and importing.
+  /// Clean up WSL distros. Compacting the VHDX file.
   Future<String> cleanup(String distribution,
       {Function(String)? onProgress}) async {
     var instancePath = getInstancePath(distribution);
-    var file = instancePath.file('export.tar.gz');
+    var vhdxPath = instancePath.file('ext4.vhdx');
 
-    // Get default user before export
-    String defaultUser = 'root';
-    try {
-      defaultUser = await getDefaultUser(distribution);
-    } catch (e) {
-      logDebug('Could not determine default user: $e', null, null);
+    // Check if VHDX exists
+    if (!File(vhdxPath).existsSync()) {
+      throw Exception('VHDX file not found: $vhdxPath');
     }
 
     try {
-      // Step 1: Export the distribution
-      onProgress?.call('exporting-text'.i18n());
-      String exportResult = await export(distribution, file);
+      // Step 1: Stop the distribution
+      onProgress?.call('stopping-distro'.i18n());
+      await stop(distribution);
 
-      // Check if export was successful by verifying the file exists and has content
-      File exportFile = File(file);
-      if (!exportFile.existsSync()) {
-        throw Exception('Export failed: Export file was not created at $file');
+      // Step 2: Create diskpart script
+      onProgress?.call('compacting-vdisk'.i18n());
+      String scriptContent = 'select vdisk file="$vhdxPath"\n'
+          'attach vdisk readonly\n'
+          'compact vdisk\n'
+          'detach vdisk';
+
+      // Use temp path for script
+      String scriptPath =
+          getTmpPath().file('diskpart_$distribution.txt');
+      File(scriptPath).writeAsStringSync(scriptContent);
+
+      // Step 3: Run diskpart with admin privileges
+      // We use PowerShell to elevate the process
+      var result = await shell.run('powershell', [
+        '-Command',
+        'Start-Process',
+        'diskpart',
+        '-ArgumentList',
+        '"/s \\"$scriptPath\\""',
+        '-Verb',
+        'RunAs',
+        '-Wait'
+      ]);
+
+      // Step 4: Cleanup script
+      File(scriptPath).deleteSync();
+
+      if (result.exitCode != 0) {
+        throw Exception(
+            'Diskpart failed with exit code ${result.exitCode}: ${result.stderr}');
       }
 
-      // Check if the export file has content (should be > 0 bytes)
-      int fileSize = exportFile.lengthSync();
-      if (fileSize == 0) {
-        // Clean up empty file and throw error
-        exportFile.deleteSync();
-        throw Exception('Export failed: Export file is empty');
-      }
-
-      // Step 2: Remove the distribution only after successful export
-      onProgress?.call('removing-text'.i18n());
-      String removeResult = await remove(distribution);
-
-      // Step 3: Import the distribution back
-      onProgress?.call('importing-text'.i18n());
-      String importResult = await import(distribution, instancePath.path, file);
-
-      // Restore default user if it was not root
-      if (defaultUser != 'root') {
-        try {
-          await setSetting(distribution, 'user', 'default', defaultUser);
-        } catch (e) {
-          logDebug('Failed to restore default user: $e', null, null);
-        }
-      }
-
-      // Step 4: Clean up the temporary export file after successful import
-      try {
-        if (exportFile.existsSync()) {
-          exportFile.deleteSync();
-        }
-      } catch (cleanupError) {
-        // Log cleanup error but don't fail the overall operation
-        logDebug('Failed to clean up export file: $cleanupError', null, null);
-      }
-
-      return 'Cleanup completed successfully: $exportResult $removeResult $importResult';
+      return 'Cleanup completed successfully';
     } catch (error, stack) {
-      // Log the error
       logError(error, stack, null);
-
-      // If export file exists but cleanup failed, keep it for user recovery
-      File exportFile = File(file);
-      if (exportFile.existsSync()) {
-        logDebug('Export file preserved at: $file', null, null);
-      }
-
-      // Re-throw the error to be handled by the caller
       throw Exception('Cleanup failed: ${error.toString()}');
     }
   }
