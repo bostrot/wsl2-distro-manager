@@ -61,17 +61,33 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $buildDir = "build\windows\x64\runner\Release"
+          $buildDir = "build/windows/x64/runner/Release"
+          $destZip = "wsl2-distro-manager-build.zip"
+          
           if (Test-Path $buildDir) {
             Write-Host "Build directory found at $buildDir"
+            
+            # Copy DLLs
             if (Test-Path "windows-dlls") {
-                 Copy-Item -Path "windows-dlls\*" -Destination $buildDir -Force
+                 Copy-Item -Path "windows-dlls/*" -Destination $buildDir -Force
             }
-            $destZip = "wsl2-distro-manager-build.zip"
+            
+            # Create array of files to zip to handle complex path matching better
+            $filesToZip = Get-ChildItem -Path $buildDir
+            
             if (Test-Path $destZip) { Remove-Item $destZip -Force }
-            Compress-Archive -Path "$buildDir\*" -DestinationPath $destZip -Force
+            
+            Compress-Archive -Path $filesToZip.FullName -DestinationPath $destZip -Force
+            
+            if (Test-Path $destZip) {
+               Write-Host "Zip created successfully at $destZip"
+               Get-Item $destZip
+            } else {
+               Write-Error "Zip creation failed!"
+            }
           } else {
             Write-Error "Build directory NOT found at $buildDir"
+            Get-ChildItem -Recurse build -ErrorAction SilentlyContinue
           }
 
       - uses: actions/upload-artifact@v4
@@ -85,7 +101,6 @@ jobs:
 
       # Create nightly release
       - name: Create zip
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
         run: |
           Move-Item .\build\windows\x64\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
           Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/x64/runner/Release/
@@ -93,7 +108,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         name: Create nightly release (ZIP)
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
         with:
           name: wsl2-distro-manager-nightly-archive
           path: ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
@@ -104,7 +118,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         name: Create nightly release (MSIX)
-        if: ${{ steps.get_version.outputs.exists == 'false' }}
         with:
           name: wsl2-distro-manager-nightly-msix
           path: ./wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
