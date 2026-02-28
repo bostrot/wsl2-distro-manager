@@ -58,16 +58,29 @@ jobs:
 
       # Start of modification: Always upload artifact for every build
       - name: Prepare build artifact
+        if: always()
+        shell: pwsh
         run: |
-          $buildDir = ".\build\windows\x64\runner\Release"
-          Copy-Item -Path ./windows-dlls/* -Destination $buildDir -Force
-          Compress-Archive -Path "$buildDir\*" -DestinationPath .\wsl2-distro-manager-build.zip -Force
+          $buildDir = "build\windows\x64\runner\Release"
+          if (Test-Path $buildDir) {
+            Write-Host "Build directory found at $buildDir"
+            if (Test-Path "windows-dlls") {
+                 Copy-Item -Path "windows-dlls\*" -Destination $buildDir -Force
+            }
+            $destZip = "wsl2-distro-manager-build.zip"
+            if (Test-Path $destZip) { Remove-Item $destZip -Force }
+            Compress-Archive -Path "$buildDir\*" -DestinationPath $destZip -Force
+          } else {
+            Write-Error "Build directory NOT found at $buildDir"
+          }
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: wsl2-distro-manager-build
-          path: .\wsl2-distro-manager-build.zip
+          path: wsl2-distro-manager-build.zip
           retention-days: 5
+          if-no-files-found: warn
       # End of modification
 
       # Create nightly release
