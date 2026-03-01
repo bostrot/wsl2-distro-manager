@@ -20,7 +20,7 @@
   "distronotfound-text": "Distro not found",
   "distroexists-text": "Distro with this name already exists",
   "syncipnotset-text": "Sync IP not set. Please set it in the settings",
-  "shuttingdownwsl-text": "Shuttting down WSL",
+  "shuttingdownwsl-text": "Shutting down WSL",
   "connectingtoip-text": "Connecting to IP",
   "downloading-text": "Downloading",
   "downloaded-text": "Downloaded",

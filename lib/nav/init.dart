@@ -119,14 +119,14 @@ initRoot(statusMsg) async {
     }
   });
 
-  // if (kDebugMode) {
-  //   prefs.remove('LastMotd');
-  // }
-
-  // Check motd
-  app.checkMotd().then((String motd) {
-    if (motd != '') {
-      Notify.message(motd, duration: const Duration(seconds: 60));
-    }
-  });
+  // Check motd once per day
+  final String today = DateTime.now().toIso8601String().substring(0, 10);
+  if (prefs.getString('LastMotd') != today) {
+    app.checkMotd().then((String motd) {
+      if (motd != '') {
+        prefs.setString('LastMotd', today);
+        Notify.message(motd, duration: const Duration(seconds: 60));
+      }
+    });
+  }
 }

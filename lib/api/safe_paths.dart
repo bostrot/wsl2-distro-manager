@@ -18,7 +18,7 @@ class SafePath {
       dirExists = dir.existsSync();
     } catch (e) {
       if (kDebugMode) {
-        print('SafePath: Error checking directory $_path: $e');
+        debugPrint('SafePath: Error checking directory $_path: $e');
       }
     }
 
@@ -28,7 +28,7 @@ class SafePath {
         fileExists = file.existsSync();
       } catch (e) {
         if (kDebugMode) {
-          print('SafePath: Error checking file $_path: $e');
+          debugPrint('SafePath: Error checking file $_path: $e');
         }
       }
 
@@ -40,7 +40,7 @@ class SafePath {
           dir.createSync(recursive: true);
         } catch (e) {
           if (kDebugMode) {
-            print('SafePath: Could not create directory $_path: $e');
+            debugPrint('SafePath: Could not create directory $_path: $e');
           }
         }
       }

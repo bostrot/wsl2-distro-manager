@@ -6,30 +6,30 @@ const String lxssBaseKey = r'Software\Microsoft\Windows\CurrentVersion\Lxss';
 class WslRegistry {
   /// Get the distribution path from the registry by [distributionName]
   static String? getDistributionPath(String distributionName) {
+    RegistryKey? key;
     try {
-      final key =
-          Registry.openPath(RegistryHive.currentUser, path: lxssBaseKey);
+      key = Registry.openPath(RegistryHive.currentUser, path: lxssBaseKey);
 
       // Iterate through subkeys (distributions)
       for (var subkeyName in key.subkeyNames) {
+        RegistryKey? subkey;
         try {
-          final subkey = key.createKey(subkeyName);
+          subkey = key.createKey(subkeyName);
           final distroName = subkey.getStringValue('DistributionName');
           if (distroName == distributionName) {
             // Get BasePath
-            final basePath = subkey.getStringValue('BasePath');
-            subkey.close();
-            key.close();
-            return basePath;
+            return subkey.getStringValue('BasePath');
           }
-          subkey.close();
         } catch (e) {
           // Ignore errors opening subkeys
+        } finally {
+          subkey?.close();
         }
       }
-      key.close();
     } catch (e) {
       // Ignore registry errors
+    } finally {
+      key?.close();
     }
     return null;
   }
