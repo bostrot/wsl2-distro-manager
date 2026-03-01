@@ -616,7 +616,15 @@ class WSLApi {
     var vhdxPath = instancePath.file('ext4.vhdx');
 
     // Check if VHDX exists
-    if (!File(vhdxPath).existsSync()) {
+    bool vhdxExists;
+    try {
+      vhdxExists = File(vhdxPath).existsSync();
+    } on FileSystemException catch (error, stack) {
+      logError(error, stack, null);
+      vhdxExists = false;
+    }
+
+    if (!vhdxExists) {
       throw Exception('VHDX file not found: $vhdxPath');
     }
 
@@ -633,21 +641,14 @@ class WSLApi {
           'detach vdisk';
 
       // Use temp path for script
-      String scriptPath =
-          getTmpPath().file('diskpart_$distribution.txt');
+      String scriptPath = getTmpPath().file('diskpart_$distribution.txt');
       File(scriptPath).writeAsStringSync(scriptContent);
 
       // Step 3: Run diskpart with admin privileges
-      // We use PowerShell to elevate the process
+      // We use PowerShell to elevate the process and capture its exit code
       var result = await shell.run('powershell', [
         '-Command',
-        'Start-Process',
-        'diskpart',
-        '-ArgumentList',
-        '"/s \\"$scriptPath\\""',
-        '-Verb',
-        'RunAs',
-        '-Wait'
+        '\$p = Start-Process diskpart -ArgumentList "/s \\"$scriptPath\\"" -Verb RunAs -Wait -PassThru; exit \$p.ExitCode'
       ]);
 
       // Step 4: Cleanup script
