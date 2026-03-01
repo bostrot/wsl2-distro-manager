@@ -81,11 +81,25 @@ void main() {
     Directory(path).deleteSync();
   });
 
-  test('SafePath non-existent drive', () {
-    // Should not throw even if drive M doesn't exist
-    // Using a drive letter that is unlikely to exist
-    SafePath safePath = SafePath('M:\\non_existent_path_test_12345');
-    expect(safePath.path, 'M:\\non_existent_path_test_12345');
+  test('SafePath non-existent path cleanup', () {
+    // Should not throw even if the target path doesn't exist.
+    // Use a unique directory under the system temp folder to avoid touching real drives.
+    final Directory baseTempDir =
+        Directory.systemTemp.createTempSync('safepath_non_existent_');
+    final String path = '${baseTempDir.path}\\non_existent_path_test_12345';
+    try {
+      SafePath safePath = SafePath(path);
+      expect(safePath.path, path);
+    } finally {
+      // Clean up any directories created by the test.
+      final Directory targetDir = Directory(path);
+      if (targetDir.existsSync()) {
+        targetDir.deleteSync(recursive: true);
+      }
+      if (baseTempDir.existsSync()) {
+        baseTempDir.deleteSync(recursive: true);
+      }
+    }
   });
 
   test('SafePath special characters', () {
