@@ -122,9 +122,10 @@ initRoot(statusMsg) async {
   // Check motd once per day
   final String today = DateTime.now().toIso8601String().substring(0, 10);
   if (prefs.getString('LastMotd') != today) {
+    // Update preference immediately to prevent multiple checks
+    prefs.setString('LastMotd', today);
     app.checkMotd().then((String motd) {
       if (motd != '') {
-        prefs.setString('LastMotd', today);
         Notify.message(motd, duration: const Duration(seconds: 60));
       }
     });

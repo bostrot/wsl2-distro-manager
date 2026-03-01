@@ -640,23 +640,30 @@ class WSLApi {
           'compact vdisk\n'
           'detach vdisk';
 
-      // Use temp path for script
-      String scriptPath = getTmpPath().file('diskpart_$distribution.txt');
+      // Use temp path for script after sanitizing distro name
+      final safeDistribution =
+          distribution.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      String scriptPath = getTmpPath().file('diskpart_$safeDistribution.txt');
       File(scriptPath).writeAsStringSync(scriptContent);
 
-      // Step 3: Run diskpart with admin privileges
-      // We use PowerShell to elevate the process and capture its exit code
-      var result = await shell.run('powershell', [
-        '-Command',
-        '\$p = Start-Process diskpart -ArgumentList "/s \\"$scriptPath\\"" -Verb RunAs -Wait -PassThru; exit \$p.ExitCode'
-      ]);
+      try {
+        // Step 3: Run diskpart with admin privileges
+        // We use PowerShell to elevate the process and capture its exit code
+        var result = await shell.run('powershell', [
+          '-Command',
+          '\$p = Start-Process diskpart -ArgumentList "/s \\"$scriptPath\\"" -Verb RunAs -Wait -PassThru; exit \$p.ExitCode'
+        ]);
 
-      // Step 4: Cleanup script
-      File(scriptPath).deleteSync();
-
-      if (result.exitCode != 0) {
-        throw Exception(
-            'Diskpart failed with exit code ${result.exitCode}: ${result.stderr}');
+        if (result.exitCode != 0) {
+          throw Exception(
+              'Diskpart failed with exit code ${result.exitCode}: ${result.stderr}');
+        }
+      } finally {
+        // Step 4: Cleanup script
+        final scriptFile = File(scriptPath);
+        if (scriptFile.existsSync()) {
+          scriptFile.deleteSync();
+        }
       }
 
       return 'Cleanup completed successfully';
