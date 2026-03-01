@@ -102,9 +102,15 @@ jobs:
       # Create nightly release
       - name: Create zip
         run: |
-          Move-Item .\build\windows\x64\runner\Release\wsl2distromanager.msix .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix
-          Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/x64/runner/Release/
-          Compress-Archive -Path ./build/windows/x64/runner/Release/* -DestinationPath .\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip
+          # Use copy instead of move to avoid conflict
+          Copy-Item ".\build\windows\x64\runner\Release\wsl2distromanager.msix" ".\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.msix" -Force
+          
+          # DLLs are already copied by the previous step, but we ensure they exist
+          if (-not (Test-Path ".\build\windows\x64\runner\Release\msvcp140.dll")) {
+             Copy-Item -Path ./windows-dlls/* -Destination ./build/windows/x64/runner/Release/ -Force
+          }
+          
+          Compress-Archive -Path ./build/windows/x64/runner/Release/* -DestinationPath ".\wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-nightly.zip" -Force
 
       - uses: actions/upload-artifact@v4
         name: Create nightly release (ZIP)
