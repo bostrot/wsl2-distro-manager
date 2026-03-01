@@ -7,7 +7,8 @@ class WslRegistry {
   /// Get the distribution path from the registry by [distributionName]
   static String? getDistributionPath(String distributionName) {
     try {
-      final key = Registry.currentUser..createKey(lxssBaseKey);
+      final key =
+          Registry.openPath(RegistryHive.currentUser, path: lxssBaseKey);
 
       // Iterate through subkeys (distributions)
       for (var subkeyName in key.subkeyNames) {
