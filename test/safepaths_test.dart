@@ -148,4 +148,85 @@ void main() {
       }
     }
   });
+
+  test('SafePath isFile: parent returns folder', () {
+    final dir = Directory.systemTemp.createTempSync('safepath_file_parent_');
+    final filePath = '${dir.path}\\testfile.txt';
+    File(filePath).writeAsStringSync('data');
+    try {
+      SafePath safePath = SafePath(filePath);
+      expect(safePath.isFile, true);
+      expect(safePath.parent, dir.path);
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+  });
+
+  test('SafePath isFile: file() returns own path', () {
+    final dir = Directory.systemTemp.createTempSync('safepath_file_file_');
+    final filePath = '${dir.path}\\testfile.txt';
+    File(filePath).writeAsStringSync('data');
+    try {
+      SafePath safePath = SafePath(filePath);
+      expect(safePath.isFile, true);
+      // file() on an isFile path should return _path regardless of name argument
+      expect(safePath.file('anything'), filePath);
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+  });
+
+  test('SafePath isFile: cdUp does nothing', () {
+    final dir = Directory.systemTemp.createTempSync('safepath_file_cdup_');
+    final filePath = '${dir.path}\\testfile.txt';
+    File(filePath).writeAsStringSync('data');
+    try {
+      SafePath safePath = SafePath(filePath);
+      expect(safePath.isFile, true);
+      safePath.cdUp();
+      expect(safePath.path, filePath);
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+  });
+
+  test('SafePath isFile: cd does nothing', () {
+    final dir = Directory.systemTemp.createTempSync('safepath_file_cd_');
+    final filePath = '${dir.path}\\testfile.txt';
+    File(filePath).writeAsStringSync('data');
+    try {
+      SafePath safePath = SafePath(filePath);
+      expect(safePath.isFile, true);
+      safePath.cd('subdir');
+      expect(safePath.path, filePath);
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+  });
+
+  test('SafePath chained cd creates nested directories', () {
+    final base = Directory.systemTemp.createTempSync('safepath_chained_');
+    try {
+      SafePath safePath = SafePath(base.path);
+      safePath.cd('level1');
+      safePath.cd('level2');
+      safePath.cd('level3');
+      expect(Directory(safePath.path).existsSync(), true);
+      expect(safePath.path, endsWith('level3'));
+    } finally {
+      base.deleteSync(recursive: true);
+    }
+  });
+
+  test('SafePath forward slashes are accepted', () {
+    final base = Directory.systemTemp.createTempSync('safepath_fwdslash_');
+    final path = base.path.replaceAll('\\', '/');
+    try {
+      SafePath safePath = SafePath(path);
+      // Path should resolve to an existing directory regardless of slash style
+      expect(Directory(safePath.path).existsSync(), true);
+    } finally {
+      base.deleteSync(recursive: true);
+    }
+  });
 }
