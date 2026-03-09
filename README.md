@@ -91,7 +91,7 @@ flutter run -d windows # run it
 
 👤 **Eric Trenkel**
 
-- Website: [erictrenkel.com](erictrenkel.com)
+- Website: [erictrenkel.com](https://erictrenkel.com)
 - GitHub: [@bostrot](https://github.com/bostrot)
 - LinkedIn: [@erictrenkel](https://linkedin.com/in/erictrenkel)
 
