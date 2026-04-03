@@ -59,7 +59,6 @@ Widget statusBuilder(status, statusWidget, loading, onClose) {
                   scrollDirection: Axis.horizontal, child: statusWidget)
               : Text(
                   status,
-                  maxLines: 1,
                 ),
           action: loading
               ? const SizedBox(width: 20.0, height: 20.0, child: ProgressRing())

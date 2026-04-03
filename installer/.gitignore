@@ -1,0 +1,10 @@
+# Generated dependency include downloaded by build-installer.ps1
+CodeDependencies.iss
+
+# Generated setup executable from Inno Setup
+wsl2-distro-manager-setup.exe
+
+# Staged payload output (keep marker files only)
+payload/*
+!payload/.gitkeep
+!payload/.gitignore

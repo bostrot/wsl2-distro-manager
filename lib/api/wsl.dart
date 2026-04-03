@@ -609,78 +609,66 @@ class WSLApi {
     }
   }
 
-  /// Clean up WSL distros. Exporting, deleting, and importing.
+  /// Clean up WSL distros. Compacting the VHDX file.
   Future<String> cleanup(String distribution,
       {Function(String)? onProgress}) async {
     var instancePath = getInstancePath(distribution);
-    var file = instancePath.file('export.tar.gz');
+    var vhdxPath = instancePath.file('ext4.vhdx');
 
-    // Get default user before export
-    String defaultUser = 'root';
+    // Check if VHDX exists
+    bool vhdxExists;
     try {
-      defaultUser = await getDefaultUser(distribution);
-    } catch (e) {
-      logDebug('Could not determine default user: $e', null, null);
+      vhdxExists = File(vhdxPath).existsSync();
+    } on FileSystemException catch (error, stack) {
+      logError(error, stack, null);
+      vhdxExists = false;
+    }
+
+    if (!vhdxExists) {
+      throw Exception('VHDX file not found: $vhdxPath');
     }
 
     try {
-      // Step 1: Export the distribution
-      onProgress?.call('exporting-text'.i18n());
-      String exportResult = await export(distribution, file);
+      // Step 1: Stop the distribution
+      onProgress?.call('stopping-distro'.i18n());
+      await stop(distribution);
 
-      // Check if export was successful by verifying the file exists and has content
-      File exportFile = File(file);
-      if (!exportFile.existsSync()) {
-        throw Exception('Export failed: Export file was not created at $file');
-      }
+      // Step 2: Create diskpart script
+      onProgress?.call('compacting-vdisk'.i18n());
+      String scriptContent = 'select vdisk file="$vhdxPath"\n'
+          'attach vdisk readonly\n'
+          'compact vdisk\n'
+          'detach vdisk';
 
-      // Check if the export file has content (should be > 0 bytes)
-      int fileSize = exportFile.lengthSync();
-      if (fileSize == 0) {
-        // Clean up empty file and throw error
-        exportFile.deleteSync();
-        throw Exception('Export failed: Export file is empty');
-      }
+      // Use temp path for script after sanitizing distro name
+      final safeDistribution =
+          distribution.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      String scriptPath = getTmpPath().file('diskpart_$safeDistribution.txt');
+      File(scriptPath).writeAsStringSync(scriptContent);
 
-      // Step 2: Remove the distribution only after successful export
-      onProgress?.call('removing-text'.i18n());
-      String removeResult = await remove(distribution);
-
-      // Step 3: Import the distribution back
-      onProgress?.call('importing-text'.i18n());
-      String importResult = await import(distribution, instancePath.path, file);
-
-      // Restore default user if it was not root
-      if (defaultUser != 'root') {
-        try {
-          await setSetting(distribution, 'user', 'default', defaultUser);
-        } catch (e) {
-          logDebug('Failed to restore default user: $e', null, null);
-        }
-      }
-
-      // Step 4: Clean up the temporary export file after successful import
       try {
-        if (exportFile.existsSync()) {
-          exportFile.deleteSync();
+        // Step 3: Run diskpart with admin privileges
+        // We use PowerShell to elevate the process and capture its exit code
+        var result = await shell.run('powershell', [
+          '-Command',
+          '\$p = Start-Process diskpart -ArgumentList "/s \\"$scriptPath\\"" -Verb RunAs -Wait -PassThru; exit \$p.ExitCode'
+        ]);
+
+        if (result.exitCode != 0) {
+          throw Exception(
+              'Diskpart failed with exit code ${result.exitCode}: ${result.stderr}');
         }
-      } catch (cleanupError) {
-        // Log cleanup error but don't fail the overall operation
-        logDebug('Failed to clean up export file: $cleanupError', null, null);
+      } finally {
+        // Step 4: Cleanup script
+        final scriptFile = File(scriptPath);
+        if (scriptFile.existsSync()) {
+          scriptFile.deleteSync();
+        }
       }
 
-      return 'Cleanup completed successfully: $exportResult $removeResult $importResult';
+      return 'Cleanup completed successfully';
     } catch (error, stack) {
-      // Log the error
       logError(error, stack, null);
-
-      // If export file exists but cleanup failed, keep it for user recovery
-      File exportFile = File(file);
-      if (exportFile.existsSync()) {
-        logDebug('Export file preserved at: $file', null, null);
-      }
-
-      // Re-throw the error to be handled by the caller
       throw Exception('Cleanup failed: ${error.toString()}');
     }
   }
@@ -814,25 +802,15 @@ class WSLApi {
     }
   }
 
-  /// Convert bytes to human readable string while removing non-ascii characters
+  /// Convert process bytes to readable text while preserving valid UTF-8.
   String utf8Convert(List<int> bytes) {
-    List<int> utf8Lines = List<int>.from(bytes);
-    bool running = true;
-    int i = 0;
-    while (running) {
-      // Check end of string
-      if (utf8Lines.length == i) {
-        running = false;
-        break;
-      }
-      // Remove non-ascii/unnecessary utf8 characters but keep newline (10)
-      if (utf8Lines[i] != 10 && (utf8Lines[i] < 32 || utf8Lines[i] > 122)) {
-        utf8Lines.removeAt(i);
-        continue;
-      }
-      i++;
+    if (bytes.isEmpty) {
+      return '';
     }
-    return utf8.decode(utf8Lines);
+
+    final decoded = const Utf8Decoder(allowMalformed: true).convert(bytes);
+    // Keep common whitespace while stripping other control characters.
+    return decoded.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
   }
 
   /// Change setting in wsl.conf with key and value

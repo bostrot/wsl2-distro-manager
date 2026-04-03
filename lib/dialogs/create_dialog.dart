@@ -195,10 +195,14 @@ Future<void> createInstance(
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
-      String error = WSLApi().utf8Convert(result.stdout);
-      if (error.isEmpty) {
-        error = result.stderr.toString();
-      }
+      // Prefer stderr for failed processes: WSL writes actionable errors there.
+      final stderr = result.stderr.toString().trim();
+      final stdout = result.stdout is List<int>
+          ? WSLApi().utf8Convert(result.stdout as List<int>).trim()
+          : result.stdout.toString().trim();
+      final error = stderr.isNotEmpty
+          ? stderr
+          : (stdout.isNotEmpty ? stdout : 'error-text'.i18n());
       Notify.message(error);
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');
@@ -242,21 +246,12 @@ Future<void> createInstance(
           Notify.message('createdinstancenouser-text'.i18n());
         }
       } else {
-        // Install fake systemctl
+        // Turnkey images may still need first-start initialization,
+        // but we no longer install fake systemd.
         if (distroName.contains('Turnkey')) {
           // Set first start variable
           prefs.setBool('TurnkeyFirstStart_$name', true);
-          Notify.message('installingfakesystemd-text'.i18n(), loading: true);
-          WSLApi().execCmds(
-              name,
-              [
-                'wget https://raw.githubusercontent.com/bostrot/'
-                    'fake-systemd/master/systemctl -O /usr/bin/systemctl',
-                'chmod +x /usr/bin/systemctl',
-                '/usr/bin/systemctl',
-              ],
-              onMsg: (output) => null,
-              onDone: () => Notify.message('createdinstance-text'.i18n()));
+          Notify.message('createdinstance-text'.i18n());
         } else {
           Notify.message('createdinstance-text'.i18n());
         }

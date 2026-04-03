@@ -60,6 +60,7 @@ class MockShell implements Shell {
   bool simulateExportFailure = false;
   bool simulatePermissionDenied = false;
   bool simulateInvalidPath = false;
+  String importFailureStdout = '';
   bool simulateSmallExport = false;
   bool simulateRemoveFailure = false;
   bool simulateCodeMissing = false;
@@ -129,6 +130,7 @@ class MockShell implements Shell {
       String installLocation = arguments[2];
       if (simulateInvalidPath) {
         stderr = 'Invalid installation path: $installLocation';
+        stdout = importFailureStdout;
         exitCode = 3;
       } else if (simulatePermissionDenied) {
         stderr = 'Permission denied';

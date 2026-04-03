@@ -44,10 +44,25 @@ class Templates {
 
   /// Use a template by [templateName] and create a new instance with [newName].
   Future<void> useTemplate(String templateName, String newName) async {
-    Notify.message('creatinginstance-text'.i18n([newName]), loading: true);
-    var result = await wslApi.import(newName, getInstancePath(newName).path,
-        getTemplateFilePath(templateName));
-    Notify.message(result);
+    final targetName = newName.trim().isEmpty ? templateName : newName.trim();
+
+    if (targetName.isEmpty) {
+      Notify.message('errorentername-text'.i18n());
+      return;
+    }
+
+    Notify.message('creatinginstance-text'.i18n([targetName]), loading: true);
+
+    try {
+      final result = await wslApi.import(targetName,
+          getInstancePath(targetName).path, getTemplateFilePath(templateName));
+      final output = result.trim();
+      Notify.message(
+          output.isNotEmpty ? output : 'createdinstance-text'.i18n());
+    } catch (e) {
+      Notify.message(
+          e.toString().trim().isNotEmpty ? e.toString() : 'error-text'.i18n());
+    }
   }
 
   /// Delete a template by [name] and update the SharedPreferences.

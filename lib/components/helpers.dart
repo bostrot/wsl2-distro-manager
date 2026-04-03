@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_registry.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 
@@ -256,6 +257,18 @@ SafePath getInstancePath(String name) {
     prefs.setString('Path_$name', safePath.path);
     return safePath;
   }
+
+  // Try getting from Registry
+  String? regPath = WslRegistry.getDistributionPath(name);
+  if (regPath != null && regPath.isNotEmpty) {
+    // Handle Windows path prefixes mainly \\?\
+    if (regPath.startsWith('\\\\?\\')) {
+      regPath = regPath.substring(4);
+    }
+    prefs.setString('Path_$name', regPath);
+    return SafePath(regPath);
+  }
+
   return getDistroPath()
     ..cdUp()
     ..cd(name);

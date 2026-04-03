@@ -10,6 +10,9 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
 class MockWSLApi implements WSLApi {
+  String? lastImportedDistroName;
+  bool throwOnImport = false;
+
   @override
   Future<String> export(String distroName, String path) async {
     // Create dummy file
@@ -21,6 +24,10 @@ class MockWSLApi implements WSLApi {
   Future<String> import(
       String distroName, String installLocation, String fileName,
       {bool isVhd = false}) async {
+    if (throwOnImport) {
+      throw Exception('Import failed');
+    }
+    lastImportedDistroName = distroName;
     return 'Imported';
   }
 
@@ -46,6 +53,7 @@ void main() {
   late Templates templates;
   late MockWSLApi mockWSLApi;
   late Directory tempDir;
+  late List<String> statusMessages;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -56,6 +64,7 @@ void main() {
 
     // Mock Notify
     Notify();
+    statusMessages = [];
     Notify.message = (
       String msg, {
       Duration? duration,
@@ -64,7 +73,9 @@ void main() {
       bool useWidget = false,
       bool leadingIcon = true,
       dynamic widget,
-    }) {};
+    }) {
+      statusMessages.add(msg);
+    };
 
     mockWSLApi = MockWSLApi();
     templates = Templates(wslApi: mockWSLApi);
@@ -101,6 +112,20 @@ void main() {
 
   test('useTemplate calls import', () async {
     await templates.useTemplate('test', 'newDistro');
+    expect(mockWSLApi.lastImportedDistroName, 'newDistro');
+  });
+
+  test('useTemplate falls back to template name when input is empty', () async {
+    await templates.useTemplate('test', '   ');
+    expect(mockWSLApi.lastImportedDistroName, 'test');
+  });
+
+  test('useTemplate surfaces import exceptions', () async {
+    mockWSLApi.throwOnImport = true;
+
+    await templates.useTemplate('test', 'newDistro');
+
+    expect(statusMessages.any((m) => m.contains('Import failed')), true);
   });
 
   test('deleteTemplate deletes file and updates prefs', () async {
