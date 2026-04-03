@@ -1,5 +1,9 @@
 name: Releaser
 
+permissions:
+  contents: write
+  actions: write
+
 on:
   workflow_dispatch:
   push:
@@ -184,26 +188,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Check WinGet token
-        id: winget_token
+      - name: Trigger publish workflows
+        if: ${{ steps.get_version.outputs.exists == 'false' && github.ref == 'refs/heads/main' }}
         shell: pwsh
-        env:
-          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:WINGET_TOKEN)) {
-            "has_token=false" >> $env:GITHUB_OUTPUT
-            Write-Host "WINGET_TOKEN is not set. Skipping WinGet publish step."
-          } else {
-            "has_token=true" >> $env:GITHUB_OUTPUT
-          }
+          $tag = "v${{ steps.get_version.outputs.version }}"
+          Start-Sleep -Seconds 5
 
-      - name: Publish to WinGet
-        if: steps.get_version.outputs.exists == 'false' && github.ref == 'refs/heads/main' && steps.winget_token.outputs.has_token == 'true'
-        uses: vedantmgoyal9/winget-releaser@v2
-        with:
-          identifier: Bostrot.WSLManager
-          version: ${{ steps.get_version.outputs.version }}.0
-          release-tag: v${{ steps.get_version.outputs.version }}
-          installers-regex: 'wsl2-distro-manager-v.*-setup\.exe$'
-          token: ${{ secrets.WINGET_TOKEN }}
+          gh workflow run publish-winget.yml -f tag=$tag
+          gh workflow run publish-scoop.yml -f tag=$tag
+          gh workflow run publish-store.yml -f tag=$tag
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       

@@ -1,0 +1,61 @@
+name: Publish to WinGet
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (e.g. v1.11.0)
+        required: true
+        type: string
+  release:
+    types: [published, created]
+
+concurrency:
+  group: publish-winget-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag and version
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.event.release.tag_name }}"
+          fi
+
+          if [[ -z "$TAG" ]]; then
+            echo "Tag is empty" >&2
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check WinGet token
+        id: winget_token
+        shell: bash
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if [ -z "$WINGET_TOKEN" ]; then
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "WINGET_TOKEN is not set. Skipping WinGet publish step."
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to WinGet
+        if: steps.winget_token.outputs.has_token == 'true'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Bostrot.WSLManager
+          version: ${{ steps.resolve.outputs.version }}.0
+          release-tag: ${{ steps.resolve.outputs.tag }}
+          installers-regex: 'wsl2-distro-manager-v.*-setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}

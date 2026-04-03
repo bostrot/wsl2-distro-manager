@@ -1,0 +1,52 @@
+name: Publish to Microsoft Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (e.g. v1.11.0)
+        required: true
+        type: string
+  release:
+    types: [published, created]
+
+concurrency:
+  group: publish-store-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.event.release.tag_name }}"
+          fi
+
+          if [[ -z "$TAG" ]]; then
+            echo "Tag is empty" >&2
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Download release asset
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          version: tags/${{ steps.resolve.outputs.tag }}
+          file: wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix
+          target: ${{ github.workspace }}/release.msix
+
+      - name: Publish to Store
+        uses: isaacrlevin/windows-store-action@main
+        with:
+          tenant-id: ${{ secrets.AZURE_AD_TENANT_ID }}
+          client-id: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+          app-id: ${{ secrets.STORE_APP_ID }}
+          package-path: ${{ github.workspace }}
