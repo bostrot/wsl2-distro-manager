@@ -74,7 +74,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await initPrefs();
     // Use a unique UUID to ensure registry lookup fails
-    const distroName = 'nonexistent-distro-123e4567-e89b-12d3-a456-426614174000';
+    const distroName =
+        'nonexistent-distro-123e4567-e89b-12d3-a456-426614174000';
 
     // Verify no per-instance override exists so path resolution must fall back.
     expect(prefs.getString('Path_$distroName'), isNull);
