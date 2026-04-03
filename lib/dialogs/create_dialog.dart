@@ -195,10 +195,14 @@ Future<void> createInstance(
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
-      String error = WSLApi().utf8Convert(result.stdout);
-      if (error.isEmpty) {
-        error = result.stderr.toString();
-      }
+      // Prefer stderr for failed processes: WSL writes actionable errors there.
+      final stderr = result.stderr.toString().trim();
+      final stdout = result.stdout is List<int>
+          ? WSLApi().utf8Convert(result.stdout as List<int>).trim()
+          : result.stdout.toString().trim();
+      final error = stderr.isNotEmpty
+          ? stderr
+          : (stdout.isNotEmpty ? stdout : 'error-text'.i18n());
       Notify.message(error);
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');

@@ -802,25 +802,15 @@ class WSLApi {
     }
   }
 
-  /// Convert bytes to human readable string while removing non-ascii characters
+  /// Convert process bytes to readable text while preserving valid UTF-8.
   String utf8Convert(List<int> bytes) {
-    List<int> utf8Lines = List<int>.from(bytes);
-    bool running = true;
-    int i = 0;
-    while (running) {
-      // Check end of string
-      if (utf8Lines.length == i) {
-        running = false;
-        break;
-      }
-      // Remove non-ascii/unnecessary utf8 characters but keep newline (10)
-      if (utf8Lines[i] != 10 && (utf8Lines[i] < 32 || utf8Lines[i] > 122)) {
-        utf8Lines.removeAt(i);
-        continue;
-      }
-      i++;
+    if (bytes.isEmpty) {
+      return '';
     }
-    return utf8.decode(utf8Lines);
+
+    final decoded = const Utf8Decoder(allowMalformed: true).convert(bytes);
+    // Keep common whitespace while stripping other control characters.
+    return decoded.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
   }
 
   /// Change setting in wsl.conf with key and value
