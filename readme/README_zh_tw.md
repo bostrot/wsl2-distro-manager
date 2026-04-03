@@ -55,6 +55,15 @@ winget install Bostrot.WSLManager
 </details>
 
 <details>
+<summary>透過 Scoop 安裝</summary>
+
+```sh
+scoop install extras/wsl2-distro-manager
+```
+
+</details>
+
+<details>
 <summary>透過 Chocolatey 安裝</summary>
 
 此套件由社群維護（[@mikeee](https://github.com/mikeee/ChocoPackages)），非官方套件。

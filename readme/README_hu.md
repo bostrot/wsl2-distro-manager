@@ -55,6 +55,15 @@ winget install Bostrot.WSLManager
 </details>
 
 <details>
+<summary>Telepites Scoop segitsegevel</summary>
+
+```sh
+scoop install extras/wsl2-distro-manager
+```
+
+</details>
+
+<details>
 <summary>Telepites Chocolatey segitsegevel</summary>
 
 Ezt a csomagot a kozosseg tartja karban ([@mikeee](https://github.com/mikeee/ChocoPackages)). Nem hivatalos csomag.
