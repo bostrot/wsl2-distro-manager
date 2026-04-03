@@ -1,5 +1,6 @@
 /// Tests for the wsl.dart file.
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
@@ -20,6 +21,7 @@ void main() {
   late MockShell mockShell;
   late WSLApi wslApi;
   late Dio mockDio;
+  late List<String> statusMessages;
 
   void statusMsg(
     String msg, {
@@ -29,7 +31,9 @@ void main() {
     bool useWidget = false,
     bool leadingIcon = true,
     dynamic widget,
-  }) {}
+  }) {
+    statusMessages.add(msg);
+  }
 
   // Stuff before tests
   setUpAll(() async {
@@ -47,6 +51,7 @@ void main() {
     wslApi = WSLApi(shell: mockShell);
     mockDio = Dio();
     mockDio.httpClientAdapter = MockHttpClientAdapter();
+    statusMessages = [];
   });
 
   test('Check update', () async {
@@ -82,6 +87,12 @@ void main() {
 
     var utf8 = wslApi.utf8Convert(bytes2);
     expect(utf8, utf16);
+  });
+
+  test('utf8Convert preserves unicode characters', () {
+    final text = '错误: 路径无效';
+    final converted = wslApi.utf8Convert(utf8.encode(text));
+    expect(converted, text);
   });
 
   Future<bool> isInstance(String name) async {
@@ -155,6 +166,24 @@ void main() {
     );
 
     expect(await isInstance('test'), true);
+  });
+
+  test('Create instance shows stderr on import failure', () async {
+    mockShell.simulateInvalidPath = true;
+    mockShell.importFailureStdout = 'cOv...NO';
+
+    await createDistro(
+      'test',
+      '',
+      '/tmp/non-existent-template.tar.gz',
+      '',
+    );
+
+    expect(
+      statusMessages.any((m) => m.contains('Invalid installation path')),
+      true,
+    );
+    expect(statusMessages.any((m) => m.contains('cOv...NO')), false);
   });
 
   test('Copy instance test', () async {
