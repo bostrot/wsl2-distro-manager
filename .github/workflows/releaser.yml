@@ -60,28 +60,32 @@ jobs:
       - run: flutter config --enable-windows-desktop
       - run: flutter build windows
       - run: dart run msix:create
-      - name: Install Inno Setup
+
+      - name: Prepare installer inputs
         shell: pwsh
         run: |
-          $uninstallPaths = @(
-            'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
-            'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
-            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
-          )
-          $installed = Get-ItemProperty -Path $uninstallPaths -ErrorAction SilentlyContinue |
-            Where-Object {
-              $_.Publisher -eq 'JRSoftware' -and $_.DisplayName -like 'Inno Setup*'
-            } |
-            Select-Object -First 1
-          if (-not $installed) {
-            winget install --id JRSoftware.InnoSetup -e -s winget --accept-source-agreements --accept-package-agreements --disable-interactivity
-          } else {
-            Write-Host "Inno Setup already installed."
+          $codeDependenciesPath = Join-Path $PWD 'installer\CodeDependencies.iss'
+          $codeDependenciesUrl = 'https://raw.githubusercontent.com/DomGries/InnoDependencyInstaller/master/CodeDependencies.iss'
+          $codeDependenciesSha256 = 'D57E218B36CB77D7A83F0558B3C13C391585AEA92F560CF9FDFEDBC87FAE5D10'
+
+          if (-not (Test-Path $codeDependenciesPath)) {
+            Write-Host 'Downloading CodeDependencies.iss for InnoDependencyInstaller...'
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $codeDependenciesUrl -OutFile $codeDependenciesPath
           }
-      - name: Build installer (Inno Setup)
-        shell: pwsh
-        run: |
-          .\installer\build-installer.ps1
+
+          $actualCodeDependenciesSha256 = (Get-FileHash $codeDependenciesPath -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($actualCodeDependenciesSha256 -ne $codeDependenciesSha256) {
+            throw "CodeDependencies.iss checksum mismatch. Expected $codeDependenciesSha256 but got $actualCodeDependenciesSha256"
+          }
+
+          .\installer\stage-payload.ps1
+
+      - name: Build installer (Inno Setup Action)
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
+        with:
+          path: installer/setup.iss
+          options: /DAppVersion=${{ steps.get_version.outputs.version }}
 
       # Start of modification: Always upload artifact for every build
       - name: Prepare build artifact
