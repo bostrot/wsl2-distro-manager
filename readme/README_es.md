@@ -9,7 +9,7 @@
 
 
 <p align='center'>
-    <a href='./README.md'>English</a> | <a href='./README_zh.md'>简体中文</a> | <a href='./README_de.md'>Deutsch</a> | Español
+    <a href='../README.md'>English</a> | <a href='./README_zh.md'>简体中文</a> | <a href='./README_zh_tw.md'>繁體中文</a> | <a href='./README_de.md'>Deutsch</a> | Español | <a href='./README_ja.md'>日本語</a> | <a href='./README_hu.md'>Magyar</a> | <a href='./README_pt.md'>Português</a> | <a href='./README_tr.md'>Türkçe</a>
 </p>
 
 ![Captura de pantalla con Modo Oscuro](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
@@ -49,8 +49,6 @@ Puedes obtener esta aplicación con una descarga directa desde la página de [La
 <details>
 <summary>Instalar vía Winget</summary>
 
-¡El paquete winget está desactualizado! Por favor, utiliza la versión de la Tienda de Microsoft en su lugar.
-
 ```sh
 winget install Bostrot.WSLManager
 ```
@@ -60,7 +58,7 @@ winget install Bostrot.WSLManager
 <details>
 <summary>Instalar vía Chocolatey</summary>
 
-te paquete es mantenido por la comunidad ([@mikeee](https://github.com/mikeee/ChocoPackages)). No es un paquete oficial.
+Este paquete es mantenido por la comunidad ([@mikeee](https://github.com/mikeee/ChocoPackages)). No es un paquete oficial.
 
 ```sh
 choco install wsl2-distro-manager
@@ -71,7 +69,7 @@ choco install wsl2-distro-manager
 <details>
 <summary>Instalar una compilación nocturna</summary>
 
-La última compilación se puede encontrar como artefactos en el flujo de trabajo "releaser" o a través de [este enlace](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip). Si prefieres un `msix` sin firmar, también puedes usar [este enlace](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip).
+La última compilación se puede encontrar en los artefactos del flujo de trabajo "releaser" o a través de [este enlace](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip).
 
 </details>
 

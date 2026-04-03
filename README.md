@@ -9,7 +9,7 @@
 
 
 <p align='center'>
-    English | <a href='./README_zh.md'>简体中文</a> | <a href='./README_de.md'>Deutsch</a> | <a href='./README_es.md'>Español</a> | <a href='./README_ja.md'>日本語</a>
+    English | <a href='./readme/README_zh.md'>简体中文</a> | <a href='./readme/README_zh_tw.md'>繁體中文</a> | <a href='./readme/README_de.md'>Deutsch</a> | <a href='./readme/README_es.md'>Español</a> | <a href='./readme/README_ja.md'>日本語</a> | <a href='./readme/README_hu.md'>Magyar</a> | <a href='./readme/README_pt.md'>Português</a> | <a href='./readme/README_tr.md'>Türkçe</a>
 </p>
 
 ![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
@@ -49,8 +49,6 @@ You can get this app with a direct download from the [Releases](https://github.c
 <details>
 <summary>Install via Winget</summary>
 
-The winget package is outdated! Please use the Windows Store version instead.
-
 ```sh
 winget install Bostrot.WSLManager
 ```
@@ -71,7 +69,7 @@ choco install wsl2-distro-manager
 <details>
 <summary>Install a nightly build</summary>
 
-The last build can be found as artifacts in the "releaser" workflow or via [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip). If you rather prefer an unsigned `msix` you can also use [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip).
+The latest nightly build is available as an artifact in the "releaser" workflow or via [this link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip).
 
 </details>
 

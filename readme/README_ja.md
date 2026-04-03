@@ -9,7 +9,7 @@
 
 
 <p align='center'>
-    <a href='./README.md'>English</a> | <a href='./README_zh.md'>简体中文</a> | <a href='./README_de.md'>Deutsch</a> | <a href='./README_es.md'>Español</a> | 日本語
+    <a href='../README.md'>English</a> | <a href='./README_zh.md'>简体中文</a> | <a href='./README_zh_tw.md'>繁體中文</a> | <a href='./README_de.md'>Deutsch</a> | <a href='./README_es.md'>Español</a> | 日本語 | <a href='./README_hu.md'>Magyar</a> | <a href='./README_pt.md'>Português</a> | <a href='./README_tr.md'>Türkçe</a>
 </p>
 
 ![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
@@ -49,8 +49,6 @@
 <details>
 <summary>Winget 経由でインストール</summary>
 
-winget パッケージは古くなっています！代わりに Windows Store バージョンを使用してください。
-
 ```sh
 winget install Bostrot.WSLManager
 ```
@@ -71,7 +69,7 @@ choco install wsl2-distro-manager
 <details>
 <summary>ナイトリービルドをインストール</summary>
 
-最新のビルドは "releaser" ワークフローのアーティファクトとして、または[このリンク](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip)から見つけることができます。署名されていない `msix` を希望する場合は、[このリンク](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip)も使用できます。
+最新のビルドは "releaser" ワークフローのアーティファクトとして、または[このリンク](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip)から入手できます。
 
 </details>
 

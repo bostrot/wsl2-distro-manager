@@ -44,4 +44,4 @@ license:
 - any: ['LICENSE']
 
 readme:
-- any: ['README.md', 'README_zh.md']
+- any: ['README.md', 'readme/README_*.md']

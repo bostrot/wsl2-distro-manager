@@ -8,7 +8,7 @@
 [![Discord](https://img.shields.io/discord/1100070299308937287?style=for-the-badge)](https://discord.gg/fY5uE5WRTP)
 
 <p align='center'>
-    <a href='./README.md'>English</a> | <a href='./README_zh.md'>简体中文</a> | Deutsch | <a href='./README_es.md'>Español</a>
+    <a href='../README.md'>English</a> | <a href='./README_zh.md'>简体中文</a> | <a href='./README_zh_tw.md'>繁體中文</a> | Deutsch | <a href='./README_es.md'>Español</a> | <a href='./README_ja.md'>日本語</a> | <a href='./README_hu.md'>Magyar</a> | <a href='./README_pt.md'>Português</a> | <a href='./README_tr.md'>Türkçe</a>
 </p>
 
 ![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
@@ -42,19 +42,7 @@ Sie können diese App über einen direkten Download von der Seite [Releases](htt
 </details>
 
 <Details>
-<summary>MSIX Installer</summary>
-
-Das `msix` ist mit einem Testzertifikat signiert, so dass man es speziell zulassen muss. In der PowerShell kann man folgendes tun:
-
-```Powershell
-Add-AppPackage -Path .\wsl2-distro-manager-v1.x.x-unsigned.msix -AllowUnsigned
-```
-</details>
-
-<Details>
 <summary>Installation über Winget</summary>
-
-Das winget-Paket ist veraltet! Bitte verwenden Sie stattdessen die Windows Store Version.
 
 ```sh
 winget install Bostrot.WSLManager
@@ -76,7 +64,7 @@ choco install wsl2-distro-manager
 <Details>
 <summary>Installieren eines nächtlichen Builds</summary>
 
-Den letzten Build findet man als Artefakte im "releaser"-Workflow oder über [diesen Link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip). Wer lieber ein unsigniertes `msix` bevorzugt, kann auch [diesen Link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip) verwenden.
+Den letzten Build findet man als Artefakt im "releaser"-Workflow oder über [diesen Link](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip).
 
 </details>
 

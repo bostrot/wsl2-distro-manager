@@ -9,7 +9,7 @@
 
 
 <p align='center'>
-    <a href='./README.md'>English</a> | 简体中文 | <a href='./README_de.md'>Deutsch</a> | <a href='./README_es.md'>Español</a>| <a href='./README_ja.md'>日本語</a>
+    <a href='../README.md'>English</a> | 简体中文 | <a href='./README_zh_tw.md'>繁體中文</a> | <a href='./README_de.md'>Deutsch</a> | <a href='./README_es.md'>Español</a> | <a href='./README_ja.md'>日本語</a> | <a href='./README_hu.md'>Magyar</a> | <a href='./README_pt.md'>Português</a> | <a href='./README_tr.md'>Türkçe</a>
 </p>
 
 ![暗色模式截图](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
@@ -49,8 +49,6 @@
 <details>
 <summary>通过 Winget 安装</summary>
 
-winget 软件包已经过时! 请改用 Windows 商店版本。
-
 ```sh
 winget install Bostrot.WSLManager
 ```
@@ -70,7 +68,7 @@ choco install wsl2-distro-manager
 <details>
 <summary>安装夜间构建</summary>
 
-最后的构建可以在“releaser”工作流中找到工件，或者通过[此链接](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip)获取。如果您更倾向于使用未签名的 `msix`，也可以使用[此链接](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-msix.zip)。
+最新夜间构建可以在“releaser”工作流的工件中找到，或通过[此链接](https://nightly.link/bostrot/wsl2-distro-manager/workflows/releaser/main/wsl2-distro-manager-nightly-archive.zip)获取。
 
 </details>
 
