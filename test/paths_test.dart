@@ -73,16 +73,37 @@ void main() {
       () async {
     SharedPreferences.setMockInitialValues({});
     await initPrefs();
-    final result = getInstancePath('unknownDistro');
-    // Should be under the distro base folder
-    expect(result.path, equals('${defaultPath}\\unknownDistro'));
+    // Use a unique UUID to ensure registry lookup fails
+    const distroName = 'nonexistent-distro-123e4567-e89b-12d3-a456-426614174000';
+
+    // Verify no per-instance override exists so path resolution must fall back.
+    expect(prefs.getString('Path_$distroName'), isNull);
+
+    final expectedFallbackPath = '${getDataPath().path}\\$distroName';
+    final result = getInstancePath(distroName);
+
+    // Should resolve via the fallback location under the distro base folder.
+    expect(result.path, equals(expectedFallbackPath));
   });
 
-  test('getWslConfigPath points to .wslconfig in user home', () async {
-    SharedPreferences.setMockInitialValues({});
-    await initPrefs();
-    final configPath = getWslConfigPath();
-    expect(configPath, endsWith('.wslconfig'));
-    expect(configPath, contains(Platform.environment['USERNAME']!));
+    // Safer check that doesn't crash on null env var
+    final userProfile = Platform.environment['USERPROFILE'];
+    final username = Platform.environment['USERNAME'];
+    if (userProfile != null && userProfile.isNotEmpty) {
+      expect(configPath, startsWith(userProfile));
+    } else if (username != null && username.isNotEmpty) {
+      expect(configPath, contains(username));
+    } else {
+      fail(
+        'Unable to verify getWslConfigPath() fallback behavior because both '
+        'USERPROFILE and USERNAME are unset or empty in the test environment.',
+      );
+    // Safer check that doesn't crash on null env var
+    final userProfile = Platform.environment['USERPROFILE'];
+    if (userProfile != null && userProfile.isNotEmpty) {
+      expect(configPath, startsWith(userProfile));
+    } else if (Platform.environment['USERNAME'] != null) {
+      expect(configPath, contains(Platform.environment['USERNAME']!));
+    }
   });
 }

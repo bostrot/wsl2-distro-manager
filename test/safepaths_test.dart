@@ -104,7 +104,8 @@ void main() {
 
   test('SafePath special characters', () {
     // Using the character from the issue: ¤
-    String path = '${Directory.current.path}\\test_special_¤_char';
+    final baseTempDir = Directory.systemTemp.createTempSync('safepath_special_');
+    String path = '${baseTempDir.path}\\test_special_¤_char';
     Directory(path).createSync(recursive: true);
 
     try {
@@ -112,29 +113,31 @@ void main() {
       expect(safePath.path, path);
       expect(Directory(path).existsSync(), true);
     } finally {
-      if (Directory(path).existsSync()) {
-        Directory(path).deleteSync(recursive: true);
+      if (baseTempDir.existsSync()) {
+        baseTempDir.deleteSync(recursive: true);
       }
     }
   });
 
   test('SafePath unicode characters', () {
     // Unicode characters
-    String path = '${Directory.current.path}\\test_unicode_😊';
+    final baseTempDir = Directory.systemTemp.createTempSync('safepath_unicode_');
+    String path = '${baseTempDir.path}\\test_unicode_😊';
     Directory(path).createSync(recursive: true);
 
     try {
       SafePath safePath = SafePath(path);
       expect(safePath.path, path);
     } finally {
-      if (Directory(path).existsSync()) {
-        Directory(path).deleteSync(recursive: true);
+      if (baseTempDir.existsSync()) {
+        baseTempDir.deleteSync(recursive: true);
       }
     }
   });
 
   test('SafePath file with special characters', () {
-    String folder = '${Directory.current.path}\\test_special_¤_folder';
+    final baseTempDir = Directory.systemTemp.createTempSync('safepath_file_special_');
+    String folder = '${baseTempDir.path}\\test_special_¤_folder';
     Directory(folder).createSync(recursive: true);
     String filePath = '$folder\\test_file.txt';
     File(filePath).writeAsStringSync('test');
@@ -143,8 +146,8 @@ void main() {
       SafePath safePath = SafePath(filePath);
       expect(safePath.path, filePath);
     } finally {
-      if (Directory(folder).existsSync()) {
-        Directory(folder).deleteSync(recursive: true);
+      if (baseTempDir.existsSync()) {
+        baseTempDir.deleteSync(recursive: true);
       }
     }
   });
