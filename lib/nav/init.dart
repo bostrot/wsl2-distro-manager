@@ -18,6 +18,7 @@ initRoot(statusMsg) async {
 
   // First start with this version
   String? version = prefs.getString('version');
+  String? lastChangelogVersion = prefs.getString('LastChangelogVersion');
 
   // Get system dark mode
   var brightness =
@@ -31,23 +32,28 @@ initRoot(statusMsg) async {
 
   if (version == null) {
     // First start
-    prefs.setString('version', currentVersion);
+    await prefs.setString('version', currentVersion);
     while (GlobalVariable.infobox.currentContext == null) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
     firststartDialog();
   } else if (version != currentVersion) {
     // First start with this version
-    prefs.setString('version', currentVersion);
+    await prefs.setString('version', currentVersion);
 
-    // Get changelog
-    var response = await Dio().get(updateUrl);
-    if (response.data.length > 0) {
-      var latest = response.data[0];
-      String tagName = latest['tag_name'];
-      String body = latest['body'];
+    // Show changelog once per app version.
+    if (lastChangelogVersion != currentVersion) {
+      // Get changelog
+      var response = await Dio().get(updateUrl);
+      if (response.data.length > 0) {
+        var latest = response.data[0];
+        String tagName = latest['tag_name'];
+        String body = latest['body'];
 
-      changelogDialog(prefs, tagName, body);
+        changelogDialog(prefs, tagName, body);
+      }
+
+      await prefs.setString('LastChangelogVersion', currentVersion);
     }
   }
 

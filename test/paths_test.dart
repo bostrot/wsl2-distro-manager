@@ -86,7 +86,12 @@ void main() {
     expect(result.path, equals(expectedFallbackPath));
   });
 
-    // Safer check that doesn't crash on null env var
+  test('getWslConfigPath points to .wslconfig in user home', () async {
+    SharedPreferences.setMockInitialValues({});
+    await initPrefs();
+    final configPath = getWslConfigPath();
+    expect(configPath, endsWith('.wslconfig'));
+
     final userProfile = Platform.environment['USERPROFILE'];
     final username = Platform.environment['USERNAME'];
     if (userProfile != null && userProfile.isNotEmpty) {
@@ -98,12 +103,6 @@ void main() {
         'Unable to verify getWslConfigPath() fallback behavior because both '
         'USERPROFILE and USERNAME are unset or empty in the test environment.',
       );
-    // Safer check that doesn't crash on null env var
-    final userProfile = Platform.environment['USERPROFILE'];
-    if (userProfile != null && userProfile.isNotEmpty) {
-      expect(configPath, startsWith(userProfile));
-    } else if (Platform.environment['USERNAME'] != null) {
-      expect(configPath, contains(Platform.environment['USERNAME']!));
     }
   });
 }
