@@ -6,6 +6,7 @@ $outputPath = Join-Path $installerDir 'wsl2-distro-manager-setup.exe'
 $pubspecPath = Join-Path (Split-Path -Parent $installerDir) 'pubspec.yaml'
 $codeDependenciesPath = Join-Path $installerDir 'CodeDependencies.iss'
 $codeDependenciesUrl = 'https://raw.githubusercontent.com/DomGries/InnoDependencyInstaller/master/CodeDependencies.iss'
+$codeDependenciesSha256 = 'D57E218B36CB77D7A83F0558B3C13C391585AEA92F560CF9FDFEDBC87FAE5D10'
 
 if (-not (Test-Path $issPath)) {
     throw "Inno Setup script not found: $issPath"
@@ -19,6 +20,11 @@ if (-not (Test-Path $codeDependenciesPath)) {
     Write-Host 'Downloading CodeDependencies.iss for InnoDependencyInstaller...'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $codeDependenciesUrl -OutFile $codeDependenciesPath
+}
+
+$actualCodeDependenciesSha256 = (Get-FileHash $codeDependenciesPath -Algorithm SHA256).Hash.ToUpperInvariant()
+if ($actualCodeDependenciesSha256 -ne $codeDependenciesSha256) {
+    throw "CodeDependencies.iss checksum mismatch. Expected $codeDependenciesSha256 but got $actualCodeDependenciesSha256"
 }
 
 $pubspec = Get-Content $pubspecPath -Raw

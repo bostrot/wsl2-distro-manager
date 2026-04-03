@@ -8,7 +8,9 @@ class SafePath {
   bool isFile = false;
 
   /// Create a safe path from [_path].
-  /// It will be created as a folder if it does not exist.
+  /// It will try to create it as a folder if it does not exist.
+  ///
+  /// Use [exists] when the caller needs to verify creation succeeded.
   SafePath(this._path) {
     // Check if path exists and see if it is a file or a folder
     Directory dir = Directory(_path);
@@ -56,6 +58,15 @@ class SafePath {
 
   /// Get the path.
   String get path => _path;
+
+  /// Whether the resolved path currently exists.
+  bool get exists {
+    try {
+      return isFile ? File(_path).existsSync() : Directory(_path).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Get the parent path.
   /// If it is a file, the parent folder will be returned.
@@ -110,7 +121,7 @@ class SafePath {
           dir.createSync(recursive: true);
         } catch (e) {
           if (kDebugMode) {
-            print('SafePath: Could not create directory $path: $e');
+            debugPrint('SafePath: Could not create directory $path: $e');
           }
         }
       }

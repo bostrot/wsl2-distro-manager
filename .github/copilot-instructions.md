@@ -94,7 +94,7 @@ windows/           # Windows-specific Flutter configuration
 - **Logging**: Centralized logging in `lib/components/logging.dart`
 
 ### Building and Testing Notes
-- **Windows Dependencies**: Application copies Windows DLLs from `windows-dlls/` during packaging
+- **Windows Dependencies**: The Inno installer uses InnoDependencyInstaller (`Dependency_AddVC2015To2022`) to install VC++ runtime when needed; runtime DLLs are not bundled from `windows-dlls/`
 - **Version Management**: Version is managed in pubspec.yaml and automatically updated in constants.dart during CI
 - **Test Timeouts**: WSL-related tests have 10-minute timeouts due to potential download/installation time
 - **MSIX Configuration**: Windows Store packaging configuration is in pubspec.yaml under `msix_config`
