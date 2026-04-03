@@ -44,7 +44,7 @@
     "savelocation-text": "保存位置",
     "savelocationhint-text": "（可选）保存新实例的路径",
     "savelocationplaceholder-text": "保存位置（可选）",
-    "turnkeywarning-text": "警告：您选择了一个交钥匙容器。[实验性]\n由于其中大多使用 systemd，而 WSL 目前尚不完全支持开箱即用的 systemd，因此会替换为一个伪 systemd 分支。这不会在 init 时启动应用，而是在控制台打开时启动。有关详情，请查看 GitHub 项目 README。\n要访问服务，可使用 “ip a | grep inet” 获取 IP，然后在浏览器中访问 WSL-IP:PORT。",
+    "turnkeywarning-text": "警告：您选择了一个交钥匙容器。[实验性]\n现代 WSL 已支持 systemd。本应用不再自动安装 fake_systemd。若所选镜像或服务仍需额外配置，请参考该镜像文档，并在 WSL 设置中确认该发行版已启用 systemd。\n要访问服务，可使用 \"ip a | grep inet\" 获取 IP，然后在浏览器中访问 WSL-IP:PORT。",
     "createuser-text": "创建默认用户（仅在 Debian/Ubuntu 上）",
     "optionalusername-text": "（可选）用户名",
     "optionaluser-text": "（可选）用户",

@@ -45,7 +45,7 @@
   "savelocation-text": "Speicherort",
   "savelocationhint-text": "(Optional) Pfad zum Speichern der neuen Instanz",
   "savelocationplaceholder-text": "Speicherort (optional)",
-  "turnkeywarning-text": "Warnung: Sie haben einen schlüsselfertigen Container ausgewählt. [Experimentell]\nDa die meisten von ihnen systemd verwenden und WSL systemd derzeit nicht standardmäßig unterstützt, wird es durch einen Fork von fake_systemd ersetzt. Dadurch wird die Anwendungen nicht auf init, sondern auf Konsolenöffnungen. Weitere Informationen finden Sie in der README-Datei des GitHub-Projekts.\nUm auf den Dienst zuzugreifen, können Sie \"ip a | grep inet\", um die IP zu finden und dann z. B. in Ihrem Browser zu WSL-IP:PORT zu navigieren",
+  "turnkeywarning-text": "Warnung: Sie haben einen Turnkey-Container ausgewählt. [Experimentell]\nModerne WSL-Versionen unterstützen systemd. Diese App installiert fake_systemd nicht mehr automatisch. Falls das ausgewählte Image bzw. der Dienst weitere Einrichtung benötigt, prüfen Sie die Image-Dokumentation und stellen Sie sicher, dass systemd für diese Distribution in den WSL-Einstellungen aktiviert ist.\nUm auf den Dienst zuzugreifen, verwenden Sie \"ip a | grep inet\", um die IP zu finden, und öffnen Sie dann WSL-IP:PORT im Browser.",
   "createuser-text": "Standardbenutzer erstellen (nur auf Debian/Ubuntu)",
   "optionalusername-text": "(Optionaler) Benutzername",
   "optionaluser-text": "(Optionaler) Benutzer",

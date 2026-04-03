@@ -44,7 +44,7 @@
   "savelocation-text": "儲存位置",
   "savelocationhint-text": "(選用) 儲存新安裝實體的路徑",
   "savelocationplaceholder-text": "儲存位置 (選用)",
-  "turnkeywarning-text": "警告：您選擇了一個密鑰交換容器。 [實驗功能]\n由於他們大多數都使用 systemd，而 WSL 暫時目前不支援可立即使用的 systemd，它將被 fake_systemd 的一個分支取代。這將不是在 init 上啟動應用程式，而是在控制台開啟時啟動應用程式以獲得更多資訊，請參閱 GitHub 項目的 README。\n要瀏覽該服務，您可以使用 \"ip a | grep inet\" 查詢 ip，然後瀏覽至 WSL-IP:port。例如在您的瀏覽器中",
+  "turnkeywarning-text": "警告：您選擇了 Turnkey 容器。[實驗性]\n現代 WSL 已支援 systemd。本應用程式不再自動安裝 fake_systemd。若所選映像或服務仍需額外設定，請參考該映像文件，並確認已在 WSL 設定中為此發行版啟用 systemd。\n要存取服務，可使用 \"ip a | grep inet\" 查詢 IP，然後在瀏覽器中開啟 WSL-IP:PORT。",
   "createuser-text": "建立預設使用者帳戶 (僅適用 Debian/Ubuntu)",
   "optionalusername-text": "(選用) 使用者帳戶名稱",
   "optionaluser-text": "(選用)使用者帳戶",

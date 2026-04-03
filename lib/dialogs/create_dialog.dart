@@ -242,21 +242,12 @@ Future<void> createInstance(
           Notify.message('createdinstancenouser-text'.i18n());
         }
       } else {
-        // Install fake systemctl
+        // Turnkey images may still need first-start initialization,
+        // but we no longer install fake systemd.
         if (distroName.contains('Turnkey')) {
           // Set first start variable
           prefs.setBool('TurnkeyFirstStart_$name', true);
-          Notify.message('installingfakesystemd-text'.i18n(), loading: true);
-          WSLApi().execCmds(
-              name,
-              [
-                'wget https://raw.githubusercontent.com/bostrot/'
-                    'fake-systemd/master/systemctl -O /usr/bin/systemctl',
-                'chmod +x /usr/bin/systemctl',
-                '/usr/bin/systemctl',
-              ],
-              onMsg: (output) => null,
-              onDone: () => Notify.message('createdinstance-text'.i18n()));
+          Notify.message('createdinstance-text'.i18n());
         } else {
           Notify.message('createdinstance-text'.i18n());
         }
