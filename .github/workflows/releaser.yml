@@ -61,6 +61,10 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+
+      - name: Check translations
+        run: dart run scripts/check_translations.dart
+
       - run: flutter config --enable-windows-desktop
       - run: flutter build windows
       - run: dart run msix:create
