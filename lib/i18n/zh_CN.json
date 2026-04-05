@@ -8,6 +8,7 @@
     "started-text": "已启动",
     "openwithexplorer-text": "使用文件资源管理器打开",
     "openwithwt-text": "使用 Windows Terminal 打开",
+    "openwithwt-not-found-error": "未找到 Windows Terminal。将改为在 PowerShell 中启动。",
     "openwithvscode-text": "用 VS Code 打开",
     "copy-text": "复制",
     "rename-text": "重命名",
@@ -194,6 +195,7 @@
     "diskmounted-text": "磁盘挂载成功。",
     "vhdmounted-text": "VHD 挂载成功。",
     "diskunmounted-text": "磁盘卸载成功。",
+    "mountfailed-text": "挂载失败",
     "mountfailed-msg": "挂载失败。磁盘已连接到 WSL，但 Linux 无法读取文件系统。\n\n可能原因：\n• 磁盘未格式化（为空）。\n• 需要指定分区号。\n• 文件系统不受支持（可能需要 --type 参数）。\n\n您要立即断开连接以便修复吗？",
     "detach-text": "断开连接",
     "unmountfailed-text": "卸载失败",
@@ -267,5 +269,13 @@
     "pathtorootfsarchive-text": "RootFS 归档路径",
     "pathtovhdxfile-text": "VHDX 文件路径",
     "selectlocalfile-text": "选择本地文件",
-    "selectvhdxfile-text": "选择 VHDX 文件"
+    "selectvhdxfile-text": "选择 VHDX 文件",
+    "remote-wsl-over-ssh-text": "通过 SSH 使用远程 WSL",
+    "remote-wsl-over-ssh-info-text": "启用后，WSL 命令将通过 SSH 发送到远程主机。",
+    "remote-ssh-target-text": "远程 SSH 目标",
+    "remote-ssh-target-format-text": "格式：user@host 或 host",
+    "remote-ssh-target-placeholder-text": "user@192.168.1.20",
+    "remote-wsl-target-required-text": "已启用远程 WSL，但 SSH 目标缺失或无效。请使用 user@host 或 host 格式。",
+    "stopping-distro": "正在停止发行版 ...",
+    "compacting-vdisk": "正在压缩 VHDX ..."
 }

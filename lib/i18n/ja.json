@@ -194,6 +194,7 @@
   "diskmounted-text": "Disk mounted successfully.",
   "vhdmounted-text": "VHD mounted successfully.",
   "diskunmounted-text": "Disk unmounted successfully.",
+  "mountfailed-text": "マウントに失敗しました",
   "mountfailed-msg": "Mount failed. The disk was attached to WSL, but Linux could not read a filesystem.\n\nPossible reasons:\n• The disk is unformatted (empty).\n• You need to specify a partition number.\n• The filesystem is unsupported (e.g. requires --type).\n\nDo you want to detach it now to fix this?",
   "detach-text": "Detach",
   "unmountfailed-text": "Unmount Failed",
@@ -268,6 +269,12 @@
   "pathtovhdxfile-text": "VHDXファイルへのパス",
   "selectlocalfile-text": "ローカルファイルを選択",
   "selectvhdxfile-text": "VHDXファイルを選択",
+  "remote-wsl-over-ssh-text": "SSH 経由でリモート WSL を使用",
+  "remote-wsl-over-ssh-info-text": "有効にすると、WSL コマンドは SSH 経由でリモートホストに送信されます。",
+  "remote-ssh-target-text": "リモート SSH ターゲット",
+  "remote-ssh-target-format-text": "形式: user@host または host",
+  "remote-ssh-target-placeholder-text": "user@192.168.1.20",
+  "remote-wsl-target-required-text": "リモート WSL は有効ですが、SSH ターゲットが未設定か無効です。形式は user@host または host を使用してください。",
   "stopping-distro": "ディストリビューションを停止しています ...",
   "compacting-vdisk": "VHDXを圧縮しています ..."
 }

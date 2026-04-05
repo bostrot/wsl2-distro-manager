@@ -8,6 +8,7 @@
   "started-text": "已啟動",
   "openwithexplorer-text": "在檔案總管中顯示",
   "openwithwt-text": "以 Windows 終端機開啟",
+  "openwithwt-not-found-error": "找不到 Windows 終端機。將改以 PowerShell 啟動。",
   "openwithvscode-text": "以 Code 開啟",
   "copy-text": "複製",
   "rename-text": "重新命名",
@@ -194,6 +195,7 @@
   "diskmounted-text": "Disk mounted successfully.",
   "vhdmounted-text": "VHD mounted successfully.",
   "diskunmounted-text": "Disk unmounted successfully.",
+  "mountfailed-text": "掛載失敗",
   "mountfailed-msg": "Mount failed. The disk was attached to WSL, but Linux could not read a filesystem.\n\nPossible reasons:\n• The disk is unformatted (empty).\n• You need to specify a partition number.\n• The filesystem is unsupported (e.g. requires --type).\n\nDo you want to detach it now to fix this?",
   "detach-text": "Detach",
   "unmountfailed-text": "Unmount Failed",
@@ -268,6 +270,12 @@
   "pathtovhdxfile-text": "VHDX 檔案路徑",
   "selectlocalfile-text": "選擇本地檔案",
   "selectvhdxfile-text": "選擇 VHDX 檔案",
+  "remote-wsl-over-ssh-text": "透過 SSH 使用遠端 WSL",
+  "remote-wsl-over-ssh-info-text": "啟用後，WSL 指令會透過 SSH 傳送到遠端主機。",
+  "remote-ssh-target-text": "遠端 SSH 目標",
+  "remote-ssh-target-format-text": "格式：user@host 或 host",
+  "remote-ssh-target-placeholder-text": "user@192.168.1.20",
+  "remote-wsl-target-required-text": "已啟用遠端 WSL，但 SSH 目標遺漏或無效。請使用 user@host 或 host 格式。",
   "stopping-distro": "正在停止發行版 ...",
   "compacting-vdisk": "正在壓縮 VHDX ..."
 }

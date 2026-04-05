@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/theme.dart';
@@ -30,8 +31,18 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _terminalController = TextEditingController();
   final TextEditingController _vscodeController = TextEditingController();
   final TextEditingController _dockerMirrorController = TextEditingController();
+  final TextEditingController _remoteWslTargetController =
+      TextEditingController();
+  bool _useRemoteWsl = false;
   bool showDocker = false;
   BuildContext? currentContext;
+  static final RegExp _remoteTargetPattern =
+      RegExp(r'^(?:(?!-)[A-Za-z0-9._-]+@)?(?!-)[A-Za-z0-9._:-]+$');
+
+  bool _isRemoteWslTargetValid(String target) {
+    final trimmed = target.trim();
+    return trimmed.isNotEmpty && _remoteTargetPattern.hasMatch(trimmed);
+  }
 
   @override
   void initState() {
@@ -86,6 +97,11 @@ class SettingsPageState extends State<SettingsPage> {
     String? dockerMirror = prefs.getString('DockerMirror');
     if (dockerMirror != null && dockerMirror != '') {
       _dockerMirrorController.text = dockerMirror;
+    }
+    _useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
+    String? remoteTarget = prefs.getString('RemoteWSLTarget');
+    if (remoteTarget != null && remoteTarget.trim().isNotEmpty) {
+      _remoteWslTargetController.text = remoteTarget;
     }
     showDocker = prefs.getBool('showDocker') ?? false;
     if (!mounted) return;
@@ -174,6 +190,15 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   void saveSettings(BuildContext context, {bool dispose = false}) {
+    final remoteTarget = _remoteWslTargetController.text.trim();
+    if (_useRemoteWsl && !_isRemoteWslTargetValid(remoteTarget)) {
+      if (!dispose) {
+        Notify.message('remote-wsl-target-required-text'.i18n());
+        return;
+      }
+      _useRemoteWsl = false;
+    }
+
     plausible.event(name: "global_settings_saved");
     // Sync target ip setting _syncIpTextController
     if (_syncIpTextController.text.isNotEmpty) {
@@ -227,6 +252,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("DockerMirror", _dockerMirrorController.text);
     } else {
       prefs.remove("DockerMirror");
+    }
+
+    prefs.setBool("UseRemoteWSL", _useRemoteWsl);
+    if (_isRemoteWslTargetValid(remoteTarget)) {
+      prefs.setString("RemoteWSLTarget", remoteTarget);
+    } else {
+      prefs.remove("RemoteWSLTarget");
     }
 
     // Distro location setting
@@ -411,6 +443,45 @@ class SettingsPageState extends State<SettingsPage> {
               child: TextBox(
                 controller: _vscodeController,
                 placeholder: 'code',
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'remote-wsl-over-ssh-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                ToggleSwitch(
+                  checked: _useRemoteWsl,
+                  onChanged: (value) {
+                    setState(() {
+                      _useRemoteWsl = value;
+                    });
+                  },
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Text(
+                    'remote-wsl-over-ssh-info-text'.i18n(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'remote-ssh-target-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'remote-ssh-target-format-text'.i18n(),
+              child: TextBox(
+                controller: _remoteWslTargetController,
+                placeholder: 'remote-ssh-target-placeholder-text'.i18n(),
               ),
             ),
           ),

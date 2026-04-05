@@ -8,6 +8,7 @@
   "started-text": "başlatıldı",
   "openwithexplorer-text": "Dosya Gezgini ile Aç",
   "openwithwt-text": "Windows Terminal ile Aç",
+  "openwithwt-not-found-error": "Windows Terminal bulunamadı. Bunun yerine PowerShell ile başlatılıyor.",
   "openwithvscode-text": "VS Code ile Aç",
   "copy-text": "Kopyala",
   "rename-text": "Yeniden Adlandır",
@@ -193,6 +194,7 @@
   "diskmounted-text": "Disk mounted successfully.",
   "vhdmounted-text": "VHD mounted successfully.",
   "diskunmounted-text": "Disk unmounted successfully.",
+  "mountfailed-text": "Bağlama başarısız",
   "mountfailed-msg": "Mount failed. The disk was attached to WSL, but Linux could not read a filesystem.\n\nPossible reasons:\n• The disk is unformatted (empty).\n• You need to specify a partition number.\n• The filesystem is unsupported (e.g. requires --type).\n\nDo you want to detach it now to fix this?",
   "detach-text": "Detach",
   "unmountfailed-text": "Unmount Failed",
@@ -267,6 +269,12 @@
   "pathtovhdxfile-text": "VHDX Dosya Yolu",
   "selectlocalfile-text": "Yerel bir dosya seçin",
   "selectvhdxfile-text": "Bir VHDX dosyası seçin",
+  "remote-wsl-over-ssh-text": "SSH üzerinden uzak WSL kullan",
+  "remote-wsl-over-ssh-info-text": "Etkinleştirildiğinde, WSL komutları SSH üzerinden uzak bir ana makineye gönderilir.",
+  "remote-ssh-target-text": "Uzak SSH hedefi",
+  "remote-ssh-target-format-text": "Biçim: kullanici@host veya host",
+  "remote-ssh-target-placeholder-text": "user@192.168.1.20",
+  "remote-wsl-target-required-text": "Uzak WSL etkin, ancak SSH hedefi eksik veya geçersiz. kullanici@host veya host biçimini kullanın.",
   "stopping-distro": "Dağıtım durduruluyor ...",
   "compacting-vdisk": "VHDX sıkıştırılıyor ..."
 }

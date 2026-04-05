@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert' show Utf8Decoder, utf8;
+import 'dart:convert' show Encoding, Utf8Decoder, utf8;
 import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -30,12 +30,113 @@ bool inited = false;
 /// Most functions will return the UTF8 converted stdout of the process.
 class WSLApi {
   final Shell shell;
+  static final RegExp _remoteTargetPattern =
+      RegExp(r'^(?:(?!-)[A-Za-z0-9._-]+@)?(?!-)[A-Za-z0-9._:-]+$');
 
   WSLApi({Shell? shell}) : shell = shell ?? ProcessShell() {
     if (!inited) {
       inited = true;
       App().getDistroLinks();
     }
+  }
+
+  bool get _useRemoteWsl {
+    final enabled = prefs.getBool('UseRemoteWSL') ?? false;
+    final target = prefs.getString('RemoteWSLTarget')?.trim() ?? '';
+    return enabled && _isValidRemoteTarget(target);
+  }
+
+  bool _isValidRemoteTarget(String target) {
+    final trimmed = target.trim();
+    return trimmed.isNotEmpty && _remoteTargetPattern.hasMatch(trimmed);
+  }
+
+  String get _remoteTarget {
+    final target = prefs.getString('RemoteWSLTarget')?.trim() ?? '';
+    if (!_isValidRemoteTarget(target)) {
+      throw StateError('Invalid remote WSL target configured.');
+    }
+    return target;
+  }
+
+  String get _sshControlPath {
+    final tmpDir = Directory.systemTemp.path;
+    return p.join(tmpDir, 'wsl2dm_ssh_mux.sock');
+  }
+
+  List<String> _buildRemoteArgs(
+    String executable,
+    List<String> args, {
+    bool allocateTty = false,
+  }) {
+    final remoteArgs = <String>[
+      '-o',
+      'ControlMaster=auto',
+      '-o',
+      'ControlPersist=10m',
+      '-o',
+      'ControlPath=$_sshControlPath',
+      '-o',
+      'ServerAliveInterval=30',
+      '-o',
+      'ServerAliveCountMax=3',
+    ];
+    if (allocateTty) {
+      remoteArgs.add('-tt');
+    }
+    remoteArgs.add('--');
+    remoteArgs.add(_remoteTarget);
+    remoteArgs.add(executable);
+    remoteArgs.addAll(args);
+    return remoteArgs;
+  }
+
+  Future<ProcessResult> _runWsl(
+    List<String> args, {
+    bool runInShell = false,
+    Encoding? stdoutEncoding = systemEncoding,
+    Encoding? stderrEncoding = systemEncoding,
+  }) {
+    if (!_useRemoteWsl) {
+      return shell.run(
+        'wsl',
+        args,
+        runInShell: runInShell,
+        stdoutEncoding: stdoutEncoding,
+        stderrEncoding: stderrEncoding,
+      );
+    }
+
+    return shell.run(
+      'ssh',
+      _buildRemoteArgs('wsl', args),
+      runInShell: false,
+      stdoutEncoding: stdoutEncoding,
+      stderrEncoding: stderrEncoding,
+    );
+  }
+
+  Future<Process> _startWsl(
+    List<String> args, {
+    bool runInShell = false,
+    ProcessStartMode mode = ProcessStartMode.normal,
+    bool allocateTty = false,
+  }) {
+    if (!_useRemoteWsl) {
+      return shell.start(
+        'wsl',
+        args,
+        runInShell: runInShell,
+        mode: mode,
+      );
+    }
+
+    return shell.start(
+      'ssh',
+      _buildRemoteArgs('wsl', args, allocateTty: allocateTty),
+      runInShell: false,
+      mode: mode,
+    );
   }
 
   /// Get distro size of [distroName] a string with a GB suffix.
@@ -79,21 +180,25 @@ class WSLApi {
       {String startPath = '',
       String startUser = '',
       String startCmd = ''}) async {
-    List<String> args = [];
-    args.addAll(['wsl', '-d', distribution]);
+    List<String> wslArgs = [];
+    wslArgs.addAll(['-d', distribution]);
     if (startPath != '') {
-      args.addAll(['--cd', startPath]);
+      wslArgs.addAll(['--cd', startPath]);
     }
     if (startUser != '') {
-      args.addAll(['--user', startUser]);
+      wslArgs.addAll(['--user', startUser]);
     }
     if (startCmd != '') {
       for (String cmd in startCmd.split(' ')) {
-        args.add(cmd);
+        wslArgs.add(cmd);
       }
       // Run shell to keep open
-      args.add(';/bin/sh');
+      wslArgs.add(';/bin/sh');
     }
+
+    List<String> args = _useRemoteWsl
+        ? _buildRemoteArgs('wsl', wslArgs, allocateTty: true)
+        : ['wsl', ...wslArgs];
 
     String executable = 'start';
     String? terminal = prefs.getString('Terminal');
@@ -117,15 +222,16 @@ class WSLApi {
 
   /// Stop a WSL distro by name
   Future<String> stop(String distribution) async {
-    ProcessResult results =
-        await shell.run('wsl', ['--terminate', distribution]);
+    ProcessResult results = await _runWsl(['--terminate', distribution]);
     return results.stdout;
   }
 
   /// Open bashrc with notepad from WSL
   Future<String> openBashrc(String distribution) async {
     String editor = prefs.getString('Editor') ?? 'notepad.exe';
-    List<String> argsRc = ['wsl', '-d', distribution, editor, '.bashrc'];
+    List<String> argsRc = _useRemoteWsl
+        ? _buildRemoteArgs('wsl', ['-d', distribution, editor, '.bashrc'])
+        : ['wsl', '-d', distribution, editor, '.bashrc'];
     Process results = await shell.start('start', argsRc,
         mode: ProcessStartMode.normal, runInShell: true);
     return results.stdout.toString();
@@ -133,7 +239,7 @@ class WSLApi {
 
   /// Shutdown WSL
   Future<String> shutdown() async {
-    ProcessResult results = await shell.run('wsl', ['--shutdown']);
+    ProcessResult results = await _runWsl(['--shutdown']);
     return results.stdout;
   }
 
@@ -144,7 +250,9 @@ class WSLApi {
       codeCmd = 'code';
     }
 
-    List<String> args = ['wsl', '-d', distribution, codeCmd];
+    List<String> args = _useRemoteWsl
+        ? _buildRemoteArgs('wsl', ['-d', distribution, codeCmd])
+        : ['wsl', '-d', distribution, codeCmd];
     if (path != '') {
       args.add(path);
     }
@@ -227,7 +335,9 @@ class WSLApi {
 
   /// Start Windows Terminal or PowerShell
   void startWindowsTerminal(String distribution) async {
-    List<String> launchWslHome = ['wsl', '-d', distribution, '--cd', '~'];
+    List<String> launchWslHome = _useRemoteWsl
+        ? _buildRemoteArgs('wsl', ['-d', distribution, '--cd', '~'])
+        : ['wsl', '-d', distribution, '--cd', '~'];
     try {
       // Run windows terminal in same window wt -w 0 nt
       var args = ['wt', '-w', '0', 'nt'];
@@ -286,8 +396,7 @@ class WSLApi {
 
   /// Export a WSL distro by name
   Future<String> export(String distribution, String location) async {
-    ProcessResult results = await shell.run(
-        'wsl', ['--export', distribution, location],
+    ProcessResult results = await _runWsl(['--export', distribution, location],
         stdoutEncoding: null, stderrEncoding: null);
 
     // Check if the export command was successful
@@ -302,8 +411,7 @@ class WSLApi {
 
   /// Remove a WSL distro by name
   Future<String> remove(String distribution) async {
-    ProcessResult results = await shell.run(
-        'wsl', ['--unregister', distribution],
+    ProcessResult results = await _runWsl(['--unregister', distribution],
         stdoutEncoding: null, stderrEncoding: null);
 
     // Check if the remove command was successful
@@ -314,23 +422,24 @@ class WSLApi {
     }
 
     // Check if folder is empty and delete
-    String path = getInstancePath(distribution).path;
-    // Wait 10 seconds in async then delete for Windows to release file
-    Future.delayed(const Duration(seconds: 10), () {
-      Directory dir = Directory(path);
-      if (dir.existsSync()) {
-        if (dir.listSync().isEmpty) {
-          dir.deleteSync(recursive: true);
+    if (!_useRemoteWsl) {
+      String path = getInstancePath(distribution).path;
+      // Wait 10 seconds in async then delete for Windows to release file
+      Future.delayed(const Duration(seconds: 10), () {
+        Directory dir = Directory(path);
+        if (dir.existsSync()) {
+          if (dir.listSync().isEmpty) {
+            dir.deleteSync(recursive: true);
+          }
         }
-      }
-    });
+      });
+    }
     return utf8Convert(results.stdout);
   }
 
   /// Install a WSL distro by name
   Future<String> install(String distribution) async {
-    ProcessResult results =
-        await shell.run('wsl', ['--install', '-d', distribution]);
+    ProcessResult results = await _runWsl(['--install', '-d', distribution]);
     return results.stdout;
   }
 
@@ -353,9 +462,12 @@ class WSLApi {
     bool showOutput = true,
   }) async {
     List<int> processes = [];
-    Process result = await shell.start(
-        'wsl', ['-d', distribution, '-u', user ?? 'root'],
-        mode: ProcessStartMode.normal, runInShell: true);
+    Process result = await _startWsl(
+      ['-d', distribution, '-u', user ?? 'root'],
+      mode: ProcessStartMode.normal,
+      runInShell: !_useRemoteWsl,
+      allocateTty: _useRemoteWsl,
+    );
 
     Timer currentWaiter = Timer(const Duration(seconds: 60), () {
       result.kill();
@@ -379,21 +491,22 @@ class WSLApi {
     // Log output to file
     result.stdin.writeln('script -B /tmp/currentsessionlog -f');
     // Start windows with output
-    await shell.start(
-        'wsl',
-        [
-          '-d',
-          distribution,
-          '-u',
-          user ?? 'root',
-          'tail',
-          '-n',
-          '+1',
-          '-f',
-          '/tmp/currentsessionlog'
-        ],
-        mode: showOutput ? ProcessStartMode.detached : ProcessStartMode.normal,
-        runInShell: true);
+    await _startWsl(
+      [
+        '-d',
+        distribution,
+        '-u',
+        user ?? 'root',
+        'tail',
+        '-n',
+        '+1',
+        '-f',
+        '/tmp/currentsessionlog'
+      ],
+      mode: showOutput ? ProcessStartMode.detached : ProcessStartMode.normal,
+      runInShell: !_useRemoteWsl,
+      allocateTty: _useRemoteWsl,
+    );
 
     // Delay to allow tail to start
     await Future.delayed(const Duration(milliseconds: 500));
@@ -411,9 +524,12 @@ class WSLApi {
     String? user,
   }) async {
     // Write commands to /tmp/cmds
-    Process fileProcess = await shell.start(
-        'wsl', ['-d', distribution, '-u', user ?? 'root'],
-        mode: ProcessStartMode.normal, runInShell: true);
+    Process fileProcess = await _startWsl(
+      ['-d', distribution, '-u', user ?? 'root'],
+      mode: ProcessStartMode.normal,
+      runInShell: !_useRemoteWsl,
+      allocateTty: _useRemoteWsl,
+    );
 
     fileProcess.stdin.writeln('echo "#!/bin/bash" > /tmp/wdmcmds');
     for (var cmd in cmds) {
@@ -437,8 +553,12 @@ class WSLApi {
       '/tmp/wdmcmds'
     ];
 
-    Process results = await shell.start('wsl', args,
-        runInShell: true, mode: ProcessStartMode.detached);
+    Process results = await _startWsl(
+      args,
+      runInShell: !_useRemoteWsl,
+      mode: ProcessStartMode.detached,
+      allocateTty: _useRemoteWsl,
+    );
 
     return results;
   }
@@ -449,7 +569,7 @@ class WSLApi {
     for (var arg in cmd.split(' ')) {
       args.add(arg);
     }
-    ProcessResult results = await shell.run('wsl', args,
+    ProcessResult results = await _runWsl(args,
         runInShell: true, stdoutEncoding: utf8, stderrEncoding: utf8);
     return results.stdout;
   }
@@ -461,7 +581,9 @@ class WSLApi {
     int exitCode;
     for (String cmd in cmds) {
       if (cmd.contains('passwd')) {
-        args = ['wsl', '-d', distribution];
+        args = _useRemoteWsl
+            ? _buildRemoteArgs('wsl', ['-d', distribution], allocateTty: true)
+            : ['wsl', '-d', distribution];
         cmd.split(' ').forEach((String arg) {
           args.add(arg);
         });
@@ -474,7 +596,7 @@ class WSLApi {
         cmd.split(' ').forEach((String arg) {
           args.add(arg);
         });
-        ProcessResult result = await shell.run('wsl', args, runInShell: false);
+        ProcessResult result = await _runWsl(args, runInShell: false);
         exitCode = result.exitCode;
         processes.add(exitCode);
       }
@@ -484,8 +606,8 @@ class WSLApi {
 
   /// Restart WSL
   Future<String> restart() async {
-    ProcessResult results = await shell.run('wsl', ['--shutdown']);
-    results = await shell.run('wsl', ['--shutdown']);
+    ProcessResult results = await _runWsl(['--shutdown']);
+    results = await _runWsl(['--shutdown']);
     return results.stdout;
   }
 
@@ -500,12 +622,12 @@ class WSLApi {
     }
     ProcessResult results;
     if (isVhd) {
-      results = await shell.run(
-          'wsl', ['--import', distribution, installLocation, filename, '--vhd'],
+      results = await _runWsl(
+          ['--import', distribution, installLocation, filename, '--vhd'],
           stdoutEncoding: null, stderrEncoding: null);
     } else {
-      results = await shell.run(
-          'wsl', ['--import', distribution, installLocation, filename],
+      results = await _runWsl(
+          ['--import', distribution, installLocation, filename],
           stdoutEncoding: null, stderrEncoding: null);
     }
 
@@ -569,7 +691,7 @@ class WSLApi {
       args.add('--vhd');
     }
 
-    ProcessResult results = await shell.run('wsl', args, stdoutEncoding: null);
+    ProcessResult results = await _runWsl(args, stdoutEncoding: null);
 
     return results;
   }
@@ -579,7 +701,7 @@ class WSLApi {
   /// Returns list of WSL distros
   Future<Instances> list(bool showDocker) async {
     ProcessResult results =
-        await shell.run('wsl', ['--list', '--quiet'], stdoutEncoding: null);
+        await _runWsl(['--list', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
     bool wslInstalled = true;
@@ -675,8 +797,8 @@ class WSLApi {
 
   /// Returns list of WSL distros
   Future<List<String>> listRunning() async {
-    ProcessResult results = await shell
-        .run('wsl', ['--list', '--running', '--quiet'], stdoutEncoding: null);
+    ProcessResult results =
+        await _runWsl(['--list', '--running', '--quiet'], stdoutEncoding: null);
     String output = utf8Convert(results.stdout);
     List<String> list = [];
     output.split('\n').forEach((line) {
@@ -855,8 +977,7 @@ class WSLApi {
 
   /// Get default user of a distro
   Future<String> getDefaultUser(String distribution) async {
-    ProcessResult result = await shell.run(
-        'wsl', ['-d', distribution, '-e', 'whoami'],
+    ProcessResult result = await _runWsl(['-d', distribution, '-e', 'whoami'],
         stdoutEncoding: null, stderrEncoding: null);
 
     if (result.exitCode != 0) {

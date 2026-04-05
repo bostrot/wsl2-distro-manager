@@ -269,6 +269,12 @@
   "pathtovhdxfile-text": "Path to VHDX File",
   "selectlocalfile-text": "Select a local file",
   "selectvhdxfile-text": "Select a VHDX file",
+  "remote-wsl-over-ssh-text": "Use remote WSL over SSH",
+  "remote-wsl-over-ssh-info-text": "When enabled, WSL CLI commands are sent through SSH to a remote host.",
+  "remote-ssh-target-text": "Remote SSH target",
+  "remote-ssh-target-format-text": "Format: user@host or host",
+  "remote-ssh-target-placeholder-text": "user@192.168.1.20",
+  "remote-wsl-target-required-text": "Remote WSL is enabled, but the SSH target is missing or invalid. Use format user@host or host.",
   "stopping-distro": "Stopping Distro ...",
   "compacting-vdisk": "Compacting VHDX ..."
 }
