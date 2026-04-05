@@ -27,6 +27,8 @@ bool get isDesktop {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+  final isLinux = !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
 
   // if it's not on the web, windows or android, load the accent color
   if (!kIsWeb &&
@@ -39,13 +41,19 @@ void main() async {
 
   if (isDesktop) {
     await flutter_acrylic.Window.initialize();
-    await flutter_acrylic.Window.hideWindowControls();
+    if (isWindows) {
+      await flutter_acrylic.Window.hideWindowControls();
+    }
     await WindowManager.instance.ensureInitialized();
     windowManager.waitUntilReadyToShow().then((_) async {
-      await windowManager.setTitleBarStyle(
-        TitleBarStyle.hidden,
-        windowButtonVisibility: false,
-      );
+      if (isWindows) {
+        await windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: false,
+        );
+      } else if (isLinux) {
+        await windowManager.setAsFrameless();
+      }
       await windowManager.setMinimumSize(const Size(574, 450));
       await windowManager.setSize(const Size(800, 600));
       await windowManager.show();
@@ -55,7 +63,7 @@ void main() async {
   }
 
   // Init logging
-  initLogging();
+  await initLogging();
   await initPrefs();
 
   // Error logging

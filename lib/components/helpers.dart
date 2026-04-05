@@ -14,6 +14,23 @@ late SharedPreferences prefs;
 bool initialized = false;
 bool hasPushed = false;
 
+String _getAppStateBaseDir() {
+  final env = Platform.environment;
+  if (Platform.isWindows) {
+    return env['APPDATA'] ??
+        '${env['USERPROFILE'] ?? Directory.current.path}\\AppData\\Roaming';
+  }
+  if (Platform.isLinux) {
+    final home = env['HOME'] ?? Directory.current.path;
+    return env['XDG_STATE_HOME'] ?? '$home/.local/state';
+  }
+  if (Platform.isMacOS) {
+    final home = env['HOME'] ?? Directory.current.path;
+    return '$home/Library/Application Support';
+  }
+  return Directory.current.path;
+}
+
 /// Get distro label from [item].
 String distroLabel(String item) {
   String? distroName = prefs.getString('DistroName_$item');
@@ -73,16 +90,17 @@ void backupFile(String path) {
 /// or repair operations.
 Future initPrefs() async {
   // Define app paths for migration.
-  final appData = Platform.environment['APPDATA']!;
-  final oldSafePath = SafePath(appData)
-    ..cd('com.bostrot')
-    ..cd('WSL Manager');
-  final newSafePath = SafePath(appData)
-    ..cd('com.bostrot')
-    ..cd('WSL Distro Manager');
+  final appData = _getAppStateBaseDir();
+  final oldDirPath =
+      '$appData${Platform.pathSeparator}com.bostrot${Platform.pathSeparator}WSL Manager';
+  final newDirPath =
+      '$appData${Platform.pathSeparator}com.bostrot${Platform.pathSeparator}WSL Distro Manager';
+  Directory(newDirPath).createSync(recursive: true);
 
-  final oldFilePath = oldSafePath.file('shared_preferences.json');
-  final newFilePath = newSafePath.file('shared_preferences.json');
+  final oldFilePath =
+      '$oldDirPath${Platform.pathSeparator}shared_preferences.json';
+  final newFilePath =
+      '$newDirPath${Platform.pathSeparator}shared_preferences.json';
   final oldFile = File(oldFilePath);
   final newFile = File(newFilePath);
 
@@ -292,8 +310,13 @@ String getInstanceSize(String name) {
 
 /// Get the wslconfig path
 String getWslConfigPath() {
-  return SafePath('C:\\Users\\${Platform.environment['USERNAME']}')
-      .file('.wslconfig');
+  if (Platform.isWindows) {
+    final userHome =
+        Platform.environment['USERPROFILE'] ?? Directory.current.path;
+    return '$userHome\\.wslconfig';
+  }
+  final userHome = Platform.environment['HOME'] ?? Directory.current.path;
+  return '$userHome${Platform.pathSeparator}.wslconfig';
 }
 
 /// Return the general data path. Templates and downloads are saved here by default.
