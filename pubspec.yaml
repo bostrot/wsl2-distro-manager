@@ -56,6 +56,7 @@ flutter:
   assets:
     - lib/i18n/
     - assets/scripts/settings.bash
+    - images.json
 
 msix_config:
   display_name: WSL Manager

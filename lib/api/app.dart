@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -77,7 +78,28 @@ class App {
     } catch (e) {
       // ignored
     }
-    // Default list
+
+    // Fallback: bundled images.json in app assets.
+    final local = await _getLocalDistroLinks();
+    if (local.isNotEmpty) {
+      distroRootfsLinks = local;
+      return local;
+    }
+
+    // Last resort: in-memory cache.
     return distroRootfsLinks;
+  }
+
+  Future<Map<String, String>> _getLocalDistroLinks() async {
+    try {
+      final raw = await rootBundle.loadString('images.json');
+      final jsonData = json.decode(raw);
+      if (jsonData is Map<String, dynamic>) {
+        return jsonData.map((key, value) => MapEntry(key, value.toString()));
+      }
+    } catch (e) {
+      // ignored
+    }
+    return {};
   }
 }
