@@ -104,6 +104,7 @@ Future<void> createInstance(
 }) async {
   plausible.event(name: "wsl_create");
   DockerImage docker = dockerImage ?? DockerImage();
+  final useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
   String label = nameController.text;
   // Replace all special characters with _
   String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
@@ -121,10 +122,15 @@ Future<void> createInstance(
     // Set paths
     Notify.message('creatinginstance-text'.i18n(), loading: true);
     String location = locationController.text;
-    if (location == '') {
-      location = prefs.getString("DistroPath") ?? defaultPath;
+    if (!useRemoteWsl && location == '') {
+      location = prefs.getString("DistroPath") ?? getDefaultStorageRootPath();
     }
-    location += '${Platform.pathSeparator}$name';
+    if (location.isNotEmpty) {
+      location += '${Platform.pathSeparator}$name';
+    }
+    final effectiveLocation = useRemoteWsl
+        ? api.remoteInstallPath(name)
+        : location;
 
     // Check if docker image
     bool isDockerImage = isDocker;
@@ -190,7 +196,7 @@ Future<void> createInstance(
 
     // Create instance
     ProcessResult result = await api.create(
-        name, distroName, location, (String msg) => Notify.message(msg),
+      name, distroName, effectiveLocation, (String msg) => Notify.message(msg),
         image: isDockerImage, isVhd: isVhdx);
 
     // Check if instance was created then handle postprocessing
@@ -259,7 +265,7 @@ Future<void> createInstance(
       // Save distro label
       prefs.setString('DistroName_$name', label);
       // Save distro path
-      prefs.setString('Path_$name', location);
+      prefs.setString('Path_$name', effectiveLocation);
     }
     // Download distro check
   } else {

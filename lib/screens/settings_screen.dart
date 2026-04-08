@@ -342,8 +342,8 @@ class SettingsPageState extends State<SettingsPage> {
               icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
               onPressed: () async {
                 String? path = await FilePicker.platform.getDirectoryPath(
-                  initialDirectory:
-                      prefs.getString("DistroPath") ?? defaultPath,
+                  initialDirectory: prefs.getString("DistroPath") ??
+                      getDefaultStorageRootPath(),
                 );
                 if (path != null &&
                     _settings['Default Distro Location'] != null) {
@@ -353,7 +353,8 @@ class SettingsPageState extends State<SettingsPage> {
                 }
               },
             ),
-            placeholder: prefs.getString("DistroPath") ?? defaultPath),
+            placeholder:
+              prefs.getString("DistroPath") ?? getDefaultStorageRootPath()),
         settingsWidget(context,
             title: 'defaultdatalocation-text'.i18n(),
             name: 'General Data Location',
@@ -364,7 +365,7 @@ class SettingsPageState extends State<SettingsPage> {
                 String? path = await FilePicker.platform.getDirectoryPath(
                   initialDirectory: prefs.getString("DataPath") ??
                       prefs.getString("DistroPath") ??
-                      defaultPath,
+                      getDefaultStorageRootPath(),
                 );
                 if (path != null &&
                     _settings['General Data Location'] != null) {
@@ -376,7 +377,7 @@ class SettingsPageState extends State<SettingsPage> {
             ),
             placeholder: prefs.getString("DataPath") ??
                 prefs.getString("DistroPath") ??
-                defaultPath),
+              getDefaultStorageRootPath()),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

@@ -264,20 +264,20 @@ class _MountDialogState extends State<MountDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Tabs
-            Row(
+            Wrap(
+              spacing: 20,
+              runSpacing: 8,
               children: [
                 RadioButton(
                   checked: _selectedTab == 0,
                   content: Text('physicaldisk-text'.i18n()),
                   onChanged: (v) => setState(() => _selectedTab = 0),
                 ),
-                const SizedBox(width: 20),
                 RadioButton(
                   checked: _selectedTab == 1,
                   content: Text('vhdimage-text'.i18n()),
                   onChanged: (v) => setState(() => _selectedTab = 1),
                 ),
-                const SizedBox(width: 20),
                 RadioButton(
                   checked: _selectedTab == 2,
                   content: Text('unmount-text'.i18n()),

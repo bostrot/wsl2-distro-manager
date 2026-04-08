@@ -22,6 +22,7 @@ class DistroListState extends State<DistroList> {
   Map<String, bool> hover = {};
   bool isSyncing = false;
   bool showDocker = false;
+  int reloadTick = 0;
 
   void syncing(var item) {
     if (mounted) {
@@ -52,15 +53,21 @@ class DistroListState extends State<DistroList> {
       await Future.delayed(const Duration(seconds: 5));
       // Check if state disposed
       if (mounted) {
-        setState(() {});
+        setState(() {
+          reloadTick++;
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final remoteEnabled = widget.api.useRemoteWsl;
+    final remoteTarget = widget.api.remoteTargetLabel;
+
     // List as FutureBuilder with WSLApi
     return FutureBuilder<Instances>(
+      key: ValueKey('distro-list-$reloadTick-$showDocker'),
       future: widget.api.list(showDocker),
       initialData: GlobalVariable.initialSnapshot,
       builder: (context, snapshot) {
@@ -73,8 +80,30 @@ class DistroListState extends State<DistroList> {
           // Check if there are distros
           if (list.isEmpty) {
             return Expanded(
-              child: Center(
-                child: Text('noinstancesfound-text'.i18n()),
+              child: Stack(
+                children: [
+                  const SizedBox.expand(),
+                  Center(
+                    child: Text('noinstancesfound-text'.i18n()),
+                  ),
+                  Positioned(
+                    right: 20,
+                    bottom: 20,
+                    child: FilledButton(
+                      onPressed: () {
+                        createDialog();
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(FluentIcons.add),
+                          const SizedBox(width: 8),
+                          Text('addinstance-text'.i18n()),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -95,13 +124,53 @@ class DistroListState extends State<DistroList> {
             ),
           );
         } else if (snapshot.hasError) {
-          return Text('${snapshot.error}');
+          final errorText = snapshot.error.toString();
+          return Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    remoteEnabled
+                        ? 'Remote WSL connection failed (${remoteTarget.isEmpty ? 'unknown target' : remoteTarget}).'
+                        : 'Failed to load WSL distros.',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(errorText, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  Button(
+                    onPressed: () {
+                      if (mounted) {
+                        setState(() {
+                          reloadTick++;
+                        });
+                      }
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         // By default, show a loading spinner.
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 20.0),
-          child: Center(child: ProgressRing()),
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ProgressRing(),
+                if (remoteEnabled) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Connecting to remote WSL host ${remoteTarget.isEmpty ? '(not configured)' : remoteTarget}...',
+                  ),
+                ],
+              ],
+            ),
+          ),
         );
       },
     );

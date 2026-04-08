@@ -24,11 +24,16 @@ class _HomePageState extends State<HomePage> {
 
   void enableAnalytics() async {
     String platform = Platform.operatingSystemVersion;
-    String exec = Platform.resolvedExecutable.toString();
-    if (exec.contains("9891PhantomDevs.WSL2Manager")) {
-      exec = "store";
-    } else {
-      exec = "git";
+    String exec = 'unknown';
+    try {
+      exec = Platform.resolvedExecutable.toString();
+      if (exec.contains("9891PhantomDevs.WSL2Manager")) {
+        exec = "store";
+      } else {
+        exec = "git";
+      }
+    } catch (_) {
+      exec = 'git';
     }
     var tmpPlatform = platform;
     int? build;

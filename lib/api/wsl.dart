@@ -4,6 +4,7 @@ import 'dart:convert' show Encoding, Utf8Decoder, utf8;
 import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 
 import 'package:path/path.dart' as p;
@@ -30,6 +31,7 @@ bool inited = false;
 /// Most functions will return the UTF8 converted stdout of the process.
 class WSLApi {
   final Shell shell;
+  static const Duration _remoteListTimeout = Duration(seconds: 12);
   static final RegExp _remoteTargetPattern =
       RegExp(r'^(?:(?!-)[A-Za-z0-9._-]+@)?(?!-)[A-Za-z0-9._:-]+$');
 
@@ -44,6 +46,13 @@ class WSLApi {
     final enabled = prefs.getBool('UseRemoteWSL') ?? false;
     final target = prefs.getString('RemoteWSLTarget')?.trim() ?? '';
     return enabled && _isValidRemoteTarget(target);
+  }
+
+  bool get useRemoteWsl => _useRemoteWsl;
+
+  String get remoteTargetLabel {
+    final target = prefs.getString('RemoteWSLTarget')?.trim() ?? '';
+    return target;
   }
 
   bool _isValidRemoteTarget(String target) {
@@ -64,12 +73,14 @@ class WSLApi {
     return p.join(tmpDir, 'wsl2dm_ssh_mux.sock');
   }
 
-  List<String> _buildRemoteArgs(
-    String executable,
-    List<String> args, {
-    bool allocateTty = false,
-  }) {
-    final remoteArgs = <String>[
+  List<String> get _sshClientOptions {
+    return <String>[
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'PasswordAuthentication=no',
+      '-o',
+      'KbdInteractiveAuthentication=no',
       '-o',
       'ControlMaster=auto',
       '-o',
@@ -81,6 +92,125 @@ class WSLApi {
       '-o',
       'ServerAliveCountMax=3',
     ];
+  }
+
+  String get _remoteRootPath => 'C:\\wsl2dm';
+
+  String _remoteSafeComponent(String value) {
+    return replaceSpecialChars(value).replaceAll(RegExp(r'_+'), '_');
+  }
+
+  String _remoteDefaultInstallPath(String distribution) {
+    return '$_remoteRootPath\\instances\\${_remoteSafeComponent(distribution)}';
+  }
+
+  String remoteInstallPath(String distribution) {
+    return _remoteDefaultInstallPath(distribution);
+  }
+
+  String _remoteInstallPathFor(String distribution) {
+    final saved = prefs.getString('Path_$distribution')?.trim() ?? '';
+    if (saved.isNotEmpty) {
+      return saved;
+    }
+    return _remoteDefaultInstallPath(distribution);
+  }
+
+  String _remoteStagingPath(String distribution, String localPath) {
+    return '$_remoteRootPath\\staging\\${_remoteSafeComponent(distribution)}\\${_remoteSafeComponent(p.basename(localPath))}';
+  }
+
+  String _remoteParentPath(String remotePath) {
+    final lastSeparator = remotePath.lastIndexOf('\\');
+    if (lastSeparator <= 0) {
+      return remotePath;
+    }
+    return remotePath.substring(0, lastSeparator);
+  }
+
+  String _escapePowerShellSingleQuoted(String input) {
+    return input.replaceAll("'", "''");
+  }
+
+  Future<String> _readRemoteWslConfigText() async {
+    final script =
+        r"$p = Join-Path $env:USERPROFILE '.wslconfig'; if (Test-Path -LiteralPath $p) { Get-Content -LiteralPath $p -Raw }";
+    final result = await shell.run(
+      'ssh',
+      _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+      runInShell: false,
+      stdoutEncoding: utf8,
+      stderrEncoding: utf8,
+    );
+
+    if (result.exitCode != 0) {
+      return '';
+    }
+
+    return result.stdout?.toString() ?? '';
+  }
+
+  Future<void> _writeRemoteWslConfigText(String content) async {
+    final escapedContent = _escapePowerShellSingleQuoted(content);
+    final script =
+        "\$p = Join-Path \$env:USERPROFILE '.wslconfig'; [IO.File]::WriteAllText(\$p, '$escapedContent', [Text.UTF8Encoding]::new(\$false))";
+
+    final result = await shell.run(
+      'ssh',
+      _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+      runInShell: false,
+      stdoutEncoding: utf8,
+      stderrEncoding: utf8,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(
+          'Failed to write remote .wslconfig on $remoteTargetLabel: ${result.stderr}');
+    }
+  }
+
+  Future<void> _ensureRemoteDirectory(String path) async {
+    await shell.run(
+      'ssh',
+      _buildRemoteArgs('cmd', [
+        '/c',
+        'if',
+        'not',
+        'exist',
+        '"$path"',
+        'mkdir',
+        '"$path"',
+      ]),
+      runInShell: false,
+      stdoutEncoding: systemEncoding,
+      stderrEncoding: systemEncoding,
+    );
+  }
+
+  Future<String> _stageLocalFileToRemote(String localPath, String remotePath) async {
+    await _ensureRemoteDirectory(_remoteParentPath(remotePath));
+
+    await shell.run(
+      'scp',
+      [
+        ..._sshClientOptions,
+        localPath,
+        '$_remoteTarget:$remotePath',
+      ],
+      runInShell: false,
+      stdoutEncoding: systemEncoding,
+      stderrEncoding: systemEncoding,
+    );
+
+    return remotePath;
+  }
+
+  List<String> _buildRemoteArgs(
+    String executable,
+    List<String> args, {
+    bool allocateTty = false,
+  }) {
+    final remoteArgs = <String>[..._sshClientOptions];
     if (allocateTty) {
       remoteArgs.add('-tt');
     }
@@ -142,7 +272,35 @@ class WSLApi {
   /// Get distro size of [distroName] a string with a GB suffix.
   /// Returns null if size is 0.
   /// e.g. "2.00 GB"
-  String? getSize(String distroName) {
+  Future<String?> getSize(String distroName) async {
+    if (_useRemoteWsl) {
+      final vhdxPath = '${_remoteInstallPathFor(distroName)}\\ext4.vhdx';
+      final escapedPath = _escapePowerShellSingleQuoted(vhdxPath);
+      final script =
+          "if (Test-Path -LiteralPath '$escapedPath') { (Get-Item -LiteralPath '$escapedPath').Length }";
+
+      final result = await shell.run(
+        'ssh',
+        _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+        runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
+      );
+
+      if (result.exitCode != 0) {
+        return null;
+      }
+
+      final raw = (result.stdout?.toString() ?? '').trim();
+      final byteSize = int.tryParse(raw);
+      if (byteSize == null || byteSize <= 0) {
+        return null;
+      }
+
+      final size = byteSize / 1024 / 1024 / 1024;
+      return '${'size-text'.i18n()}: ${size.toStringAsFixed(2)} GB';
+    }
+
     String ext4Path = getInstancePath(distroName).file('ext4.vhdx');
     // Get size of distro
     try {
@@ -160,12 +318,23 @@ class WSLApi {
   }
 
   /// Create directory
-  void mkRootDir({String path = defaultPath}) {
-    SafePath(path);
+  void mkRootDir({String? path}) {
+    SafePath(path ?? getDefaultStorageRootPath());
   }
 
   /// Install WSL
   void installWSL() async {
+    if (_useRemoteWsl) {
+      final result = await _runWsl(['--install']);
+      if (result.exitCode == 0) {
+        Notify.message('Triggered WSL install on remote host $remoteTargetLabel.');
+      } else {
+        Notify.message(
+            'Failed to trigger remote WSL install on $remoteTargetLabel: ${result.stderr}');
+      }
+      return;
+    }
+
     shell.start(
         'powershell',
         [
@@ -213,6 +382,15 @@ class WSLApi {
       // We insert these at the beginning of the arguments list
       args.insertAll(0, ['-w', '0', 'nt']);
     }
+
+    if (Platform.isLinux) {
+      await _startLinuxTerminal(_useRemoteWsl ? ['ssh', ...args] : args);
+      if (kDebugMode) {
+        print("Done starting $distribution");
+      }
+      return;
+    }
+
     await shell.start(executable, args,
         mode: ProcessStartMode.detached, runInShell: true);
     if (kDebugMode) {
@@ -232,6 +410,12 @@ class WSLApi {
     List<String> argsRc = _useRemoteWsl
         ? _buildRemoteArgs('wsl', ['-d', distribution, editor, '.bashrc'])
         : ['wsl', '-d', distribution, editor, '.bashrc'];
+
+    if (Platform.isLinux) {
+      await _startLinuxTerminal(_useRemoteWsl ? ['ssh', ...argsRc] : argsRc);
+      return '';
+    }
+
     Process results = await shell.start('start', argsRc,
         mode: ProcessStartMode.normal, runInShell: true);
     return results.stdout.toString();
@@ -256,11 +440,22 @@ class WSLApi {
     if (path != '') {
       args.add(path);
     }
+
+    if (Platform.isLinux) {
+      await _startLinuxTerminal(_useRemoteWsl ? ['ssh', ...args] : args);
+      return;
+    }
+
     shell.start('start', args, mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Write wslconfig file
   void writeConfig(String text) async {
+    if (_useRemoteWsl) {
+      await _writeRemoteWslConfigText('[wsl2]\n\n$text');
+      return;
+    }
+
     File file = File(getWslConfigPath());
     if (!file.existsSync()) {
       file.createSync();
@@ -270,6 +465,29 @@ class WSLApi {
 
   /// Set wslconfig setting
   void setConfig(String parent, String key, String value) async {
+    if (_useRemoteWsl) {
+      String text = await _readRemoteWslConfigText();
+
+      // Check if parent exists
+      if (text.contains('[$parent]')) {
+        // Check if key exists with regeex
+        RegExp regex = RegExp('$key[ ]*=');
+        if (regex.hasMatch(text)) {
+          // Replace key value
+          text = text.replaceAll(RegExp('$key[ ]*=(.*)'), '$key = $value');
+        } else {
+          // Add key value
+          text = text.replaceAll('[$parent]', '[$parent]\n$key = $value');
+        }
+      } else {
+        // Add parent and key value
+        text += '\n[$parent]\n$key = $value';
+      }
+
+      await _writeRemoteWslConfigText(text);
+      return;
+    }
+
     File file = File(getWslConfigPath());
     if (!file.existsSync()) {
       file.createSync();
@@ -298,6 +516,24 @@ class WSLApi {
 
   /// Read wslconfig file
   Future<Map<String, String>> readConfig() async {
+    if (_useRemoteWsl) {
+      Map<String, String> config = {};
+      String key = '', value = '';
+      String text = await _readRemoteWslConfigText();
+      List<String> lines = text.split('\n');
+
+      for (var line in lines) {
+        if (line.isNotEmpty && line.contains('=')) {
+          key = line.substring(0, line.indexOf('='));
+          key = key.replaceAll(' ', '');
+          value = line.substring(line.indexOf('=') + 1, line.length);
+          value = value.replaceAll(' ', '');
+          config[key] = value;
+        }
+      }
+      return config;
+    }
+
     File file = File(getWslConfigPath());
     if (!file.existsSync()) {
       file.createSync();
@@ -321,16 +557,121 @@ class WSLApi {
 
   /// Open wslconfig file
   void editConfig() async {
+    if (_useRemoteWsl) {
+      Notify.message(
+          'Remote .wslconfig editing is not supported via local editor. Change values in Settings and Save.');
+      return;
+    }
+
     String editor = prefs.getString('Editor') ?? 'notepad.exe';
     shell.start('start', ['""', editor, getWslConfigPath()],
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
+  Future<bool> _startLinuxTerminal(List<String> command) async {
+    final launchAttempts = <List<String>>[
+      ['xdg-terminal-exec', ...command],
+      ['kgx', ...command],
+      ['kitty', ...command],
+      ['alacritty', '-e', ...command],
+      ['wezterm', 'start', '--', ...command],
+      ['x-terminal-emulator', '-e', ...command],
+      ['gnome-terminal', '--', ...command],
+      ['konsole', '-e', ...command],
+      ['xfce4-terminal', '-x', ...command],
+      ['xterm', '-e', ...command],
+    ];
+
+    for (final attempt in launchAttempts) {
+      try {
+        await shell.start(
+          attempt.first,
+          attempt.sublist(1),
+          mode: ProcessStartMode.detached,
+        );
+        return true;
+      } catch (_) {
+        continue;
+      }
+    }
+
+    await _showMissingTerminalDialog();
+    return false;
+  }
+
+  Future<void> _showMissingTerminalDialog() async {
+    final rootContext = GlobalVariable.infobox.currentContext;
+    if (rootContext == null) {
+      Notify.message(
+          'No supported terminal emulator found. Install one (for example: xterm, gnome-terminal, or kitty).');
+      return;
+    }
+
+    await showDialog(
+      useRootNavigator: false,
+      context: rootContext,
+      builder: (context) {
+        return ContentDialog(
+          title: const Text('Terminal Not Found'),
+          content: const Text(
+            'No supported terminal emulator was found.\n\n'
+            'Install one of these and try again:\n'
+            '- xterm\n'
+            '- gnome-terminal\n'
+            '- kitty\n\n'
+            'Example install command:\n'
+            'sudo apt update && sudo apt install -y xterm',
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _windowsPathToSftpUriPath(String windowsPath) {
+    final normalized = windowsPath.replaceAll('\\', '/');
+    if (normalized.length > 2 && normalized[1] == ':') {
+      return '/${normalized[0]}:${normalized.substring(2)}';
+    }
+    return '/$normalized';
+  }
+
   /// Start Explorer
   void startExplorer(String distribution) async {
-    await shell.start(
-        'start', ['explorer.exe', getInstancePath(distribution).path],
-        mode: ProcessStartMode.normal, runInShell: true);
+    if (_useRemoteWsl) {
+      if (Platform.isLinux) {
+        final remotePath = _windowsPathToSftpUriPath(
+          _remoteDefaultInstallPath(distribution),
+        );
+        final uri = 'sftp://$_remoteTarget$remotePath';
+        await shell.start('xdg-open', [uri],
+            mode: ProcessStartMode.detached, runInShell: false);
+        return;
+      }
+
+      await shell.run(
+        'ssh',
+        _buildRemoteArgs(
+            'explorer.exe', [_remoteDefaultInstallPath(distribution)]),
+        runInShell: false,
+      );
+      return;
+    }
+
+    final path = getInstancePath(distribution).path;
+    if (Platform.isWindows) {
+      await shell.start('start', ['explorer.exe', path],
+          mode: ProcessStartMode.normal, runInShell: true);
+      return;
+    }
+
+    await shell.start('xdg-open', [path],
+        mode: ProcessStartMode.detached, runInShell: false);
   }
 
   /// Start Windows Terminal or PowerShell
@@ -338,6 +679,12 @@ class WSLApi {
     List<String> launchWslHome = _useRemoteWsl
         ? _buildRemoteArgs('wsl', ['-d', distribution, '--cd', '~'])
         : ['wsl', '-d', distribution, '--cd', '~'];
+
+    if (_useRemoteWsl && Platform.isLinux) {
+      await _startLinuxTerminal(['ssh', ...launchWslHome]);
+      return;
+    }
+
     try {
       // Run windows terminal in same window wt -w 0 nt
       var args = ['wt', '-w', '0', 'nt'];
@@ -355,23 +702,66 @@ class WSLApi {
 
   /// Copy a WSL distro by name
   Future<String> copy(String distribution, String newName) async {
-    String exportPath =
-        getInstancePath(distribution).file('$distribution.ext4');
+    String exportPath;
+    if (_useRemoteWsl) {
+      exportPath = _remoteStagingPath(distribution, '$distribution.ext4');
+      await _ensureRemoteDirectory(_remoteParentPath(exportPath));
+    } else {
+      exportPath = getInstancePath(distribution).file('$distribution.ext4');
+    }
+
     // Copy
     String exportRes = await export(distribution, exportPath);
-    String importRes =
-        await import(newName, getInstancePath(newName).path, exportPath);
+    String importRes = await import(
+      newName,
+      _useRemoteWsl ? '' : getInstancePath(newName).path,
+      exportPath,
+    );
 
     // Cleanup, delete file
-    File file = File(exportPath);
-    if (file.existsSync()) {
-      file.deleteSync();
+    if (_useRemoteWsl) {
+      await shell.run(
+        'ssh',
+        _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
+        runInShell: false,
+      );
+    } else {
+      File file = File(exportPath);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
     }
     return '$exportRes $importRes';
   }
 
   /// Copy a WSL distro by name and vhd
   Future<String> copyVhd(String name, String newName) async {
+    if (_useRemoteWsl) {
+      String vhdPath = '${_remoteDefaultInstallPath(name)}\\ext4.vhdx';
+      String copyPath = _remoteStagingPath(name, 'ext4.copy.vhdx');
+
+      await _ensureRemoteDirectory(_remoteParentPath(copyPath));
+      ProcessResult copyResult = await shell.run(
+        'ssh',
+        _buildRemoteArgs('cmd',
+            ['/c', 'copy', '/Y', '"$vhdPath"', '"$copyPath"']),
+        runInShell: false,
+      );
+
+      if (copyResult.exitCode != 0) {
+        return 'File not found';
+      }
+
+      String importRes = await import(newName, '', copyPath, isVhd: true);
+
+      await shell.run(
+        'ssh',
+        _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$copyPath"']),
+        runInShell: false,
+      );
+      return importRes;
+    }
+
     String vhdPath = getInstancePath(name).file('ext4.vhdx');
     String copyPath = getInstancePath(name).file('ext4.copy.vhdx');
     // Copy path to new location so instance doesn't have to be stopped
@@ -587,9 +977,14 @@ class WSLApi {
         cmd.split(' ').forEach((String arg) {
           args.add(arg);
         });
-        Process result = await shell.start('start', args,
-            mode: ProcessStartMode.normal, runInShell: true);
-        exitCode = await result.exitCode;
+        if (_useRemoteWsl && Platform.isLinux) {
+          await _startLinuxTerminal(['ssh', ...args]);
+          exitCode = 0;
+        } else {
+          Process result = await shell.start('start', args,
+              mode: ProcessStartMode.normal, runInShell: true);
+          exitCode = await result.exitCode;
+        }
         processes.add(exitCode);
       } else {
         args = ['-d', distribution];
@@ -615,10 +1010,24 @@ class WSLApi {
   Future<String> import(
       String distribution, String installLocation, String filename,
       {bool isVhd = false}) async {
-    if (installLocation == '') {
-      installLocation = getInstancePath(distribution).path;
+    if (_useRemoteWsl) {
+      if (installLocation.trim().isEmpty) {
+        installLocation = _remoteDefaultInstallPath(distribution);
+      }
+      await _ensureRemoteDirectory(_remoteParentPath(installLocation));
+      await _ensureRemoteDirectory(installLocation);
+      if (File(filename).existsSync()) {
+        filename = await _stageLocalFileToRemote(
+          filename,
+          _remoteStagingPath(distribution, filename),
+        );
+      }
     } else {
-      installLocation = SafePath(installLocation).path;
+      if (installLocation == '') {
+        installLocation = getInstancePath(distribution).path;
+      } else {
+        installLocation = SafePath(installLocation).path;
+      }
     }
     ProcessResult results;
     if (isVhd) {
@@ -645,10 +1054,18 @@ class WSLApi {
   Future<dynamic> create(String distribution, String filename,
       String installPath, Function(String) status,
       {bool image = false, bool isVhd = false}) async {
-    if (installPath == '') {
-      installPath = getInstancePath(distribution).path;
+    if (_useRemoteWsl) {
+      if (installPath.trim().isEmpty) {
+        installPath = _remoteDefaultInstallPath(distribution);
+      }
+      await _ensureRemoteDirectory(_remoteParentPath(installPath));
+      await _ensureRemoteDirectory(installPath);
     } else {
-      installPath = SafePath(installPath).path;
+      if (installPath == '') {
+        installPath = getInstancePath(distribution).path;
+      } else {
+        installPath = SafePath(installPath).path;
+      }
     }
 
     // Download
@@ -685,6 +1102,13 @@ class WSLApi {
       downloadPath = filename;
     }
 
+    if (_useRemoteWsl) {
+      downloadPath = await _stageLocalFileToRemote(
+        downloadPath,
+        _remoteStagingPath(distribution, downloadPath),
+      );
+    }
+
     // Create from local file
     List<String> args = ['--import', distribution, installPath, downloadPath];
     if (isVhd) {
@@ -700,9 +1124,59 @@ class WSLApi {
 
   /// Returns list of WSL distros
   Future<Instances> list(bool showDocker) async {
-    ProcessResult results =
-        await _runWsl(['--list', '--quiet'], stdoutEncoding: null);
+    ProcessResult results;
+    try {
+      results = await _runWsl(['--list', '--quiet'], stdoutEncoding: null)
+          .timeout(_useRemoteWsl ? _remoteListTimeout : const Duration(days: 1));
+    } on TimeoutException {
+      if (_useRemoteWsl) {
+        throw Exception(
+            'Remote WSL host unreachable: timed out while connecting to $remoteTargetLabel.');
+      }
+      throw Exception('WSL list timed out.');
+    } on ProcessException catch (e) {
+      if (_useRemoteWsl) {
+        throw Exception(
+            'Remote WSL SSH connection failed for $remoteTargetLabel: ${e.message}');
+      }
+      rethrow;
+    }
+
     String output = utf8Convert(results.stdout);
+    String stderr = utf8Convert(results.stderr is List<int>
+      ? results.stderr as List<int>
+      : utf8.encode(results.stderr?.toString() ?? ''));
+
+    if (results.exitCode != 0) {
+      final combined = [stderr.trim(), output.trim()]
+        .where((part) => part.isNotEmpty)
+        .join('\n');
+
+      final lowerCombined = combined.toLowerCase();
+      final hasAskpassIssue = lowerCombined.contains('ssh_askpass') ||
+        lowerCombined.contains('askpass') ||
+        lowerCombined.contains('libcrypto');
+      if (hasAskpassIssue && _useRemoteWsl) {
+      throw Exception(
+        'Remote SSH authentication is not available in non-interactive mode for $remoteTargetLabel. Configure key-based SSH authentication (or an ssh-agent) and retry.\n$combined');
+      }
+
+      // Keep existing UX for genuinely empty setups while surfacing real failures.
+      final likelyNoDistro =
+        lowerCombined.contains('no installed distributions') ||
+          lowerCombined.contains('distributions can be installed') ||
+          lowerCombined.contains('keine installierten distributionen') ||
+          lowerCombined.contains(
+            'distribution kann mit folgenden befehlen installiert werden');
+      if (likelyNoDistro) {
+      lastDistroList = Instances([], []);
+      return lastDistroList;
+      }
+
+      throw Exception(combined.isEmpty
+        ? 'Failed to list WSL distros (exit code ${results.exitCode}).'
+        : combined);
+    }
     List<String> list = [];
     bool wslInstalled = true;
     // Check if wsl is installed
@@ -714,16 +1188,22 @@ class WSLApi {
         return lastDistroList;
       }
       output.split('\n').forEach((line) {
+        final cleanLine = _sanitizeDistroName(line);
         var dockerfilter = showDocker
             ? true
-            : (!line.startsWith('docker-desktop-data') &&
-                !line.startsWith('docker-desktop'));
+            : (!cleanLine.startsWith('docker-desktop-data') &&
+                !cleanLine.startsWith('docker-desktop'));
         // Filter out docker data
-        if (line != '' && dockerfilter) {
-          list.add(line);
+        if (cleanLine.isNotEmpty && dockerfilter) {
+          list.add(cleanLine);
         }
       });
-      List<String> running = await listRunning();
+      List<String> running;
+      try {
+        running = await listRunning();
+      } catch (_) {
+        running = lastDistroList.running;
+      }
       lastDistroList = Instances(list, running);
       return Instances(list, running);
     } else {
@@ -734,6 +1214,38 @@ class WSLApi {
   /// Clean up WSL distros. Compacting the VHDX file.
   Future<String> cleanup(String distribution,
       {Function(String)? onProgress}) async {
+    if (_useRemoteWsl) {
+      final remoteInstallPath = _remoteInstallPathFor(distribution);
+      final exportPath = _remoteStagingPath(distribution, 'cleanup.ext4');
+      await _ensureRemoteDirectory(_remoteParentPath(exportPath));
+
+      try {
+        onProgress?.call('stopping-distro'.i18n());
+        await stop(distribution);
+
+        onProgress?.call('exportinginstance-text'.i18n([distribution]));
+        await export(distribution, exportPath);
+
+        onProgress?.call('deletinginstance-text'.i18n([distribution]));
+        await remove(distribution);
+
+        onProgress?.call('importinginstance-text'.i18n([distribution]));
+        await import(distribution, remoteInstallPath, exportPath);
+
+        await shell.run(
+          'ssh',
+          _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
+          runInShell: false,
+        );
+
+        prefs.setString('Path_$distribution', remoteInstallPath);
+        return 'Cleanup completed successfully';
+      } catch (error, stack) {
+        logError(error, stack, null);
+        throw Exception('Cleanup failed: ${error.toString()}');
+      }
+    }
+
     var instancePath = getInstancePath(distribution);
     var vhdxPath = instancePath.file('ext4.vhdx');
 
@@ -797,17 +1309,56 @@ class WSLApi {
 
   /// Returns list of WSL distros
   Future<List<String>> listRunning() async {
-    ProcessResult results =
-        await _runWsl(['--list', '--running', '--quiet'], stdoutEncoding: null);
+    ProcessResult results;
+    try {
+      results =
+          await _runWsl(['--list', '--running', '--quiet'], stdoutEncoding: null)
+              .timeout(_useRemoteWsl
+                  ? _remoteListTimeout
+                  : const Duration(days: 1));
+    } on TimeoutException {
+      if (_useRemoteWsl) {
+        return lastDistroList.running;
+      }
+      rethrow;
+    } on ProcessException {
+      if (_useRemoteWsl) {
+        return lastDistroList.running;
+      }
+      rethrow;
+    }
+
     String output = utf8Convert(results.stdout);
+    String stderr = utf8Convert(results.stderr is List<int>
+      ? results.stderr as List<int>
+      : utf8.encode(results.stderr?.toString() ?? ''));
+
+    if (results.exitCode != 0) {
+      final combined = [stderr.trim(), output.trim()]
+        .where((part) => part.isNotEmpty)
+        .join('\n');
+      throw Exception(combined.isEmpty
+        ? 'Failed to list running WSL distros (exit code ${results.exitCode}).'
+        : combined);
+    }
+
     List<String> list = [];
     output.split('\n').forEach((line) {
+      final cleanLine = _sanitizeDistroName(line);
       // Filter out docker data
-      if (line != '') {
-        list.add(line);
+      if (cleanLine.isNotEmpty) {
+        list.add(cleanLine);
       }
     });
     return list;
+  }
+
+  String _sanitizeDistroName(String value) {
+    return value
+        .replaceAll('\u0000', '')
+        .replaceAll('\r', '')
+        .replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '')
+        .trim();
   }
 
   /// Returns list of downloadable WSL distros
@@ -847,6 +1398,33 @@ class WSLApi {
   /// Move WSL distro to another location by [distro] and [newPath].
   /// Returns [ProcessResult] of the command.
   Future<String> move(String distro, String newPath) async {
+    if (_useRemoteWsl) {
+      String exportFilePath = _remoteStagingPath(distro, 'export.ext4');
+      await _ensureRemoteDirectory(_remoteParentPath(exportFilePath));
+
+      await export(distro, exportFilePath);
+      await remove(distro);
+
+      try {
+        var res = await import(distro, newPath, exportFilePath);
+        await shell.run(
+          'ssh',
+          _buildRemoteArgs(
+              'cmd', ['/c', 'del', '/q', '"$exportFilePath"']),
+          runInShell: false,
+        );
+
+        final remotePath = newPath.trim().isEmpty
+            ? _remoteDefaultInstallPath(distro)
+            : newPath;
+        prefs.setString('Path_$distro', remotePath);
+        return res;
+      } catch (e) {
+        throw Exception(
+            "Import failed: $e. Your data is safe in: $exportFilePath. Please do not delete this file.");
+      }
+    }
+
     SafePath path = SafePath(newPath);
     String exportFilePath = path.file('export.ext4');
 

@@ -77,11 +77,24 @@ class _ListItemState extends State<ListItem> {
             mainAxisSize: MainAxisSize.max,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              isRunning(widget.item, widget.running)
-                  ? (Text(
-                      '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
-                  : Text(distroLabel(widget.item)),
-              Text(widget.trailing),
+              Expanded(
+                child: Text(
+                  isRunning(widget.item, widget.running)
+                      ? '${distroLabel(widget.item)} (${'running-text'.i18n()})'
+                      : distroLabel(widget.item),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.trailing,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                ),
+              ),
             ],
           ),
           content: Bar(

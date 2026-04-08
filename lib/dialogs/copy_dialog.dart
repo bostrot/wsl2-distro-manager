@@ -24,6 +24,7 @@ copyDialog(item) {
           // Only allow A-Z, a-z, 0-9, and _ in distro names
           inputText = inputText.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
           String results;
+          final useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
 
           // Check if old distro has path
           String? oldDistroPath = prefs.getString('Path_$item');
@@ -49,7 +50,11 @@ copyDialog(item) {
           prefs.setString('StartPath_$inputText', startPath);
           prefs.setString('StartUser_$inputText', startName);
           // Save distro path
-          prefs.setString('Path_$inputText', getInstancePath(inputText).path);
+            prefs.setString(
+              'Path_$inputText',
+              useRemoteWsl
+                ? api.remoteInstallPath(inputText)
+                : getInstancePath(inputText).path);
           Notify.message(
               'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
               loading: false);

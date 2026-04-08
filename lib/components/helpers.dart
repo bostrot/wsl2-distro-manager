@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_registry.dart';
-import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 
 late String language;
@@ -43,6 +42,22 @@ String distroLabel(String item) {
 /// Replace special characters in [name] with underscores.
 String replaceSpecialChars(String name) {
   return name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+}
+
+/// Return the default storage root for distro/data paths.
+String getDefaultStorageRootPath() {
+  final home = Platform.environment['HOME'] ?? Directory.current.path;
+  if (Platform.isWindows) {
+    return Platform.environment['APPDATA'] ??
+        '${Platform.environment['USERPROFILE'] ?? Directory.current.path}\\AppData\\Roaming';
+  }
+  if (Platform.isLinux) {
+    return Platform.environment['XDG_DATA_HOME'] ?? '$home/.local/share';
+  }
+  if (Platform.isMacOS) {
+    return '$home/Library/Application Support';
+  }
+  return Directory.current.path;
 }
 
 /// Utility: Validate JSON content. Returns the decoded JSON on success,
@@ -251,7 +266,7 @@ class GlobalVariable {
 ///
 /// e.g. C:\WSL2-Distros\distros
 SafePath getDistroPath() {
-  String path = prefs.getString('DistroPath') ?? defaultPath;
+  String path = prefs.getString('DistroPath') ?? getDefaultStorageRootPath();
   return SafePath(path)..cd('distros');
 }
 
@@ -329,6 +344,6 @@ SafePath getDataPath() {
     return SafePath(path);
   }
   // Fallback to DistroPath logic (Root Path)
-  String distroPath = prefs.getString('DistroPath') ?? defaultPath;
+  String distroPath = prefs.getString('DistroPath') ?? getDefaultStorageRootPath();
   return SafePath(distroPath);
 }
