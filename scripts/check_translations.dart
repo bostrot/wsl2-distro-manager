@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 Future<void> main(List<String> arguments) async {
-  final scriptDirectory = File.fromUri(Platform.script).parent;
-  final baseDir = scriptDirectory.parent;
+  final baseDir = _findRepoRoot(Directory.current);
   final i18nDir = Directory('${baseDir.path}/lib/i18n');
   final englishFile = File('${i18nDir.path}/en.json');
 
@@ -45,6 +44,26 @@ Future<void> main(List<String> arguments) async {
         'Translation check failed. Every locale must contain all English keys.');
     exitCode = 1;
   }
+}
+
+Directory _findRepoRoot(Directory startDirectory) {
+  Directory currentDirectory = startDirectory;
+  while (true) {
+    final candidate = File('${currentDirectory.path}/lib/i18n/en.json');
+    if (candidate.existsSync()) {
+      return currentDirectory;
+    }
+
+    final parentDirectory = currentDirectory.parent;
+    if (parentDirectory.path == currentDirectory.path) {
+      break;
+    }
+    currentDirectory = parentDirectory;
+  }
+
+  throw StateError(
+    'Could not find repo root containing lib/i18n/en.json starting from ${startDirectory.path}.',
+  );
 }
 
 Set<String> _loadKeys(String jsonText) {
