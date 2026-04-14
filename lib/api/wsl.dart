@@ -1215,30 +1215,59 @@ class WSLApi {
   Future<String> cleanup(String distribution,
       {Function(String)? onProgress}) async {
     if (_useRemoteWsl) {
-      final remoteInstallPath = _remoteInstallPathFor(distribution);
-      final exportPath = _remoteStagingPath(distribution, 'cleanup.ext4');
-      await _ensureRemoteDirectory(_remoteParentPath(exportPath));
-
       try {
         onProgress?.call('stopping-distro'.i18n());
         await stop(distribution);
 
-        onProgress?.call('exportinginstance-text'.i18n([distribution]));
-        await export(distribution, exportPath);
+        onProgress?.call('compacting-vdisk'.i18n());
+        final remoteInstallPath = _remoteInstallPathFor(distribution);
+        final vhdxPath = '$remoteInstallPath\\ext4.vhdx';
+        final escapedVhdxPath = _escapePowerShellSingleQuoted(vhdxPath);
+        final scriptName =
+            'wsl2dm_diskpart_${_remoteSafeComponent(distribution)}.txt';
+        final escapedScriptName = _escapePowerShellSingleQuoted(scriptName);
+        final script = """
+\$ErrorActionPreference = 'Stop'
+\$vhdxPath = '$escapedVhdxPath'
+if (-not (Test-Path -LiteralPath \$vhdxPath)) {
+  throw "VHDX file not found: \$vhdxPath"
+}
+\$scriptPath = Join-Path \$env:TEMP '$escapedScriptName'
+\$diskpartScript = @"
+select vdisk file=\"\$vhdxPath\"
+attach vdisk readonly
+compact vdisk
+detach vdisk
+"@
+[IO.File]::WriteAllText(\$scriptPath, \$diskpartScript, [Text.Encoding]::ASCII)
+try {
+  & diskpart /s \"\$scriptPath\"
+  if (\$LASTEXITCODE -ne 0) {
+    throw "Diskpart failed with exit code \$LASTEXITCODE"
+  }
+} finally {
+  if (Test-Path -LiteralPath \$scriptPath) {
+    Remove-Item -LiteralPath \$scriptPath -Force -ErrorAction SilentlyContinue
+  }
+}
+""";
 
-        onProgress?.call('deletinginstance-text'.i18n([distribution]));
-        await remove(distribution);
-
-        onProgress?.call('importinginstance-text'.i18n([distribution]));
-        await import(distribution, remoteInstallPath, exportPath);
-
-        await shell.run(
+        final compactResult = await shell.run(
           'ssh',
-          _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
+          _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
           runInShell: false,
+          stdoutEncoding: utf8,
+          stderrEncoding: utf8,
         );
 
-        prefs.setString('Path_$distribution', remoteInstallPath);
+        if (compactResult.exitCode != 0) {
+          throw Exception(compactResult.stderr?.toString().trim().isNotEmpty ==
+                  true
+              ? compactResult.stderr.toString()
+              : compactResult.stdout?.toString() ??
+                  'Remote diskpart compaction failed');
+        }
+
         return 'Cleanup completed successfully';
       } catch (error, stack) {
         logError(error, stack, null);
