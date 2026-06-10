@@ -53,6 +53,8 @@ class MockHttpClientAdapter implements HttpClientAdapter {
 
 class MockShell implements Shell {
   final List<String> distros = [];
+  final List<String> runningDistros = [];
+  int runningListCalls = 0;
   List<String> lastStartArguments = [];
   String lastStartExecutable = '';
   String? execCmdAsRootResponse;
@@ -63,6 +65,8 @@ class MockShell implements Shell {
   String importFailureStdout = '';
   bool simulateSmallExport = false;
   bool simulateRemoveFailure = false;
+  bool simulateTerminateFailure = false;
+  bool keepRunningAfterTerminate = false;
   bool simulateCodeMissing = false;
   bool simulateCodiumMissing = false;
 
@@ -92,7 +96,22 @@ class MockShell implements Shell {
     }
 
     if (arguments.contains('--list')) {
-      stdout = distros.join('\n');
+      if (arguments.contains('--running')) {
+        runningListCalls++;
+        stdout = runningDistros.join('\n');
+      } else {
+        stdout = distros.join('\n');
+      }
+    }
+
+    if (arguments.contains('--terminate')) {
+      if (!keepRunningAfterTerminate) {
+        runningDistros.remove(arguments[1]);
+      }
+      if (simulateTerminateFailure) {
+        stderr = 'Terminate failed';
+        exitCode = -1;
+      }
     }
 
     if (arguments.contains('--unregister')) {

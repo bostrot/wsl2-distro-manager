@@ -211,6 +211,56 @@ void main() {
     expect(await isInstance('testcopy2'), false);
   });
 
+  test('Stop waits until distro is no longer running', () async {
+    mockShell.distros.add('test');
+    mockShell.runningDistros.add('test');
+
+    await wslApi.stop(
+      'test',
+      timeout: const Duration(seconds: 1),
+      pollInterval: Duration.zero,
+    );
+
+    expect(mockShell.runningDistros, isNot(contains('test')));
+    expect(mockShell.runningListCalls, greaterThan(0));
+  });
+
+  test('Stop succeeds if terminate returns non-zero after distro stops',
+      () async {
+    mockShell.distros.add('test');
+    mockShell.runningDistros.add('test');
+    mockShell.simulateTerminateFailure = true;
+
+    await wslApi.stop(
+      'test',
+      timeout: const Duration(seconds: 1),
+      pollInterval: Duration.zero,
+    );
+
+    expect(mockShell.runningDistros, isNot(contains('test')));
+  });
+
+  test('Stop asks to close terminal sessions if distro keeps running',
+      () async {
+    mockShell.distros.add('test');
+    mockShell.runningDistros.add('test');
+    mockShell.simulateTerminateFailure = true;
+    mockShell.keepRunningAfterTerminate = true;
+
+    expect(
+      () => wslApi.stop(
+        'test',
+        timeout: const Duration(milliseconds: 1),
+        pollInterval: Duration.zero,
+      ),
+      throwsA(predicate(
+        (error) => error
+            .toString()
+            .contains('Close any open terminal sessions for this distro'),
+      )),
+    );
+  });
+
   test('Cleanup test', () async {
     // Create a new instance
     mockShell.distros.add('test');
