@@ -96,20 +96,21 @@ void main() async {
 }
 
 class WSLManager extends StatelessWidget {
-  final ExecutionBroker executionBroker;
+  final ExecutionBroker? executionBroker;
 
-  const WSLManager({Key? key, required this.executionBroker}) : super(key: key);
+  const WSLManager({Key? key, this.executionBroker}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     LocalJsonLocalization.delegate.directories = ['lib/i18n'];
+    final broker = executionBroker ?? ExecutionBroker(shell: ProcessShell());
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
           create: (_) => AppTheme(),
         ),
         Provider<ExecutionBroker>.value(
-          value: executionBroker,
+          value: broker,
         ),
       ],
       builder: (context, _) {

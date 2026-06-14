@@ -80,6 +80,7 @@ class ExecutionBroker {
         request.arguments,
         workingDirectory: request.workingDirectory,
         environment: request.environment,
+        runInShell: request.runInShell,
       );
 
       stopwatch.stop();
@@ -156,6 +157,7 @@ class ExecutionBroker {
           request.arguments,
           workingDirectory: request.workingDirectory,
           environment: request.environment,
+          runInShell: request.runInShell,
         );
 
         if (request.captureOutput) {

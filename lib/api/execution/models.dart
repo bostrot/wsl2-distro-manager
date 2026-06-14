@@ -85,6 +85,9 @@ class ExecutionRequest {
   /// Whether to run on the remote WSL host instead of locally.
   final bool useRemote;
 
+  /// Whether to run inside a shell (cmd.exe /c or bash -c).
+  final bool runInShell;
+
   const ExecutionRequest({
     required this.command,
     this.arguments = const [],
@@ -95,6 +98,7 @@ class ExecutionRequest {
     this.allowedCommands,
     this.readOnly = false,
     this.useRemote = false,
+    this.runInShell = false,
   });
 
   /// Returns a human-readable description for audit logs.

@@ -12,13 +12,24 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
-// TODO: Migrate shell.run() calls to use ExecutionBroker for policy enforcement + audit.
-// Example: _broker?.run(ExecutionRequest(command: ..., arguments: ...)) ?? shell.run(...)
+import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+
+/// Adapter for unified access to [ExecutionResult] and [ProcessResult].
+class _ShellResult {
+  final int exitCode;
+  final String stdout;
+  final String stderr;
+  const _ShellResult(this.exitCode, this.stdout, this.stderr);
+  factory _ShellResult.fromExecution(ExecutionResult r) =>
+      _ShellResult(r.exitCode, r.stdout, r.stderr);
+  factory _ShellResult.fromProcess(ProcessResult r) =>
+      _ShellResult(r.exitCode, (r.stdout as String?).toString(), (r.stderr as String?).toString());
+}
 
 /// Used to store the instances of WSL in a list.
 class Instances {
@@ -117,19 +128,24 @@ class WSLApi {
   Future<String> _readRemoteWslConfigText() async {
     final script =
         r"$p = Join-Path $env:USERPROFILE '.wslconfig'; if (Test-Path -LiteralPath $p) { Get-Content -LiteralPath $p -Raw }";
-    final result = await shell.run(
-      'ssh',
-      _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
-      runInShell: false,
-      stdoutEncoding: utf8,
-      stderrEncoding: utf8,
-    );
+    final result = (_broker != null)
+        ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
+            command: 'ssh',
+            arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+          )))
+        : _ShellResult.fromProcess(await shell.run(
+            'ssh',
+            _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            runInShell: false,
+            stdoutEncoding: utf8,
+            stderrEncoding: utf8,
+          ));
 
     if (result.exitCode != 0) {
       return '';
     }
 
-    return result.stdout?.toString() ?? '';
+    return result.stdout;
   }
 
   Future<void> _writeRemoteWslConfigText(String content) async {
@@ -137,13 +153,18 @@ class WSLApi {
     final script =
         "\$p = Join-Path \$env:USERPROFILE '.wslconfig'; [IO.File]::WriteAllText(\$p, '$escapedContent', [Text.UTF8Encoding]::new(\$false))";
 
-    final result = await shell.run(
-      'ssh',
-      _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
-      runInShell: false,
-      stdoutEncoding: utf8,
-      stderrEncoding: utf8,
-    );
+    final result = (_broker != null)
+        ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
+            command: 'ssh',
+            arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+          )))
+        : _ShellResult.fromProcess(await shell.run(
+            'ssh',
+            _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            runInShell: false,
+            stdoutEncoding: utf8,
+            stderrEncoding: utf8,
+          ));
 
     if (result.exitCode != 0) {
       throw Exception(
@@ -152,37 +173,63 @@ class WSLApi {
   }
 
   Future<void> _ensureRemoteDirectory(String path) async {
-    await shell.run(
-      'ssh',
-      _buildRemoteArgs('cmd', [
-        '/c',
-        'if',
-        'not',
-        'exist',
-        '"$path"',
-        'mkdir',
-        '"$path"',
-      ]),
-      runInShell: false,
-      stdoutEncoding: systemEncoding,
-      stderrEncoding: systemEncoding,
-    );
+    if (_broker != null) {
+      await _broker!.run(ExecutionRequest(
+        command: 'ssh',
+        arguments: _buildRemoteArgs('cmd', [
+          '/c',
+          'if',
+          'not',
+          'exist',
+          '"$path"',
+          'mkdir',
+          '"$path"',
+        ]),
+      ));
+    } else {
+      await shell.run(
+        'ssh',
+        _buildRemoteArgs('cmd', [
+          '/c',
+          'if',
+          'not',
+          'exist',
+          '"$path"',
+          'mkdir',
+          '"$path"',
+        ]),
+        runInShell: false,
+        stdoutEncoding: systemEncoding,
+        stderrEncoding: systemEncoding,
+      );
+    }
   }
 
   Future<String> _stageLocalFileToRemote(String localPath, String remotePath) async {
     await _ensureRemoteDirectory(_remoteParentPath(remotePath));
 
-    await shell.run(
-      'scp',
-      [
-        ..._sshClientOptions,
-        localPath,
-        '$_remoteTarget:$remotePath',
-      ],
-      runInShell: false,
-      stdoutEncoding: systemEncoding,
-      stderrEncoding: systemEncoding,
-    );
+    if (_broker != null) {
+      await _broker!.run(ExecutionRequest(
+        command: 'scp',
+        arguments: [
+          ..._sshClientOptions,
+          localPath,
+          '$_remoteTarget:$remotePath',
+        ],
+      ));
+    } else {
+      await shell.run(
+        'scp',
+        [
+          ..._sshClientOptions,
+          localPath,
+          '$_remoteTarget:$remotePath',
+        ],
+        runInShell: false,
+        stdoutEncoding: systemEncoding,
+        stderrEncoding: systemEncoding,
+      );
+    }
 
     return remotePath;
   }
@@ -261,19 +308,24 @@ class WSLApi {
       final script =
           "if (Test-Path -LiteralPath '$escapedPath') { (Get-Item -LiteralPath '$escapedPath').Length }";
 
-      final result = await shell.run(
-        'ssh',
-        _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
-        runInShell: false,
-        stdoutEncoding: utf8,
-        stderrEncoding: utf8,
-      );
+      final result = (_broker != null)
+          ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
+              command: 'ssh',
+              arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            )))
+          : _ShellResult.fromProcess(await shell.run(
+              'ssh',
+              _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+              runInShell: false,
+              stdoutEncoding: utf8,
+              stderrEncoding: utf8,
+            ));
 
       if (result.exitCode != 0) {
         return null;
       }
 
-      final raw = (result.stdout?.toString() ?? '').trim();
+      final raw = result.stdout.trim();
       final byteSize = int.tryParse(raw);
       if (byteSize == null || byteSize <= 0) {
         return null;
@@ -637,12 +689,20 @@ class WSLApi {
         return;
       }
 
-      await shell.run(
-        'ssh',
-        _buildRemoteArgs(
-            'explorer.exe', [_remoteDefaultInstallPath(distribution)]),
-        runInShell: false,
-      );
+      if (_broker != null) {
+        await _broker!.run(ExecutionRequest(
+          command: 'ssh',
+          arguments: _buildRemoteArgs(
+              'explorer.exe', [_remoteDefaultInstallPath(distribution)]),
+        ));
+      } else {
+        await shell.run(
+          'ssh',
+          _buildRemoteArgs(
+              'explorer.exe', [_remoteDefaultInstallPath(distribution)]),
+          runInShell: false,
+        );
+      }
       return;
     }
 
@@ -668,19 +728,27 @@ class WSLApi {
       return;
     }
 
-    try {
-      // Run windows terminal in same window wt -w 0 nt
-      var args = ['wt', '-w', '0', 'nt'];
-      args.addAll(launchWslHome);
+      try {
+        // Run windows terminal in same window wt -w 0 nt
+        var args = ['wt', '-w', '0', 'nt'];
+        args.addAll(launchWslHome);
 
-      await shell.run('start', args);
-    } catch (_) {
-      // Windows Terminal not installed
-      Notify.message('openwithwt-not-found-error'.i18n());
+        if (_broker != null) {
+          await _broker!.run(ExecutionRequest(command: 'start', arguments: args));
+        } else {
+          await shell.run('start', args);
+        }
+      } catch (_) {
+        // Windows Terminal not installed
+        Notify.message('openwithwt-not-found-error'.i18n());
 
-      var args = ['powershell', '-noexit', '-command', launchWslHome.join(' ')];
-      await shell.run('start', args, runInShell: true);
-    }
+        var args = ['powershell', '-noexit', '-command', launchWslHome.join(' ')];
+        if (_broker != null) {
+          await _broker!.run(ExecutionRequest(command: 'start', arguments: args, runInShell: true));
+        } else {
+          await shell.run('start', args, runInShell: true);
+        }
+      }
   }
 
   /// Copy a WSL distro by name
@@ -703,11 +771,18 @@ class WSLApi {
 
     // Cleanup, delete file
     if (_useRemoteWsl) {
-      await shell.run(
-        'ssh',
-        _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
-        runInShell: false,
-      );
+      if (_broker != null) {
+        await _broker!.run(ExecutionRequest(
+          command: 'ssh',
+          arguments: _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
+        ));
+      } else {
+        await shell.run(
+          'ssh',
+          _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
+          runInShell: false,
+        );
+      }
     } else {
       File file = File(exportPath);
       if (file.existsSync()) {
@@ -724,12 +799,18 @@ class WSLApi {
       String copyPath = _remoteStagingPath(name, 'ext4.copy.vhdx');
 
       await _ensureRemoteDirectory(_remoteParentPath(copyPath));
-      ProcessResult copyResult = await shell.run(
-        'ssh',
-        _buildRemoteArgs('cmd',
-            ['/c', 'copy', '/Y', '"$vhdPath"', '"$copyPath"']),
-        runInShell: false,
-      );
+      final copyResult = (_broker != null)
+          ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
+              command: 'ssh',
+              arguments: _buildRemoteArgs('cmd',
+                  ['/c', 'copy', '/Y', '"$vhdPath"', '"$copyPath"']),
+            )))
+          : _ShellResult.fromProcess(await shell.run(
+              'ssh',
+              _buildRemoteArgs('cmd',
+                  ['/c', 'copy', '/Y', '"$vhdPath"', '"$copyPath"']),
+              runInShell: false,
+            ));
 
       if (copyResult.exitCode != 0) {
         return 'File not found';
@@ -737,11 +818,18 @@ class WSLApi {
 
       String importRes = await import(newName, '', copyPath, isVhd: true);
 
-      await shell.run(
-        'ssh',
-        _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$copyPath"']),
-        runInShell: false,
-      );
+      if (_broker != null) {
+        await _broker!.run(ExecutionRequest(
+          command: 'ssh',
+          arguments: _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$copyPath"']),
+        ));
+      } else {
+        await shell.run(
+          'ssh',
+          _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$copyPath"']),
+          runInShell: false,
+        );
+      }
       return importRes;
     }
 
@@ -1235,19 +1323,23 @@ try {
 }
 """;
 
-        final compactResult = await shell.run(
-          'ssh',
-          _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
-          runInShell: false,
-          stdoutEncoding: utf8,
-          stderrEncoding: utf8,
-        );
+        final compactResult = (_broker != null)
+            ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
+                command: 'ssh',
+                arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+              )))
+            : _ShellResult.fromProcess(await shell.run(
+                'ssh',
+                _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+                runInShell: false,
+                stdoutEncoding: utf8,
+                stderrEncoding: utf8,
+              ));
 
         if (compactResult.exitCode != 0) {
-          throw Exception(compactResult.stderr?.toString().trim().isNotEmpty ==
-                  true
-              ? compactResult.stderr.toString()
-              : compactResult.stdout?.toString() ??
+          throw Exception(compactResult.stderr.trim().isNotEmpty == true
+              ? compactResult.stderr
+              : compactResult.stdout ??
                   'Remote diskpart compaction failed');
         }
 
@@ -1295,10 +1387,18 @@ try {
       try {
         // Step 3: Run diskpart with admin privileges
         // We use PowerShell to elevate the process and capture its exit code
-        var result = await shell.run('powershell', [
-          '-Command',
-          '\$p = Start-Process diskpart -ArgumentList "/s \\"$scriptPath\\"" -Verb RunAs -Wait -PassThru; exit \$p.ExitCode'
-        ]);
+        var result = (_broker != null)
+            ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
+                command: 'powershell',
+                arguments: [
+                  '-Command',
+                  '\$p = Start-Process diskpart -ArgumentList "/s \\"$scriptPath\\"" -Verb RunAs -Wait -PassThru; exit \$p.ExitCode'
+                ],
+              )))
+            : _ShellResult.fromProcess(await shell.run('powershell', [
+                '-Command',
+                '\$p = Start-Process diskpart -ArgumentList "/s \\"$scriptPath\\"" -Verb RunAs -Wait -PassThru; exit \$p.ExitCode'
+              ]));
 
         if (result.exitCode != 0) {
           throw Exception(
@@ -1419,12 +1519,20 @@ try {
 
       try {
         var res = await import(distro, newPath, exportFilePath);
-        await shell.run(
-          'ssh',
-          _buildRemoteArgs(
-              'cmd', ['/c', 'del', '/q', '"$exportFilePath"']),
-          runInShell: false,
-        );
+        if (_broker != null) {
+          await _broker!.run(ExecutionRequest(
+            command: 'ssh',
+            arguments: _buildRemoteArgs(
+                'cmd', ['/c', 'del', '/q', '"$exportFilePath"']),
+          ));
+        } else {
+          await shell.run(
+            'ssh',
+            _buildRemoteArgs(
+                'cmd', ['/c', 'del', '/q', '"$exportFilePath"']),
+            runInShell: false,
+          );
+        }
 
         final remotePath = newPath.trim().isEmpty
             ? _remoteDefaultInstallPath(distro)
