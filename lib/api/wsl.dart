@@ -11,6 +11,9 @@ import 'package:path/path.dart' as p;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
+import 'package:wsl2distromanager/api/execution/broker.dart';
+// TODO: Migrate shell.run() calls to use ExecutionBroker for policy enforcement + audit.
+// Example: _broker?.run(ExecutionRequest(command: ..., arguments: ...)) ?? shell.run(...)
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -31,11 +34,14 @@ bool inited = false;
 /// Most functions will return the UTF8 converted stdout of the process.
 class WSLApi {
   final Shell shell;
+  final ExecutionBroker? _broker;
   static const Duration _remoteListTimeout = Duration(seconds: 12);
   static final RegExp _remoteTargetPattern =
       RegExp(r'^(?:(?!-)[A-Za-z0-9._-]+@)?(?!-)[A-Za-z0-9._:-]+$');
 
-  WSLApi({Shell? shell}) : shell = shell ?? ProcessShell() {
+  WSLApi({Shell? shell, ExecutionBroker? broker})
+      : shell = shell ?? ProcessShell(),
+        _broker = broker {
     if (!inited) {
       inited = true;
       App().getDistroLinks();
@@ -68,31 +74,7 @@ class WSLApi {
     return target;
   }
 
-  String get _sshControlPath {
-    final tmpDir = Directory.systemTemp.path;
-    return p.join(tmpDir, 'wsl2dm_ssh_mux.sock');
-  }
-
-  List<String> get _sshClientOptions {
-    return <String>[
-      '-o',
-      'BatchMode=yes',
-      '-o',
-      'PasswordAuthentication=no',
-      '-o',
-      'KbdInteractiveAuthentication=no',
-      '-o',
-      'ControlMaster=auto',
-      '-o',
-      'ControlPersist=10m',
-      '-o',
-      'ControlPath=$_sshControlPath',
-      '-o',
-      'ServerAliveInterval=30',
-      '-o',
-      'ServerAliveCountMax=3',
-    ];
-  }
+  List<String> get _sshClientOptions => getSshClientOptions();
 
   String get _remoteRootPath => 'C:\\wsl2dm';
 
@@ -358,7 +340,7 @@ class WSLApi {
       wslArgs.addAll(['--user', startUser]);
     }
     if (startCmd != '') {
-      for (String cmd in startCmd.split(' ')) {
+      for (String cmd in splitShellArgs(startCmd)) {
         wslArgs.add(cmd);
       }
       // Run shell to keep open
@@ -465,16 +447,17 @@ class WSLApi {
 
   /// Set wslconfig setting
   void setConfig(String parent, String key, String value) async {
+    final escapedKey = RegExp.escape(key);
     if (_useRemoteWsl) {
       String text = await _readRemoteWslConfigText();
 
       // Check if parent exists
       if (text.contains('[$parent]')) {
-        // Check if key exists with regeex
-        RegExp regex = RegExp('$key[ ]*=');
+        // Check if key exists with regex
+        RegExp regex = RegExp('$escapedKey[ ]*=', multiLine: true);
         if (regex.hasMatch(text)) {
           // Replace key value
-          text = text.replaceAll(RegExp('$key[ ]*=(.*)'), '$key = $value');
+          text = text.replaceAll(RegExp('$escapedKey[ ]*=(.*)', multiLine: true), '$key = $value');
         } else {
           // Add key value
           text = text.replaceAll('[$parent]', '[$parent]\n$key = $value');
@@ -496,11 +479,11 @@ class WSLApi {
 
     // Check if parent exists
     if (text.contains('[$parent]')) {
-      // Check if key exists with regeex
-      RegExp regex = RegExp('$key[ ]*=');
+      // Check if key exists with regex
+      RegExp regex = RegExp('$escapedKey[ ]*=', multiLine: true);
       if (regex.hasMatch(text)) {
         // Replace key value
-        text = text.replaceAll(RegExp('$key[ ]*=(.*)'), '$key = $value');
+        text = text.replaceAll(RegExp('$escapedKey[ ]*=(.*)', multiLine: true), '$key = $value');
       } else {
         // Add key value
         text = text.replaceAll('[$parent]', '[$parent]\n$key = $value');
@@ -956,7 +939,7 @@ class WSLApi {
   /// Executes a command in a WSL distro and returns the output
   Future<String> execCmdAsRoot(String distribution, String cmd) async {
     List<String> args = ['--distribution', distribution, '-u', 'root'];
-    for (var arg in cmd.split(' ')) {
+    for (var arg in splitShellArgs(cmd)) {
       args.add(arg);
     }
     ProcessResult results = await _runWsl(args,
@@ -974,7 +957,7 @@ class WSLApi {
         args = _useRemoteWsl
             ? _buildRemoteArgs('wsl', ['-d', distribution], allocateTty: true)
             : ['wsl', '-d', distribution];
-        cmd.split(' ').forEach((String arg) {
+        splitShellArgs(cmd).forEach((String arg) {
           args.add(arg);
         });
         if (_useRemoteWsl && Platform.isLinux) {
@@ -988,7 +971,7 @@ class WSLApi {
         processes.add(exitCode);
       } else {
         args = ['-d', distribution];
-        cmd.split(' ').forEach((String arg) {
+        splitShellArgs(cmd).forEach((String arg) {
           args.add(arg);
         });
         ProcessResult result = await _runWsl(args, runInShell: false);
@@ -1234,14 +1217,14 @@ if (-not (Test-Path -LiteralPath \$vhdxPath)) {
 }
 \$scriptPath = Join-Path \$env:TEMP '$escapedScriptName'
 \$diskpartScript = @"
-select vdisk file=\"\$vhdxPath\"
+select vdisk file="\$vhdxPath"
 attach vdisk readonly
 compact vdisk
 detach vdisk
 "@
 [IO.File]::WriteAllText(\$scriptPath, \$diskpartScript, [Text.Encoding]::ASCII)
 try {
-  & diskpart /s \"\$scriptPath\"
+  & diskpart /s "\$scriptPath"
   if (\$LASTEXITCODE -ne 0) {
     throw "Diskpart failed with exit code \$LASTEXITCODE"
   }
