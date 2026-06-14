@@ -6,6 +6,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:wsl2distromanager/api/execution/broker.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -66,6 +69,13 @@ void main() async {
   await initLogging();
   await initPrefs();
 
+  // Create execution broker (local shell by default)
+  final Shell shell = ProcessShell();
+  final ExecutionBroker executionBroker = ExecutionBroker(shell: shell);
+
+  // Init license manager
+  await LicenseManager().init();
+
   // Error logging
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -82,17 +92,26 @@ void main() async {
   });
 
   // Init app
-  runApp(const WSLManager());
+  runApp(WSLManager(executionBroker: executionBroker));
 }
 
 class WSLManager extends StatelessWidget {
-  const WSLManager({Key? key}) : super(key: key);
+  final ExecutionBroker executionBroker;
+
+  const WSLManager({Key? key, required this.executionBroker}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     LocalJsonLocalization.delegate.directories = ['lib/i18n'];
-    return ChangeNotifierProvider(
-      create: (_) => AppTheme(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AppTheme(),
+        ),
+        Provider<ExecutionBroker>.value(
+          value: executionBroker,
+        ),
+      ],
       builder: (context, _) {
         final appTheme = context.watch<AppTheme>();
         var selectedLang = prefs.getString('language');

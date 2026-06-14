@@ -1,7 +1,9 @@
 // AI Workspace screen for managing Hermes Agent, OpenClaw, and Open WebUI tools.
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
+import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
+import 'package:wsl2distromanager/api/execution/broker.dart';
 
 class AiWorkspacePage extends StatefulWidget {
   const AiWorkspacePage({super.key});
@@ -18,8 +20,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   @override
   void initState() {
     super.initState();
-    // TODO: Wire ExecutionBroker from app initialization.
-    throw UnimplementedError('ExecutionBroker not yet wired');
+    // Wire ExecutionBroker from app initialization.
+    _service = AiWorkspaceService(
+      broker: context.read<ExecutionBroker>(),
+    );
+    _initService();
   }
 
   Future<void> _initService() async {
