@@ -4,8 +4,10 @@ import 'package:plausible_analytics/navigator_observer.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
+import 'package:wsl2distromanager/screens/ai_workspace_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
+import 'package:wsl2distromanager/screens/license_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/screens/template_screen.dart';
 
@@ -54,6 +56,20 @@ final router = GoRouter(
           path: '/templates',
           name: 'templates',
           builder: (context, state) => const TemplatePage(),
+        ),
+
+        /// License / Pro
+        GoRoute(
+          path: '/license',
+          name: 'license',
+          builder: (context, state) => const LicenseScreen(),
+        ),
+
+        /// AI Workspace
+        GoRoute(
+          path: '/ai-workspace',
+          name: 'ai-workspace',
+          builder: (context, state) => const AiWorkspacePage(),
         ),
       ],
     ),
