@@ -2,10 +2,37 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:localization/localization.dart';
 import 'package:path/path.dart' as p;
+import 'package:wsl2distromanager/api/execution/broker.dart';
+import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
+
+/// Adapter unifying ExecutionResult (broker) and ProcessResult (shell).
+class _ShellResult {
+  final int exitCode;
+  final dynamic stdout;
+  final dynamic stderr;
+
+  const _ShellResult({required this.exitCode, this.stdout, this.stderr});
+
+  factory _ShellResult.fromExecution(ExecutionResult result) {
+    return _ShellResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    );
+  }
+
+  factory _ShellResult.fromProcess(ProcessResult result) {
+    return _ShellResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    );
+  }
+}
 
 class PhysicalDisk {
   final String deviceId; // e.g. \\.\PHYSICALDRIVE1
@@ -32,8 +59,11 @@ class PhysicalDisk {
 
 class MountService {
   final Shell shell;
+  final ExecutionBroker? _broker;
 
-  MountService({Shell? shell}) : shell = shell ?? ProcessShell();
+  MountService({Shell? shell, ExecutionBroker? broker})
+      : shell = shell ?? ProcessShell(),
+        _broker = broker;
 
   bool get _useRemoteWsl {
     final enabled = prefs.getBool('UseRemoteWSL') ?? false;
@@ -91,17 +121,28 @@ class MountService {
     return base64Encode(bytes);
   }
 
-  Future<ProcessResult> _runHostPowershell(String script) async {
+  Future<_ShellResult> _runHostPowershell(String script) async {
     if (_useRemoteWsl) {
       final encoded = _toUtf16LeBase64(script);
-      return shell.run(
-        'ssh',
-        _buildRemoteArgs(
-            'powershell', ['-NoProfile', '-EncodedCommand', encoded]),
-        runInShell: false,
-        stdoutEncoding: null,
-        stderrEncoding: null,
-      );
+      if (_broker != null) {
+        final result = await _broker!.run(ExecutionRequest(
+          command: 'ssh',
+          arguments: _buildRemoteArgs(
+              'powershell', ['-NoProfile', '-EncodedCommand', encoded]),
+          runInShell: false,
+        ));
+        return _ShellResult.fromExecution(result);
+      } else {
+        final result = await shell.run(
+          'ssh',
+          _buildRemoteArgs(
+              'powershell', ['-NoProfile', '-EncodedCommand', encoded]),
+          runInShell: false,
+          stdoutEncoding: null,
+          stderrEncoding: null,
+        );
+        return _ShellResult.fromProcess(result);
+      }
     }
 
     if (!Platform.isWindows) {
@@ -109,7 +150,17 @@ class MountService {
           'Physical disk operations require Windows host or remote WSL mode.');
     }
 
-    return shell.run('powershell', ['-NoProfile', '-Command', script]);
+    if (_broker != null) {
+      final result = await _broker!.run(ExecutionRequest(
+        command: 'powershell',
+        arguments: ['-NoProfile', '-Command', script],
+      ));
+      return _ShellResult.fromExecution(result);
+    } else {
+      final result =
+          await shell.run('powershell', ['-NoProfile', '-Command', script]);
+      return _ShellResult.fromProcess(result);
+    }
   }
 
   String _safeProcessText(dynamic output) {
@@ -119,20 +170,39 @@ class MountService {
     return output?.toString() ?? '';
   }
 
-  Future<ProcessResult> _runWslHost(List<String> args) async {
+  Future<_ShellResult> _runWslHost(List<String> args) async {
     if (_useRemoteWsl) {
-      return shell.run(
-        'ssh',
-        _buildRemoteArgs('wsl', args),
-        runInShell: false,
-      );
+      if (_broker != null) {
+        final result = await _broker!.run(ExecutionRequest(
+          command: 'ssh',
+          arguments: _buildRemoteArgs('wsl', args),
+          runInShell: false,
+        ));
+        return _ShellResult.fromExecution(result);
+      } else {
+        final result = await shell.run(
+          'ssh',
+          _buildRemoteArgs('wsl', args),
+          runInShell: false,
+        );
+        return _ShellResult.fromProcess(result);
+      }
     }
 
     if (!Platform.isWindows) {
       throw Exception('WSL mount operations require Windows host or remote WSL mode.');
     }
 
-    return shell.run('wsl', args);
+    if (_broker != null) {
+      final result = await _broker!.run(ExecutionRequest(
+        command: 'wsl',
+        arguments: args,
+      ));
+      return _ShellResult.fromExecution(result);
+    } else {
+      final result = await shell.run('wsl', args);
+      return _ShellResult.fromProcess(result);
+    }
   }
 
   Future<List<PhysicalDisk>> getPhysicalDisks() async {
@@ -333,18 +403,35 @@ if %errorlevel% neq 0 (
 ''';
     await batFile.writeAsString(batContent);
 
-    var result = await shell.run('powershell', [
-      'Start-Process',
-      '"${batFile.path}"',
-      '-Verb',
-      'RunAs',
-      '-WindowStyle',
-      'Hidden',
-      '-Wait'
-    ]);
-
-    if (result.exitCode != 0) {
-      throw Exception('failedtolaunchadmin-text'.i18n([result.stderr.toString()]));
+    if (_broker != null) {
+      final result = await _broker!.run(ExecutionRequest(
+        command: 'powershell',
+        arguments: [
+          'Start-Process',
+          '"${batFile.path}"',
+          '-Verb',
+          'RunAs',
+          '-WindowStyle',
+          'Hidden',
+          '-Wait'
+        ],
+      ));
+      if (result.exitCode != 0) {
+        throw Exception('failedtolaunchadmin-text'.i18n([result.stderr]));
+      }
+    } else {
+      final result = await shell.run('powershell', [
+        'Start-Process',
+        '"${batFile.path}"',
+        '-Verb',
+        'RunAs',
+        '-WindowStyle',
+        'Hidden',
+        '-Wait'
+      ]);
+      if (result.exitCode != 0) {
+        throw Exception('failedtolaunchadmin-text'.i18n([result.stderr.toString()]));
+      }
     }
 
     // Check exit code file
