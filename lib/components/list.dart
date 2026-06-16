@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 import 'list_item.dart';
 import 'helpers.dart';
@@ -67,7 +68,7 @@ class DistroListState extends State<DistroList> {
 
     // List as FutureBuilder with WSLApi
     return FutureBuilder<Instances>(
-      key: ValueKey('distro-list-$reloadTick-$showDocker'),
+      key: const ValueKey('test-distro-list'),
       future: widget.api.list(showDocker),
       initialData: GlobalVariable.initialSnapshot,
       builder: (context, snapshot) {
@@ -138,15 +139,22 @@ class DistroListState extends State<DistroList> {
                   const SizedBox(height: 8),
                   Text(errorText, textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  Button(
-                    onPressed: () {
-                      if (mounted) {
-                        setState(() {
-                          reloadTick++;
-                        });
-                      }
-                    },
-                    child: const Text('Retry'),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Button(
+                        onPressed: () {
+                          if (mounted) {
+                            setState(() {
+                              reloadTick++;
+                            });
+                          }
+                        },
+                        child: const Text('Retry'),
+                      ),
+                      const SizedBox(width: 8),
+                      AiDiagnoseButton(errorMessage: errorText),
+                    ],
                   ),
                 ],
               ),

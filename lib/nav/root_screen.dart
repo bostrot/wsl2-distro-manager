@@ -192,6 +192,7 @@ class RootPageState extends State<RootPage> with WindowListener {
                 icon: const Icon(FluentIcons.bug),
                 onPressed: () => bugDialog(),
               )),
+
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8.0),
             child: ToggleSwitch(

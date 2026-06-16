@@ -290,7 +290,7 @@ class QuickPageState extends State<QuickPage> {
                         TextSpan(
                           text: ' [v$version] ',
                           style: TextStyle(
-                            color: AppTheme().textColor.withOpacity(0.5),
+                            color: AppTheme().textColor.withValues(alpha: 0.5),
                           ),
                         ),
                         TextSpan(

@@ -43,6 +43,17 @@ final List<NavigationPaneItem> originalItems = [
     },
   ),
   PaneItem(
+    key: const Key('/ai-workspace'),
+    icon: const Icon(FluentIcons.flag),
+    title: Text('ai-workspace-title'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      if (router.state.uri.toString() != '/ai-workspace') {
+        router.pushNamed('ai-workspace');
+      }
+    },
+  ),
+  PaneItem(
     key: const Key('/addinstance'),
     icon: const Icon(FluentIcons.add),
     title: Text('addinstance-text'.i18n()),
@@ -62,6 +73,36 @@ final List<NavigationPaneItem> originalItems = [
   ),
 ];
 final List<NavigationPaneItem> footerItems = [
+  PaneItem(
+    key: const Key('/license'),
+    icon: const Icon(FluentIcons.flag),
+    title: Row(
+      children: [
+        Text('upgrade-pro-text'.i18n()),
+        const SizedBox(width: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Text(
+            'NEW',
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFFFFBF00),
+            ),
+          ),
+        ),
+      ],
+    ),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      if (router.state.uri.toString() != '/license')
+        router.pushNamed('license');
+    },
+  ),
   LinkPaneItemAction(
     icon: const Icon(FluentIcons.heart),
     title: Text('sponsor-text'.i18n()),

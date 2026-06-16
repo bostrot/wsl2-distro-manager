@@ -10,9 +10,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/theme.dart';
 
-enum CreateSourceType { repo, turnkey, local, docker, vhdx }
+enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
 
 /// Create Dialog
 createDialog() {
@@ -25,56 +26,79 @@ createDialog() {
   plausible.event(page: 'create');
 
   // Get root context by Key
-  final context = GlobalVariable.infobox.currentContext!;
+  final outerContext = GlobalVariable.infobox.currentContext!;
+  final creating = ValueNotifier<bool>(false);
+  final createError = ValueNotifier<String>('');
 
   showDialog(
     useRootNavigator: false,
-    context: context,
+    context: outerContext,
     builder: (context) {
-      return ContentDialog(
-        constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 450.0),
-        title: Text('createnewinstance-text'.i18n()),
-        content: SingleChildScrollView(
-          child: CreateWidget(
-            nameController: nameController,
-            api: api,
-            autoSuggestBox: autoSuggestBox,
-            locationController: locationController,
-            userController: userController,
-            sourceType: sourceType,
-          ),
-        ),
-        actions: [
-          Tooltip(
-            message: 'cancel-text'.i18n(),
-            child: Button(
-                child: Text('cancel-text'.i18n()),
-                onPressed: () async {
-                  Navigator.pop(context);
-                }),
-          ),
-          Tooltip(
-            message: 'create-text'.i18n(),
-            child: Button(
-              onPressed: () async {
-                // Run "runner" function from global key
-                GlobalVariable.root.currentState!.runner(
-                  createInstance(
-                    nameController,
-                    locationController,
-                    api,
-                    autoSuggestBox,
-                    userController,
-                    isDocker: sourceType.value == CreateSourceType.docker,
-                    isVhdx: sourceType.value == CreateSourceType.vhdx,
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              child: Text('create-text'.i18n()),
+      return ValueListenableBuilder<bool>(
+        valueListenable: creating,
+        builder: (context, isCreating, _) {
+          return ContentDialog(
+            constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 450.0),
+            title: Text('createnewinstance-text'.i18n()),
+            content: SingleChildScrollView(
+              child: CreateWidget(
+                nameController: nameController,
+                api: api,
+                autoSuggestBox: autoSuggestBox,
+                locationController: locationController,
+                userController: userController,
+                sourceType: sourceType,
+                creating: creating,
+                createError: createError,
+              ),
             ),
-          ),
-        ],
+            actions: [
+              Tooltip(
+                message: 'cancel-text'.i18n(),
+                child: Button(
+                    key: const ValueKey('test-cancel-button'),
+                    onPressed: isCreating ? null : () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('cancel-text'.i18n())),
+              ),
+              Tooltip(
+                message: 'create-text'.i18n(),
+                child: Button(
+                  key: const ValueKey('test-create-button'),
+                  onPressed: isCreating
+                      ? null
+                      : () async {
+                          creating.value = true;
+                          createError.value = '';
+                           final success = await createInstance(
+                             nameController,
+                             locationController,
+                             api,
+                             autoSuggestBox,
+                             userController,
+                             isDocker: sourceType.value == CreateSourceType.docker,
+                             isDockerLocalImage: sourceType.value == CreateSourceType.dockerLocalImage,
+                             isVhdx: sourceType.value == CreateSourceType.vhdx,
+                             onError: createError,
+                           );
+                          if (success) {
+                            Navigator.pop(context);
+                          } else {
+                            creating.value = false;
+                          }
+                        },
+                  child: isCreating
+                      ? SizedBox.square(
+                          dimension: 16,
+                          child: const ProgressRing(),
+                        )
+                      : Text('create-text'.i18n()),
+                ),
+              ),
+            ],
+          );
+        },
       );
     },
   );
@@ -92,7 +116,8 @@ progressFn(current, total, currentStep, totalStep) {
   }
 }
 
-Future<void> createInstance(
+/// Returns true on success, false on any error so the caller can keep the dialog open.
+Future<bool> createInstance(
   TextEditingController nameController,
   TextEditingController locationController,
   WSLApi api,
@@ -100,7 +125,9 @@ Future<void> createInstance(
   TextEditingController userController, {
   DockerImage? dockerImage,
   bool isDocker = false,
+  bool isDockerLocalImage = false,
   bool isVhdx = false,
+  ValueNotifier<String>? onError,
 }) async {
   plausible.event(name: "wsl_create");
   DockerImage docker = dockerImage ?? DockerImage();
@@ -111,11 +138,13 @@ Future<void> createInstance(
   if (name != '') {
     // Check if distro exists
     var instances = await api.list(true);
-    if (instances.all
-        .any((element) => element.toLowerCase() == name.toLowerCase())) {
-      Notify.message('distroexists-text'.i18n());
-      return;
-    }
+      if (instances.all
+          .any((element) => element.toLowerCase() == name.toLowerCase())) {
+        final msg = 'distroexists-text'.i18n();
+        Notify.message(msg);
+        onError?.value = msg;
+        return false;
+      }
 
     String distroName = autoSuggestBox.text;
 
@@ -132,7 +161,7 @@ Future<void> createInstance(
         ? api.remoteInstallPath(name)
         : location;
 
-    // Check if docker image
+    // Check if docker image (remote registry)
     bool isDockerImage = isDocker;
     if (!isDockerImage && !isVhdx) {
       if (distroName.startsWith('dockerhub:') ||
@@ -143,6 +172,7 @@ Future<void> createInstance(
       }
     }
 
+    // Handle remote Docker image download from registry
     if (isDockerImage) {
       // Remove prefix
       if (distroName.startsWith('dockerhub:')) {
@@ -175,20 +205,50 @@ Future<void> createInstance(
         try {
           await docker.getRootfs(name, image, tag: tag, progress: progressFn);
         } catch (e) {
-          Notify.message('error-text'.i18n());
-          return;
+          final msg = e.toString().replaceAll('Exception: ', '');
+          final err = '${'errordownloading-text'.i18n()}: $msg';
+          Notify.message(err);
+          onError?.value = err;
+          return false;
         }
         Notify.message('downloaded-text'.i18n());
         // Set distropath with distroName
         distroName = docker.filename(image, tag);
       } else if (!isDownloaded) {
-        Notify.message('distronotfound-text'.i18n());
-        return;
+        final err = '${'distronotfound-text'.i18n()}: $image:$tag';
+        Notify.message(err);
+        onError?.value = err;
+        return false;
       }
 
       if (isDownloaded) {
         // Set distropath with distroName
         distroName = docker.filename(image, tag);
+      }
+    }
+
+    // Handle local Docker image export via docker save
+    if (isDockerLocalImage) {
+      isDockerImage = true;
+      String localImagePath = autoSuggestBox.text.trim();
+      if (localImagePath.isEmpty) {
+        final err = 'Please select or enter a local Docker image';
+        Notify.message(err);
+        onError?.value = err;
+        return false;
+      }
+
+      try {
+        await docker.getRootfsFromLocalImage(name, localImagePath, progress: progressFn);
+        distroName = docker.filename(
+            localImagePath.split(':')[0],
+            localImagePath.contains(':') ? localImagePath.split(':')[1] : null);
+      } catch (e) {
+        final msg = e.toString().replaceAll('Exception: ', '');
+        final err = '${'errordownloading-text'.i18n()}: $msg';
+        Notify.message(err);
+        onError?.value = err;
+        return false;
       }
     }
 
@@ -210,6 +270,8 @@ Future<void> createInstance(
           ? stderr
           : (stdout.isNotEmpty ? stdout : 'error-text'.i18n());
       Notify.message(error);
+      onError?.value = error;
+      return false;
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');
       var groupCmds = prefs.getStringList('GroupCmds_$distroName');
@@ -234,8 +296,9 @@ Future<void> createInstance(
           'useradd -m -s /bin/bash -G sudo $user',
           'passwd $user',
           'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo',
-          'echo -e \'[user]\ndefault = $user\' > /etc/wsl.conf',
         ]);
+        // Use setSetting so existing wsl.conf sections (e.g. [boot] systemd=true) are preserved
+        await api.setSetting(name, 'user', 'default', user);
         bool success = true;
         for (dynamic process in processes) {
           if (process != 0) {
@@ -266,10 +329,14 @@ Future<void> createInstance(
       prefs.setString('DistroName_$name', label);
       // Save distro path
       prefs.setString('Path_$name', effectiveLocation);
+      return true;
     }
     // Download distro check
   } else {
-    Notify.message('entername-text'.i18n());
+    final msg = 'entername-text'.i18n();
+    Notify.message(msg);
+    onError?.value = msg;
+    return false;
   }
 }
 
@@ -282,6 +349,8 @@ class CreateWidget extends StatefulWidget {
     required this.locationController,
     required this.userController,
     required this.sourceType,
+    this.creating,
+    this.createError,
   }) : super(key: key);
 
   final TextEditingController nameController;
@@ -290,6 +359,8 @@ class CreateWidget extends StatefulWidget {
   final TextEditingController locationController;
   final TextEditingController userController;
   final ValueNotifier<CreateSourceType> sourceType;
+  final ValueNotifier<bool>? creating;
+  final ValueNotifier<String>? createError;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -367,15 +438,35 @@ class _CreateWidgetState extends State<CreateWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          height: 10.0,
-        ),
+        if (widget.createError != null)
+          ValueListenableBuilder<String>(
+            valueListenable: widget.createError!,
+            builder: (context, err, _) {
+              if (err.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      err,
+                      style: TextStyle(
+                          color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    AiDiagnoseButton(errorMessage: err),
+                  ],
+                ),
+              );
+            },
+          ),
         Container(
           height: 5.0,
         ),
         Tooltip(
           message: 'namehint-text'.i18n(),
           child: TextBox(
+            key: const ValueKey('test-create-name-input'),
             controller: widget.nameController,
             placeholder: 'name-text'.i18n(),
             suffix: IconButton(
@@ -425,6 +516,10 @@ class _CreateWidgetState extends State<CreateWidget> {
                 child: Text('dockerimage-text'.i18n()),
               ),
               ComboBoxItem(
+                value: CreateSourceType.dockerLocalImage,
+                child: Text('localdockerimage-text'.i18n()),
+              ),
+              ComboBoxItem(
                 value: CreateSourceType.vhdx,
                 child: Text('importvhdx-text'.i18n()),
               ),
@@ -449,6 +544,12 @@ class _CreateWidgetState extends State<CreateWidget> {
                   (prefs.getString('RepoLink') ?? defaultRepoLink),
                   (e) => Notify.message(e));
               return all.where((x) => !repo.containsKey(x)).toList();
+            } else if (sourceType == CreateSourceType.dockerLocalImage) {
+              try {
+                return await DockerImage.listLocalImages();
+              } catch (_) {
+                return <String>[];
+              }
             }
             return <String>[];
           }(), builder: (context, snapshot) {
@@ -466,7 +567,9 @@ class _CreateWidgetState extends State<CreateWidget> {
               focusNode: node,
               placeholder: sourceType == CreateSourceType.docker
                   ? 'dockerimageplaceholder-text'.i18n()
-                  : sourceType == CreateSourceType.local
+                  : sourceType == CreateSourceType.dockerLocalImage
+                      ? 'localdockerimageplaceholder-text'.i18n()
+                      : sourceType == CreateSourceType.local
                       ? 'pathtorootfsarchive-text'.i18n()
                       : sourceType == CreateSourceType.vhdx
                           ? 'pathtovhdxfile-text'.i18n()
@@ -497,6 +600,10 @@ class _CreateWidgetState extends State<CreateWidget> {
                   if (!error) {
                     text = 'Docker Image: $image:$tag';
                   }
+                } else if (sourceType == CreateSourceType.dockerLocalImage) {
+                  text = widget.autoSuggestBox.text.isEmpty
+                      ? 'localdockerimagenotfound-text'.i18n()
+                      : 'Local Docker: ${widget.autoSuggestBox.text}';
                 } else if (sourceType == CreateSourceType.local) {
                   text = 'selectlocalfile-text'.i18n();
                 } else if (sourceType == CreateSourceType.vhdx) {
@@ -566,6 +673,7 @@ class _CreateWidgetState extends State<CreateWidget> {
           Tooltip(
             message: 'savelocationhint-text'.i18n(),
             child: TextBox(
+              key: const ValueKey('test-create-location-input'),
               controller: widget.locationController,
               placeholder: 'savelocationplaceholder-text'.i18n(),
               suffix: IconButton(

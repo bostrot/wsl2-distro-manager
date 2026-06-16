@@ -49,6 +49,8 @@ dev_dependencies:
   flutter_oss_licenses: ^3.0.11
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   msix: ^3.16.12
 
 flutter:

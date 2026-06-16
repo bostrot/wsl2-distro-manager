@@ -44,6 +44,60 @@ String replaceSpecialChars(String name) {
   return name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
 }
 
+/// Split a shell command string into arguments, respecting quoted strings.
+List<String> splitShellArgs(String cmd) {
+  final args = <String>[];
+  var current = StringBuffer();
+  var inSingleQuote = false;
+  var inDoubleQuote = false;
+  var escapeNext = false;
+
+  for (var i = 0; i < cmd.length; i++) {
+    final ch = cmd[i];
+
+    if (escapeNext) {
+      current.write(ch);
+      escapeNext = false;
+      continue;
+    }
+
+    if (ch == '\\') {
+      if (inDoubleQuote) {
+        escapeNext = true;
+      } else {
+        current.write(ch);
+      }
+      continue;
+    }
+
+    if (ch == '\'' && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+
+    if (ch == '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+
+    if (ch == ' ' && !inSingleQuote && !inDoubleQuote) {
+      if (current.isNotEmpty) {
+        args.add(current.toString());
+        current.clear();
+      }
+      continue;
+    }
+
+    current.write(ch);
+  }
+
+  if (current.isNotEmpty) {
+    args.add(current.toString());
+  }
+
+  return args;
+}
+
 /// Return the default storage root for distro/data paths.
 String getDefaultStorageRootPath() {
   final home = Platform.environment['HOME'] ?? Directory.current.path;
@@ -259,6 +313,9 @@ class GlobalVariable {
   static final GlobalKey<RootPageState> root = GlobalKey<RootPageState>();
   static GlobalKey<NavigatorState> infobox = GlobalKey<NavigatorState>();
   static Instances? initialSnapshot;
+  static bool aiPanelVisible = false;
+  /// Override for testing: when true, Pro features are always accessible.
+  static bool testProEnabled = false;
 }
 
 /// Return the general distro path. Distros are saved here by default.

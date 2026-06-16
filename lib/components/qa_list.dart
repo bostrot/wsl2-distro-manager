@@ -127,7 +127,7 @@ class QaListState extends State<QaList> {
                   return Hoverable(
                     child: ListTile(
                       tileColor: ButtonState.all(selectedList.contains(data)
-                          ? AppTheme().color.withOpacity(0.5)
+                          ? AppTheme().color.withValues(alpha: 0.5)
                           : Colors.transparent),
                       title: Text(data.name),
                       subtitle: Text(data.description),

@@ -1,6 +1,7 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -51,6 +52,7 @@ class _ListItemState extends State<ListItem> {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: IconButton(
+                  key: const ValueKey('test-listitem-start'),
                   icon: const Icon(FluentIcons.play),
                   onPressed: () {
                     startInstance();
@@ -64,6 +66,7 @@ class _ListItemState extends State<ListItem> {
                     child: MouseRegion(
                       cursor: SystemMouseCursors.click,
                       child: IconButton(
+                        key: const ValueKey('test-listitem-stop'),
                         icon: const Icon(FluentIcons.stop),
                         onPressed: () {
                           stopInstance();
@@ -111,14 +114,20 @@ class _ListItemState extends State<ListItem> {
     );
   }
 
-  void stopInstance() {
+  void stopInstance() async {
     plausible.event(name: "wsl_stopped");
-    WSLApi().stop(widget.item);
-    Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
-        loading: false, duration: const Duration(seconds: 3));
+    try {
+      await WSLApi().stop(widget.item);
+      Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
+          loading: false, duration: const Duration(seconds: 3));
+    } catch (e) {
+      final errorMsg = 'Failed to stop ${widget.item}: $e';
+      Notify.message(errorMsg);
+      diagnoseWithAi(errorMsg);
+    }
   }
 
-  void startInstance() {
+  void startInstance() async {
     plausible.event(name: "wsl_started");
     String? startPath = prefs.getString('StartPath_${widget.item}') ?? '';
     String? startName = prefs.getString('StartUser_${widget.item}') ?? '';
@@ -131,14 +140,18 @@ class _ListItemState extends State<ListItem> {
       // Replace faulty semicolons (e.g. "; ;" or ";;")
       startCmd = startCmd.replaceAll(RegExp(r';[ ]*;'), ';');
     }
-    // Normal start
-    WSLApi().start(widget.item,
-        startPath: startPath, startUser: startName, startCmd: startCmd);
-
-    Future.delayed(
-        const Duration(milliseconds: 500),
-        Notify.message('${widget.item} ${'started-text'.i18n()}.',
-            duration: const Duration(seconds: 3)));
+    try {
+      WSLApi().start(widget.item,
+          startPath: startPath, startUser: startName, startCmd: startCmd);
+      Future.delayed(
+          const Duration(milliseconds: 500),
+          Notify.message('${widget.item} ${'started-text'.i18n()}.',
+              duration: const Duration(seconds: 3)));
+    } catch (e) {
+      final errorMsg = 'Failed to start ${widget.item}: $e';
+      Notify.message(errorMsg);
+      diagnoseWithAi(errorMsg);
+    }
   }
 }
 
@@ -343,11 +356,12 @@ class Bar extends StatelessWidget {
                                       // Show success notification
                                       Notify.message(
                                           'Successfully cleaned up ${widget.item}');
-                                    } catch (error) {
-                                      // Show error notification
-                                      Notify.message(
-                                          'Failed to clean up ${widget.item}: ${error.toString()}');
-                                    } finally {
+                                     } catch (error) {
+                                       final errorMsg =
+                                           'Failed to clean up ${widget.item}: ${error.toString()}';
+                                       Notify.message(errorMsg);
+                                       diagnoseWithAi(errorMsg);
+                                     } finally {
                                       onCleaningChanged(false);
                                     }
                                   });
@@ -373,10 +387,17 @@ class Bar extends StatelessWidget {
                               foregroundColor: ButtonState.all(Colors.white),
                             ),
                             onSubmit: (inputText) async {
-                              await WSLApi().remove(widget.item);
-                              Notify.message(
-                                  'deletedinstance-text'.i18n([widget.item]));
-                            });
+                               try {
+                                 await WSLApi().remove(widget.item);
+                                 Notify.message(
+                                     'deletedinstance-text'.i18n([widget.item]));
+                               } catch (e) {
+                                 final errorMsg =
+                                     'Failed to delete ${widget.item}: $e';
+                                 Notify.message(errorMsg);
+                                 diagnoseWithAi(errorMsg);
+                               }
+                             });
                       }),
                 ),
               ),

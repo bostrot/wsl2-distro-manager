@@ -1,10 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-
+import 'package:wsl2distromanager/components/ai_chat_panel.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/list.dart';
+import 'package:wsl2distromanager/components/recommendations_panel.dart';
 
 import 'dart:io';
 
@@ -21,6 +24,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   WSLApi api = WSLApi();
+  List<String> distroNames = [];
 
   void enableAnalytics() async {
     String platform = Platform.operatingSystemVersion;
@@ -53,7 +57,6 @@ class _HomePageState extends State<HomePage> {
       platform = tmpPlatform;
     }
 
-    // Enable analytics
     plausible.event(name: 'Devices', props: {
       'app_source': exec,
       'app_version': currentVersion,
@@ -61,6 +64,17 @@ class _HomePageState extends State<HomePage> {
       'app_locale': language,
       'app_theme': AppTheme.themeMode == ThemeMode.dark ? 'dark' : 'light',
     });
+  }
+
+  Future<List<String>> _fetchDistroNames() async {
+    try {
+      final instances = await api.list(prefs.getBool('showDocker') ?? false);
+      final list = instances.all;
+      if (list.isNotEmpty && list[0] != 'wslNotInstalled') {
+        return list;
+      }
+    } catch (_) {}
+    return [];
   }
 
   @override
@@ -71,14 +85,100 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      key: (GlobalVariable.infobox = GlobalKey()),
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        DistroList(
-          api: api,
+    final showAi = GlobalVariable.aiPanelVisible;
+    bool isPro = false;
+    try {
+      isPro = GlobalVariable.testProEnabled || LicenseManager().isPro;
+    } catch (_) {
+      isPro = false;
+    }
+
+    return Stack(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return SizedBox(
+              height: constraints.maxHeight,
+              width: constraints.maxWidth,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: showAi ? constraints.maxWidth - 361 : constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: Column(
+                      key: (GlobalVariable.infobox = GlobalKey()),
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        FutureBuilder<List<String>>(
+                          future: _fetchDistroNames(),
+                          builder: (context, snapshot) {
+                            final names = snapshot.data ?? [];
+                            if (names.isNotEmpty && names != distroNames) {
+                              distroNames = names;
+                            }
+                            return RecommendationsPanel(
+                              key: const ValueKey('test-recommendations-panel'),
+                              distroNames: distroNames,
+                            );
+                          },
+                        ),
+                        DistroList(api: api),
+                      ],
+                    ),
+                  ),
+                  if (showAi) ...[
+                    Container(
+                      width: 1,
+                      color: Colors.grey.withValues(alpha: 0.2),
+                    ),
+                    SizedBox(
+                      width: 360,
+                      height: constraints.maxHeight,
+                      child: const AiChatPanel(),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
+        if (isPro)
+          Positioned(
+            right: showAi ? 376 : 16,
+            bottom: 16,
+            child: Tooltip(
+              message: 'ai-assistant-title'.i18n(),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    GlobalVariable.aiPanelVisible = !GlobalVariable.aiPanelVisible;
+                  });
+                },
+                child: Container(
+                  key: const ValueKey('test-ai-chat-toggle'),
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: showAi
+                        ? FluentTheme.of(context).accentColor
+                        : Colors.grey.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    FluentIcons.chat,
+                    color: showAi ? Colors.white : null,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
