@@ -32,31 +32,34 @@ class ToolConfig {
 }
 
 /// Default tool configurations.
+/// All commands must be POSIX sh-compatible (no bashisms) since the service
+/// runs them through `wsl /bin/sh -c "..."` — `/bin/sh` is guaranteed on every
+/// Linux distro, whereas `/bin/bash` may not exist on minimal/Alpine images.
 const Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
   AiWorkspaceTool.hermesAgent: ToolConfig(
     name: 'Hermes Agent',
-    installCommand: 'curl -fsSL https://get.hermes-agent.dev | bash',
+    installCommand: 'curl -fsSL https://get.hermes-agent.dev | sh',
     startCommand: 'hermes-agent serve --port 8081',
-    stopCommand: 'pkill -f hermes-agent || true',
-    statusCheck: 'pgrep -f hermes-agent > /dev/null && echo running || echo stopped',
+    stopCommand: 'kill $(ps aux | grep hermes-agent | grep -v grep | awk \'{print $2}\') >/dev/null 2>&1 || true',
+    statusCheck: 'ps aux | grep -q "[h]ermes-agent" && echo running || echo stopped',
     port: 8081,
     defaultInstallPath: '~/.hermes-agent',
   ),
   AiWorkspaceTool.openClaw: ToolConfig(
     name: 'OpenClaw',
-    installCommand: 'curl -fsSL https://install.openclaw.ai | bash',
+    installCommand: 'curl -fsSL https://install.openclaw.ai | sh',
     startCommand: 'openclaw serve --port 8082',
-    stopCommand: 'pkill -f openclaw || true',
-    statusCheck: 'pgrep -f openclaw > /dev/null && echo running || echo stopped',
+    stopCommand: 'kill $(ps aux | grep openclaw | grep -v grep | awk \'{print $2}\') >/dev/null 2>&1 || true',
+    statusCheck: 'ps aux | grep -q "[o]penclaw" && echo running || echo stopped',
     port: 8082,
     defaultInstallPath: '~/.openclaw',
   ),
   AiWorkspaceTool.openWebUi: ToolConfig(
     name: 'Open WebUI',
     installCommand: 'docker pull ghcr.io/open-webui/open-webui:latest && docker run -d -p 8083:8080 --name open-webui ghcr.io/open-webui/open-webui:latest',
-    startCommand: 'docker start open-webui || (docker pull ghcr.io/open-webui/open-webui:latest && docker run -d -p 8083:8080 --name open-webui ghcr.io/open-webui/open-webui:latest)',
+    startCommand: 'docker start open-webui; test $? -ne 0 && docker pull ghcr.io/open-webui/open-webui:latest && docker run -d -p 8083:8080 --name open-webui ghcr.io/open-webui/open-webui:latest',
     stopCommand: 'docker stop open-webui || true',
-    statusCheck: 'docker ps --filter "name=open-webui" --format "{{.Status}}" | grep -q Up && echo running || echo stopped',
+    statusCheck: 'docker ps --filter "name=open-webui" | grep -q Up && echo running || echo stopped',
     port: 8083,
     defaultInstallPath: 'docker://open-webui',
   ),
@@ -124,8 +127,8 @@ class AiWorkspaceService {
   Future<bool> install(AiWorkspaceTool tool) async {
     final config = _toolConfigs[tool]!;
     final request = ExecutionRequest(
-      command: 'bash',
-      arguments: ['-c', config.installCommand],
+      command: 'wsl',
+      arguments: ['/bin/sh', '-c', config.installCommand],
       timeout: const Duration(minutes: 5),
     );
 
@@ -156,8 +159,8 @@ class AiWorkspaceService {
 
     final config = _toolConfigs[tool]!;
     final request = ExecutionRequest(
-      command: 'bash',
-      arguments: ['-c', config.startCommand],
+      command: 'wsl',
+      arguments: ['/bin/sh', '-c', config.startCommand],
       timeout: const Duration(minutes: 2),
     );
 
@@ -183,8 +186,8 @@ class AiWorkspaceService {
   Future<bool> stop(AiWorkspaceTool tool) async {
     final config = _toolConfigs[tool]!;
     final request = ExecutionRequest(
-      command: 'bash',
-      arguments: ['-c', config.stopCommand],
+      command: 'wsl',
+      arguments: ['/bin/sh', '-c', config.stopCommand],
       timeout: const Duration(minutes: 1),
     );
 
@@ -224,8 +227,8 @@ class AiWorkspaceService {
     }
 
     final request = ExecutionRequest(
-      command: 'bash',
-      arguments: ['-c', uninstallCmd],
+      command: 'wsl',
+      arguments: ['/bin/sh', '-c', uninstallCmd],
       timeout: const Duration(minutes: 2),
     );
 
@@ -249,8 +252,8 @@ class AiWorkspaceService {
   Future<void> refreshStatus(AiWorkspaceTool tool) async {
     final config = _toolConfigs[tool]!;
     final request = ExecutionRequest(
-      command: 'bash',
-      arguments: ['-c', config.statusCheck],
+      command: 'wsl',
+      arguments: ['/bin/sh', '-c', config.statusCheck],
       timeout: const Duration(seconds: 10),
     );
 
