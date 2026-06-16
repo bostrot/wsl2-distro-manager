@@ -3,7 +3,8 @@
 // raw process execution. Consumers should route command requests through this
 // broker instead of spawning processes directly.
 import 'dart:async';
-import 'dart:io' show ProcessResult;
+import 'dart:convert' show Utf8Decoder;
+import 'dart:io' show ProcessResult, systemEncoding;
 
 import '../shell.dart';
 import 'models.dart';
@@ -28,6 +29,35 @@ class ExecutionBroker {
 
   /// Clear audit history.
   void clearAuditLog() => _auditLog.clear();
+
+  // -----------------------------------------------------------------------
+  // Output decoding
+  // -----------------------------------------------------------------------
+
+  /// Decode WSL process output (UTF-16LE with null-byte separators) to text.
+  ///
+  /// WSL on Windows outputs UTF-16LE, so every ASCII char is followed by a
+  /// null byte. This decoder strips the null bytes and decodes as UTF-8,
+  /// matching [WSLApi.utf8Convert].
+  static String decodeWslOutput(dynamic data) {
+    if (data == null || (data is List && data.isEmpty)) return '';
+    if (data is String) return _stripControlChars(data);
+    // Raw bytes from ProcessResult with stdoutEncoding: null.
+    final bytes = data as List<int>;
+    final decoded = const Utf8Decoder(allowMalformed: true).convert(bytes);
+    return _stripControlChars(decoded);
+  }
+
+  /// Strip control characters (including the null bytes from UTF-16LE output)
+  /// while preserving common whitespace.
+  static String _stripControlChars(String text) {
+    return text.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
+  }
+
+  /// Returns true when the command is a WSL invocation that produces UTF-16LE output.
+  static bool _isWslCommand(String command) {
+    return command.toLowerCase() == 'wsl' || command.toLowerCase().endsWith('wsl.exe');
+  }
 
   // -----------------------------------------------------------------------
   // Policy enforcement
@@ -75,12 +105,17 @@ class ExecutionBroker {
     final stopwatch = Stopwatch()..start();
 
     try {
+      final isWsl = _isWslCommand(request.command);
+
       final ProcessResult result = await _shell.run(
         request.command,
         request.arguments,
         workingDirectory: request.workingDirectory,
         environment: request.environment,
         runInShell: request.runInShell,
+        // WSL outputs UTF-16LE on Windows; get raw bytes and decode manually.
+        stdoutEncoding: isWsl ? null : systemEncoding,
+        stderrEncoding: isWsl ? null : systemEncoding,
       );
 
       stopwatch.stop();
@@ -101,8 +136,8 @@ class ExecutionBroker {
 
       return ExecutionResult(
         exitCode: result.exitCode,
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
+        stdout: decodeWslOutput(result.stdout),
+        stderr: decodeWslOutput(result.stderr),
         duration: stopwatch.elapsed,
         auditSeverity: severity,
       );
@@ -161,13 +196,19 @@ class ExecutionBroker {
         );
 
         if (request.captureOutput) {
+          final isWsl = _isWslCommand(request.command);
+
           // Listen to stdout/stderr and forward as events.
           final stdoutSub = process.stdout.listen((data) {
-            controller.add(StdOutChunk(String.fromCharCodes(data)));
+            controller.add(StdOutChunk(
+              isWsl ? decodeWslOutput(data) : String.fromCharCodes(data),
+            ));
           });
 
           final stderrSub = process.stderr.listen((data) {
-            controller.add(StdErrChunk(String.fromCharCodes(data)));
+            controller.add(StdErrChunk(
+              isWsl ? decodeWslOutput(data) : String.fromCharCodes(data),
+            ));
           });
 
           final exitCode = await process.exitCode;
