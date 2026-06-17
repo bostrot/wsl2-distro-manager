@@ -306,5 +306,12 @@
   "error-diagnosis-feature": "Hibadiagnózis",
   "manage-subscription-text": "Előfizetés kezelése",
   "open-billing-portal-text": "Számlázási portál megnyitása",
-  "ai-workspace-title": "AI Workspace"
+  "ai-workspace-title": "AI Workspace",
+  "ai-workspace-subtitle": "AI eszközök és szolgáltatások kezelése elszigetelt WSL környezetben",
+  "ai-workspace-uninstall-title": "Eszköz eltávolítása",
+  "ai-workspace-uninstall-confirm": "Biztosan eltávolítja ezt az eszközt? Ez a művelet nem vonható vissza.",
+  "ai-workspace-uninstall-btn": "Eltávolítás",
+  "retry-text": "Újrapróbálkozás",
+  "notinstalled-text": "Nincs telepítve",
+  "uninstall-text": "Eltávolítás"
 }

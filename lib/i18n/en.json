@@ -305,5 +305,12 @@
   "error-diagnosis-feature": "Error Diagnosis",
   "manage-subscription-text": "Manage Subscription",
   "open-billing-portal-text": "Open Billing Portal",
-  "ai-workspace-title": "AI Workspace"
+  "ai-workspace-title": "AI Workspace",
+  "ai-workspace-subtitle": "Manage AI tools and services in an isolated WSL environment",
+  "ai-workspace-uninstall-title": "Uninstall Tool",
+  "ai-workspace-uninstall-confirm": "Are you sure you want to uninstall this tool? This action cannot be undone.",
+  "ai-workspace-uninstall-btn": "Uninstall",
+  "retry-text": "Retry",
+  "notinstalled-text": "Not Installed",
+  "uninstall-text": "Uninstall"
 }

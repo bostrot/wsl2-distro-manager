@@ -306,5 +306,12 @@
   "error-diagnosis-feature": "Hata Tanılama",
   "manage-subscription-text": "Aboneliği Yönet",
   "open-billing-portal-text": "Faturalandırma Portalını Aç",
-  "ai-workspace-title": "AI Workspace"
+  "ai-workspace-title": "AI Workspace",
+  "ai-workspace-subtitle": "Yalıtılmış bir WSL ortamında AI araçlarını ve hizmetlerini yönetin",
+  "ai-workspace-uninstall-title": "Aracı Kaldır",
+  "ai-workspace-uninstall-confirm": "Bu aracı kaldırmak istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+  "ai-workspace-uninstall-btn": "Kaldır",
+  "retry-text": "Yeniden Dene",
+  "notinstalled-text": "Yüklenmemiş",
+  "uninstall-text": "Kaldır"
 }

@@ -306,5 +306,13 @@
   "script-generation-feature": "Script Generation",
   "error-diagnosis-feature": "Error Diagnosis",
   "manage-subscription-text": "Manage Subscription",
-  "open-billing-portal-text": "Open Billing Portal"
+  "open-billing-portal-text": "Open Billing Portal",
+  "ai-workspace-title": "AI Workspace",
+  "ai-workspace-subtitle": "Manage AI tools and services in an isolated WSL environment",
+  "ai-workspace-uninstall-title": "Tool deinstallieren",
+  "ai-workspace-uninstall-confirm": "Sind Sie sicher, dass Sie dieses Tool deinstallieren möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+  "ai-workspace-uninstall-btn": "Deinstallieren",
+  "retry-text": "Wiederholen",
+  "notinstalled-text": "Nicht installiert",
+  "uninstall-text": "Deinstallieren"
 }

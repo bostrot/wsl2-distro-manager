@@ -307,5 +307,12 @@
   "error-diagnosis-feature": "错误诊断",
   "manage-subscription-text": "管理订阅",
   "open-billing-portal-text": "打开账单门户",
-  "ai-workspace-title": "AI Workspace"
+  "ai-workspace-title": "AI Workspace",
+  "ai-workspace-subtitle": "在隔离的 WSL 环境中管理 AI 工具与服务",
+  "ai-workspace-uninstall-title": "卸载工具",
+  "ai-workspace-uninstall-confirm": "您确定要卸载此工具吗？此操作无法恢复。",
+  "ai-workspace-uninstall-btn": "卸载",
+  "retry-text": "重试",
+  "notinstalled-text": "未安装",
+  "uninstall-text": "卸载"
 }

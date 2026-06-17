@@ -306,5 +306,12 @@
   "error-diagnosis-feature": "Diagnóstico de errores",
   "manage-subscription-text": "Gestionar suscripción",
   "open-billing-portal-text": "Abrir portal de facturación",
-  "ai-workspace-title": "AI Workspace"
+  "ai-workspace-title": "AI Workspace",
+  "ai-workspace-subtitle": "Gestiona herramientas y servicios de IA en un entorno WSL aislado",
+  "ai-workspace-uninstall-title": "Desinstalar Herramienta",
+  "ai-workspace-uninstall-confirm": "¿Estás seguro de que deseas desinstalar esta herramienta? Esta acción no se puede deshacer.",
+  "ai-workspace-uninstall-btn": "Desinstalar",
+  "retry-text": "Reintentar",
+  "notinstalled-text": "No instalado",
+  "uninstall-text": "Desinstalar"
 }

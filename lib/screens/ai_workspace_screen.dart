@@ -16,6 +16,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   late final AiWorkspaceService _service;
   bool _loading = true;
   String? _error;
+  final Set<AiWorkspaceTool> _busyTools = {};
 
   @override
   void initState() {
@@ -30,43 +31,111 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   Future<void> _initService() async {
     try {
       await _service.init();
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
   Future<void> _handleInstall(AiWorkspaceTool tool) async {
-    // TODO: Show progress dialog.
-    await _service.install(tool);
-    setState(() {});
+    setState(() => _busyTools.add(tool));
+    try {
+      await _service.install(tool);
+    } finally {
+      if (mounted) {
+        setState(() => _busyTools.remove(tool));
+      }
+    }
   }
 
   Future<void> _handleStart(AiWorkspaceTool tool) async {
-    await _service.start(tool);
-    setState(() {});
+    setState(() => _busyTools.add(tool));
+    try {
+      await _service.start(tool);
+    } finally {
+      if (mounted) {
+        setState(() => _busyTools.remove(tool));
+      }
+    }
   }
 
   Future<void> _handleStop(AiWorkspaceTool tool) async {
-    await _service.stop(tool);
-    setState(() {});
+    setState(() => _busyTools.add(tool));
+    try {
+      await _service.stop(tool);
+    } finally {
+      if (mounted) {
+        setState(() => _busyTools.remove(tool));
+      }
+    }
   }
 
   Future<void> _handleUninstall(AiWorkspaceTool tool) async {
-    // TODO: Show confirmation dialog first.
-    await _service.uninstall(tool);
-    setState(() {});
+    // Show confirmation dialog first.
+    final confirmed = await showDialog<bool>(
+      context: context,
+          builder: (_) => ContentDialog(
+            title: Text('ai-workspace-uninstall-title'.i18n()),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_toolName(tool)),
+                const SizedBox(height: 8),
+            Text('ai-workspace-uninstall-confirm'.i18n()),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('ai-workspace-uninstall-btn'.i18n()),
+          ),
+          Button(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('cancel-text'.i18n()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _busyTools.add(tool));
+    try {
+      await _service.uninstall(tool);
+    } finally {
+      if (mounted) {
+        setState(() => _busyTools.remove(tool));
+      }
+    }
+  }
+
+  String _toolName(AiWorkspaceTool tool) {
+    switch (tool) {
+      case AiWorkspaceTool.hermesAgent: return 'Hermes Agent';
+      case AiWorkspaceTool.openClaw: return 'OpenClaw';
+      case AiWorkspaceTool.openWebUi: return 'Open WebUI';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: ProgressRing());
+      return const Center(
+        child: SizedBox.square(
+          dimension: 32,
+          child: ProgressRing(),
+        ),
+      );
     }
 
     if (_error != null) {
@@ -86,7 +155,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 });
                 _initService();
               },
-              child: const Text('Retry'),
+              child: Text('retry-text'.i18n()),
             ),
           ],
         ),
@@ -104,7 +173,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Manage AI workspace tools for your WSL environment.',
+            'ai-workspace-subtitle'.i18n(),
             style: FluentTheme.of(context).typography.bodyStrong,
           ),
           const SizedBox(height: 24),
@@ -116,13 +185,14 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   Widget _buildToolCard(AiWorkspaceTool tool) {
     final state = _service.getState(tool);
-    final config = const {
+    final name = const {
       AiWorkspaceTool.hermesAgent: 'Hermes Agent',
       AiWorkspaceTool.openClaw: 'OpenClaw',
       AiWorkspaceTool.openWebUi: 'Open WebUI',
     }[tool]!;
 
     final statusColor = _statusToColor(state?.status);
+    final isBusy = _busyTools.contains(tool);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -142,7 +212,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(config, style: FluentTheme.of(context).typography.subtitle),
+                Text(name, style: FluentTheme.of(context).typography.subtitle),
                 const Spacer(),
                 _statusBadge(state?.status),
               ],
@@ -164,40 +234,59 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                FilledButton(
-                  onPressed: state?.status == ToolStatus.notInstalled
-                      ? () => _handleInstall(tool)
-                      : null,
-                  child: Text(state?.status == ToolStatus.notInstalled
-                      ? 'Install'
-                      : 'Installed'),
+                _buildAction(
+                  label: state?.status == ToolStatus.notInstalled
+                      ? 'install-text'.i18n()
+                      : 'installed-text'.i18n(),
+                  enabled: state?.status == ToolStatus.notInstalled && !isBusy,
+                  busy: isBusy && state?.status == ToolStatus.notInstalled,
+                  onPressed: () => _handleInstall(tool),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: state?.status == ToolStatus.stopped
-                      ? () => _handleStart(tool)
-                      : null,
-                  child: const Text('Start'),
+                _buildAction(
+                  label: 'start-text'.i18n(),
+                  enabled: state?.status == ToolStatus.stopped && !isBusy,
+                  busy: isBusy && state?.status == ToolStatus.stopped,
+                  onPressed: () => _handleStart(tool),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: state?.status == ToolStatus.running
-                      ? () => _handleStop(tool)
-                      : null,
-                  child: const Text('Stop'),
+                _buildAction(
+                  label: 'stop-text'.i18n(),
+                  enabled: state?.status == ToolStatus.running && !isBusy,
+                  busy: isBusy && state?.status == ToolStatus.running,
+                  onPressed: () => _handleStop(tool),
                 ),
                 const Spacer(),
                 Button(
-                  onPressed: state?.status != ToolStatus.notInstalled
+                  onPressed: (state?.status != ToolStatus.notInstalled && !isBusy)
                       ? () => _handleUninstall(tool)
                       : null,
-                  child: const Text('Uninstall'),
+                  child: isBusy && state?.status != ToolStatus.notInstalled
+                      ? SizedBox.square(
+                          dimension: 16,
+                          child: ProgressRing(),
+                        )
+                      : Text('uninstall-text'.i18n()),
                 ),
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAction({
+    required String label,
+    required bool enabled,
+    required bool busy,
+    required VoidCallback onPressed,
+  }) {
+    return FilledButton(
+      onPressed: enabled ? onPressed : null,
+      child: busy
+          ? SizedBox.square(dimension: 16, child: ProgressRing())
+          : Text(label),
     );
   }
 
@@ -226,9 +315,9 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   String _statusLabel(ToolStatus? status) {
-    if (status == ToolStatus.running) return 'Running';
-    if (status == ToolStatus.stopped) return 'Stopped';
-    if (status == ToolStatus.error) return 'Error';
-    return 'Not installed';
+    if (status == ToolStatus.running) return 'running-text'.i18n();
+    if (status == ToolStatus.stopped) return 'stopped-text'.i18n();
+    if (status == ToolStatus.error) return 'error-text'.i18n();
+    return 'notinstalled-text'.i18n();
   }
 }

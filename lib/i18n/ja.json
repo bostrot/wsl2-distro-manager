@@ -306,5 +306,12 @@
   "error-diagnosis-feature": "エラー診断",
   "manage-subscription-text": "サブスクリプションの管理",
   "open-billing-portal-text": "請求ポータルを開く",
-  "ai-workspace-title": "AI Workspace"
+  "ai-workspace-title": "AI Workspace",
+  "ai-workspace-subtitle": "分離されたWSL環境でAIツールとサービスを管理",
+  "ai-workspace-uninstall-title": "ツールのアンインストール",
+  "ai-workspace-uninstall-confirm": "このツールをアンインストールしてもよろしいですか？この操作は元に戻せません。",
+  "ai-workspace-uninstall-btn": "アンインストール",
+  "retry-text": "再試行",
+  "notinstalled-text": "未インストール",
+  "uninstall-text": "アンインストール"
 }
