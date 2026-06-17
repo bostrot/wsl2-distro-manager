@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show ProcessResult, Process, ProcessStartMode;
 
@@ -31,11 +30,13 @@ class TestShell implements Shell {
     lastCommand = [executable, ...arguments];
     allCommands.add([executable, ...arguments]);
     if (artificialDelay != null) await Future.delayed(artificialDelay!);
+    // When an encoding is provided, the real shell returns a decoded String.
+    // Return raw bytes only when encoding is null (WSL path).
     return ProcessResult(
       -1, // pid placeholder
       exitCode,
-      utf8.encode(stdoutData),
-      utf8.encode(stderrData),
+      stdoutEncoding != null ? stdoutData : utf8.encode(stdoutData),
+      stderrEncoding != null ? stderrData : utf8.encode(stderrData),
     );
   }
 
@@ -205,8 +206,7 @@ void main() {
         command: 'echo',
         arguments: ['hello world'],
       ));
-      // ProcessResult.stdout is List<int>; .toString() gives "[104, 101, ...]"
-      expect(result.stdout.contains('104'), true); // 'h' byte value present
+      expect(result.stdout, contains('hello world'));
     });
 
     test('returns stderr from shell', () async {
@@ -215,7 +215,7 @@ void main() {
         command: 'bad-cmd',
         arguments: [],
       ));
-      expect(result.stderr.contains('101'), true); // 'e' byte value present
+      expect(result.stderr, contains('error message'));
     });
 
     test('returns exit code from shell', () async {
