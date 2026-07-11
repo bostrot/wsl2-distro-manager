@@ -126,6 +126,7 @@ class _NavbarState extends State<Navbar> {
             Locale('es', ''), // Spanish, no country code
             Locale('tr', ''), // Turkish, no country code
             Locale('ja', ''), // Japanese, no country code
+            Locale('ko', ''), // Korean, no country code
           ],
           builder: (context, child) {
             return navWidget(appTheme, textColor, context, isDarkMode);
