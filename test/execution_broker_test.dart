@@ -236,6 +236,18 @@ void main() {
       expect(result.duration.inMilliseconds, greaterThanOrEqualTo(40));
     });
 
+    test('a hung command times out instead of hanging forever', () async {
+      testShell.artificialDelay = const Duration(seconds: 5);
+      final result = await broker.run(const ExecutionRequest(
+        command: 'hung-cmd',
+        arguments: [],
+        timeout: Duration(milliseconds: 50),
+      ));
+      expect(result.exitCode, -1);
+      expect(result.stderr, contains('timed out'));
+      expect(result.auditSeverity, AuditSeverity.error);
+    });
+
     test('captures the command and arguments in audit entry', () async {
       await broker.run(const ExecutionRequest(
         command: 'wsl',

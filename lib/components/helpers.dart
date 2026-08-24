@@ -404,3 +404,31 @@ SafePath getDataPath() {
   String distroPath = prefs.getString('DistroPath') ?? getDefaultStorageRootPath();
   return SafePath(distroPath);
 }
+
+/// Clear all stored distro path prefs. Useful for recovering from
+/// stale "fake install" paths left over from previous installations.
+/// Returns the list of keys that were removed.
+Future<List<String>> clearAllDistroPrefs() async {
+  final removed = <String>[];
+
+  // Remove all Path_* entries
+  final keys = prefs.getKeys();
+  for (final key in keys) {
+    if (key.startsWith('Path_')) {
+      await prefs.remove(key);
+      removed.add(key);
+    }
+  }
+
+  // Remove DistroPath and DataPath
+  if (prefs.containsKey('DistroPath')) {
+    await prefs.remove('DistroPath');
+    removed.add('DistroPath');
+  }
+  if (prefs.containsKey('DataPath')) {
+    await prefs.remove('DataPath');
+    removed.add('DataPath');
+  }
+
+  return removed;
+}

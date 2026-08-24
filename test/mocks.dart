@@ -55,6 +55,8 @@ class MockShell implements Shell {
   final List<String> distros = [];
   List<String> lastStartArguments = [];
   String lastStartExecutable = '';
+  List<String> lastRunArguments = [];
+  String lastRunExecutable = '';
   String? execCmdAsRootResponse;
 
   bool simulateExportFailure = false;
@@ -65,6 +67,10 @@ class MockShell implements Shell {
   bool simulateRemoveFailure = false;
   bool simulateCodeMissing = false;
   bool simulateCodiumMissing = false;
+  // Bytes reported by the remote `Get-Item -LiteralPath ... .Length`
+  // PowerShell probe used by WSLApi._remoteFileSize (getSize/move safety
+  // checks). Defaults large enough to pass move()'s size-safety check.
+  int remoteFileSizeBytes = 10 * 1024 * 1024;
 
   @override
   Future<ProcessResult> run(String executable, List<String> arguments,
@@ -74,6 +80,9 @@ class MockShell implements Shell {
       bool runInShell = false,
       Encoding? stdoutEncoding = systemEncoding,
       Encoding? stderrEncoding = systemEncoding}) async {
+    lastRunExecutable = executable;
+    lastRunArguments = arguments;
+
     String stdout = '';
     String stderr = '';
     int exitCode = 0;
@@ -93,6 +102,12 @@ class MockShell implements Shell {
 
     if (arguments.contains('--list')) {
       stdout = distros.join('\n');
+    }
+
+    if (arguments.contains('-Command') &&
+        arguments.isNotEmpty &&
+        arguments.last.contains('Get-Item')) {
+      stdout = remoteFileSizeBytes.toString();
     }
 
     if (arguments.contains('--unregister')) {

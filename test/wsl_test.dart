@@ -326,6 +326,137 @@ void main() {
     });
   });
 
+  group('Remote WSL Tests', () {
+    setUp(() {
+      prefs.setBool('UseRemoteWSL', true);
+      prefs.setString('RemoteWSLTarget', 'user@192.168.1.20');
+    });
+
+    tearDown(() {
+      prefs.remove('UseRemoteWSL');
+      prefs.remove('RemoteWSLTarget');
+    });
+
+    test('useRemoteWsl is false with a malformed target', () async {
+      prefs.setString('RemoteWSLTarget', '-not-a-valid-target');
+      expect(wslApi.useRemoteWsl, false);
+    });
+
+    test('useRemoteWsl is false when the toggle is off', () async {
+      prefs.setBool('UseRemoteWSL', false);
+      expect(wslApi.useRemoteWsl, false);
+    });
+
+    test('useRemoteWsl is true with a valid target and toggle on', () async {
+      expect(wslApi.useRemoteWsl, true);
+    });
+
+    // Regression coverage for a real bug: start()/openBashrc()/startVSCode()/
+    // exec()'s passwd branch launch via Windows `start`/a terminal exe with
+    // 'ssh' as part of the *argument list*, not as the process executable
+    // (unlike _runWsl/_startWsl, which pass 'ssh' as the executable
+    // directly). They previously built their args via _buildRemoteArgs alone
+    // — which only returns ssh's own options, never the literal 'ssh' token —
+    // so remote terminal/editor/VS Code launches silently passed SSH's
+    // options (`-o`, `BatchMode=yes`, ...) as the program to run instead of
+    // running ssh at all.
+    test('start() prefixes remote args with the literal ssh token', () async {
+      prefs.remove('Terminal');
+      wslApi.start('Ubuntu');
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      expect(mockShell.lastStartExecutable, 'start');
+      expect(mockShell.lastStartArguments.first, 'ssh');
+      expect(mockShell.lastStartArguments, contains('user@192.168.1.20'));
+      expect(mockShell.lastStartArguments, contains('wsl'));
+      expect(mockShell.lastStartArguments, contains('-d'));
+      expect(mockShell.lastStartArguments, contains('Ubuntu'));
+    });
+
+    test('openBashrc() prefixes remote args with the literal ssh token',
+        () async {
+      await wslApi.openBashrc('Ubuntu');
+
+      expect(mockShell.lastStartExecutable, 'start');
+      expect(mockShell.lastStartArguments.first, 'ssh');
+      expect(mockShell.lastStartArguments, contains('user@192.168.1.20'));
+      expect(mockShell.lastStartArguments, contains('wsl'));
+    });
+
+    test('startVSCode() prefixes remote args with the literal ssh token',
+        () async {
+      wslApi.startVSCode('Ubuntu');
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      expect(mockShell.lastStartExecutable, 'start');
+      expect(mockShell.lastStartArguments.first, 'ssh');
+      expect(mockShell.lastStartArguments, contains('user@192.168.1.20'));
+      expect(mockShell.lastStartArguments, contains('code'));
+    });
+
+    test('exec() passwd branch prefixes remote args with the literal ssh token',
+        () async {
+      await wslApi.exec('Ubuntu', ['passwd']);
+
+      expect(mockShell.lastStartExecutable, 'start');
+      expect(mockShell.lastStartArguments.first, 'ssh');
+      expect(mockShell.lastStartArguments, contains('user@192.168.1.20'));
+    });
+
+    test('stop() routes through ssh as the process executable, not the arg list',
+        () async {
+      await wslApi.stop('Ubuntu');
+
+      // _runWsl passes 'ssh' as the executable itself (correct pattern —
+      // contrast with the start()/openBashrc()/etc. cases above, which
+      // launch through a different executable and need 'ssh' inlined into
+      // the argument list instead).
+      expect(mockShell.lastRunExecutable, 'ssh');
+      expect(mockShell.lastRunArguments, contains('user@192.168.1.20'));
+      expect(mockShell.lastRunArguments, contains('--terminate'));
+      expect(mockShell.lastRunArguments, contains('Ubuntu'));
+    });
+
+    test('remoteInstallPath builds a path under the shared remote root',
+        () async {
+      expect(wslApi.remoteInstallPath('Ubuntu'),
+          r'C:\wsl2dm\instances\Ubuntu');
+    });
+
+    // Regression coverage for a real gap: the remote move() branch used to
+    // skip every safety net the local branch has (same-path check,
+    // minimum-export-size check, recovery markers) — a bad/truncated
+    // remote export could get the source distro deleted before anyone
+    // noticed. Both checks below must reject *before* remove() runs.
+    test('move() remote rejects a no-op move to the same path', () async {
+      mockShell.distros.add('Ubuntu');
+      prefs.setString('Path_Ubuntu', r'C:\wsl2dm\instances\Ubuntu');
+
+      await expectLater(
+        () => wslApi.move('Ubuntu', r'C:\wsl2dm\instances\Ubuntu'),
+        throwsA(predicate((e) =>
+            e.toString().contains('must be different from current path'))),
+      );
+      // The distro must still be registered — remove() was never reached.
+      expect(mockShell.distros, contains('Ubuntu'));
+      prefs.remove('Path_Ubuntu');
+    });
+
+    test('move() remote rejects a too-small export and never removes the distro',
+        () async {
+      mockShell.distros.add('Ubuntu');
+      mockShell.remoteFileSizeBytes = 512; // well under the 1MB safety floor
+
+      await expectLater(
+        () => wslApi.move('Ubuntu', r'C:\wsl2dm\instances\UbuntuMoved'),
+        throwsA(predicate(
+            (e) => e.toString().contains('Export failed or file too small'))),
+      );
+      expect(mockShell.distros, contains('Ubuntu'));
+      expect(prefs.getString('MoveOp_Distro'), isNull);
+    });
+  });
+
   test('WSL getWSLConf parses correctly', () async {
     // Mock execCmdAsRoot to return sample config
     mockShell.execCmdAsRootResponse = '''

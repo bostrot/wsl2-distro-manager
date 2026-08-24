@@ -116,6 +116,13 @@ class ExecutionBroker {
         // WSL outputs UTF-16LE on Windows; get raw bytes and decode manually.
         stdoutEncoding: isWsl ? null : systemEncoding,
         stderrEncoding: isWsl ? null : systemEncoding,
+      ).timeout(
+        request.timeout,
+        onTimeout: () => throw TimeoutException(
+          'Command timed out after ${request.timeout.inSeconds}s: '
+          '${request.command} ${request.arguments.join(' ')}',
+          request.timeout,
+        ),
       );
 
       stopwatch.stop();

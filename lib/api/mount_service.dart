@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:localization/localization.dart';
 import 'package:path/path.dart' as p;
+import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
@@ -68,7 +69,7 @@ class MountService {
   bool get _useRemoteWsl {
     final enabled = prefs.getBool('UseRemoteWSL') ?? false;
     final target = prefs.getString('RemoteWSLTarget')?.trim() ?? '';
-    return enabled && target.isNotEmpty;
+    return enabled && isValidRemoteTarget(target);
   }
 
   String get _remoteTarget {
