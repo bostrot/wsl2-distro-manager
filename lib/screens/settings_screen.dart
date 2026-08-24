@@ -1,7 +1,13 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
+import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
+import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -33,16 +39,22 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _dockerMirrorController = TextEditingController();
   final TextEditingController _remoteWslTargetController =
       TextEditingController();
+  final TextEditingController _byokBaseUrlController = TextEditingController();
+  final TextEditingController _byokApiKeyController = TextEditingController();
+  final TextEditingController _byokModelController = TextEditingController();
   bool _useRemoteWsl = false;
+  bool _mcpEnabled = false;
+  bool _mcpTokenVisible = false;
+  bool _tunnelStarting = false;
+  String? _tunnelError;
   bool showDocker = false;
   BuildContext? currentContext;
-  static final RegExp _remoteTargetPattern =
-      RegExp(r'^(?:(?!-)[A-Za-z0-9._-]+@)?(?!-)[A-Za-z0-9._:-]+$');
+  final AiService _aiService = AiService();
+  final LicenseManager _licenseManager = LicenseManager();
+  final WslMcpService _mcpService = WslMcpService();
+  final CloudflareTunnelService _tunnelService = CloudflareTunnelService();
 
-  bool _isRemoteWslTargetValid(String target) {
-    final trimmed = target.trim();
-    return trimmed.isNotEmpty && _remoteTargetPattern.hasMatch(trimmed);
-  }
+  bool _isRemoteWslTargetValid(String target) => isValidRemoteTarget(target);
 
   @override
   void initState() {
@@ -56,6 +68,9 @@ class SettingsPageState extends State<SettingsPage> {
     if (currentContext != null) {
       saveSettings(currentContext!, dispose: true);
     }
+    _byokBaseUrlController.dispose();
+    _byokApiKeyController.dispose();
+    _byokModelController.dispose();
     super.dispose();
   }
 
@@ -104,6 +119,10 @@ class SettingsPageState extends State<SettingsPage> {
       _remoteWslTargetController.text = remoteTarget;
     }
     showDocker = prefs.getBool('showDocker') ?? false;
+    _byokBaseUrlController.text = prefs.getString('ByokBaseUrl') ?? '';
+    _byokApiKeyController.text = _aiService.byokApiKey;
+    _byokModelController.text = prefs.getString('ByokModel') ?? '';
+    _mcpEnabled = _mcpService.enabled;
     if (!mounted) return;
     setState(() {
       _settings = _settings;
@@ -261,6 +280,11 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("RemoteWSLTarget");
     }
 
+    // BYOK (bring-your-own-AI-key) settings
+    _aiService.setByokBaseUrl(_byokBaseUrlController.text);
+    _aiService.setByokApiKey(_byokApiKeyController.text);
+    _aiService.setByokModel(_byokModelController.text);
+
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
@@ -310,6 +334,16 @@ class SettingsPageState extends State<SettingsPage> {
         Expander(
           header: Text('dockersettings-text'.i18n()),
           content: _buildDockerSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('byok-settings-text'.i18n()),
+          content: _buildAiSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('mcp-settings-text'.i18n()),
+          content: _buildMcpSettings(context),
         ),
         const SizedBox(height: 10),
         Expander(
@@ -531,6 +565,315 @@ class SettingsPageState extends State<SettingsPage> {
                   ],
                 )),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAiSettings(BuildContext context) {
+    final isPro = _licenseManager.isPro;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            'byok-info-text'.i18n(),
+            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          ),
+        ),
+        if (!isPro)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoBar(
+              title: Text('byok-pro-required-text'.i18n()),
+              severity: InfoBarSeverity.info,
+              action: Button(
+                key: const ValueKey('test-byok-upgrade'),
+                onPressed: () => router.pushNamed('license'),
+                child: Text('upgrade-text'.i18n()),
+              ),
+            ),
+          ),
+        // No enable/disable toggle: with no app-operated backend, the key
+        // isn't an alternative route — it's the only one. Present = chat
+        // works, absent = chat prompts for it.
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'byok-baseurl-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'byok-baseurl-hint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-byok-baseurl-input'),
+                controller: _byokBaseUrlController,
+                enabled: isPro,
+                placeholder: AiService.defaultByokBaseUrl,
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'byok-apikey-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'byok-apikey-hint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-byok-apikey-input'),
+                controller: _byokApiKeyController,
+                enabled: isPro,
+                obscureText: true,
+                placeholder: 'sk-...',
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'byok-model-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'byok-model-hint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-byok-model-input'),
+                controller: _byokModelController,
+                enabled: isPro,
+                placeholder: AiService.defaultByokModel,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMcpSettings(BuildContext context) {
+    final isPro = _licenseManager.isPro;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            'mcp-info-text'.i18n(),
+            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          ),
+        ),
+        if (!isPro)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoBar(
+              title: Text('mcp-pro-required-text'.i18n()),
+              severity: InfoBarSeverity.info,
+              action: Button(
+                key: const ValueKey('test-mcp-upgrade'),
+                onPressed: () => router.pushNamed('license'),
+                child: Text('upgrade-text'.i18n()),
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'mcp-toggle-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                ToggleSwitch(
+                  key: const ValueKey('test-mcp-toggle'),
+                  checked: _mcpEnabled && isPro,
+                  onChanged: (value) {
+                    if (!isPro) {
+                      router.pushNamed('license');
+                      return;
+                    }
+                    setState(() => _mcpEnabled = value);
+                    _mcpService.setEnabled(value);
+                  },
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Text('mcp-toggle-hint-text'.i18n()),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_mcpEnabled && isPro) ...[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'mcp-endpoint-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      key: const ValueKey('test-mcp-endpoint'),
+                      readOnly: true,
+                      controller:
+                          TextEditingController(text: _mcpService.endpointUrl),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(FluentIcons.copy, size: 15.0),
+                    onPressed: () => Clipboard.setData(
+                        ClipboardData(text: _mcpService.endpointUrl)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'mcp-token-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      key: const ValueKey('test-mcp-token'),
+                      readOnly: true,
+                      obscureText: !_mcpTokenVisible,
+                      controller:
+                          TextEditingController(text: _mcpService.token),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                        _mcpTokenVisible ? FluentIcons.hide3 : FluentIcons.view,
+                        size: 15.0),
+                    onPressed: () => setState(
+                        () => _mcpTokenVisible = !_mcpTokenVisible),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(FluentIcons.copy, size: 15.0),
+                    onPressed: () => Clipboard.setData(
+                        ClipboardData(text: _mcpService.token)),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    key: const ValueKey('test-mcp-regenerate-token'),
+                    icon: const Icon(FluentIcons.refresh, size: 15.0),
+                    onPressed: () =>
+                        setState(() => _mcpService.regenerateToken()),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoBar(
+              title: Text('mcp-tunnel-warning-text'.i18n()),
+              severity: InfoBarSeverity.warning,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'mcp-tunnel-toggle-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  ToggleSwitch(
+                    key: const ValueKey('test-mcp-tunnel-toggle'),
+                    checked: _tunnelService.isRunning,
+                    onChanged: _tunnelStarting
+                        ? null
+                        : (value) async {
+                            setState(() {
+                              _tunnelStarting = true;
+                              _tunnelError = null;
+                            });
+                            try {
+                              if (value) {
+                                await _tunnelService.start(WslMcpService.port);
+                              } else {
+                                await _tunnelService.stop();
+                              }
+                            } catch (e) {
+                              _tunnelError = e.toString();
+                            } finally {
+                              if (mounted) {
+                                setState(() => _tunnelStarting = false);
+                              }
+                            }
+                          },
+                  ),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child: Text('mcp-tunnel-toggle-hint-text'.i18n()),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_tunnelStarting)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: _buildInlineTunnelStatus(),
+            ),
+          if (_tunnelError != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                _tunnelError!,
+                style: TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+          if (_tunnelService.isRunning && _tunnelService.publicUrl != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoLabel(
+                label: 'mcp-tunnel-url-text'.i18n(),
+                labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        key: const ValueKey('test-mcp-tunnel-url'),
+                        readOnly: true,
+                        controller: TextEditingController(
+                            text: _tunnelService.publicUrl),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(FluentIcons.copy, size: 15.0),
+                      onPressed: () => Clipboard.setData(
+                          ClipboardData(text: _tunnelService.publicUrl!)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInlineTunnelStatus() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox.square(
+          dimension: 12,
+          child: ProgressRing(strokeWidth: 2),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'mcp-tunnel-connecting-text'.i18n(),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
       ],
     );

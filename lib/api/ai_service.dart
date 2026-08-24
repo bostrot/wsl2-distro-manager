@@ -1,3 +1,9 @@
+// AI chat for Pro users, powered entirely by the user's own
+// OpenAI-compatible API key (BYOK — bring your own key). There is no
+// app-operated AI backend and no query quota: requests go straight from
+// this machine to the endpoint the user configured in Settings, on their
+// own key and their own bill.
+
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -37,11 +43,59 @@ class AiService {
   final Dio _dio = Dio();
   final LicenseManager _license = LicenseManager();
 
-  // n8n webhook endpoint for AI queries
-  String get _backendUrl => 'https://n8n.aachen.dev/webhook/wsl-manager/query';
+  @visibleForTesting
+  Dio get dioForTesting => _dio;
 
-  // Monthly query limit per subscriber
-  static const int monthlyLimit = 50;
+  // Defaults for the user's OpenAI-compatible endpoint. Any provider works
+  // as long as it speaks the /chat/completions contract (OpenAI itself,
+  // Azure OpenAI proxies, Ollama, LM Studio, etc.).
+  static const String defaultByokBaseUrl = 'https://api.openai.com/v1';
+  static const String defaultByokModel = 'gpt-4o-mini';
+
+  String get byokBaseUrl {
+    final stored = prefs.getString('ByokBaseUrl')?.trim();
+    return (stored != null && stored.isNotEmpty) ? stored : defaultByokBaseUrl;
+  }
+
+  String get byokApiKey => prefs.getString('ByokApiKey')?.trim() ?? '';
+
+  String get byokModel {
+    final stored = prefs.getString('ByokModel')?.trim();
+    return (stored != null && stored.isNotEmpty) ? stored : defaultByokModel;
+  }
+
+  /// Whether a key is present — the one thing AI chat can't work without.
+  /// Pro gating is checked separately in [sendMessage]; keeping this a pure
+  /// "is it configured" signal means the Settings screen can show/save the
+  /// configuration regardless of entitlement state.
+  bool get hasByokConfigured => byokApiKey.isNotEmpty;
+
+  void setByokBaseUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) {
+      prefs.remove('ByokBaseUrl');
+    } else {
+      prefs.setString('ByokBaseUrl', trimmed);
+    }
+  }
+
+  void setByokApiKey(String key) {
+    final trimmed = key.trim();
+    if (trimmed.isEmpty) {
+      prefs.remove('ByokApiKey');
+    } else {
+      prefs.setString('ByokApiKey', trimmed);
+    }
+  }
+
+  void setByokModel(String model) {
+    final trimmed = model.trim();
+    if (trimmed.isEmpty) {
+      prefs.remove('ByokModel');
+    } else {
+      prefs.setString('ByokModel', trimmed);
+    }
+  }
 
   List<AiMessage> _conversationHistory = [];
   List<AiMessage> get conversationHistory =>
@@ -60,26 +114,7 @@ class AiService {
         _conversationHistory = [];
       }
     }
-
-    // Reset query count on new month
-    final lastReset = prefs.getString('AiQueryLastReset');
-    final now = DateTime.now();
-    if (lastReset == null ||
-        DateTime.parse(lastReset).month != now.month ||
-        DateTime.parse(lastReset).year != now.year) {
-      prefs.setInt('AiQueryCount', 0);
-      prefs.setString('AiQueryLastReset', '${now.year}-${now.month}');
-    }
   }
-
-  /// Check if user has remaining queries this month
-  bool get hasQueriesRemaining {
-    final count = prefs.getInt('AiQueryCount') ?? 0;
-    return count < monthlyLimit;
-  }
-
-  int get queriesUsed => prefs.getInt('AiQueryCount') ?? 0;
-  int get queriesRemaining => monthlyLimit - queriesUsed;
 
   /// Send a message to the AI and return the response
   Future<String> sendMessage(String query) async {
@@ -87,8 +122,8 @@ class AiService {
       throw Exception('pro-required');
     }
 
-    if (!hasQueriesRemaining) {
-      throw Exception('query-limit-reached');
+    if (!hasByokConfigured) {
+      throw Exception('byok-required');
     }
 
     // Add user message to history
@@ -101,45 +136,18 @@ class AiService {
     _saveConversation();
 
     try {
-      // Build context from recent conversation (last 10 messages for context window)
-      final contextMessages = _conversationHistory
-          .take(10)
-          .map((m) => '${m.role}: ${m.content}')
-          .join('\n');
+      final reply = await _sendViaByok();
 
-      final response = await _dio.post(
-        _backendUrl,
-        options: Options(
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-        data: json.encode({
-          'query': query,
-          'context': contextMessages,
-          'license_key': prefs.getString('LicenseKey') ?? '',
-        }),
+      // Add assistant message to history
+      final assistantMsg = AiMessage(
+        role: 'assistant',
+        content: reply,
+        timestamp: DateTime.now(),
       );
+      _conversationHistory.add(assistantMsg);
+      _saveConversation();
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.data) as Map<String, dynamic>;
-        final reply = data['reply'] as String? ?? 'No response from AI.';
-
-        // Increment query count
-        prefs.setInt('AiQueryCount', queriesUsed + 1);
-
-        // Add assistant message to history
-        final assistantMsg = AiMessage(
-          role: 'assistant',
-          content: reply,
-          timestamp: DateTime.now(),
-        );
-        _conversationHistory.add(assistantMsg);
-        _saveConversation();
-
-        return reply;
-      } else {
-        throw Exception('api-error');
-      }
+      return reply;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('AI service error: $e');
@@ -149,6 +157,57 @@ class AiService {
       _saveConversation();
       rethrow;
     }
+  }
+
+  /// Sends the conversation to the user's own OpenAI-compatible endpoint.
+  Future<String> _sendViaByok() async {
+    final messages = _conversationHistory
+        .take(10)
+        .map((m) => {
+              'role': m.role == 'user' ? 'user' : 'assistant',
+              'content': m.content,
+            })
+        .toList();
+
+    final Response response;
+    try {
+      response = await _dio.post(
+        '$byokBaseUrl/chat/completions',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $byokApiKey',
+            'Content-Type': 'application/json',
+          },
+          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+        data: json.encode({
+          'model': byokModel,
+          'messages': messages,
+        }),
+      );
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint('BYOK request failed: $e');
+      }
+      throw Exception('byok-request-failed');
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception('byok-request-failed');
+    }
+
+    final data =
+        response.data is String ? json.decode(response.data) : response.data;
+    final choices = (data as Map<String, dynamic>)['choices'] as List?;
+    final content = choices != null && choices.isNotEmpty
+        ? (choices.first['message']?['content'] as String?)
+        : null;
+
+    if (content == null || content.trim().isEmpty) {
+      throw Exception('byok-empty-response');
+    }
+    return content.trim();
   }
 
   /// Generate a bash script from natural language description

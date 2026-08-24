@@ -8,6 +8,7 @@ class TestKeys {
   static const Key navHome = ValueKey('test-nav-home');
   static const Key navQuickActions = ValueKey('test-nav-quickactions');
   static const Key navTemplates = ValueKey('test-nav-templates');
+  static const Key navAiWorkspace = ValueKey('test-nav-ai-workspace');
   static const Key navAddInstance = ValueKey('test-nav-addinstance');
   static const Key navMount = ValueKey('test-nav-mount');
 
@@ -25,11 +26,8 @@ class TestKeys {
   static const Key darkModeToggle = ValueKey('test-dark-mode-toggle');
   static const Key bugReportButton = ValueKey('test-bug-report-button');
 
-  // License screen
-  static const Key licenseKeyInput = ValueKey('test-license-key-input');
-  static const Key licenseActivateButton = ValueKey('test-license-activate-button');
-  static const Key licenseMonthlyLink = ValueKey('test-license-monthly-link');
-  static const Key licenseYearlyLink = ValueKey('test-license-yearly-link');
+  // License screen (one-time Store purchase model — no key input anymore)
+  static const Key licenseStoreButton = ValueKey('test-license-store-button');
 
   // Create dialog
   static const Key createDialogNameInput = ValueKey('test-create-name-input');

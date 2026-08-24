@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart' as flutter_acrylic;
@@ -6,8 +8,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -57,8 +61,12 @@ void main() async {
       } else if (isLinux) {
         await windowManager.setAsFrameless();
       }
-      await windowManager.setMinimumSize(const Size(574, 450));
-      await windowManager.setSize(const Size(800, 600));
+      await windowManager.setMinimumSize(const Size(700, 500));
+      // fluent_ui's NavigationPane only switches to full "open" mode (icons
+      // + labels) at widths >= 1008px; anything narrower falls back to
+      // compact (icon-only). Default above that breakpoint so the nav pane
+      // starts fully expanded.
+      await windowManager.setSize(const Size(1180, 780));
       await windowManager.show();
       await windowManager.setPreventClose(true);
       await windowManager.setSkipTaskbar(false);
@@ -76,6 +84,29 @@ void main() async {
   // Init license manager
   await LicenseManager().init();
 
+  // Auto-start the WSL MCP server if the user previously enabled it and
+  // still has Pro — mirrors how the app doesn't otherwise remember to turn
+  // features back on after a restart, but this one needs to actually be
+  // running for external MCP clients to reach it.
+  final mcpService = WslMcpService();
+  if (mcpService.enabled && LicenseManager().isPro) {
+    await mcpService.start();
+  }
+
+  // Kick off the AI Workspace distro/tool-status checks now, in the
+  // background, instead of waiting until the user opens that screen — each
+  // check is a real `wsl` round trip, and doing three of them cold only
+  // once the user is already staring at a loading spinner is exactly the
+  // wait this is meant to avoid. Not awaited: startup shouldn't block on
+  // it, and the screen re-attaches to this same in-flight/completed check
+  // (AiWorkspaceService.ensureInitialized() is memoized) rather than
+  // starting its own redundant one. Skipped entirely for non-Pro users —
+  // the screen is paywalled for them, so there's nothing to pre-check.
+  final aiWorkspaceService = AiWorkspaceService(broker: executionBroker);
+  if (LicenseManager().isPro) {
+    unawaited(aiWorkspaceService.ensureInitialized());
+  }
+
   // Error logging
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -92,18 +123,25 @@ void main() async {
   });
 
   // Init app
-  runApp(WSLManager(executionBroker: executionBroker));
+  runApp(WSLManager(
+    executionBroker: executionBroker,
+    aiWorkspaceService: aiWorkspaceService,
+  ));
 }
 
 class WSLManager extends StatelessWidget {
   final ExecutionBroker? executionBroker;
+  final AiWorkspaceService? aiWorkspaceService;
 
-  const WSLManager({Key? key, this.executionBroker}) : super(key: key);
+  const WSLManager({Key? key, this.executionBroker, this.aiWorkspaceService})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     LocalJsonLocalization.delegate.directories = ['lib/i18n'];
     final broker = executionBroker ?? ExecutionBroker(shell: ProcessShell());
+    final workspaceService =
+        aiWorkspaceService ?? AiWorkspaceService(broker: broker);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -111,6 +149,9 @@ class WSLManager extends StatelessWidget {
         ),
         Provider<ExecutionBroker>.value(
           value: broker,
+        ),
+        Provider<AiWorkspaceService>.value(
+          value: workspaceService,
         ),
       ],
       builder: (context, _) {

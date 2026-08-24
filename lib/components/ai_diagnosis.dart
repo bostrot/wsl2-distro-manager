@@ -16,8 +16,8 @@ Future<void> diagnoseWithAi(String errorMessage) async {
     return;
   }
 
-  if (!AiService().hasQueriesRemaining) {
-    Notify.message('ai-query-limit-text'.i18n());
+  if (!AiService().hasByokConfigured) {
+    Notify.message('byok-required-text'.i18n());
     return;
   }
 

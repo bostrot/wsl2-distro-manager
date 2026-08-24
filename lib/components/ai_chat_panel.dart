@@ -36,9 +36,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
       return;
     }
 
-    // Check query limit
-    if (!_ai.hasQueriesRemaining) {
-      Notify.message('ai-query-limit-text'.i18n());
+    // Chat runs on the user's own API key — nothing to send without one.
+    if (!_ai.hasByokConfigured) {
+      Notify.message('byok-required-text'.i18n());
+      router.pushNamed('settings');
       return;
     }
 
@@ -63,8 +64,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
       final msg = e.toString();
       if (msg.contains('pro-required')) {
         router.pushNamed('license');
-      } else if (msg.contains('query-limit-reached')) {
-        Notify.message('ai-query-limit-text'.i18n());
+      } else if (msg.contains('byok-required')) {
+        Notify.message('byok-required-text'.i18n());
       } else {
         Notify.message('ai-error-text'.i18n());
       }
@@ -86,7 +87,6 @@ class _AiChatPanelState extends State<AiChatPanel> {
   @override
   Widget build(BuildContext context) {
     final history = _ai.conversationHistory;
-    final queriesLeft = _ai.queriesRemaining;
 
     return Column(
       children: [
@@ -114,11 +114,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
                 ),
               ),
               const Spacer(),
-              if (_license.isPro)
-                Text(
-                  '$queriesLeft/${AiService.monthlyLimit}',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
+              // No quota counter anymore — chat runs on the user's own API
+              // key, so usage is between them and their provider.
               const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(FluentIcons.delete, size: 14),

@@ -1,262 +1,145 @@
-import 'package:dio/dio.dart';
+// Pro entitlement for the one-time-purchase model.
+//
+// The app is sold as a one-time purchase on the Microsoft Store; the GitHub
+// release is the same code, free, with Pro features behind this gate. There
+// is no subscription, no license key, and no validation backend: being
+// installed from the Store *is* the license. Detection works via MSIX
+// package identity — a Store install always runs with package identity,
+// while the portable GitHub build does not. (Someone side-loading a
+// self-built MSIX gets Pro too; the codebase is open source, so any gate
+// here is an honor-system nudge, not protection — same reasoning as the
+// legacy grant below.)
+
+import 'dart:ffi';
+import 'dart:io';
+
+import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
+import 'package:win32/win32.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
-enum LicenseStatus { unknown, free, active, expired, suspended }
+/// How the current Pro entitlement (if any) was obtained.
+enum LicensePlan { none, store, legacy }
 
-enum LicensePlan { none, monthly, yearly }
-
-class LicenseInfo {
-  final String key;
-  final LicenseStatus status;
-  final LicensePlan plan;
-  final DateTime? expiresAt;
-  final bool isTrial;
-  final DateTime activatedAt;
-
-  LicenseInfo({
-    required this.key,
-    required this.status,
-    required this.plan,
-    this.expiresAt,
-    this.isTrial = false,
-    required this.activatedAt,
-  });
-
-  factory LicenseInfo.fromJson(Map<String, dynamic> json) {
-    return LicenseInfo(
-      key: json['key'] as String? ?? '',
-      status: LicenseStatus.values.firstWhere(
-        (e) => e.toString() == 'LicenseStatus.${json['status']}',
-        orElse: () => LicenseStatus.unknown,
-      ),
-      plan: LicensePlan.values.firstWhere(
-        (e) => e.toString() == 'LicensePlan.${json['plan']}',
-        orElse: () => LicensePlan.none,
-      ),
-      expiresAt: json['expires_at'] != null
-          ? DateTime.parse(json['expires_at'] as String)
-          : null,
-      isTrial: json['is_trial'] as bool? ?? false,
-      activatedAt: json['activated_at'] != null
-          ? DateTime.parse(json['activated_at'] as String)
-          : DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'key': key,
-      'status': status.toString().split('.').last,
-      'plan': plan.toString().split('.').last,
-      'expires_at': expiresAt?.toIso8601String(),
-      'is_trial': isTrial,
-      'activated_at': activatedAt.toIso8601String(),
-    };
-  }
-}
+/// GetCurrentPackageFullName's "this process has no package identity" code
+/// (APPMODEL_ERROR_NO_PACKAGE) — not exported by package:win32.
+const int _appModelErrorNoPackage = 15700;
 
 class LicenseManager extends ChangeNotifier {
   static final LicenseManager _instance = LicenseManager._internal();
   factory LicenseManager() => _instance;
   LicenseManager._internal();
 
-  final Dio _dio = Dio();
+  // -----------------------------------------------------------------------
+  // Store entitlement
+  // -----------------------------------------------------------------------
 
-  // Backend URL for license validation (n8n endpoint)
-  String get _backendUrl => 'https://n8n.aachen.dev/webhook/wsl-manager';
+  bool _storeLicensed = false;
 
-  LicenseStatus _status = LicenseStatus.unknown;
-  LicensePlan _plan = LicensePlan.none;
-  DateTime? _expiresAt;
-  bool _isTrial = false;
-  String _storedKey = '';
-  // Grace period: if validation fails, trust cached status for this long
-  static const Duration gracePeriod = Duration(days: 30);
+  /// Whether this process runs as a Store-installed (MSIX-packaged) app.
+  bool get isStoreLicensed => _storeLicensed;
 
-  LicenseStatus get status => _status;
-  LicensePlan get plan => _plan;
-  DateTime? get expiresAt => _expiresAt;
-  bool get isTrial => _isTrial;
-  bool get isPro =>
-      _status == LicenseStatus.active &&
-      (_expiresAt == null || _expiresAt!.isAfter(DateTime.now()));
-  bool get isExpired =>
-      _status == LicenseStatus.expired ||
-      (_expiresAt != null && _expiresAt!.isBefore(DateTime.now()));
+  /// Test seam for the package-identity check — the real check asks the OS
+  /// about the *test runner's* process, which is never packaged. Reset to
+  /// null in tearDown; the singleton outlives individual tests.
+  @visibleForTesting
+  static bool Function()? storeInstallCheckOverride;
+
+  bool get isPro => hasLegacyPro || _storeLicensed;
+
+  LicensePlan get plan {
+    if (hasLegacyPro) return LicensePlan.legacy;
+    if (_storeLicensed) return LicensePlan.store;
+    return LicensePlan.none;
+  }
 
   Future<void> init() async {
-    _storedKey = prefs.getString('LicenseKey') ?? '';
+    _storeLicensed = _detectStoreInstall();
 
-    if (_storedKey.isEmpty) {
-      _status = LicenseStatus.free;
-      notifyListeners();
-      return;
+    // One-time cleanup of prefs left over from the retired Stripe
+    // subscription experiment (never shipped beyond test mode).
+    for (final key in [
+      'LicenseKey',
+      'LicenseLastCheck',
+      'LicenseStatus',
+      'LicensePlan',
+      'LicenseExpiresAt',
+      'LicenseIsTrial',
+    ]) {
+      prefs.remove(key);
     }
-
-    // Check cached status first for fast startup
-    final cachedCheck =
-        DateTime.tryParse(prefs.getString('LicenseLastCheck') ?? '');
-    if (cachedCheck != null &&
-        DateTime.now().difference(cachedCheck) < const Duration(hours: 1)) {
-      _loadCachedStatus();
-      notifyListeners();
-    }
-
-    // Validate in background (non-blocking)
-    validateKey(_storedKey, silent: true).onError((_, __) {});
-  }
-
-  Future<void> activate(String key) async {
-    final trimmed = key.trim().toUpperCase();
-
-    if (trimmed.isEmpty) {
-      throw Exception('Empty license key');
-    }
-
-    prefs.setString('LicenseKey', trimmed);
-    _storedKey = trimmed;
-
-    await validateKey(trimmed, silent: false);
-  }
-
-  Future<void> validateKey(String key, {bool silent = false}) async {
-    try {
-      final response = await _dio.get(
-        '$_backendUrl/validate',
-        queryParameters: {'license': key},
-        options: Options(
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final valid = data['valid'];
-
-        if (valid) {
-          _status = LicenseStatus.active;
-          _plan = LicensePlan.values.firstWhere(
-            (e) => e.toString() == 'LicensePlan.${data['plan']}',
-            orElse: () => LicensePlan.monthly,
-          );
-          _expiresAt = data['expires_at'] != null
-              ? DateTime.parse(data['expires_at'] as String)
-              : null;
-          _isTrial = data['is_trial'] as bool? ?? false;
-
-          // Cache status
-          prefs.setString('LicenseLastCheck', DateTime.now().toIso8601String());
-          prefs.setString('LicenseStatus', _status.toString().split('.').last);
-          prefs.setString('LicensePlan', _plan.toString().split('.').last);
-          if (_expiresAt != null) {
-            prefs.setString('LicenseExpiresAt', _expiresAt!.toIso8601String());
-          }
-          prefs.setBool('LicenseIsTrial', _isTrial);
-        } else {
-          final reason = data['reason'] as String? ?? 'unknown';
-          if (reason == 'expired') {
-            _status = LicenseStatus.expired;
-          } else if (reason == 'suspended') {
-            _status = LicenseStatus.suspended;
-          } else {
-            _status = LicenseStatus.unknown;
-          }
-          // Clear invalid key
-          prefs.remove('LicenseKey');
-          _storedKey = '';
-        }
-
-        notifyListeners();
-      }
-    } catch (e) {
-      if (!silent && kDebugMode) {
-        debugPrint('License validation failed: $e');
-      }
-
-      // On error, use cached status with grace period
-      final cachedCheck =
-          DateTime.tryParse(prefs.getString('LicenseLastCheck') ?? '');
-      if (cachedCheck != null &&
-          DateTime.now().difference(cachedCheck) < gracePeriod) {
-        _loadCachedStatus();
-      } else if (_storedKey.isNotEmpty) {
-        // Never validated successfully, treat as invalid
-        _status = LicenseStatus.unknown;
-      }
-      notifyListeners();
-    }
-  }
-
-  void _loadCachedStatus() {
-    final statusStr = prefs.getString('LicenseStatus');
-    if (statusStr != null) {
-      _status = LicenseStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == statusStr,
-        orElse: () => LicenseStatus.unknown,
-      );
-    }
-
-    final planStr = prefs.getString('LicensePlan');
-    if (planStr != null) {
-      _plan = LicensePlan.values.firstWhere(
-        (e) => e.toString().split('.').last == planStr,
-        orElse: () => LicensePlan.none,
-      );
-    }
-
-    final expiresStr = prefs.getString('LicenseExpiresAt');
-    if (expiresStr != null) {
-      _expiresAt = DateTime.tryParse(expiresStr);
-    }
-
-    _isTrial = prefs.getBool('LicenseIsTrial') ?? false;
-  }
-
-  Future<void> deactivate() async {
-    prefs.remove('LicenseKey');
-    prefs.remove('LicenseLastCheck');
-    prefs.remove('LicenseStatus');
-    prefs.remove('LicensePlan');
-    prefs.remove('LicenseExpiresAt');
-    prefs.remove('LicenseIsTrial');
-
-    _status = LicenseStatus.free;
-    _plan = LicensePlan.none;
-    _expiresAt = null;
-    _isTrial = false;
-    _storedKey = '';
 
     notifyListeners();
   }
 
-  String getStatusText() {
-    switch (_status) {
-      case LicenseStatus.active:
-        if (_isTrial) return 'trial-active';
-        if (_expiresAt != null && _expiresAt!.isBefore(DateTime.now())) {
-          return 'license-expired';
-        }
-        return 'license-active';
-      case LicenseStatus.expired:
-        return 'license-expired';
-      case LicenseStatus.suspended:
-        return 'license-suspended';
-      case LicenseStatus.free:
-        return 'license-free';
-      case LicenseStatus.unknown:
-        return 'license-unknown';
+  bool _detectStoreInstall() {
+    final override = storeInstallCheckOverride;
+    if (override != null) return override();
+    if (!Platform.isWindows) return false;
+
+    try {
+      return using((arena) {
+        final length = arena<Uint32>();
+        // With no package identity this returns APPMODEL_ERROR_NO_PACKAGE;
+        // with identity it returns ERROR_INSUFFICIENT_BUFFER (buffer too
+        // small for the name we don't actually need).
+        final result = GetCurrentPackageFullName(length, nullptr);
+        return result != _appModelErrorNoPackage;
+      });
+    } catch (_) {
+      // FFI failure — assume unpackaged rather than crashing the gate.
+      return false;
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Legacy "thank you" grant.
+  //
+  // A goodwill gesture for people who bought the app before the current
+  // pricing existed: a permanent, free Pro grant claimed by entering the
+  // purchase email on the License screen. This is intentionally
+  // client-side only and NOT backend-verified — there's no way to
+  // cross-check Microsoft Store purchase records here — so it's an
+  // honor-system claim. Exposure is bounded by [legacyClaimWindowCloses]:
+  // once that date passes, the claim UI disappears entirely (grants made
+  // before then remain permanent).
+  // -----------------------------------------------------------------------
+
+  /// Claims made after this date are no longer accepted.
+  static final DateTime legacyClaimWindowCloses = DateTime(2026, 11, 2);
+
+  bool get isLegacyClaimWindowOpen =>
+      DateTime.now().isBefore(legacyClaimWindowCloses);
+
+  bool get hasLegacyPro => prefs.getBool('LegacyProGranted') ?? false;
+
+  String? get legacyProEmail => prefs.getString('LegacyProEmail');
+
+  static final RegExp _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  /// Grant a permanent local "legacy Pro" status. Returns false (granting
+  /// nothing) if [email] doesn't look like an email or the claim window has
+  /// already closed.
+  bool claimLegacyPro(String email) {
+    final trimmed = email.trim();
+    if (!_emailPattern.hasMatch(trimmed) || !isLegacyClaimWindowOpen) {
+      return false;
+    }
+
+    prefs.setBool('LegacyProGranted', true);
+    prefs.setString('LegacyProEmail', trimmed);
+    prefs.setString('LegacyProClaimedAt', DateTime.now().toIso8601String());
+    notifyListeners();
+    return true;
+  }
+
   String getPlanText() {
-    switch (_plan) {
-      case LicensePlan.monthly:
-        return 'plan-monthly';
-      case LicensePlan.yearly:
-        return 'plan-yearly';
-      default:
+    switch (plan) {
+      case LicensePlan.legacy:
+        return 'plan-legacy';
+      case LicensePlan.store:
+        return 'plan-store';
+      case LicensePlan.none:
         return 'plan-free';
     }
   }

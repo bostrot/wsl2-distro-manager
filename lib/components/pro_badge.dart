@@ -29,7 +29,7 @@ class ProBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(FluentIcons.flag, size: 10, color: accent),
+            Icon(FluentIcons.crown, size: 10, color: accent),
             const SizedBox(width: 3),
             Text(
               'Pro',
@@ -51,7 +51,7 @@ class ProFeatureWrapper extends StatelessWidget {
   final String featureKey;
 
   const ProFeatureWrapper({
-    Key? key, 
+    Key? key,
     required this.child,
     required this.featureKey,
   }) : super(key: key);
@@ -73,13 +73,13 @@ class ProFeatureWrapper extends StatelessWidget {
 
   Widget _buildProOverlay(BuildContext context) {
     final isPro = LicenseManager().isPro;
-    
+
     if (isPro) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: FluentTheme.of(context).brightness.isDark 
+        color: FluentTheme.of(context).brightness.isDark
             ? Colors.black.withValues(alpha: 0.7)
             : Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(6),
@@ -93,7 +93,8 @@ class ProFeatureWrapper extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(FluentIcons.flag, size: 12, color: FluentTheme.of(context).accentColor),
+          Icon(FluentIcons.crown,
+              size: 12, color: FluentTheme.of(context).accentColor),
           const SizedBox(width: 4),
           Text(
             'Pro',
@@ -151,7 +152,7 @@ class UpgradePrompt extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            FluentIcons.flag,
+            FluentIcons.crown,
             size: 16,
             color: FluentTheme.of(context).accentColor,
           ),

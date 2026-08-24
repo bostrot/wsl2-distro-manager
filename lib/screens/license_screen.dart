@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:provider/provider.dart';
 
@@ -15,10 +16,10 @@ class LicenseScreen extends StatefulWidget {
 }
 
 class _LicenseScreenState extends State<LicenseScreen> {
-  final TextEditingController _keyController = TextEditingController();
+  final TextEditingController _legacyEmailController = TextEditingController();
   bool _isLoading = false;
-  bool _isActivating = false;
-  String _errorMessage = '';
+  bool _isClaimingLegacy = false;
+  String _legacyClaimError = '';
 
   @override
   void initState() {
@@ -39,70 +40,39 @@ class _LicenseScreenState extends State<LicenseScreen> {
     });
   }
 
-  Future<void> _activateKey() async {
-    final key = _keyController.text.trim();
-    if (key.isEmpty) {
-      setState(() {
-        _errorMessage = 'license-key-empty'.i18n();
-      });
-      return;
-    }
-
-    setState(() {
-      _isActivating = true;
-      _errorMessage = '';
-    });
-
-    try {
-      await LicenseManager().activate(key);
-      
-      if (!mounted) return;
-      
-      final manager = LicenseManager();
-      if (manager.isPro) {
-        Notify.message('license-activated'.i18n());
-        _keyController.clear();
-      } else {
-        setState(() {
-          _errorMessage = 'license-invalid'.i18n();
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'license-error-activate'.i18n();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isActivating = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _openSubscriptionPage(String plan) async {
-    final url = plan == 'monthly' 
-        ? 'https://buy.stripe.com/test_6oU7sLd305PN2sFbqk1Fe00' 
-        : 'https://buy.stripe.com/test_aFaeVdd30ba72sFdys1Fe01';
-    
-    final uri = Uri.parse(url);
+  Future<void> _openStorePage() async {
+    final uri = Uri.parse(windowsStoreUrl);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
-  Future<void> _deactivate() async {
-    await LicenseManager().deactivate();
+  void _claimLegacyPro() {
+    final email = _legacyEmailController.text.trim();
+    setState(() => _isClaimingLegacy = true);
+
+    final granted = LicenseManager().claimLegacyPro(email);
+
     if (!mounted) return;
-    Notify.message('license-deactivated'.i18n());
-    setState(() {});
+    setState(() {
+      _isClaimingLegacy = false;
+      _legacyClaimError = granted ? '' : 'thank-you-invalid-email'.i18n();
+    });
+
+    if (granted) {
+      _legacyEmailController.clear();
+      Notify.message('thank-you-claim-success'.i18n());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => LicenseManager(),
+    // LicenseManager is an app-wide singleton (see LicenseManager._internal).
+    // Use .value(), not create(), so Provider doesn't dispose() the shared
+    // instance when this screen unmounts — that would permanently break
+    // Pro-gating (AI chat, AI Workspace, etc.) for the rest of the app.
+    return ChangeNotifierProvider.value(
+      value: LicenseManager(),
       child: Consumer<LicenseManager>(
         builder: (context, manager, _) {
           if (_isLoading) {
@@ -114,29 +84,39 @@ class _LicenseScreenState extends State<LicenseScreen> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Status card
-                      _buildStatusCard(manager),
-                      const SizedBox(height: 20),
-                      
-                      // Activation section
-                      _buildActivationSection(),
-                      const SizedBox(height: 20),
-                      
-                      // Subscribe section (only show if not Pro)
-                      if (!manager.isPro) ...[
-                        _buildSubscribeSection(),
-                      ],
-                      
-                      // Manage subscription (only for active Pro users)
-                      if (manager.isPro && !manager.isTrial) ...[
-                        const SizedBox(height: 20),
-                        _buildManageSubscription(manager),
-                      ],
-                    ],
+                  padding: const EdgeInsets.all(24.0),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 24),
+
+                          // Thank-you note for early purchasers using the
+                          // GitHub build (only relevant while the claim
+                          // window is open, or if already claimed, as a
+                          // standing thank-you).
+                          if (manager.hasLegacyPro ||
+                              (!manager.isPro &&
+                                  manager.isLegacyClaimWindowOpen)) ...[
+                            _buildThankYouCard(manager),
+                            const SizedBox(height: 20),
+                          ],
+
+                          if (manager.isPro) ...[
+                            _buildStatusCard(manager),
+                          ] else ...[
+                            // Not Pro: this is the GitHub build. The pitch
+                            // is the headline — one-time Store purchase.
+                            _buildStoreSection(),
+                            const SizedBox(height: 20),
+                            _buildStatusCard(manager),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -147,79 +127,106 @@ class _LicenseScreenState extends State<LicenseScreen> {
     );
   }
 
-  Widget _buildStatusCard(LicenseManager manager) {
-    final isPro = manager.isPro;
-    final color = isPro 
-        ? FluentTheme.of(context).accentColor 
-        : Colors.grey;
+  Widget _buildThankYouCard(LicenseManager manager) {
+    final accent = FluentTheme.of(context).accentColor;
 
-    return Container(
-      width: double.infinity,
+    if (manager.hasLegacyPro) {
+      return Card(
+        padding: const EdgeInsets.all(20),
+        borderRadius: BorderRadius.circular(10),
+        backgroundColor: accent.withValues(alpha: 0.06),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(FluentIcons.heart, size: 20, color: accent),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'thank-you-already-claimed-title'.i18n(),
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'thank-you-already-claimed-text'.i18n(),
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Card(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
+      borderRadius: BorderRadius.circular(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                isPro ? FluentIcons.check_mark : FluentIcons.info,
-                color: color,
-                size: 24,
-              ),
+              Icon(FluentIcons.heart, size: 18, color: accent),
               const SizedBox(width: 10),
-              Text(
-                isPro ? 'plan-pro'.i18n() : 'plan-free'.i18n(),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              Expanded(
+                child: Text(
+                  'thank-you-title-text'.i18n(),
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.bold),
                 ),
               ),
-              if (manager.isTrial) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'trial-badge'.i18n(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 12),
-          
-          // Plan details
           Text(
-            'plan-${manager.plan.toString().split('.').last}'.i18n(),
-            style: const TextStyle(fontSize: 14),
+            'thank-you-body-text'.i18n(),
+            style: const TextStyle(fontSize: 13, height: 1.5),
           ),
-          
-          if (manager.expiresAt != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              '${'expires-text'.i18n()}: ${_formatDate(manager.expiresAt!)}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+          const SizedBox(height: 8),
+          Text(
+            'thank-you-offer-text'.i18n(),
+            style: const TextStyle(fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'thank-you-oss-text'.i18n(),
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              fontStyle: FontStyle.italic,
+              color: accent,
             ),
-          ],
-          
-          if (!isPro && manager.status == LicenseStatus.expired) ...[
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextBox(
+                  key: const ValueKey('test-legacy-email-input'),
+                  controller: _legacyEmailController,
+                  placeholder: 'thank-you-email-placeholder'.i18n(),
+                  onChanged: (_) => setState(() => _legacyClaimError = ''),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                key: const ValueKey('test-legacy-claim-button'),
+                onPressed: _isClaimingLegacy ? null : _claimLegacyPro,
+                child: _isClaimingLegacy
+                    ? const SizedBox(
+                        width: 16, height: 16, child: ProgressRing())
+                    : Text('thank-you-claim-btn'.i18n()),
+              ),
+            ],
+          ),
+          if (_legacyClaimError.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              'license-expired-info'.i18n(),
+              _legacyClaimError,
               style: TextStyle(fontSize: 12, color: Colors.red),
             ),
           ],
@@ -228,251 +235,241 @@ class _LicenseScreenState extends State<LicenseScreen> {
     );
   }
 
-  Widget _buildActivationSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildHeader() {
+    final accent = FluentTheme.of(context).accentColor;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          'activate-license-text'.i18n(),
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextBox(
-                key: const ValueKey('test-license-key-input'),
-                controller: _keyController,
-                placeholder: 'license-key-placeholder'.i18n(),
-                onChanged: (_) => setState(() => _errorMessage = ''),
-              ),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                accent.withValues(alpha: 0.25),
+                accent.withValues(alpha: 0.08),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(width: 8),
-            Button(
-              key: const ValueKey('test-license-activate-button'),
-              onPressed: _isActivating ? null : _activateKey,
-              child: _isActivating 
-                  ? SizedBox(width: 16, height: 16, child: const ProgressRing())
-                  : Text('activate-text'.i18n()),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(FluentIcons.crown, size: 22, color: accent),
+        ),
+        const SizedBox(width: 14),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'license-text'.i18n(),
+              style: FluentTheme.of(context).typography.titleLarge,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'store-buy-info-text'.i18n(),
+              style: FluentTheme.of(context).typography.bodyStrong?.copyWith(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.normal,
+                  ),
             ),
           ],
         ),
-        if (_errorMessage.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage,
-            style: TextStyle(fontSize: 12, color: Colors.red),
-          ),
-        ],
-        
-        // Deactivate button for active users
-        if (LicenseManager().isPro) ...[
-          const SizedBox(height: 12),
-          Button(
-            onPressed: _deactivate,
-            child: Text(
-              'deactivate-license-text'.i18n(),
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ),
-        ],
       ],
     );
   }
 
-  Widget _buildSubscribeSection() {
+  Widget _buildStatusCard(LicenseManager manager) {
+    final isPro = manager.isPro;
+    final color = isPro ? FluentTheme.of(context).accentColor : Colors.grey;
+    final isDark = FluentTheme.of(context).brightness.isDark;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: FluentTheme.of(context).brightness.isDark 
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        gradient: LinearGradient(
+          colors: [
+            color.withValues(alpha: isDark ? 0.16 : 0.12),
+            color.withValues(alpha: isDark ? 0.04 : 0.03),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPro ? FluentIcons.crown : FluentIcons.info,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isPro ? 'plan-pro'.i18n() : 'plan-free'.i18n(),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  manager.getPlanText().i18n(),
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoreSection() {
+    return Card(
+      padding: const EdgeInsets.all(20),
+      borderRadius: BorderRadius.circular(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'subscribe-text'.i18n(),
+            'store-buy-title'.i18n(),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            'subscribe-info-text'.i18n(),
+            'store-buy-detail-text'.i18n(),
             style: const TextStyle(fontSize: 13, color: Colors.grey),
           ),
           const SizedBox(height: 16),
-          
-          // Pricing cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildPricingCard(
-                  title: 'plan-monthly'.i18n(),
-                  price: '\$4.99',
-                  period: '/${'month-text'.i18n()}',
-                  description: 'monthly-info-text'.i18n(),
-                  accent: false,
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              key: const ValueKey('test-license-store-button'),
+              onPressed: _openStorePage,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(FluentIcons.shop, size: 16),
+                    const SizedBox(width: 8),
+                    Text('store-buy-btn'.i18n()),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildPricingCard(
-                  title: 'plan-yearly'.i18n(),
-                  price: '\$39.99',
-                  period: '/${'year-text'.i18n()}',
-                  description: 'yearly-info-text'.i18n(),
-                  accent: true,
-                ),
-              ),
-            ],
+            ),
           ),
-          
-          const SizedBox(height: 16),
-          
-          // Feature list
-          Text(
-            'pro-features-text'.i18n(),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          _buildFeatureItem('ai-config-assistant-feature'.i18n()),
-          _buildFeatureItem('smart-recommendations-feature'.i18n()),
-          _buildFeatureItem('script-generation-feature'.i18n()),
-          _buildFeatureItem('error-diagnosis-feature'.i18n()),
+          const SizedBox(height: 20),
+          _buildComparisonTable(),
         ],
       ),
     );
   }
 
-  Widget _buildPricingCard({
-    required String title,
-    required String price,
-    required String period,
-    required String description,
-    required bool accent,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: accent 
-            ? FluentTheme.of(context).accentColor.withValues(alpha: 0.1)
-            : null,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: accent 
-              ? FluentTheme.of(context).accentColor
-              : Colors.grey.withValues(alpha: 0.3),
+  Widget _buildComparisonTable() {
+    final accent = FluentTheme.of(context).accentColor;
+    // Each row: [i18n key, included in Free, included in Pro].
+    final rows = <List<Object>>[
+      ['core-wsl-management-feature', true, true],
+      ['ai-config-assistant-feature', false, true],
+      ['smart-recommendations-feature', false, true],
+      ['script-generation-feature', false, true],
+      ['error-diagnosis-feature', false, true],
+      ['ai-workspace-feature', false, true],
+    ];
+
+    Widget cell(bool included) => SizedBox(
+          width: 44,
+          child: Icon(
+            included ? FluentIcons.check_mark : FluentIcons.cancel,
+            size: 14,
+            color: included ? accent : Colors.grey.withValues(alpha: 0.4),
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'compare-plans-text'.i18n(),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: accent ? FluentTheme.of(context).accentColor : null,
-            ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Column(
             children: [
-              Text(
-                price,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  period,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.06),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(8)),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(child: SizedBox.shrink()),
+                    SizedBox(
+                      width: 44,
+                      child: Text('plan-free'.i18n(),
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.grey)),
+                    ),
+                    SizedBox(
+                      width: 44,
+                      child: Text('plan-pro'.i18n(),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: accent)),
+                    ),
+                  ],
                 ),
               ),
+              for (final row in rows)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text((row[0] as String).i18n(),
+                            style: const TextStyle(fontSize: 12)),
+                      ),
+                      cell(row[1] as bool),
+                      cell(row[2] as bool),
+                    ],
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            key: ValueKey(
-              title.contains('monthly') || title.contains('Monatlich') 
-                  ? 'test-license-monthly-link' 
-                  : 'test-license-yearly-link',
-            ),
-            onPressed: () => _openSubscriptionPage(
-              title.contains('monthly') || title.contains('Monatlich') 
-                  ? 'monthly' 
-                  : 'yearly',
-            ),
-            child: Text('subscribe-text'.i18n()),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
-  }
-
-  Widget _buildFeatureItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(FluentIcons.check_mark, size: 14),
-          const SizedBox(width: 6),
-          Text(text, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildManageSubscription(LicenseManager manager) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: FluentTheme.of(context).brightness.isDark 
-            ? Colors.white.withValues(alpha: 0.03)
-            : Colors.black.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'manage-subscription-text'.i18n(),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Button(
-            onPressed: () async {
-              final uri = Uri.parse('https://billing.stripe.com/p/login/test_6oU7sLd305PN2sFbqk1Fe00');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            child: Text('open-billing-portal-text'.i18n()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
   @override
   void dispose() {
-    _keyController.dispose();
+    _legacyEmailController.dispose();
     super.dispose();
   }
 }

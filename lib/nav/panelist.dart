@@ -44,7 +44,7 @@ final List<NavigationPaneItem> originalItems = [
   ),
   PaneItem(
     key: const Key('/ai-workspace'),
-    icon: const Icon(FluentIcons.flag),
+    icon: const Icon(FluentIcons.robot),
     title: Text('ai-workspace-title'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
@@ -75,27 +75,22 @@ final List<NavigationPaneItem> originalItems = [
 final List<NavigationPaneItem> footerItems = [
   PaneItem(
     key: const Key('/license'),
-    icon: const Icon(FluentIcons.flag),
-    title: Row(
-      children: [
-        Text('upgrade-pro-text'.i18n()),
-        const SizedBox(width: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: Text(
-            'NEW',
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFFFFBF00),
-            ),
-          ),
+    icon: const Icon(FluentIcons.crown),
+    title: Text('upgrade-pro-text'.i18n()),
+    infoBadge: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: const Text(
+        'NEW',
+        style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFFFFBF00),
         ),
-      ],
+      ),
     ),
     body: const SizedBox.shrink(),
     onTap: () {

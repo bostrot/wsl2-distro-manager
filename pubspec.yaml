@@ -13,6 +13,7 @@ dependencies:
   chunked_downloader: ^1.0.0
   desktop_window: ^0.4.2
   dio: ^5.9.0
+  ffi: ^2.1.4
   file_picker: ^10.3.7
   fluent_ui: ^4.13.0
   flutter:
@@ -38,6 +39,7 @@ dependencies:
   system_theme: ^3.1.2
   tar: ^2.0.2
   url_launcher: ^6.3.2
+  win32: ^5.15.0
   win32_registry: ^2.1.0
   window_manager: ^0.5.1
   yaml: ^3.1.3
