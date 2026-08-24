@@ -286,6 +286,8 @@
   "pro-feature-text": "Función Pro",
   "recommendations-title": "Recomendaciones",
   "savedastemplate-text": "guardado como plantilla",
+  "beta-banner-title": "Función beta",
+  "beta-info-text": "Esta función es nueva y aún está en beta. Funciona, pero puede tener detalles por pulir — los comentarios y reportes de errores en GitHub son muy bienvenidos.",
   "mcp-settings-text": "Servidor MCP (API de WSL)",
   "mcp-info-text": "Expón tus distros de WSL a agentes de IA (Claude Desktop y otras herramientas compatibles con MCP) para que puedan listar distros, ejecutar comandos y detener distros directamente — como una terminal, pero para tu agente. Se ejecuta solo localmente en este equipo.",
   "mcp-pro-required-text": "El servidor MCP de WSL es una función Pro.",

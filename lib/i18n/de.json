@@ -288,6 +288,8 @@
   "pro-feature-text": "Pro-Funktion",
   "recommendations-title": "Empfehlungen",
   "savedastemplate-text": "als Vorlage gespeichert",
+  "beta-banner-title": "Beta-Funktion",
+  "beta-info-text": "Diese Funktion ist neu und noch im Beta-Stadium. Sie funktioniert, aber rechne mit Ecken und Kanten — Feedback und Bug-Reports auf GitHub sind sehr willkommen.",
   "mcp-settings-text": "MCP-Server (WSL-API)",
   "mcp-info-text": "Stelle deine WSL-Distros für KI-Agenten (Claude Desktop und andere MCP-kompatible Tools) bereit, damit sie Distros auflisten, Befehle ausführen und Distros stoppen können — wie ein Terminal, nur für deinen Agenten. Läuft ausschließlich lokal auf diesem Gerät.",
   "mcp-pro-required-text": "Der WSL-MCP-Server ist eine Pro-Funktion.",

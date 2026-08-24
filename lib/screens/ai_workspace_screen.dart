@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -343,15 +344,26 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'ai-workspace-title'.i18n(),
-            style: FluentTheme.of(context).typography.titleLarge,
+          Row(
+            children: [
+              Text(
+                'ai-workspace-title'.i18n(),
+                style: FluentTheme.of(context).typography.titleLarge,
+              ),
+              const SizedBox(width: 10),
+              const BetaBadge(key: ValueKey('test-ai-workspace-beta-badge')),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
             'ai-workspace-subtitle'.i18n(),
             style: FluentTheme.of(context).typography.bodyStrong,
           ),
+          const SizedBox(height: 12),
+          // The whole screen is beta — the tools are real third-party
+          // projects driven through a fresh WSL distro, and that install/
+          // start plumbing hasn't had wide real-world exposure yet.
+          const BetaBanner(),
           const SizedBox(height: 16),
           if (_preparingDistro) ...[
             _buildInlineStatus('ai-workspace-checking-env-text'.i18n()),

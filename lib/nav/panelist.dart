@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
@@ -46,6 +47,9 @@ final List<NavigationPaneItem> originalItems = [
     key: const Key('/ai-workspace'),
     icon: const Icon(FluentIcons.robot),
     title: Text('ai-workspace-title'.i18n()),
+    // infoBadge, not a Row in title — fluent_ui only extracts the pane
+    // label from a literal Text title.
+    infoBadge: const BetaBadge(),
     body: const SizedBox.shrink(),
     onTap: () {
       if (router.state.uri.toString() != '/ai-workspace') {

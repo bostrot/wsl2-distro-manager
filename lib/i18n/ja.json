@@ -286,6 +286,8 @@
   "pro-feature-text": "Pro機能",
   "recommendations-title": "おすすめ",
   "savedastemplate-text": "をテンプレートとして保存しました",
+  "beta-banner-title": "ベータ機能",
+  "beta-info-text": "この機能は新しく、まだベータ版です。動作しますが、粗削りな部分があるかもしれません — GitHubでのフィードバックやバグ報告を歓迎します。",
   "mcp-settings-text": "MCPサーバー（WSL API）",
   "mcp-info-text": "WSLディストロをAIエージェント（Claude Desktopや他のMCP対応ツール）に公開し、ディストロの一覧表示、コマンドの実行、停止を直接行えるようにします — ターミナルのようなものですが、エージェント向けです。このマシン上でのみローカルに動作します。",
   "mcp-pro-required-text": "WSL MCPサーバーはProプランの機能です。",

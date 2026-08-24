@@ -286,6 +286,8 @@
   "pro-feature-text": "Pro funkció",
   "recommendations-title": "Ajánlások",
   "savedastemplate-text": "sablonként mentve",
+  "beta-banner-title": "Béta funkció",
+  "beta-info-text": "Ez a funkció új, és még béta állapotban van. Működik, de számíts apróbb hibákra — a visszajelzéseket és hibajelentéseket a GitHubon szívesen fogadjuk.",
   "mcp-settings-text": "MCP-kiszolgáló (WSL API)",
   "mcp-info-text": "Tedd elérhetővé a WSL-disztróidat AI-ügynökök számára (Claude Desktop és más MCP-kompatibilis eszközök), hogy listázhassák a disztrókat, parancsokat futtathassanak, és leállíthassák őket — mint egy terminál, csak az ügynöködnek. Kizárólag helyben, ezen a gépen fut.",
   "mcp-pro-required-text": "A WSL MCP-kiszolgáló egy Pro funkció.",

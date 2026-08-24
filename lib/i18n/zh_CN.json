@@ -287,6 +287,8 @@
   "pro-feature-text": "Pro 功能",
   "recommendations-title": "推荐",
   "savedastemplate-text": "已保存为模板",
+  "beta-banner-title": "Beta 功能",
+  "beta-info-text": "此功能是新推出的，仍处于 Beta 阶段。它可以正常使用，但可能存在不完善之处——欢迎在 GitHub 上提供反馈和错误报告。",
   "mcp-settings-text": "MCP 服务器（WSL API）",
   "mcp-info-text": "将你的 WSL 发行版暴露给 AI 代理（Claude Desktop 及其他兼容 MCP 的工具），使其可以直接列出发行版、运行命令并停止发行版——就像终端一样，只不过是给你的代理用的。仅在本机本地运行。",
   "mcp-pro-required-text": "WSL MCP 服务器是 Pro 功能。",

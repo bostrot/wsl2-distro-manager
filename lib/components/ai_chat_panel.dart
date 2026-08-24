@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -113,6 +114,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
                   color: FluentTheme.of(context).accentColor,
                 ),
               ),
+              const SizedBox(width: 6),
+              const BetaBadge(),
               const Spacer(),
               // No quota counter anymore — chat runs on the user's own API
               // key, so usage is between them and their provider.

@@ -286,6 +286,8 @@
   "pro-feature-text": "Pro özelliği",
   "recommendations-title": "Öneriler",
   "savedastemplate-text": "şablon olarak kaydedildi",
+  "beta-banner-title": "Beta özellik",
+  "beta-info-text": "Bu özellik yeni ve hâlâ beta aşamasında. Çalışıyor, ancak pürüzler olabilir — GitHub üzerinden geri bildirim ve hata raporları memnuniyetle karşılanır.",
   "mcp-settings-text": "MCP Sunucusu (WSL API)",
   "mcp-info-text": "WSL dağıtımlarınızı AI ajanlarına (Claude Desktop ve diğer MCP uyumlu araçlar) açın, böylece dağıtımları listeleyebilir, komut çalıştırabilir ve dağıtımları doğrudan durdurabilirler — bir terminal gibi, ama ajanınız için. Yalnızca bu bilgisayarda yerel olarak çalışır.",
   "mcp-pro-required-text": "WSL MCP sunucusu bir Pro özelliğidir.",

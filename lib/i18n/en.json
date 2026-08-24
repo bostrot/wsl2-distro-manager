@@ -287,6 +287,8 @@
   "pro-feature-text": "Pro feature",
   "recommendations-title": "Recommendations",
   "savedastemplate-text": "saved as template",
+  "beta-banner-title": "Beta feature",
+  "beta-info-text": "This is new and still in beta. It works, but expect rough edges — feedback and bug reports on GitHub are very welcome.",
   "mcp-settings-text": "MCP Server (WSL API)",
   "mcp-info-text": "Expose your WSL distros to AI agents (Claude Desktop and other MCP-compatible tools) so they can list distros, run commands, and stop distros directly — like a terminal, but for your agent. Runs locally on this machine only.",
   "mcp-pro-required-text": "The WSL MCP server is a Pro feature.",

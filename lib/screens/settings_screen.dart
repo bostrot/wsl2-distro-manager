@@ -3,6 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
@@ -337,12 +338,12 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 10),
         Expander(
-          header: Text('byok-settings-text'.i18n()),
+          header: _betaHeader('byok-settings-text'.i18n()),
           content: _buildAiSettings(context),
         ),
         const SizedBox(height: 10),
         Expander(
-          header: Text('mcp-settings-text'.i18n()),
+          header: _betaHeader('mcp-settings-text'.i18n()),
           content: _buildMcpSettings(context),
         ),
         const SizedBox(height: 10),
@@ -566,6 +567,19 @@ class SettingsPageState extends State<SettingsPage> {
                 )),
           ),
         ),
+      ],
+    );
+  }
+
+  /// Expander header with a trailing BETA pill, for the sections that
+  /// shipped in this release ahead of full polish.
+  Widget _betaHeader(String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label),
+        const SizedBox(width: 8),
+        const BetaBadge(),
       ],
     );
   }

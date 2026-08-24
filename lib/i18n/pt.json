@@ -288,6 +288,8 @@
   "pro-feature-text": "Recurso Pro",
   "recommendations-title": "Recomendações",
   "savedastemplate-text": "salvo como modelo",
+  "beta-banner-title": "Recurso beta",
+  "beta-info-text": "Este recurso é novo e ainda está em beta. Funciona, mas pode ter arestas — comentários e relatos de bugs no GitHub são muito bem-vindos.",
   "mcp-settings-text": "Servidor MCP (API do WSL)",
   "mcp-info-text": "Exponha suas distros WSL para agentes de IA (Claude Desktop e outras ferramentas compatíveis com MCP) para que possam listar distros, executar comandos e parar distros diretamente — como um terminal, mas para o seu agente. Roda apenas localmente nesta máquina.",
   "mcp-pro-required-text": "O servidor MCP do WSL é um recurso Pro.",
