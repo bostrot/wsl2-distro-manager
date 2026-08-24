@@ -1,9 +1,15 @@
 // AI Workspace screen for managing Hermes Agent, OpenClaw, and Open WebUI tools.
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
-import 'package:wsl2distromanager/api/execution/broker.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/nav/router.dart';
 
 class AiWorkspacePage extends StatefulWidget {
   const AiWorkspacePage({super.key});
@@ -14,66 +20,178 @@ class AiWorkspacePage extends StatefulWidget {
 
 class _AiWorkspacePageState extends State<AiWorkspacePage> {
   late final AiWorkspaceService _service;
-  bool _loading = true;
+  // Gates only the one genuine prerequisite (does the dedicated distro
+  // exist/need creating) — not the whole page. The page itself (title,
+  // cards) renders immediately regardless of this.
+  bool _preparingDistro = true;
   String? _error;
   final Set<AiWorkspaceTool> _busyTools = {};
+  // Every tool starts "checking" and is removed independently as its own
+  // refreshStatus() resolves, so cards populate one at a time instead of
+  // all-or-nothing behind a single page-wide spinner.
+  final Set<AiWorkspaceTool> _checkingTools = {...AiWorkspaceTool.values};
+
+  /// AI Workspace is a Pro feature — spinning up a dedicated WSL distro and
+  /// Docker is too resource-intensive to run for free, and it's a natural
+  /// premium differentiator alongside the existing AI assistant features.
+  bool get _isPro {
+    try {
+      return GlobalVariable.testProEnabled || LicenseManager().isPro;
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    // Wire ExecutionBroker from app initialization.
-    _service = AiWorkspaceService(
-      broker: context.read<ExecutionBroker>(),
-    );
-    _initService();
+    // The service is a shared instance provided from main.dart, not
+    // constructed fresh here — app startup already kicked off (or, by the
+    // time the user navigates here, may have already finished) the same
+    // distro/tool-status checks this screen needs, via
+    // AiWorkspaceService.ensureInitialized(). Reusing that instance means
+    // this screen can skip straight to already-known state instead of
+    // paying for every WSL round trip again on every visit.
+    _service = context.read<AiWorkspaceService>();
+    if (_isPro) {
+      // Only show a checking spinner for tools with genuinely no known
+      // status yet — a tool with a cached status from a previous app
+      // launch (persisted by AiWorkspaceService) or an already-resolved
+      // background startup check renders its real state immediately
+      // instead. That status might be stale (WSL could have been shut
+      // down since), which is why a live refresh is still kicked off
+      // below regardless — it just doesn't need to block the UI on it.
+      _checkingTools
+        ..clear()
+        ..addAll(AiWorkspaceTool.values.where(
+            (tool) => _service.getState(tool)?.hasKnownStatus != true));
+      _initService();
+    } else {
+      // Skip touching WSL entirely for non-Pro users — nothing to probe.
+      _preparingDistro = false;
+      _checkingTools.clear();
+    }
   }
 
   Future<void> _initService() async {
+    // Synchronous, no WSL calls — populates state entries immediately so
+    // the cards below have something to bind to on the very first frame
+    // (seeded from the persisted cache when available). No-op if the
+    // background startup check already seeded these.
+    if (_service.toolStates.isEmpty) {
+      _service.seedToolStates();
+    }
+
     try {
-      await _service.init();
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      // No-op (returns immediately) if the distro was already confirmed
+      // ready by the background startup check or an earlier visit to this
+      // screen — ensureDistro() only does real work the first time.
+      await _service.ensureDistro();
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = e.toString();
-          _loading = false;
+          _preparingDistro = false;
+          _checkingTools.clear();
         });
       }
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _preparingDistro = false);
+    }
+
+    // A live check still runs for every tool that hasn't been verified
+    // *this session* yet (AiWorkspaceTool.checked) — including ones with
+    // cached data already showing a real badge instead of a spinner via
+    // _checkingTools above, since a cache is a best guess, not a
+    // guarantee. Those just update silently in place if the fresh check
+    // finds something different, rather than flashing back to a spinner
+    // first. Each tool updates independently the moment its own check
+    // resolves, rather than waiting for the slowest of the batch.
+    for (final tool in AiWorkspaceTool.values) {
+      if (_service.getState(tool)?.checked == true) continue;
+      unawaited(_service.refreshStatus(tool).then((_) {
+        if (mounted) {
+          setState(() => _checkingTools.remove(tool));
+        }
+      }));
     }
   }
 
+  Future<void> _retryInit() async {
+    // Also clear `checked` on every tool — otherwise a tool verified
+    // earlier this session (before whatever caused the failure this retry
+    // is recovering from) would get silently skipped by _initService()'s
+    // checked-gated loop, even though the user explicitly asked to retry
+    // everything.
+    for (final tool in AiWorkspaceTool.values) {
+      _service.getState(tool)?.checked = false;
+    }
+    setState(() {
+      _error = null;
+      _preparingDistro = true;
+      _checkingTools
+        ..clear()
+        ..addAll(AiWorkspaceTool.values);
+    });
+    await _initService();
+  }
+
   Future<void> _handleInstall(AiWorkspaceTool tool) async {
+    if (!context.mounted) return;
     setState(() => _busyTools.add(tool));
     try {
       await _service.install(tool);
     } finally {
-      if (mounted) {
+      if (context.mounted) {
         setState(() => _busyTools.remove(tool));
       }
     }
   }
 
   Future<void> _handleStart(AiWorkspaceTool tool) async {
+    if (!context.mounted) return;
     setState(() => _busyTools.add(tool));
     try {
       await _service.start(tool);
     } finally {
-      if (mounted) {
+      if (context.mounted) {
         setState(() => _busyTools.remove(tool));
       }
     }
   }
 
   Future<void> _handleStop(AiWorkspaceTool tool) async {
+    if (!context.mounted) return;
     setState(() => _busyTools.add(tool));
     try {
       await _service.stop(tool);
     } finally {
-      if (mounted) {
+      if (context.mounted) {
+        setState(() => _busyTools.remove(tool));
+      }
+    }
+  }
+
+  Future<void> _handleOpenDashboard(AiWorkspaceTool tool) async {
+    if (!context.mounted) return;
+    setState(() => _busyTools.add(tool));
+    try {
+      final url = await _service.getDashboardUrl(tool);
+      if (url == null) {
+        Notify.message('ai-workspace-dashboard-failed-text'.i18n());
+        return;
+      }
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        Notify.message('ai-workspace-dashboard-failed-text'.i18n());
+      }
+    } finally {
+      if (context.mounted) {
         setState(() => _busyTools.remove(tool));
       }
     }
@@ -83,24 +201,26 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // Show confirmation dialog first.
     final confirmed = await showDialog<bool>(
       context: context,
-          builder: (_) => ContentDialog(
-            title: Text('ai-workspace-uninstall-title'.i18n()),
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_toolName(tool)),
-                const SizedBox(height: 8),
+      builder: (dialogContext) => ContentDialog(
+        title: Text('ai-workspace-uninstall-title'.i18n()),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_toolName(tool)),
+            const SizedBox(height: 8),
             Text('ai-workspace-uninstall-confirm'.i18n()),
           ],
         ),
         actions: [
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            key: const ValueKey('test-ai-uninstall-confirm'),
+            onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(true),
             child: Text('ai-workspace-uninstall-btn'.i18n()),
           ),
           Button(
-            onPressed: () => Navigator.of(context).pop(false),
+            key: const ValueKey('test-ai-uninstall-cancel'),
+            onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(false),
             child: Text('cancel-text'.i18n()),
           ),
         ],
@@ -109,14 +229,78 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
     if (confirmed != true) return;
 
+    if (!context.mounted) return;
     setState(() => _busyTools.add(tool));
     try {
-      await _service.uninstall(tool);
+      final success = await _service.uninstall(tool);
+      if (mounted) {
+        setState(() {}); // Rebuild UI after uninstall completes
+        if (success) {
+          Notify.message('${_toolName(tool)} ${'ai-workspace-uninstall-success'.i18n()}');
+        } else {
+          final state = _service.getState(tool);
+          Notify.message(state?.errorMessage ?? 'ai-workspace-uninstall-failed'.i18n());
+        }
+      }
     } finally {
       if (mounted) {
         setState(() => _busyTools.remove(tool));
       }
     }
+  }
+
+  Widget _buildPaywall(BuildContext context) {
+    final accent = FluentTheme.of(context).accentColor;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    accent.withValues(alpha: 0.25),
+                    accent.withValues(alpha: 0.08),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(FluentIcons.robot, size: 36, color: accent),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'ai-workspace-title'.i18n(),
+              style: FluentTheme.of(context).typography.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'ai-workspace-pro-required-text'.i18n(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              key: const ValueKey('test-ai-workspace-upgrade'),
+              onPressed: () => router.pushNamed('license'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(FluentIcons.crown, size: 14),
+                  const SizedBox(width: 8),
+                  Text('upgrade-pro-text'.i18n()),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _toolName(AiWorkspaceTool tool) {
@@ -129,15 +313,13 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(
-        child: SizedBox.square(
-          dimension: 32,
-          child: ProgressRing(),
-        ),
-      );
+    if (!_isPro) {
+      return _buildPaywall(context);
     }
 
+    // Only a genuinely blocking failure (the dedicated distro couldn't be
+    // reached or created at all) gets a full-page state — nothing below it
+    // could work either way. Everything else renders the page immediately.
     if (_error != null) {
       return Center(
         child: Column(
@@ -148,13 +330,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             Text('Error loading AI Workspace: $_error'),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: () {
-                setState(() {
-                  _loading = true;
-                  _error = null;
-                });
-                _initService();
-              },
+              onPressed: _retryInit,
               child: Text('retry-text'.i18n()),
             ),
           ],
@@ -176,10 +352,35 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             'ai-workspace-subtitle'.i18n(),
             style: FluentTheme.of(context).typography.bodyStrong,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          if (_preparingDistro) ...[
+            _buildInlineStatus('ai-workspace-checking-env-text'.i18n()),
+            const SizedBox(height: 16),
+          ],
           ...AiWorkspaceTool.values.map((tool) => _buildToolCard(tool)),
         ],
       ),
+    );
+  }
+
+  /// Small spinner + light grey explanatory text — used both for the
+  /// page-level "checking environment" banner and per-card status checks,
+  /// so it's always visible *why* something is taking a moment instead of
+  /// just showing a bare spinner.
+  Widget _buildInlineStatus(String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox.square(
+          dimension: 12,
+          child: ProgressRing(strokeWidth: 2),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
     );
   }
 
@@ -191,6 +392,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       AiWorkspaceTool.openWebUi: 'Open WebUI',
     }[tool]!;
 
+    final isChecking = _checkingTools.contains(tool);
     final statusColor = _statusToColor(state?.status);
     final isBusy = _busyTools.contains(tool);
 
@@ -214,7 +416,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 const SizedBox(width: 8),
                 Text(name, style: FluentTheme.of(context).typography.subtitle),
                 const Spacer(),
-                _statusBadge(state?.status),
+                isChecking
+                    ? _buildInlineStatus(
+                        'ai-workspace-checking-status-text'.i18n())
+                    : _statusBadge(state?.status),
               ],
             ),
             if (state?.installPath != null) ...[
@@ -238,27 +443,55 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                   label: state?.status == ToolStatus.notInstalled
                       ? 'install-text'.i18n()
                       : 'installed-text'.i18n(),
-                  enabled: state?.status == ToolStatus.notInstalled && !isBusy,
+                  enabled: state?.status == ToolStatus.notInstalled &&
+                      !isBusy &&
+                      !isChecking,
                   busy: isBusy && state?.status == ToolStatus.notInstalled,
                   onPressed: () => _handleInstall(tool),
                 ),
                 const SizedBox(width: 8),
                 _buildAction(
                   label: 'start-text'.i18n(),
-                  enabled: state?.status == ToolStatus.stopped && !isBusy,
+                  enabled: state?.status == ToolStatus.stopped &&
+                      !isBusy &&
+                      !isChecking,
                   busy: isBusy && state?.status == ToolStatus.stopped,
                   onPressed: () => _handleStart(tool),
                 ),
                 const SizedBox(width: 8),
                 _buildAction(
                   label: 'stop-text'.i18n(),
-                  enabled: state?.status == ToolStatus.running && !isBusy,
+                  enabled: state?.status == ToolStatus.running &&
+                      !isBusy &&
+                      !isChecking,
                   busy: isBusy && state?.status == ToolStatus.running,
                   onPressed: () => _handleStop(tool),
                 ),
+                if (state?.status == ToolStatus.running) ...[
+                  const SizedBox(width: 8),
+                  Button(
+                    key: ValueKey('test-ai-open-dashboard-${tool.name}'),
+                    onPressed: !isBusy ? () => _handleOpenDashboard(tool) : null,
+                    child: isBusy
+                        ? SizedBox.square(
+                            dimension: 16, child: ProgressRing())
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(FluentIcons.open_in_new_window,
+                                  size: 12),
+                              const SizedBox(width: 6),
+                              Text('ai-workspace-open-dashboard-text'.i18n()),
+                            ],
+                          ),
+                  ),
+                ],
                 const Spacer(),
                 Button(
-                  onPressed: (state?.status != ToolStatus.notInstalled && !isBusy)
+                  key: ValueKey('test-ai-uninstall-${tool.name}'),
+                  onPressed: (state?.status != ToolStatus.notInstalled &&
+                          !isBusy &&
+                          !isChecking)
                       ? () => _handleUninstall(tool)
                       : null,
                   child: isBusy && state?.status != ToolStatus.notInstalled

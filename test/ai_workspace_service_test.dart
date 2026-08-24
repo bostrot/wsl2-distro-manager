@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'dart:io' show ProcessResult, Process, ProcessStartMode;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/shell.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 
 /// A minimal mock shell that returns configurable results.
 class TestShell implements Shell {
@@ -66,10 +69,24 @@ void main() {
     late ExecutionBroker broker;
     late AiWorkspaceService service;
 
-    setUp(() {
+    setUpAll(() {
+      Notify();
+      Notify.message = (msg,
+          {duration, loading = false, useWidget = false, leadingIcon = true, dynamic widget}) {};
+    });
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      prefs = await SharedPreferences.getInstance();
       testShell = TestShell();
       broker = ExecutionBroker(shell: testShell);
-      service = AiWorkspaceService(broker: broker);
+      // Default to "always reachable" so getDashboardUrl tests don't hit a
+      // real HTTP stack — individual tests override this where they
+      // specifically want to exercise unreachable/timeout behavior.
+      service = AiWorkspaceService(
+        broker: broker,
+        reachabilityChecker: (_) async => true,
+      );
     });
 
     tearDown(() {
@@ -110,6 +127,210 @@ void main() {
           expect(service.getState(tool), isNotNull);
         }
       });
+
+      test('probes all three tools with one wsl call each, not two',
+          () async {
+        // 1 distro list check + 1 status call per tool = 4 total, down from
+        // up to 7 (1 + up to 2 per tool) before the status+existence checks
+        // were combined into a single shell invocation.
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        expect(testShell.allCommands.length, 4);
+      });
+    });
+
+    group('ensureInitialized', () {
+      // Regression: the AI Workspace screen used to construct its own
+      // AiWorkspaceService and do these checks only once the user navigated
+      // there. Now app startup kicks this off in the background via a
+      // shared instance, so the screen can skip straight to already-known
+      // state — that only works if repeated calls don't redo the work.
+      test('seeds state, ensures the distro, and checks every tool',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+
+        await service.ensureInitialized();
+
+        expect(service.toolStates.length, AiWorkspaceTool.values.length);
+        for (final tool in AiWorkspaceTool.values) {
+          expect(service.getState(tool)?.checked, true);
+        }
+      });
+
+      test('is memoized — a second call does not repeat the WSL round trips',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+
+        await service.ensureInitialized();
+        final commandCountAfterFirstCall = testShell.allCommands.length;
+        await service.ensureInitialized();
+
+        expect(testShell.allCommands.length, commandCountAfterFirstCall);
+      });
+
+      test('a caller that awaits it while already in flight joins the same '
+          'work instead of starting a duplicate', () async {
+        testShell.stdoutData = 'ai-workspace';
+        testShell.artificialDelay = const Duration(milliseconds: 50);
+
+        final first = service.ensureInitialized();
+        final second = service.ensureInitialized();
+        await Future.wait([first, second]);
+
+        // 1 distro list check + 1 status call per tool, exactly as a single
+        // caller would produce — not doubled.
+        expect(testShell.allCommands.length, 4);
+      });
+    });
+
+    group('persisted status cache', () {
+      test('seedToolStates() has nothing to show before any check has ever '
+          'run', () {
+        service.seedToolStates();
+
+        for (final tool in AiWorkspaceTool.values) {
+          expect(service.getState(tool)?.status, ToolStatus.notInstalled);
+          expect(service.getState(tool)?.hasKnownStatus, false);
+        }
+      });
+
+      test('a confirmed refreshStatus() result is cached for the next '
+          'AiWorkspaceService instance (simulating an app restart)',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        // A brand new instance — same prefs, no shared in-memory state —
+        // stands in for the app being relaunched.
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+
+        final state = restarted.getState(AiWorkspaceTool.openWebUi)!;
+        expect(state.status, ToolStatus.running);
+        expect(state.hasKnownStatus, true);
+        // Not checked yet *this session* — a live refresh is still owed,
+        // even though there's already something real to show.
+        expect(state.checked, false);
+      });
+
+      test('a cached tool still gets a real background refresh, it just '
+          "doesn't need to block the UI on it first", () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+        expect(restarted.getState(AiWorkspaceTool.hermesAgent)?.checked, false);
+
+        await restarted.ensureInitialized();
+
+        expect(restarted.getState(AiWorkspaceTool.hermesAgent)?.checked, true);
+      });
+
+      test('a shell-level failure does not overwrite good cached data',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        // Simulate a transient WSL hiccup on the next check. (ExecutionBroker
+        // itself never lets this propagate as a raw exception — it always
+        // converts a shell-level failure into a failed ExecutionResult — so
+        // this exercises the same "not a confirmed signal" branch as a
+        // plain non-zero exit code, just via a different trigger.)
+        testShell.throwOnRun = true;
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        // In-memory state for *this* session reflects the failed attempt...
+        expect(
+          service.getState(AiWorkspaceTool.openWebUi)?.status,
+          ToolStatus.error,
+        );
+        // ...but the cache a future launch would read from still has the
+        // last genuinely confirmed answer, not the transient failure.
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+        expect(
+          restarted.getState(AiWorkspaceTool.openWebUi)?.status,
+          ToolStatus.running,
+        );
+      });
+
+      test('a generic (non-distro-missing) command failure does not '
+          'overwrite good cached data', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'some transient docker error';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+        expect(
+          restarted.getState(AiWorkspaceTool.openWebUi)?.status,
+          ToolStatus.running,
+        );
+      });
+
+      test('install() success is cached immediately, without waiting for a '
+          'follow-up refreshStatus()', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.hermesAgent);
+
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+        expect(
+          restarted.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.stopped,
+        );
+      });
+
+      test('start() success is cached', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        service.getState(AiWorkspaceTool.hermesAgent)!.status =
+            ToolStatus.stopped;
+
+        testShell.exitCode = 0;
+        await service.start(AiWorkspaceTool.hermesAgent);
+
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+        expect(
+          restarted.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.running,
+        );
+      });
+
+      test('stop() success is cached', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        service.getState(AiWorkspaceTool.hermesAgent)!.status =
+            ToolStatus.running;
+
+        testShell.exitCode = 0;
+        await service.stop(AiWorkspaceTool.hermesAgent);
+
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+        expect(
+          restarted.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.stopped,
+        );
+      });
     });
 
     group('install', () {
@@ -147,6 +368,114 @@ void main() {
           service.getState(AiWorkspaceTool.openClaw)?.errorMessage,
           contains('curl failed'),
         );
+      });
+
+      test('installing Open WebUI prepares docker before pulling the image',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        final result = await service.install(AiWorkspaceTool.openWebUi);
+
+        expect(result, true);
+        // Docker setup command must run before the docker pull/run command.
+        final dockerSetupIndex = testShell.allCommands
+            .indexWhere((cmd) => cmd.any((a) => a.contains('docker.io')));
+        final dockerPullIndex = testShell.allCommands
+            .indexWhere((cmd) => cmd.any((a) => a.contains('docker pull')));
+        expect(dockerSetupIndex, isNot(-1));
+        expect(dockerPullIndex, isNot(-1));
+        expect(dockerSetupIndex, lessThan(dockerPullIndex));
+      });
+
+      test('does not attempt docker setup for non-docker tools', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.hermesAgent);
+
+        expect(
+          testShell.allCommands.any((cmd) => cmd.any((a) => a.contains('docker.io'))),
+          false,
+        );
+      });
+
+      test('all commands run as root in the dedicated distro', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.hermesAgent);
+
+        expect(
+          testShell.allCommands.where((cmd) => cmd.contains('-d')).every(
+                (cmd) => cmd.contains('-u') && cmd.contains('root'),
+              ),
+          true,
+        );
+      });
+
+      // Regression: get.hermes-agent.dev and install.openclaw.ai never
+      // resolved to anything — they were placeholder URLs. Guard the real,
+      // verified install endpoints so a future edit can't silently
+      // reintroduce a dead domain.
+      test('hermes agent installs from the real nousresearch endpoint',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.hermesAgent);
+
+        expect(
+          testShell.lastCommand
+              .any((a) => a.contains('hermes-agent.nousresearch.com')),
+          true,
+        );
+        expect(
+          testShell.lastCommand.any((a) => a.contains('get.hermes-agent.dev')),
+          false,
+        );
+      });
+
+      test('openclaw installs from the real openclaw.ai endpoint', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.openClaw);
+
+        expect(
+          testShell.lastCommand.any((a) => a.contains('openclaw.ai/install.sh')),
+          true,
+        );
+        expect(
+          testShell.lastCommand.any((a) => a.contains('install.openclaw.ai')),
+          false,
+        );
+      });
+
+      // Regression: `curl ... | sh` exits 0 even when curl can't resolve the
+      // host (an empty stdin still makes the piped shell "succeed"), which
+      // previously made every install of a dead URL report success while
+      // installing nothing. `set -o pipefail` makes the pipeline surface
+      // curl's own failure instead.
+      test('install commands are prefixed with pipefail so a dead curl '
+          'target cannot masquerade as success', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        for (final tool in [AiWorkspaceTool.hermesAgent, AiWorkspaceTool.openClaw]) {
+          await service.install(tool);
+          expect(
+            testShell.lastCommand.any((a) => a.contains('set -o pipefail')),
+            true,
+            reason: '${tool.name} install should be pipefail-guarded',
+          );
+        }
       });
     });
 
@@ -246,13 +575,113 @@ void main() {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
 
-        // Status check returns "stopped"
-        testShell.stdoutData = 'stopped';
+        // The combined status+existence check's single shell invocation
+        // resolves to 'exists' when the process isn't running but the
+        // install is still present.
+        testShell.stdoutData = 'exists';
         await service.refreshStatus(AiWorkspaceTool.openClaw);
 
         expect(
           service.getState(AiWorkspaceTool.openClaw)?.status,
           ToolStatus.stopped,
+        );
+      });
+
+      test('issues a single wsl call, not two', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        testShell.reset();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        expect(testShell.allCommands.length, 1);
+      });
+
+      test('detects a stopped Docker-backed tool via docker inspect',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        expect(
+          service.getState(AiWorkspaceTool.openWebUi)?.status,
+          ToolStatus.stopped,
+        );
+        expect(
+          testShell.lastCommand.any((a) => a.contains('docker inspect')),
+          true,
+        );
+      });
+
+      // Regression: dockerd does not auto-start on distro boot, so right
+      // after a cold WSL start the daemon is down and `docker inspect`/
+      // `docker ps` fail — which used to get misread as "not installed"
+      // even for a genuinely-installed tool, and then made the next
+      // install attempt fail with "name already in use".
+      test('starts the docker daemon before checking a docker-backed tool',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        expect(
+          testShell.lastCommand.any((a) => a.contains('service docker start')),
+          true,
+        );
+      });
+
+      test('does not try to start docker for non-docker tools', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+        expect(
+          testShell.lastCommand.any((a) => a.contains('service docker start')),
+          false,
+        );
+      });
+
+      // Regression: the exists-check used to be `[ -d "~/.hermes-agent" ]`,
+      // which never matches — `~` doesn't expand inside double quotes in
+      // bash, so a genuinely-installed tool with no process currently
+      // running was always misreported as not installed. `command -v`
+      // checks PATH instead and has no such quoting pitfall.
+      test('checks hermes agent installation via command -v, not a path',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+        expect(
+          testShell.lastCommand.any((a) => a.contains('command -v hermes')),
+          true,
+        );
+        expect(
+          testShell.lastCommand.any((a) => a.contains('~/.hermes')),
+          false,
+        );
+      });
+
+      test('checks openclaw installation via command -v, not a path',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        expect(
+          testShell.lastCommand.any((a) => a.contains('command -v openclaw')),
+          true,
         );
       });
 
@@ -270,6 +699,41 @@ void main() {
           ToolStatus.notInstalled,
         );
       });
+
+      // Regression coverage for `checked`: a UI decides whether to show a
+      // checking spinner based on whether a tool was *attempted*, not
+      // whether that attempt succeeded — so `checked` must end up true on
+      // every path through refreshStatus, including the error ones.
+      test('marks the tool as checked even when the distro is missing',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'distribution ai-workspace could not be found';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        expect(service.getState(AiWorkspaceTool.openWebUi)?.checked, true);
+      });
+
+      test('marks the tool as checked even when the broker throws',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.throwOnRun = true;
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        expect(service.getState(AiWorkspaceTool.openWebUi)?.checked, true);
+      });
+
+      test('a freshly-seeded tool is not checked yet', () {
+        service.seedToolStates();
+
+        for (final tool in AiWorkspaceTool.values) {
+          expect(service.getState(tool)?.checked, false);
+        }
+      });
     });
 
     group('getUrl', () {
@@ -282,7 +746,7 @@ void main() {
 
         expect(
           service.getUrl(AiWorkspaceTool.hermesAgent),
-          'http://localhost:8081',
+          'http://localhost:9119',
         );
       });
 
@@ -294,6 +758,126 @@ void main() {
         state.status = ToolStatus.stopped;
 
         expect(service.getUrl(AiWorkspaceTool.openClaw), isNull);
+      });
+    });
+
+    group('getDashboardUrl', () {
+      test('returns null for a tool that is not running', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openWebUi)!;
+        state.status = ToolStatus.stopped;
+
+        expect(await service.getDashboardUrl(AiWorkspaceTool.openWebUi), isNull);
+      });
+
+      test('Open WebUI uses the static port without any extra WSL call',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openWebUi)!;
+        state.status = ToolStatus.running;
+        testShell.allCommands.clear();
+
+        final url = await service.getDashboardUrl(AiWorkspaceTool.openWebUi);
+
+        expect(url, 'http://localhost:8083');
+        expect(testShell.allCommands, isEmpty);
+      });
+
+      test('hermes agent runs "hermes dashboard" and returns the printed URL',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent)!;
+        state.status = ToolStatus.running;
+        testShell.stdoutData = 'http://127.0.0.1:9119/?token=abc123';
+
+        final url = await service.getDashboardUrl(AiWorkspaceTool.hermesAgent);
+
+        expect(url, 'http://127.0.0.1:9119/?token=abc123');
+        expect(
+          testShell.lastCommand.any((a) => a.contains('hermes dashboard')),
+          true,
+        );
+      });
+
+      test('openclaw runs "openclaw dashboard" and returns the printed URL',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openClaw)!;
+        state.status = ToolStatus.running;
+        testShell.stdoutData = 'http://127.0.0.1:18789/pair/xyz';
+
+        final url = await service.getDashboardUrl(AiWorkspaceTool.openClaw);
+
+        expect(url, 'http://127.0.0.1:18789/pair/xyz');
+        expect(
+          testShell.lastCommand.any((a) => a.contains('openclaw dashboard')),
+          true,
+        );
+      });
+
+      test('returns null when no URL is found in the command output',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent)!;
+        state.status = ToolStatus.running;
+        testShell.stdoutData = '';
+        testShell.exitCode = 1;
+
+        expect(await service.getDashboardUrl(AiWorkspaceTool.hermesAgent), isNull);
+      });
+
+      // Regression: docker reporting a container "Up" (or a gateway CLI
+      // printing a link) doesn't guarantee the web server inside has
+      // actually finished starting — clicking "Open Dashboard" used to
+      // open a browser tab to a URL nothing was listening on yet, which
+      // showed as an empty response. getDashboardUrl now waits for
+      // something to actually answer before returning a URL at all.
+      test('does not return a URL that never becomes reachable', () async {
+        final unreachable = AiWorkspaceService(
+          broker: broker,
+          reachabilityChecker: (_) async => false,
+        );
+        testShell.stdoutData = 'ai-workspace';
+        await unreachable.init();
+
+        final state = unreachable.getState(AiWorkspaceTool.openWebUi)!;
+        state.status = ToolStatus.running;
+
+        expect(
+          await unreachable.getDashboardUrl(AiWorkspaceTool.openWebUi),
+          isNull,
+        );
+      });
+
+      test('returns the URL once the reachability check reports it is live',
+          () async {
+        var callCount = 0;
+        final flakyThenUp = AiWorkspaceService(
+          broker: broker,
+          // Simulates the container being "Up" per docker but not actually
+          // serving yet for the first couple of polls.
+          reachabilityChecker: (_) async => (++callCount) >= 3,
+        );
+        testShell.stdoutData = 'ai-workspace';
+        await flakyThenUp.init();
+
+        final state = flakyThenUp.getState(AiWorkspaceTool.openWebUi)!;
+        state.status = ToolStatus.running;
+
+        final url = await flakyThenUp.getDashboardUrl(AiWorkspaceTool.openWebUi);
+
+        expect(url, 'http://localhost:8083');
+        expect(callCount, greaterThanOrEqualTo(3));
       });
     });
 
