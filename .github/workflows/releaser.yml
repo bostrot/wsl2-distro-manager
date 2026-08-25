@@ -58,9 +58,12 @@ jobs:
       - name: Replace version in pubspec.yaml for msix
         run: |
           (Get-Content .\pubspec.yaml) -replace('msix_version: (.*)', 'msix_version: ${{ steps.get_version.outputs.version }}.0') | Set-Content .\pubspec.yaml
+      # Pin the SDK — see the note in test.yml. Release builds must not
+      # change underneath us between runs.
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.41.6'
 
       - name: Check translations
         run: dart run scripts/check_translations.dart

@@ -13,9 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      # Pin the SDK: an unpinned 'stable' silently picks up whatever Flutter
+      # released most recently, so CI can break with no change on our side
+      # (that is exactly how re_editor started failing to compile). Bump this
+      # deliberately, after verifying a build locally on the same version.
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.41.6'
 
       - name: Check translations
         run: dart run scripts/check_translations.dart
