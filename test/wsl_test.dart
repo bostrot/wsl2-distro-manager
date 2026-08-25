@@ -39,7 +39,10 @@ void main() {
   setUpAll(() async {
     WidgetsFlutterBinding.ensureInitialized();
     DartPluginRegistrant.ensureInitialized();
-    SharedPreferences.setMockInitialValues({});
+    // Pin the distro root: these tests stage fixtures under C:\WSL2-Distros,
+    // so they must not depend on the per-user default storage root
+    // (%APPDATA%) that getDistroPath() otherwise falls back to.
+    SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
     await initPrefs();
 
     Notify();
@@ -489,7 +492,9 @@ systemd = true
     mockShell.simulateSmallExport = true;
     File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
 
-    SharedPreferences.setMockInitialValues({});
+    // Keep DistroPath pinned across this reset — the fixtures live under
+    // C:\WSL2-Distros, not the per-user default storage root.
+    SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
     prefs = await SharedPreferences.getInstance();
 
     try {
@@ -509,7 +514,9 @@ systemd = true
     mockShell.simulateRemoveFailure = true;
     File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
 
-    SharedPreferences.setMockInitialValues({});
+    // Keep DistroPath pinned across this reset — the fixtures live under
+    // C:\WSL2-Distros, not the per-user default storage root.
+    SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
     prefs = await SharedPreferences.getInstance();
 
     try {
@@ -528,7 +535,9 @@ systemd = true
     mockShell.distros.add('test-success');
     File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
 
-    SharedPreferences.setMockInitialValues({});
+    // Keep DistroPath pinned across this reset — the fixtures live under
+    // C:\WSL2-Distros, not the per-user default storage root.
+    SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
     prefs = await SharedPreferences.getInstance();
 
     // Manually set markers to ensure they get cleared

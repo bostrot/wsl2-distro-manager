@@ -202,14 +202,35 @@ class MockShell implements Shell {
       ProcessStartMode mode = ProcessStartMode.normal}) async {
     lastStartExecutable = executable;
     lastStartArguments = arguments;
-    // Return a dummy process
+
+    // WSLApi.remove() runs `wsl --unregister` through Process.start (not
+    // shell.run), so the same simulation the run() path offers has to exist
+    // here too — otherwise remove() silently no-ops against the mock: the
+    // distro stays in [distros] and simulateRemoveFailure never fires.
+    if (arguments.contains('--unregister')) {
+      final distro = arguments[arguments.indexOf('--unregister') + 1];
+      if (simulateRemoveFailure) {
+        return MockProcess(exitCode: 1, stderr: 'Unregister failed');
+      }
+      distros.remove(distro);
+    }
+
     return MockProcess();
   }
 }
 
 class MockProcess implements Process {
+  final int _exitCode;
+  final String _stdout;
+  final String _stderr;
+
+  MockProcess({int exitCode = 0, String stdout = '', String stderr = ''})
+      : _exitCode = exitCode,
+        _stdout = stdout,
+        _stderr = stderr;
+
   @override
-  Future<int> get exitCode => Future.value(0);
+  Future<int> get exitCode => Future.value(_exitCode);
 
   @override
   bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
@@ -220,13 +241,15 @@ class MockProcess implements Process {
   int get pid => 123;
 
   @override
-  Stream<List<int>> get stderr => Stream.empty();
+  Stream<List<int>> get stderr =>
+      _stderr.isEmpty ? const Stream.empty() : Stream.value(utf8.encode(_stderr));
 
   @override
   IOSink get stdin => IOSink(StreamController<List<int>>().sink);
 
   @override
-  Stream<List<int>> get stdout => Stream.empty();
+  Stream<List<int>> get stdout =>
+      _stdout.isEmpty ? const Stream.empty() : Stream.value(utf8.encode(_stdout));
 }
 
 class MockDockerImage extends DockerImage {
