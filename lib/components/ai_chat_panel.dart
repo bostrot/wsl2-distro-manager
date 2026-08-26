@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
@@ -183,7 +184,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
                 const SizedBox(width: 8),
                 Text(
                   'ai-generating-text'.i18n(),
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(
+                      fontSize: 11, color: secondaryTextColor(context)),
                 ),
               ],
             ),
@@ -292,7 +294,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
                 child: Icon(
                   FluentIcons.add,
                   size: 14,
-                  color: Colors.grey,
+                  color: secondaryTextColor(context),
                 ),
             ),
           ],

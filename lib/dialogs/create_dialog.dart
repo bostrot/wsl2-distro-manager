@@ -15,6 +15,17 @@ import 'package:wsl2distromanager/theme.dart';
 
 enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
 
+/// Why a create attempt failed.
+///
+/// [diagnosable] separates something going wrong during the install — worth
+/// offering an AI diagnosis for — from a form the user can simply correct.
+class CreateFailure {
+  const CreateFailure(this.message, {this.diagnosable = true});
+
+  final String message;
+  final bool diagnosable;
+}
+
 /// Create Dialog
 createDialog() {
   WSLApi api = WSLApi();
@@ -28,7 +39,7 @@ createDialog() {
   // Get root context by Key
   final outerContext = GlobalVariable.infobox.currentContext!;
   final creating = ValueNotifier<bool>(false);
-  final createError = ValueNotifier<String>('');
+  final createError = ValueNotifier<CreateFailure?>(null);
 
   showDialog(
     useRootNavigator: false,
@@ -70,7 +81,7 @@ createDialog() {
                       ? null
                       : () async {
                           creating.value = true;
-                          createError.value = '';
+                          createError.value = null;
                            final success = await createInstance(
                              nameController,
                              locationController,
@@ -127,7 +138,7 @@ Future<bool> createInstance(
   bool isDocker = false,
   bool isDockerLocalImage = false,
   bool isVhdx = false,
-  ValueNotifier<String>? onError,
+  ValueNotifier<CreateFailure?>? onError,
 }) async {
   plausible.event(name: "wsl_create");
   DockerImage docker = dockerImage ?? DockerImage();
@@ -141,8 +152,10 @@ Future<bool> createInstance(
       if (instances.all
           .any((element) => element.toLowerCase() == name.toLowerCase())) {
         final msg = 'distroexists-text'.i18n();
-        Notify.message(msg);
-        onError?.value = msg;
+        if (onError == null) {
+          Notify.message(msg);
+        }
+        onError?.value = CreateFailure(msg, diagnosable: false);
         return false;
       }
 
@@ -207,8 +220,10 @@ Future<bool> createInstance(
         } catch (e) {
           final msg = e.toString().replaceAll('Exception: ', '');
           final err = '${'errordownloading-text'.i18n()}: $msg';
-          Notify.message(err);
-          onError?.value = err;
+          if (onError == null) {
+            Notify.message(err);
+          }
+          onError?.value = CreateFailure(err);
           return false;
         }
         Notify.message('downloaded-text'.i18n());
@@ -216,8 +231,10 @@ Future<bool> createInstance(
         distroName = docker.filename(image, tag);
       } else if (!isDownloaded) {
         final err = '${'distronotfound-text'.i18n()}: $image:$tag';
-        Notify.message(err);
-        onError?.value = err;
+        if (onError == null) {
+          Notify.message(err);
+        }
+        onError?.value = CreateFailure(err, diagnosable: false);
         return false;
       }
 
@@ -232,9 +249,11 @@ Future<bool> createInstance(
       isDockerImage = true;
       String localImagePath = autoSuggestBox.text.trim();
       if (localImagePath.isEmpty) {
-        final err = 'Please select or enter a local Docker image';
-        Notify.message(err);
-        onError?.value = err;
+        final err = 'selectdockerimage-text'.i18n();
+        if (onError == null) {
+          Notify.message(err);
+        }
+        onError?.value = CreateFailure(err, diagnosable: false);
         return false;
       }
 
@@ -246,8 +265,10 @@ Future<bool> createInstance(
       } catch (e) {
         final msg = e.toString().replaceAll('Exception: ', '');
         final err = '${'errordownloading-text'.i18n()}: $msg';
-        Notify.message(err);
-        onError?.value = err;
+        if (onError == null) {
+          Notify.message(err);
+        }
+        onError?.value = CreateFailure(err);
         return false;
       }
     }
@@ -269,8 +290,10 @@ Future<bool> createInstance(
       final error = stderr.isNotEmpty
           ? stderr
           : (stdout.isNotEmpty ? stdout : 'error-text'.i18n());
-      Notify.message(error);
-      onError?.value = error;
+      if (onError == null) {
+        Notify.message(error);
+      }
+      onError?.value = CreateFailure(error);
       return false;
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');
@@ -334,8 +357,10 @@ Future<bool> createInstance(
     // Download distro check
   } else {
     final msg = 'entername-text'.i18n();
-    Notify.message(msg);
-    onError?.value = msg;
+    if (onError == null) {
+      Notify.message(msg);
+    }
+    onError?.value = CreateFailure(msg, diagnosable: false);
     return false;
   }
 }
@@ -360,7 +385,7 @@ class CreateWidget extends StatefulWidget {
   final TextEditingController userController;
   final ValueNotifier<CreateSourceType> sourceType;
   final ValueNotifier<bool>? creating;
-  final ValueNotifier<String>? createError;
+  final ValueNotifier<CreateFailure?>? createError;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -439,23 +464,19 @@ class _CreateWidgetState extends State<CreateWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.createError != null)
-          ValueListenableBuilder<String>(
+          ValueListenableBuilder<CreateFailure?>(
             valueListenable: widget.createError!,
-            builder: (context, err, _) {
-              if (err.isEmpty) return const SizedBox.shrink();
+            builder: (context, failure, _) {
+              if (failure == null) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      err,
-                      style: TextStyle(
-                          color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    AiDiagnoseButton(errorMessage: err),
-                  ],
+                child: InfoBar(
+                  title: Text(failure.message),
+                  severity: InfoBarSeverity.error,
+                  isLong: true,
+                  action: failure.diagnosable
+                      ? AiDiagnoseButton(errorMessage: failure.message)
+                      : null,
                 ),
               );
             },

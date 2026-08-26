@@ -472,14 +472,19 @@ class _SettingsDialogContentState extends State<SettingsDialogContent> {
           );
         }
         return SingleChildScrollView(
-          child: settingsColumn(
-              widget.pathController,
-              widget.startCmdController,
-              widget.userController,
-              context,
-              widget.item,
-              isSyncing,
-              setState),
+          // Keeps the scrollbar off the input fields it would otherwise
+          // overlap.
+          child: Padding(
+            padding: const EdgeInsets.only(right: 14.0),
+            child: settingsColumn(
+                widget.pathController,
+                widget.startCmdController,
+                widget.userController,
+                context,
+                widget.item,
+                isSyncing,
+                setState),
+          ),
         );
       },
     );

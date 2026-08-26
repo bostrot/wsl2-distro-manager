@@ -246,7 +246,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             Text(
               'ai-workspace-pro-required-text'.i18n(),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: secondaryTextColor(context)),
             ),
             const SizedBox(height: 24),
             FilledButton(
@@ -345,7 +345,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
         const SizedBox(width: 8),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: TextStyle(fontSize: 12, color: secondaryTextColor(context)),
         ),
       ],
     );

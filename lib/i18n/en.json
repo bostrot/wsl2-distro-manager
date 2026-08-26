@@ -345,10 +345,10 @@
   "year-text": "yr",
   "yearly-info-text": "Best value - save 33%",
   "pro-features-text": "Pro Features:",
-  "ai-config-assistant-feature": "AI Configuration Assistant",
-  "smart-recommendations-feature": "Smart Recommendations",
-  "script-generation-feature": "Script Generation",
-  "error-diagnosis-feature": "Error Diagnosis",
+  "ai-config-assistant-feature": "AI Configuration Assistant *",
+  "smart-recommendations-feature": "Smart Recommendations *",
+  "script-generation-feature": "Script Generation *",
+  "error-diagnosis-feature": "Error Diagnosis *",
   "compare-plans-text": "Compare Plans",
   "core-wsl-management-feature": "Manage WSL distros locally",
   "ai-workspace-feature": "AI Workspace agents",
@@ -385,5 +385,11 @@
   "upgrade-pro-text": "Upgrade to Pro",
   "upgrade-prompt-error": "AI error diagnosis is a Pro feature. Upgrade to unlock it.",
   "reportbug-text": "Report a bug",
-  "compact-nospace-text": "Not enough free space to compact: the disk is %s0 but only %s1 is available. Free up space or move the instance to a larger drive."
+  "compact-nospace-text": "Not enough free space to compact: the disk is %s0 but only %s1 is available. Free up space or move the instance to a larger drive.",
+  "plan-free-short": "Free",
+  "plan-pro-short": "Pro",
+  "plan-free-detail": "Everything for managing WSL locally. AI features are not included.",
+  "plan-store-detail": "Bought once in the Microsoft Store. All Pro features are unlocked, updates included.",
+  "selectdockerimage-text": "Please select or enter a local Docker image",
+  "byok-required-note": "The AI features use your own OpenAI-compatible API key. No AI service is hosted or included — you pay your provider directly, or point them at a local model."
 }

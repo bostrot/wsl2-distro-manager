@@ -38,17 +38,39 @@ const String wikiDocker =
 // Runtime cache for distro links loaded from remote source or local images.json.
 Map<String, String> distroRootfsLinks = {};
 
+/// Locales the app ships translations for.
+///
+/// Every entry must have a lib/i18n/<locale>.json whose name matches the
+/// locale's toString(): the localization delegate throws on a missing file and
+/// the failed load leaves the app rendering nothing at all. Anything else is
+/// mapped onto one of these by localeResolutionCallback in main.dart.
 const supportedLocalesList = [
-  Locale('en', ''), // English, no country code
-  Locale('de', ''), // German, no country code
-  Locale('pt', ''), // Portuguese, no country code
-  Locale('hu', ''), // Hungarian, no country code
-  Locale('zh', ''), // Chinese, simplified
-  Locale('zh', 'TW'), // Chinese, taiwan (traditional)
-  Locale('zh', 'HK'), // Chinese, hongkong (traditional)
-  Locale('es', ''), // Spanish, no country code
-  Locale('tr', ''), // Turkish, no country code
-  Locale('ja', ''), // Japanese, no country code
+  Locale('en', ''), // en.json
+  Locale('de', ''), // de.json
+  Locale('es', ''), // es.json
+  Locale('hu', ''), // hu.json
+  Locale('ja', ''), // ja.json
+  Locale('pt', ''), // pt.json
+  Locale('tr', ''), // tr.json
+  Locale('zh', 'CN'), // zh_CN.json, simplified
+  Locale('zh', 'TW'), // zh_TW.json, traditional
 ];
+
+/// Language picker entries: the value stored in the `language` preference
+/// mapped to the language's own name.
+///
+/// Keys are locale tags that name a file in lib/i18n, so a picked language
+/// always has a translation to load.
+const languageOptions = {
+  'en': 'English',
+  'de': 'Deutsch',
+  'es': 'Español',
+  'hu': 'Magyar',
+  'ja': '日本語',
+  'pt': 'Português',
+  'tr': 'Türkçe',
+  'zh_CN': '简体中文',
+  'zh_TW': '繁體中文',
+};
 
 String currentVersion = "1.0.0";

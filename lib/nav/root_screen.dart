@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:localization/localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -94,32 +95,37 @@ class RootPageState extends State<RootPage> with WindowListener {
   @override
   void initState() {
     windowManager.addListener(this);
+    // The footer pane item reads the licence state, so it has to rebuild when
+    // that changes.
+    LicenseManager().addListener(_onLicenseChanged);
     initRoot(statusMsg);
     super.initState();
+  }
+
+  void _onLicenseChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     windowManager.removeListener(this);
+    LicenseManager().removeListener(_onLicenseChanged);
     searchController.dispose();
     searchFocusNode.dispose();
     super.dispose();
   }
 
+  /// fluent_ui addresses the pane by its "effective" items — separators and
+  /// headers are dropped from the numbering — so a raw list index does not
+  /// line up with what the pane considers selected.
   int _calculateSelectedIndex(BuildContext context) {
     final path = widget.state.uri.path;
-    int indexOriginal =
-        originalItems.indexWhere((element) => element.key == Key(path));
-
-    if (indexOriginal == -1) {
-      int indexFooter =
-          footerItems.indexWhere((element) => element.key == Key(path));
-      if (indexFooter == -1) return 0;
-      indexFooter--;
-      return originalItems.length + indexFooter;
-    } else {
-      return indexOriginal;
-    }
+    final effective = [...originalItems, ...footerItems]
+        .whereType<PaneItem>()
+        .where((item) => item is! PaneItemAction)
+        .toList();
+    final index = effective.indexWhere((item) => item.key == Key(path));
+    return index == -1 ? 0 : index;
   }
 
   @override

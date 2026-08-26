@@ -499,3 +499,14 @@ Future<List<String>> clearAllDistroPrefs() async {
 
   return removed;
 }
+
+/// Secondary text colour that follows the theme.
+///
+/// A hardcoded [Colors.grey] is close to invisible against the dark theme's
+/// background, so supporting copy has to read this instead.
+Color secondaryTextColor(BuildContext context) =>
+    FluentTheme.of(context).resources.textFillColorSecondary;
+
+/// Colour for something present but inactive, e.g. a "not included" marker.
+Color disabledTextColor(BuildContext context) =>
+    FluentTheme.of(context).resources.textFillColorDisabled;

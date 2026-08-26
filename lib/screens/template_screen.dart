@@ -86,7 +86,31 @@ class _TemplatePageState extends State<TemplatePage> {
   Widget build(BuildContext context) {
     if (_templates.isEmpty) {
       return Center(
-        child: Text('notemplates-text'.i18n()),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color:
+                    FluentTheme.of(context).accentColor.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                FluentIcons.page,
+                size: 26,
+                color: FluentTheme.of(context).accentColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'notemplates-text'.i18n(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: secondaryTextColor(context), fontSize: 14),
+            ),
+          ],
+        ),
       );
     }
     // Scrollable list with template items

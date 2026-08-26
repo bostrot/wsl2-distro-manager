@@ -345,10 +345,10 @@
   "year-text": "yıl",
   "yearly-info-text": "En iyi değer - %33 tasarruf",
   "pro-features-text": "Pro Özellikleri:",
-  "ai-config-assistant-feature": "AI Yapılandırma Asistanı",
-  "smart-recommendations-feature": "Akıllı Öneriler",
-  "script-generation-feature": "Betik Oluşturma",
-  "error-diagnosis-feature": "Hata Tanılama",
+  "ai-config-assistant-feature": "Yapay zekâ yapılandırma asistanı *",
+  "smart-recommendations-feature": "Akıllı öneriler *",
+  "script-generation-feature": "Betik oluşturma *",
+  "error-diagnosis-feature": "Hata teşhisi *",
   "compare-plans-text": "Planları Karşılaştır",
   "core-wsl-management-feature": "WSL dağıtımlarını yerel olarak yönet",
   "ai-workspace-feature": "AI Workspace ajanları",
@@ -385,5 +385,11 @@
   "upgrade-pro-text": "Pro'ya Yükselt",
   "upgrade-prompt-error": "AI hata tanılama bir Pro özelliğidir. Kilidini açmak için yükseltin.",
   "reportbug-text": "Hata bildir",
-  "compact-nospace-text": "Sıkıştırmak için yeterli boş alan yok: disk %s0 boyutunda ancak yalnızca %s1 kullanılabilir. Yer açın veya örneği daha büyük bir sürücüye taşıyın."
+  "compact-nospace-text": "Sıkıştırmak için yeterli boş alan yok: disk %s0 boyutunda ancak yalnızca %s1 kullanılabilir. Yer açın veya örneği daha büyük bir sürücüye taşıyın.",
+  "plan-free-short": "Ücretsiz",
+  "plan-pro-short": "Pro",
+  "plan-free-detail": "WSL'yi yerel olarak yönetmek için gereken her şey. Yapay zekâ özellikleri dahil değildir.",
+  "plan-store-detail": "Microsoft Store'dan tek seferlik satın alındı. Tüm Pro özellikleri açık, güncellemeler dahil.",
+  "selectdockerimage-text": "Lütfen yerel bir Docker imajı seçin veya girin",
+  "byok-required-note": "Yapay zekâ özellikleri kendi OpenAI uyumlu API anahtarınızı kullanır. Hiçbir yapay zekâ hizmeti barındırılmaz veya birlikte verilmez — doğrudan sağlayıcınıza ödeme yaparsınız ya da yerel bir modeli gösterirsiniz."
 }

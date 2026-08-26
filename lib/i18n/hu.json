@@ -345,10 +345,10 @@
   "year-text": "év",
   "yearly-info-text": "Legjobb ár - 33% megtakarítás",
   "pro-features-text": "Pro funkciók:",
-  "ai-config-assistant-feature": "AI konfigurációs asszisztens",
-  "smart-recommendations-feature": "Intelligens ajánlások",
-  "script-generation-feature": "Script-generálás",
-  "error-diagnosis-feature": "Hibadiagnózis",
+  "ai-config-assistant-feature": "MI konfigurációs asszisztens *",
+  "smart-recommendations-feature": "Intelligens ajánlások *",
+  "script-generation-feature": "Szkriptgenerálás *",
+  "error-diagnosis-feature": "Hibadiagnosztika *",
   "compare-plans-text": "Csomagok összehasonlítása",
   "core-wsl-management-feature": "WSL disztribúciók helyi kezelése",
   "ai-workspace-feature": "AI Workspace ügynökök",
@@ -385,5 +385,11 @@
   "upgrade-pro-text": "Frissítés Pro-ra",
   "upgrade-prompt-error": "Az AI hibadiagnosztika Pro funkció. Frissítsen a feloldásához.",
   "reportbug-text": "Hiba jelentése",
-  "compact-nospace-text": "Nincs elég szabad hely a tömörítéshez: a lemez %s0, és csak %s1 érhető el. Szabadíts fel helyet, vagy helyezd át a példányt egy nagyobb meghajtóra."
+  "compact-nospace-text": "Nincs elég szabad hely a tömörítéshez: a lemez %s0, és csak %s1 érhető el. Szabadíts fel helyet, vagy helyezd át a példányt egy nagyobb meghajtóra.",
+  "plan-free-short": "Ingyenes",
+  "plan-pro-short": "Pro",
+  "plan-free-detail": "Minden, ami a WSL helyi kezeléséhez kell. Az MI-funkciók nem tartoznak bele.",
+  "plan-store-detail": "Egyszeri vásárlás a Microsoft Store-ban. Minden Pro funkció fel van oldva, a frissítésekkel együtt.",
+  "selectdockerimage-text": "Válassz ki vagy adj meg egy helyi Docker-képfájlt",
+  "byok-required-note": "Az MI-funkciók a saját, OpenAI-kompatibilis API-kulcsodat használják. Nincs MI-szolgáltatás üzemeltetve vagy mellékelve — közvetlenül a szolgáltatódnak fizetsz, vagy helyi modellt használsz."
 }

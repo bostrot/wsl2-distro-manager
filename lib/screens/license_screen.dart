@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:provider/provider.dart';
 
@@ -123,7 +124,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
             Text(
               'store-buy-info-text'.i18n(),
               style: FluentTheme.of(context).typography.bodyStrong?.copyWith(
-                    color: Colors.grey,
+                    color: secondaryTextColor(context),
                     fontWeight: FontWeight.normal,
                   ),
             ),
@@ -135,7 +136,9 @@ class _LicenseScreenState extends State<LicenseScreen> {
 
   Widget _buildStatusCard(LicenseManager manager) {
     final isPro = manager.isPro;
-    final color = isPro ? FluentTheme.of(context).accentColor : Colors.grey;
+    final color = isPro
+        ? FluentTheme.of(context).accentColor
+        : secondaryTextColor(context);
     final isDark = FluentTheme.of(context).brightness.isDark;
 
     return Container(
@@ -183,8 +186,10 @@ class _LicenseScreenState extends State<LicenseScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  manager.getPlanText().i18n(),
-                  style: const TextStyle(fontSize: 14),
+                  isPro
+                      ? 'plan-store-detail'.i18n()
+                      : 'plan-free-detail'.i18n(),
+                  style: const TextStyle(fontSize: 14, height: 1.4),
                 ),
               ],
             ),
@@ -208,7 +213,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
           const SizedBox(height: 4),
           Text(
             'store-buy-detail-text'.i18n(),
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
+            style: TextStyle(fontSize: 13, color: secondaryTextColor(context)),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -249,12 +254,13 @@ class _LicenseScreenState extends State<LicenseScreen> {
       ['ai-workspace-feature', false, true],
     ];
 
+    const columnWidth = 64.0;
     Widget cell(bool included) => SizedBox(
-          width: 44,
+          width: columnWidth,
           child: Icon(
             included ? FluentIcons.check_mark : FluentIcons.cancel,
             size: 14,
-            color: included ? accent : Colors.grey.withValues(alpha: 0.4),
+            color: included ? accent : disabledTextColor(context),
           ),
         );
 
@@ -285,14 +291,21 @@ class _LicenseScreenState extends State<LicenseScreen> {
                   children: [
                     const Expanded(child: SizedBox.shrink()),
                     SizedBox(
-                      width: 44,
-                      child: Text('plan-free'.i18n(),
-                          style: const TextStyle(
-                              fontSize: 11, color: Colors.grey)),
+                      width: columnWidth,
+                      child: Text('plan-free-short'.i18n(),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: secondaryTextColor(context))),
                     ),
                     SizedBox(
-                      width: 44,
-                      child: Text('plan-pro'.i18n(),
+                      width: columnWidth,
+                      child: Text('plan-pro-short'.i18n(),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -318,6 +331,24 @@ class _LicenseScreenState extends State<LicenseScreen> {
                 ),
             ],
           ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('* ',
+                style: TextStyle(
+                    fontSize: 11, color: secondaryTextColor(context))),
+            Expanded(
+              child: Text(
+                'byok-required-note'.i18n(),
+                style: TextStyle(
+                    fontSize: 11,
+                    height: 1.4,
+                    color: secondaryTextColor(context)),
+              ),
+            ),
+          ],
         ),
       ],
     );

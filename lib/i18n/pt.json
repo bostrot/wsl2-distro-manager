@@ -347,10 +347,10 @@
   "year-text": "ano",
   "yearly-info-text": "Melhor valor - economize 33%",
   "pro-features-text": "Recursos Pro:",
-  "ai-config-assistant-feature": "Assistente de configuração IA",
-  "smart-recommendations-feature": "Recomendações inteligentes",
-  "script-generation-feature": "Geração de scripts",
-  "error-diagnosis-feature": "Diagnóstico de erros",
+  "ai-config-assistant-feature": "Assistente de configuração com IA *",
+  "smart-recommendations-feature": "Recomendações inteligentes *",
+  "script-generation-feature": "Geração de scripts *",
+  "error-diagnosis-feature": "Diagnóstico de erros *",
   "compare-plans-text": "Comparar Planos",
   "core-wsl-management-feature": "Gerenciar distros WSL localmente",
   "ai-workspace-feature": "Agentes do AI Workspace",
@@ -387,5 +387,11 @@
   "upgrade-pro-text": "Atualizar para Pro",
   "upgrade-prompt-error": "O diagnóstico de erros por IA é um recurso Pro. Atualize para desbloqueá-lo.",
   "reportbug-text": "Reportar um erro",
-  "compact-nospace-text": "Espaço livre insuficiente para compactar: o disco tem %s0 e apenas %s1 estão disponíveis. Libere espaço ou mova a instância para uma unidade maior."
+  "compact-nospace-text": "Espaço livre insuficiente para compactar: o disco tem %s0 e apenas %s1 estão disponíveis. Libere espaço ou mova a instância para uma unidade maior.",
+  "plan-free-short": "Grátis",
+  "plan-pro-short": "Pro",
+  "plan-free-detail": "Tudo para gerenciar o WSL localmente. Os recursos de IA não estão incluídos.",
+  "plan-store-detail": "Compra única na Microsoft Store. Todos os recursos Pro estão liberados, atualizações incluídas.",
+  "selectdockerimage-text": "Selecione ou informe uma imagem local do Docker",
+  "byok-required-note": "Os recursos de IA usam sua própria chave de API compatível com OpenAI. Nenhum serviço de IA é hospedado ou incluído — você paga diretamente ao seu provedor ou aponta para um modelo local."
 }

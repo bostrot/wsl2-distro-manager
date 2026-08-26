@@ -77,38 +77,33 @@ final List<NavigationPaneItem> originalItems = [
     },
   ),
 ];
-final List<NavigationPaneItem> footerItems = [
+/// Rebuilt on every access: the label and badge depend on the licence state,
+/// and a PaneItem title has to be a real Text — fluent_ui reads the string out
+/// of it, so a builder widget renders an empty entry.
+List<NavigationPaneItem> get footerItems => [
   PaneItem(
     key: const Key('/license'),
     icon: const Icon(FluentIcons.crown),
-    // The pane is built once at import time, so both the label and the badge
-    // subscribe to LicenseManager instead of reading it eagerly.
-    title: ListenableBuilder(
-      listenable: LicenseManager(),
-      builder: (context, _) => Text(LicenseManager().isPro
-          ? 'license-text'.i18n()
-          : 'upgrade-pro-text'.i18n()),
-    ),
-    infoBadge: ListenableBuilder(
-      listenable: LicenseManager(),
-      builder: (context, _) => LicenseManager().isPro
-          ? const SizedBox.shrink()
-          : Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: const Text(
-                'NEW',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFFBF00),
-                ),
+    title: Text(LicenseManager().isPro
+        ? 'license-text'.i18n()
+        : 'upgrade-pro-text'.i18n()),
+    infoBadge: LicenseManager().isPro
+        ? null
+        : Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: const Text(
+              'NEW',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFFBF00),
               ),
             ),
-    ),
+          ),
     body: const SizedBox.shrink(),
     onTap: () {
       if (router.state.uri.toString() != '/license')

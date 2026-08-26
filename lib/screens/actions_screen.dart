@@ -373,11 +373,37 @@ class QuickPageState extends State<QuickPage> {
         if (quickSettings.isNotEmpty) {
           return Column(children: quickSettings);
         } else {
-          return Padding(
-            padding:
-                EdgeInsets.only(top: MediaQuery.of(context).size.height / 2.5),
+          // The list sits in a loosely sized Stack child, so Center has no
+          // room of its own to work with.
+          return SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
             child: Center(
-              child: Text('addquickactioninfo-text'.i18n()),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: FluentTheme.of(context)
+                          .accentColor
+                          .withValues(alpha: 0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      FluentIcons.code,
+                      size: 26,
+                      color: FluentTheme.of(context).accentColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'addquickactioninfo-text'.i18n(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: secondaryTextColor(context), fontSize: 14),
+                  ),
+                ],
+              ),
             ),
           );
         }

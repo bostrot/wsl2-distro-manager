@@ -345,10 +345,10 @@
   "year-text": "年",
   "yearly-info-text": "最高の価値 - 33%節約",
   "pro-features-text": "プロ機能：",
-  "ai-config-assistant-feature": "AI設定アシスタント",
-  "smart-recommendations-feature": "スマート推奨",
-  "script-generation-feature": "スクリプト生成",
-  "error-diagnosis-feature": "エラー診断",
+  "ai-config-assistant-feature": "AI 設定アシスタント *",
+  "smart-recommendations-feature": "スマートな推奨 *",
+  "script-generation-feature": "スクリプト生成 *",
+  "error-diagnosis-feature": "エラー診断 *",
   "compare-plans-text": "プランを比較",
   "core-wsl-management-feature": "WSLディストロをローカルで管理",
   "ai-workspace-feature": "AI Workspaceエージェント",
@@ -385,5 +385,11 @@
   "upgrade-pro-text": "Proにアップグレード",
   "upgrade-prompt-error": "AIエラー診断はPro機能です。アップグレードして利用を開始してください。",
   "reportbug-text": "バグを報告",
-  "compact-nospace-text": "圧縮に必要な空き容量が足りません: ディスクは %s0 ですが、空き容量は %s1 のみです。空き容量を増やすか、インスタンスをより大きなドライブに移動してください。"
+  "compact-nospace-text": "圧縮に必要な空き容量が足りません: ディスクは %s0 ですが、空き容量は %s1 のみです。空き容量を増やすか、インスタンスをより大きなドライブに移動してください。",
+  "plan-free-short": "無料",
+  "plan-pro-short": "Pro",
+  "plan-free-detail": "WSL をローカルで管理するための機能一式。AI 機能は含まれません。",
+  "plan-store-detail": "Microsoft Store での買い切り。すべての Pro 機能が利用でき、アップデートも含まれます。",
+  "selectdockerimage-text": "ローカルの Docker イメージを選択または入力してください",
+  "byok-required-note": "AI 機能はご自身の OpenAI 互換 API キーを使用します。AI サービスのホスティングや同梱はありません — 料金はプロバイダーに直接支払うか、ローカルモデルを指定してください。"
 }

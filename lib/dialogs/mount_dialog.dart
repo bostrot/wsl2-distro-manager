@@ -372,6 +372,9 @@ class _MountDialogState extends State<MountDialog> {
           ),
           const SizedBox(height: 10),
           Row(
+            // Bottom-aligned so the two boxes line up even when one label
+            // wraps to a second line.
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: InfoLabel(
@@ -457,6 +460,9 @@ class _MountDialogState extends State<MountDialog> {
           ),
           const SizedBox(height: 10),
           Row(
+            // Bottom-aligned so the two boxes line up even when one label
+            // wraps to a second line.
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: InfoLabel(

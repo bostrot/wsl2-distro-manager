@@ -223,10 +223,14 @@ class WSLManager extends StatelessWidget {
             // Language was set manually
             if (selectedLang != null) {
               language = selectedLang;
-              if (language == "zh") {
+              // Stored before the picker used full locale tags.
+              if (selectedLang == "zh") {
                 return const Locale('zh', 'CN');
               }
-              return Locale(selectedLang);
+              final parts = selectedLang.split('_');
+              return parts.length == 2
+                  ? Locale(parts[0], parts[1])
+                  : Locale(parts[0]);
             }
 
             if (locale == null) {

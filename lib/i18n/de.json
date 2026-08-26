@@ -347,10 +347,10 @@
   "year-text": "Jahr",
   "yearly-info-text": "Bester Wert – 33 % sparen",
   "pro-features-text": "Pro-Funktionen:",
-  "ai-config-assistant-feature": "KI-Konfigurationsassistent",
-  "smart-recommendations-feature": "Intelligente Empfehlungen",
-  "script-generation-feature": "Skripterstellung",
-  "error-diagnosis-feature": "Fehlerdiagnose",
+  "ai-config-assistant-feature": "KI-Konfigurationsassistent *",
+  "smart-recommendations-feature": "Intelligente Empfehlungen *",
+  "script-generation-feature": "Skripterstellung *",
+  "error-diagnosis-feature": "Fehlerdiagnose *",
   "compare-plans-text": "Pläne vergleichen",
   "core-wsl-management-feature": "WSL-Distros lokal verwalten",
   "ai-workspace-feature": "AI Workspace-Agenten",
@@ -386,5 +386,11 @@
   "upgrade-pro-text": "Auf Pro upgraden",
   "upgrade-prompt-error": "KI-Fehlerdiagnose ist eine Pro-Funktion. Führen Sie ein Upgrade durch, um sie freizuschalten.",
   "reportbug-text": "Fehler melden",
-  "compact-nospace-text": "Nicht genug freier Speicherplatz zum Komprimieren: Die Festplatte ist %s0 groß, aber nur %s1 sind verfügbar. Gib Speicherplatz frei oder verschiebe die Instanz auf ein größeres Laufwerk."
+  "compact-nospace-text": "Nicht genug freier Speicherplatz zum Komprimieren: Die Festplatte ist %s0 groß, aber nur %s1 sind verfügbar. Gib Speicherplatz frei oder verschiebe die Instanz auf ein größeres Laufwerk.",
+  "plan-free-short": "Gratis",
+  "plan-pro-short": "Pro",
+  "plan-free-detail": "Alles zum lokalen Verwalten von WSL. KI-Funktionen sind nicht enthalten.",
+  "plan-store-detail": "Einmalig im Microsoft Store gekauft. Alle Pro-Funktionen sind freigeschaltet, Updates inklusive.",
+  "selectdockerimage-text": "Bitte ein lokales Docker-Image auswählen oder eingeben",
+  "byok-required-note": "Die KI-Funktionen laufen über deinen eigenen OpenAI-kompatiblen API-Schlüssel. Es wird kein KI-Dienst gehostet oder mitgeliefert — du zahlst direkt bei deinem Anbieter oder verwendest ein lokales Modell."
 }

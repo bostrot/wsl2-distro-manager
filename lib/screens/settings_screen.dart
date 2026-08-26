@@ -547,12 +547,17 @@ class SettingsPageState extends State<SettingsPage> {
                             prefs.getString('language') ?? lang;
 
                         // Language menu
+                        // Every zh variant collapsed to the same languageCode
+                        // before, which left the ComboBox with duplicate
+                        // values and showed raw locale codes as labels.
+                        if (!languageOptions.containsKey(selectedLanguage)) {
+                          selectedLanguage = 'en';
+                        }
                         return ComboBox<String>(
                             value: selectedLanguage,
-                            items: supportedLocalesList
+                            items: languageOptions.entries
                                 .map((e) => ComboBoxItem(
-                                    value: e.languageCode,
-                                    child: Text(e.toString())))
+                                    value: e.key, child: Text(e.value)))
                                 .toList(),
                             onChanged: (language) {
                               String curLanguage = language ?? lang;
@@ -883,7 +888,7 @@ class SettingsPageState extends State<SettingsPage> {
         const SizedBox(width: 8),
         Text(
           'mcp-tunnel-connecting-text'.i18n(),
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: TextStyle(fontSize: 12, color: secondaryTextColor(context)),
         ),
       ],
     );
@@ -1181,7 +1186,8 @@ class SettingsPageState extends State<SettingsPage> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Text(tooltip,
-                    style: TextStyle(color: Colors.grey[100], fontSize: 12)),
+                    style: TextStyle(
+                        color: secondaryTextColor(context), fontSize: 12)),
               ),
             Padding(
               padding: const EdgeInsets.only(top: 0.0),
