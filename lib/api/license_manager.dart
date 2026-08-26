@@ -13,8 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:win32/win32.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
-/// How the current Pro entitlement (if any) was obtained.
-enum LicensePlan { none, store, legacy }
+enum LicensePlan { none, store }
 
 /// GetCurrentPackageFullName's "this process has no package identity" code
 /// (APPMODEL_ERROR_NO_PACKAGE) — not exported by package:win32.
@@ -35,18 +34,16 @@ class LicenseManager extends ChangeNotifier {
   @visibleForTesting
   static bool Function()? storeInstallCheckOverride;
 
-  bool get isPro => hasLegacyPro || _storeLicensed;
+  bool get isPro => _storeLicensed;
 
-  LicensePlan get plan {
-    if (hasLegacyPro) return LicensePlan.legacy;
-    if (_storeLicensed) return LicensePlan.store;
-    return LicensePlan.none;
-  }
+  LicensePlan get plan =>
+      _storeLicensed ? LicensePlan.store : LicensePlan.none;
 
   Future<void> init() async {
     _storeLicensed = _detectStoreInstall();
 
-    // Cleanup of prefs from the retired subscription experiment.
+    // Cleanup of prefs from the retired subscription and legacy-claim
+    // experiments.
     for (final key in [
       'LicenseKey',
       'LicenseLastCheck',
@@ -54,6 +51,9 @@ class LicenseManager extends ChangeNotifier {
       'LicensePlan',
       'LicenseExpiresAt',
       'LicenseIsTrial',
+      'LegacyProGranted',
+      'LegacyProEmail',
+      'LegacyProClaimedAt',
     ]) {
       prefs.remove(key);
     }
@@ -80,41 +80,8 @@ class LicenseManager extends ChangeNotifier {
     }
   }
 
-  // Legacy grant for people who bought before the current pricing existed.
-  // Honor-system: Store purchase records cannot be checked from here, so
-  // exposure is bounded by [legacyClaimWindowCloses].
-
-  /// Claims made after this date are no longer accepted.
-  static final DateTime legacyClaimWindowCloses = DateTime(2026, 11, 2);
-
-  bool get isLegacyClaimWindowOpen =>
-      DateTime.now().isBefore(legacyClaimWindowCloses);
-
-  bool get hasLegacyPro => prefs.getBool('LegacyProGranted') ?? false;
-
-  String? get legacyProEmail => prefs.getString('LegacyProEmail');
-
-  static final RegExp _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
-  /// Grants permanent local Pro. False if [email] is malformed or the claim
-  /// window has closed.
-  bool claimLegacyPro(String email) {
-    final trimmed = email.trim();
-    if (!_emailPattern.hasMatch(trimmed) || !isLegacyClaimWindowOpen) {
-      return false;
-    }
-
-    prefs.setBool('LegacyProGranted', true);
-    prefs.setString('LegacyProEmail', trimmed);
-    prefs.setString('LegacyProClaimedAt', DateTime.now().toIso8601String());
-    notifyListeners();
-    return true;
-  }
-
   String getPlanText() {
     switch (plan) {
-      case LicensePlan.legacy:
-        return 'plan-legacy';
       case LicensePlan.store:
         return 'plan-store';
       case LicensePlan.none:

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -80,21 +81,33 @@ final List<NavigationPaneItem> footerItems = [
   PaneItem(
     key: const Key('/license'),
     icon: const Icon(FluentIcons.crown),
-    title: Text('upgrade-pro-text'.i18n()),
-    infoBadge: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: const Text(
-        'NEW',
-        style: TextStyle(
-          fontSize: 8,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFFFFBF00),
-        ),
-      ),
+    // The pane is built once at import time, so both the label and the badge
+    // subscribe to LicenseManager instead of reading it eagerly.
+    title: ListenableBuilder(
+      listenable: LicenseManager(),
+      builder: (context, _) => Text(LicenseManager().isPro
+          ? 'license-text'.i18n()
+          : 'upgrade-pro-text'.i18n()),
+    ),
+    infoBadge: ListenableBuilder(
+      listenable: LicenseManager(),
+      builder: (context, _) => LicenseManager().isPro
+          ? const SizedBox.shrink()
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: const Text(
+                'NEW',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFFFBF00),
+                ),
+              ),
+            ),
     ),
     body: const SizedBox.shrink(),
     onTap: () {

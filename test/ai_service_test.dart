@@ -36,8 +36,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    // Pin the singleton's store-entitlement state; individual tests grant
-    // Pro via claimLegacyPro where needed.
+    // Not Pro by default; tests that need it flip the override and re-init.
     LicenseManager.storeInstallCheckOverride = () => false;
     await LicenseManager().init();
   });
@@ -101,7 +100,8 @@ void main() {
 
     test('throws byok-required when Pro but no key is configured', () async {
       final ai = AiService();
-      LicenseManager().claimLegacyPro('someone@example.com');
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
       await ai.init();
 
       expect(
@@ -112,7 +112,8 @@ void main() {
 
     test('sends via the configured endpoint with the bearer key', () async {
       final ai = AiService();
-      LicenseManager().claimLegacyPro('someone@example.com');
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
       ai.setByokApiKey('sk-test');
       ai.setByokBaseUrl('https://my-proxy.example.com/v1');
       ai.setByokModel('gpt-4o');
@@ -151,7 +152,8 @@ void main() {
     test('a request failure removes the pending user message from history',
         () async {
       final ai = AiService();
-      LicenseManager().claimLegacyPro('someone@example.com');
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
       ai.setByokApiKey('sk-test');
       await ai.init();
       ai.clearHistory();

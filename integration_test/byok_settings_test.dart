@@ -21,11 +21,14 @@ void main() {
       prefs = await SharedPreferences.getInstance();
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = () => false;
+      await LicenseManager().init();
     });
 
     tearDown(() {
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = null;
     });
 
     testWidgets('shows an upgrade prompt and disabled fields when not Pro',
@@ -51,7 +54,8 @@ void main() {
 
     testWidgets('Pro users can enter their API key and it is saved',
         (tester) async {
-      LicenseManager().claimLegacyPro('supporter@example.com');
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
 
       await tester.pumpWidget(const WSLManager());
       await tester.pumpAndSettle(const Duration(seconds: 3));

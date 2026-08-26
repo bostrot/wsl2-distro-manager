@@ -25,11 +25,14 @@ void main() {
       prefs = await SharedPreferences.getInstance();
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = () => false;
+      await LicenseManager().init();
     });
 
     tearDown(() {
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = null;
     });
 
     testWidgets('Navigating to License and back does not crash the app',
@@ -65,8 +68,7 @@ void main() {
 
       // The singleton must still be a live, listenable ChangeNotifier —
       // calling a method that notifies listeners must not throw.
-      expect(() => LicenseManager().claimLegacyPro('still-alive@example.com'),
-          returnsNormally);
+      expect(() => LicenseManager().init(), returnsNormally);
       await tester.pump();
 
       // A second screen that depends on LicenseManager (AI Workspace's
@@ -78,78 +80,47 @@ void main() {
     });
   });
 
-  group('Legacy Pro thank-you claim', () {
+  group('Store purchase section', () {
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await SharedPreferences.getInstance();
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = () => false;
+      await LicenseManager().init();
     });
 
     tearDown(() {
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = null;
     });
 
-    testWidgets('claim card is visible with an email field and claim button',
-        (tester) async {
+    testWidgets('offers the Store purchase when not Pro', (tester) async {
       await tester.pumpWidget(const WSLManager());
       await tester.pumpAndSettle(const Duration(seconds: 3));
 
       router.pushNamed('license');
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.byKey(const ValueKey('test-legacy-email-input')),
-          findsOneWidget);
-      expect(find.byKey(const ValueKey('test-legacy-claim-button')),
+      expect(find.byKey(const ValueKey('test-license-store-button')),
           findsOneWidget);
     });
 
-    testWidgets(
-        'entering a valid email and claiming grants Pro and shows the confirmation card',
+    testWidgets('hides the purchase CTA once the Store licence is detected',
         (tester) async {
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+
       await tester.pumpWidget(const WSLManager());
       await tester.pumpAndSettle(const Duration(seconds: 3));
 
       router.pushNamed('license');
       await tester.pump(const Duration(seconds: 1));
 
-      await tester.enterText(
-          find.byKey(const ValueKey('test-legacy-email-input')),
-          'supporter@example.com');
-      await tester.tap(find.byKey(const ValueKey('test-legacy-claim-button')),
-          warnIfMissed: false);
-      await tester.pump();
-      await tester.pump();
-
-      expect(LicenseManager().hasLegacyPro, true);
       expect(LicenseManager().isPro, true);
-
-      // The claim form is replaced by the "you already have it" card —
-      // there's nothing left to claim.
-      expect(find.byKey(const ValueKey('test-legacy-email-input')),
+      expect(find.byKey(const ValueKey('test-license-store-button')),
           findsNothing);
-    });
-
-    testWidgets('an invalid email is rejected without granting anything',
-        (tester) async {
-      await tester.pumpWidget(const WSLManager());
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      router.pushNamed('license');
-      await tester.pump(const Duration(seconds: 1));
-
-      await tester.enterText(
-          find.byKey(const ValueKey('test-legacy-email-input')),
-          'not-an-email');
-      await tester.tap(find.byKey(const ValueKey('test-legacy-claim-button')),
-          warnIfMissed: false);
-      await tester.pump();
-
-      expect(LicenseManager().hasLegacyPro, false);
-      // The form should still be there — nothing was granted.
-      expect(find.byKey(const ValueKey('test-legacy-email-input')),
-          findsOneWidget);
     });
   });
 }

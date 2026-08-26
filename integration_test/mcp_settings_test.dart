@@ -21,11 +21,14 @@ void main() {
       prefs = await SharedPreferences.getInstance();
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = () => false;
+      await LicenseManager().init();
     });
 
     tearDown(() async {
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
+      LicenseManager.storeInstallCheckOverride = null;
       // WslMcpService's server handle is static (see wsl_mcp_service.dart) —
       // stop it so a server "started" in one test doesn't leak into the
       // next test's isRunning/UI-visible state.
@@ -51,7 +54,8 @@ void main() {
     testWidgets(
         'Pro users can enable the server and see the endpoint and token',
         (tester) async {
-      LicenseManager().claimLegacyPro('supporter@example.com');
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
 
       await tester.pumpWidget(const WSLManager());
       await tester.pumpAndSettle(const Duration(seconds: 3));

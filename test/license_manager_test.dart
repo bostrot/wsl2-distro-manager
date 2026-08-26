@@ -56,63 +56,13 @@ void main() {
     });
   });
 
-  group('LicenseManager legacy Pro claim', () {
-    test('claiming with a valid email grants Pro permanently', () {
-      final manager = LicenseManager();
-
-      final granted = manager.claimLegacyPro('someone@example.com');
-
-      expect(granted, true);
-      expect(manager.hasLegacyPro, true);
-      expect(manager.isPro, true);
-      expect(manager.plan, LicensePlan.legacy);
-      expect(manager.legacyProEmail, 'someone@example.com');
-    });
-
-    test('claiming with a malformed email is rejected', () {
-      final manager = LicenseManager();
-
-      final granted = manager.claimLegacyPro('not-an-email');
-
-      expect(granted, false);
-      expect(manager.hasLegacyPro, false);
-      expect(manager.isPro, false);
-    });
-
-    test('claiming with an empty email is rejected', () {
-      final manager = LicenseManager();
-
-      final granted = manager.claimLegacyPro('');
-
-      expect(granted, false);
-      expect(manager.hasLegacyPro, false);
-    });
-
-    test('trims whitespace around the email before validating', () {
-      final manager = LicenseManager();
-
-      final granted = manager.claimLegacyPro('  someone@example.com  ');
-
-      expect(granted, true);
-      expect(manager.legacyProEmail, 'someone@example.com');
-    });
-
-    test('legacy grant wins over store plan in plan reporting', () async {
-      LicenseManager.storeInstallCheckOverride = () => true;
+  group('stale prefs', () {
+    test('a leftover legacy grant no longer unlocks Pro', () async {
+      prefs.setBool('LegacyProGranted', true);
       await LicenseManager().init();
-      LicenseManager().claimLegacyPro('someone@example.com');
 
-      // Both entitlements present — legacy is reported (it predates the
-      // store purchase and is the more meaningful label for the user).
-      expect(LicenseManager().plan, LicensePlan.legacy);
-      expect(LicenseManager().isPro, true);
-    });
-
-    test('claim window is currently open', () {
-      // Sanity check on the hardcoded cutoff — this test starts failing
-      // (correctly) once the window has actually closed, as a reminder to
-      // reconsider the feature rather than silently letting it linger.
-      expect(LicenseManager().isLegacyClaimWindowOpen, true);
+      expect(LicenseManager().isPro, false);
+      expect(prefs.getBool('LegacyProGranted'), isNull);
     });
   });
 }
