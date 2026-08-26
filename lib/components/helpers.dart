@@ -364,6 +364,73 @@ SafePath getInstancePath(String name) {
     ..cd(name);
 }
 
+/// Per-distro preference key prefixes. Everything the app stores keyed by
+/// distro name lives here so deleting an instance can wipe all of it.
+const List<String> distroPrefKeyPrefixes = [
+  'Path_',
+  'StartPath_',
+  'StartUser_',
+  'StartCmd_',
+  'DistroName_',
+  'DistroSize_',
+  'UserCmds_',
+  'GroupCmds_',
+  'TurnkeyFirstStart_',
+  'quickSettingsMeta_',
+  'mount_vhd_',
+];
+
+/// Drop every stored setting for [name].
+///
+/// Without this, recreating an instance under a name that existed before
+/// inherits the old start user, start path and mount registration, which makes
+/// the new instance fail to start.
+Future<void> clearDistroPrefs(String name) async {
+  for (final prefix in distroPrefKeyPrefixes) {
+    await prefs.remove('$prefix$name');
+  }
+}
+
+/// Every place [name]'s disk could live, most authoritative first.
+///
+/// The stored `Path_` preference goes stale (moved instance, restored config,
+/// path written by an older version), so it must not win over the registry,
+/// which is what WSL itself reads.
+List<String> vhdxPathCandidates(String name) {
+  final candidates = <String>[];
+  void add(String? dir) {
+    if (dir == null || dir.isEmpty) return;
+    final path = SafePath(dir).file('ext4.vhdx');
+    if (!candidates.contains(path)) candidates.add(path);
+  }
+
+  var regPath = WslRegistry.getDistributionPath(name);
+  if (regPath != null && regPath.startsWith(r'\\?\')) {
+    regPath = regPath.substring(4);
+  }
+  add(regPath);
+  add(prefs.getString('Path_$name'));
+  add((getDistroPath()
+        ..cdUp()
+        ..cd(name))
+      .path);
+  return candidates;
+}
+
+/// Locate the ext4.vhdx of [name], or null when no candidate exists on disk.
+String? findVhdxPath(String name) {
+  for (final candidate in vhdxPathCandidates(name)) {
+    try {
+      if (File(candidate).existsSync()) {
+        return candidate;
+      }
+    } on FileSystemException {
+      continue;
+    }
+  }
+  return null;
+}
+
 /// Get instance size for [name] instance.
 String getInstanceSize(String name) {
   var path = getInstancePath(name).file('ext4.vhdx');

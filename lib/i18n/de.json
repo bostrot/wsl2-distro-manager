@@ -357,7 +357,6 @@
   "yearly-per-month-text": "jährliche Abrechnung",
   "manage-subscription-text": "Abonnement verwalten",
   "open-billing-portal-text": "Abrechnungsportal öffnen",
-  "ai-workspace-title": "AI Workspace",
   "ai-workspace-subtitle": "KI-Tools und -Dienste in einer isolierten WSL-Umgebung verwalten",
   "ai-workspace-pro-required-text": "AI Workspace ist eine Pro-Funktion. Führen Sie ein Upgrade durch, um Hermes Agent, OpenClaw und Open WebUI in einer eigenen isolierten Umgebung auszuführen.",
   "ai-workspace-preparing-text": "AI-Workspace-Umgebung wird eingerichtet (dies kann einige Minuten dauern)...",
@@ -385,5 +384,7 @@
   "installed-text": "Installiert",
   "upgrade-text": "Upgrade",
   "upgrade-pro-text": "Auf Pro upgraden",
-  "upgrade-prompt-error": "KI-Fehlerdiagnose ist eine Pro-Funktion. Führen Sie ein Upgrade durch, um sie freizuschalten."
+  "upgrade-prompt-error": "KI-Fehlerdiagnose ist eine Pro-Funktion. Führen Sie ein Upgrade durch, um sie freizuschalten.",
+  "reportbug-text": "Fehler melden",
+  "compact-nospace-text": "Nicht genug freier Speicherplatz zum Komprimieren: Die Festplatte ist %s0 groß, aber nur %s1 sind verfügbar. Gib Speicherplatz frei oder verschiebe die Instanz auf ein größeres Laufwerk."
 }

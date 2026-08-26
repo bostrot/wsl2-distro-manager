@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:localization/localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/bug_dialog.dart';
 import 'package:wsl2distromanager/main.dart';
@@ -188,9 +190,14 @@ class RootPageState extends State<RootPage> with WindowListener {
         actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
           Padding(
               padding: const EdgeInsetsDirectional.only(end: 8.0),
-              child: IconButton(
-                icon: const Icon(FluentIcons.bug),
-                onPressed: () => bugDialog(),
+              child: MergeSemantics(
+                child: Tooltip(
+                  message: 'reportbug-text'.i18n(),
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.bug),
+                    onPressed: () => bugDialog(),
+                  ),
+                ),
               )),
 
           Padding(
@@ -242,7 +249,33 @@ class RootPageState extends State<RootPage> with WindowListener {
   }
 
   @override
+  void onWindowResized() => _saveWindowBounds();
+
+  @override
+  void onWindowMoved() => _saveWindowBounds();
+
+  @override
+  void onWindowMaximize() => prefs.setBool('WindowMaximized', true);
+
+  @override
+  void onWindowUnmaximize() => prefs.setBool('WindowMaximized', false);
+
+  /// Persist the current geometry so the next start reopens where the user
+  /// left off. Skipped while maximized, otherwise the restored-down size would
+  /// be lost.
+  Future<void> _saveWindowBounds() async {
+    if (await windowManager.isMaximized()) return;
+    final size = await windowManager.getSize();
+    final position = await windowManager.getPosition();
+    await prefs.setDouble('WindowWidth', size.width);
+    await prefs.setDouble('WindowHeight', size.height);
+    await prefs.setDouble('WindowLeft', position.dx);
+    await prefs.setDouble('WindowTop', position.dy);
+  }
+
+  @override
   void onWindowClose() async {
+    await _saveWindowBounds();
     SystemNavigator.pop();
     exit(0);
   }

@@ -384,5 +384,7 @@
   "installed-text": "已安装",
   "upgrade-text": "升级",
   "upgrade-pro-text": "升级到 Pro",
-  "upgrade-prompt-error": "AI 错误诊断是 Pro 功能。升级以解锁。"
+  "upgrade-prompt-error": "AI 错误诊断是 Pro 功能。升级以解锁。",
+  "reportbug-text": "报告问题",
+  "compact-nospace-text": "空间不足，无法压缩：磁盘为 %s0，但仅有 %s1 可用。请释放空间或将实例移动到更大的驱动器。"
 }

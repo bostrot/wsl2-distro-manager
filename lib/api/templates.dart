@@ -81,10 +81,43 @@ class Templates {
   }
 
   /// Get a list of all templates.
+  ///
+  /// The stored list is reconciled with the template folder so templates
+  /// survive a lost or reset preferences file: any .ext4 sitting in the
+  /// template directory is adopted, and entries whose file is gone are
+  /// dropped.
   List<String> getTemplates() {
-    var templates = prefs.getStringList('templates');
-    if (templates == null) return [];
-    return templates;
+    final stored = prefs.getStringList('templates') ?? [];
+    final onDisk = scanTemplateFiles();
+
+    final merged = <String>[
+      ...stored.where((name) => onDisk.contains(name)),
+      ...onDisk.where((name) => !stored.contains(name)),
+    ];
+
+    if (merged.length != stored.length ||
+        !merged.every((name) => stored.contains(name))) {
+      prefs.setStringList('templates', merged);
+    }
+    return merged;
+  }
+
+  /// Template names derived from the .ext4 files in the template folder.
+  List<String> scanTemplateFiles() {
+    try {
+      final dir = Directory(getTemplatePath().path);
+      if (!dir.existsSync()) return [];
+      return dir
+          .listSync()
+          .whereType<File>()
+          .map((file) => file.uri.pathSegments.last)
+          .where((file) => file.endsWith('.ext4'))
+          .map((file) => file.substring(0, file.length - '.ext4'.length))
+          .toList()
+        ..sort();
+    } on FileSystemException {
+      return [];
+    }
   }
 
   /// Return the general template path. Templates are saved here by default.

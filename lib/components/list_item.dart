@@ -11,6 +11,11 @@ import 'package:wsl2distromanager/dialogs/dialogs.dart';
 /// Builder for the WSL Distro List Items. Each item is an expander with [item]
 /// as the title and [trailing] as the trailing text. [running] is a list of
 /// running distros.
+///
+/// The action buttons are wrapped in MergeSemantics: fluent_ui's Tooltip puts
+/// its message on a Semantics node above the button, while IconButton opens a
+/// semantics container of its own, so without the merge a screen reader reads
+/// every action as an unlabelled "button".
 class ListItem extends StatefulWidget {
   const ListItem(
       {super.key,
@@ -47,33 +52,37 @@ class _ListItemState extends State<ListItem> {
       child: Expander(
           initiallyExpanded: false,
           leading: Row(children: [
-            Tooltip(
-              message: 'start-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                  key: const ValueKey('test-listitem-start'),
-                  icon: const Icon(FluentIcons.play),
-                  onPressed: () {
-                    startInstance();
-                  },
+            MergeSemantics(
+              child: Tooltip(
+                message: 'start-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    key: const ValueKey('test-listitem-start'),
+                    icon: const Icon(FluentIcons.play),
+                    onPressed: () {
+                      startInstance();
+                    },
+                  ),
                 ),
               ),
             ),
             isRunning(widget.item, widget.running)
-                ? Tooltip(
-                    message: 'stop-text'.i18n(),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: IconButton(
-                        key: const ValueKey('test-listitem-stop'),
-                        icon: const Icon(FluentIcons.stop),
-                        onPressed: () {
-                          stopInstance();
-                        },
+                ? MergeSemantics(
+                  child: Tooltip(
+                      message: 'stop-text'.i18n(),
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: IconButton(
+                          key: const ValueKey('test-listitem-stop'),
+                          icon: const Icon(FluentIcons.stop),
+                          onPressed: () {
+                            stopInstance();
+                          },
+                        ),
                       ),
                     ),
-                  )
+                )
                 : const Text(''),
           ]),
           header: Row(
@@ -220,196 +229,212 @@ class Bar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Tooltip(
-                message: 'saveastemplate-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.save_template, size: 16.0),
-                    onPressed: () =>
-                        // Open remove dialog
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'saveastemplate-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.save_template, size: 16.0),
+                      onPressed: () =>
+                          // Open remove dialog
+                          dialog(
+                              item: widget.item,
+                              title: 'savesatemplatequestion-text'
+                                  .i18n([widget.item]),
+                              body: 'saveastemplatebody-text'.i18n(),
+                              submitText: 'saveastemplate-text'.i18n(),
+                              submitInput: false,
+                              submitStyle: ButtonStyle(
+                                backgroundColor: ButtonState.all(Colors.red),
+                                foregroundColor: ButtonState.all(Colors.white),
+                              ),
+                              onSubmit: (inputText) async {
+                                await Templates().saveTemplate(widget.item);
+                              }),
+                    ),
+                  ),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'openwithexplorer-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.open_folder_horizontal,
+                          size: 16.0),
+                      onPressed: () {
+                        plausible.event(name: "wsl_explorer");
+                        WSLApi().startExplorer(widget.item);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'openwithvscode-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.visual_studio_for_windows,
+                          size: 16.0),
+                      onPressed: () {
+                        plausible.event(name: "wsl_vscode");
+                        // Get path
+                        String? path =
+                            prefs.getString('StartPath_${widget.item}') ?? '';
+                        WSLApi().startVSCode(widget.item, path: path);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'copy-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.copy, size: 16.0),
+                      onPressed: () {
+                        copyDialog(widget.item);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'rename-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.rename, size: 16.0),
+                      onPressed: () {
                         dialog(
                             item: widget.item,
-                            title: 'savesatemplatequestion-text'
-                                .i18n([widget.item]),
-                            body: 'saveastemplatebody-text'.i18n(),
-                            submitText: 'saveastemplate-text'.i18n(),
-                            submitInput: false,
-                            submitStyle: ButtonStyle(
-                              backgroundColor: ButtonState.all(Colors.red),
-                              foregroundColor: ButtonState.all(Colors.white),
-                            ),
-                            onSubmit: (inputText) async {
-                              await Templates().saveTemplate(widget.item);
-                            }),
+                            title:
+                                '${'rename-text'.i18n()} \'${distroLabel(widget.item)}\'',
+                            body: 'renameinfo-text'.i18n(),
+                            submitText: 'rename-text'.i18n(),
+                            submitStyle: const ButtonStyle(),
+                            onSubmit: (inputText) {
+                              Notify.message(
+                                  'renaminginstance-text'.i18n(
+                                      [distroLabel(widget.item), inputText]),
+                                  loading: true);
+                              prefs.setString(
+                                  'DistroName_${widget.item}', inputText);
+                              Notify.message('renamedinstance-text'
+                                  .i18n([distroLabel(widget.item), inputText]));
+                            });
+                      },
+                    ),
                   ),
                 ),
               ),
-              Tooltip(
-                message: 'openwithexplorer-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.open_folder_horizontal,
-                        size: 16.0),
-                    onPressed: () {
-                      plausible.event(name: "wsl_explorer");
-                      WSLApi().startExplorer(widget.item);
-                    },
-                  ),
-                ),
-              ),
-              Tooltip(
-                message: 'openwithvscode-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.visual_studio_for_windows,
-                        size: 16.0),
-                    onPressed: () {
-                      plausible.event(name: "wsl_vscode");
-                      // Get path
-                      String? path =
-                          prefs.getString('StartPath_${widget.item}') ?? '';
-                      WSLApi().startVSCode(widget.item, path: path);
-                    },
-                  ),
-                ),
-              ),
-              Tooltip(
-                message: 'copy-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.copy, size: 16.0),
-                    onPressed: () {
-                      copyDialog(widget.item);
-                    },
-                  ),
-                ),
-              ),
-              Tooltip(
-                message: 'rename-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.rename, size: 16.0),
-                    onPressed: () {
-                      dialog(
-                          item: widget.item,
-                          title:
-                              '${'rename-text'.i18n()} \'${distroLabel(widget.item)}\'',
-                          body: 'renameinfo-text'.i18n(),
-                          submitText: 'rename-text'.i18n(),
-                          submitStyle: const ButtonStyle(),
-                          onSubmit: (inputText) {
-                            Notify.message(
-                                'renaminginstance-text'.i18n(
-                                    [distroLabel(widget.item), inputText]),
-                                loading: true);
-                            prefs.setString(
-                                'DistroName_${widget.item}', inputText);
-                            Notify.message('renamedinstance-text'
-                                .i18n([distroLabel(widget.item), inputText]));
-                          });
-                    },
-                  ),
-                ),
-              ),
-              Tooltip(
-                message: 'cleanup-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                      icon: const Icon(FluentIcons.broom, size: 16.0),
-                      onPressed: isCleaning
-                          ? null
-                          : () {
-                              dialog(
-                                  item: widget.item,
-                                  title:
-                                      'cleanuptitle-text'.i18n([widget.item]),
-                                  body: 'cleanupbody-text'.i18n(),
-                                  submitText: 'continue-text'.i18n(),
-                                  submitStyle: ButtonStyle(
-                                    backgroundColor:
-                                        ButtonState.all(Colors.red),
-                                    foregroundColor:
-                                        ButtonState.all(Colors.white),
-                                  ),
-                                  submitInput: false,
-                                  cancelText: 'cancel-text'.i18n(),
-                                  onSubmit: (inputText) async {
-                                    onCleaningChanged(true);
-                                    // Show initial notification
-                                    Notify.message(
-                                        'Cleaning up ${widget.item}. Exporting, removing and importing back...',
-                                        loading: true);
-
-                                    try {
-                                      await WSLApi().cleanup(widget.item,
-                                          onProgress: (status) {
-                                        Notify.message(
-                                            'Cleaning up ${widget.item}: $status',
-                                            loading: true);
-                                      });
-                                      // Show success notification
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'cleanup-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        icon: const Icon(FluentIcons.broom, size: 16.0),
+                        onPressed: isCleaning
+                            ? null
+                            : () {
+                                dialog(
+                                    item: widget.item,
+                                    title:
+                                        'cleanuptitle-text'.i18n([widget.item]),
+                                    body: 'cleanupbody-text'.i18n(),
+                                    submitText: 'continue-text'.i18n(),
+                                    submitStyle: ButtonStyle(
+                                      backgroundColor:
+                                          ButtonState.all(Colors.red),
+                                      foregroundColor:
+                                          ButtonState.all(Colors.white),
+                                    ),
+                                    submitInput: false,
+                                    cancelText: 'cancel-text'.i18n(),
+                                    onSubmit: (inputText) async {
+                                      onCleaningChanged(true);
+                                      // Show initial notification
                                       Notify.message(
-                                          'Successfully cleaned up ${widget.item}');
-                                     } catch (error) {
-                                       final errorMsg =
-                                           'Failed to clean up ${widget.item}: ${error.toString()}';
-                                       Notify.message(errorMsg);
-                                       diagnoseWithAi(errorMsg);
-                                     } finally {
-                                      onCleaningChanged(false);
-                                    }
-                                  });
-                            }),
+                                          'Cleaning up ${widget.item}. Exporting, removing and importing back...',
+                                          loading: true);
+  
+                                      try {
+                                        await WSLApi().cleanup(widget.item,
+                                            onProgress: (status) {
+                                          Notify.message(
+                                              'Cleaning up ${widget.item}: $status',
+                                              loading: true);
+                                        });
+                                        // Show success notification
+                                        Notify.message(
+                                            'Successfully cleaned up ${widget.item}');
+                                       } catch (error) {
+                                         final errorMsg =
+                                             'Failed to clean up ${widget.item}: ${error.toString()}';
+                                         Notify.message(errorMsg);
+                                         diagnoseWithAi(errorMsg);
+                                       } finally {
+                                        onCleaningChanged(false);
+                                      }
+                                    });
+                              }),
+                  ),
                 ),
               ),
-              Tooltip(
-                message: 'delete-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                      icon: const Icon(FluentIcons.delete, size: 16.0),
-                      onPressed: () {
-                        dialog(
-                            item: widget.item,
-                            title: 'deleteinstancequestion-text'
-                                .i18n([distroLabel(widget.item)]),
-                            body: 'deleteinstancebody-text'.i18n(),
-                            submitText: 'delete-text'.i18n(),
-                            submitInput: false,
-                            submitStyle: ButtonStyle(
-                              backgroundColor: ButtonState.all(Colors.red),
-                              foregroundColor: ButtonState.all(Colors.white),
-                            ),
-                            onSubmit: (inputText) async {
-                               try {
-                                 await WSLApi().remove(widget.item);
-                                 Notify.message(
-                                     'deletedinstance-text'.i18n([widget.item]));
-                               } catch (e) {
-                                 final errorMsg =
-                                     'Failed to delete ${widget.item}: $e';
-                                 Notify.message(errorMsg);
-                                 diagnoseWithAi(errorMsg);
-                               }
-                             });
-                      }),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'delete-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        icon: const Icon(FluentIcons.delete, size: 16.0),
+                        onPressed: () {
+                          dialog(
+                              item: widget.item,
+                              title: 'deleteinstancequestion-text'
+                                  .i18n([distroLabel(widget.item)]),
+                              body: 'deleteinstancebody-text'.i18n(),
+                              submitText: 'delete-text'.i18n(),
+                              submitInput: false,
+                              submitStyle: ButtonStyle(
+                                backgroundColor: ButtonState.all(Colors.red),
+                                foregroundColor: ButtonState.all(Colors.white),
+                              ),
+                              onSubmit: (inputText) async {
+                                 try {
+                                   await WSLApi().remove(widget.item);
+                                   Notify.message(
+                                       'deletedinstance-text'.i18n([widget.item]));
+                                 } catch (e) {
+                                   final errorMsg =
+                                       'Failed to delete ${widget.item}: $e';
+                                   Notify.message(errorMsg);
+                                   diagnoseWithAi(errorMsg);
+                                 }
+                               });
+                        }),
+                  ),
                 ),
               ),
-              Tooltip(
-                message: 'settings-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                      icon: const Icon(FluentIcons.settings, size: 16.0),
-                      onPressed: () {
-                        settingsDialog(widget.item);
-                      }),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'settings-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        icon: const Icon(FluentIcons.settings, size: 16.0),
+                        onPressed: () {
+                          settingsDialog(widget.item);
+                        }),
+                  ),
                 ),
               ),
             ],

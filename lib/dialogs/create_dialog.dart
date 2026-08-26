@@ -463,17 +463,19 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 5.0,
         ),
-        Tooltip(
-          message: 'namehint-text'.i18n(),
-          child: TextBox(
-            key: const ValueKey('test-create-name-input'),
-            controller: widget.nameController,
-            placeholder: 'name-text'.i18n(),
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.chrome_close, size: 11.0),
-              onPressed: () {
-                widget.nameController.clear();
-              },
+        MergeSemantics(
+          child: Tooltip(
+            message: 'namehint-text'.i18n(),
+            child: TextBox(
+              key: const ValueKey('test-create-name-input'),
+              controller: widget.nameController,
+              placeholder: 'name-text'.i18n(),
+              suffix: IconButton(
+                icon: const Icon(FluentIcons.chrome_close, size: 11.0),
+                onPressed: () {
+                  widget.nameController.clear();
+                },
+              ),
             ),
           ),
         ),
@@ -532,126 +534,128 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
-        Tooltip(
-          message: 'pathtorootfshint-text'.i18n(),
-          child: FutureBuilder<List<String>>(future: () async {
-            if (sourceType == CreateSourceType.repo) {
-              var map = await App().getDistroLinks();
-              return map.keys.toList();
-            } else if (sourceType == CreateSourceType.turnkey) {
-              var repo = await App().getDistroLinks();
-              var all = await widget.api.getDownloadable(
-                  (prefs.getString('RepoLink') ?? defaultRepoLink),
-                  (e) => Notify.message(e));
-              return all.where((x) => !repo.containsKey(x)).toList();
-            } else if (sourceType == CreateSourceType.dockerLocalImage) {
-              try {
-                return await DockerImage.listLocalImages();
-              } catch (_) {
-                return <String>[];
+        MergeSemantics(
+          child: Tooltip(
+            message: 'pathtorootfshint-text'.i18n(),
+            child: FutureBuilder<List<String>>(future: () async {
+              if (sourceType == CreateSourceType.repo) {
+                var map = await App().getDistroLinks();
+                return map.keys.toList();
+              } else if (sourceType == CreateSourceType.turnkey) {
+                var repo = await App().getDistroLinks();
+                var all = await widget.api.getDownloadable(
+                    (prefs.getString('RepoLink') ?? defaultRepoLink),
+                    (e) => Notify.message(e));
+                return all.where((x) => !repo.containsKey(x)).toList();
+              } else if (sourceType == CreateSourceType.dockerLocalImage) {
+                try {
+                  return await DockerImage.listLocalImages();
+                } catch (_) {
+                  return <String>[];
+                }
               }
-            }
-            return <String>[];
-          }(), builder: (context, snapshot) {
-            List<AutoSuggestBoxItem<String>> list = [];
-            if (snapshot.hasData) {
-              for (var i = 0; i < snapshot.data!.length; i++) {
-                list.add(AutoSuggestBoxItem<String>(
-                  value: snapshot.data![i],
-                  label: snapshot.data![i],
-                ));
-              }
-            } else if (snapshot.hasError) {}
-            return AutoSuggestBox(
-              key: _autoSuggestBoxKey,
-              focusNode: node,
-              placeholder: sourceType == CreateSourceType.docker
-                  ? 'dockerimageplaceholder-text'.i18n()
-                  : sourceType == CreateSourceType.dockerLocalImage
-                      ? 'localdockerimageplaceholder-text'.i18n()
-                      : sourceType == CreateSourceType.local
-                      ? 'pathtorootfsarchive-text'.i18n()
-                      : sourceType == CreateSourceType.vhdx
-                          ? 'pathtovhdxfile-text'.i18n()
-                          : 'distroname-text'.i18n(),
-              controller: widget.autoSuggestBox,
-              items: list,
-              noResultsFoundBuilder: (context) => Builder(builder: (context) {
-                String text = 'noresultsfound-text'.i18n();
-                if (sourceType == CreateSourceType.docker) {
-                  text = widget.autoSuggestBox.text;
-                  if (text.startsWith('dockerhub:')) {
-                    text = text.split('dockerhub:')[1];
-                  } else if (text.startsWith('docker:')) {
-                    text = text.split('docker:')[1];
-                  }
-                  String image = text;
-                  String tag = 'latest';
-                  bool error = false;
-                  try {
-                    if (text.contains(':')) {
-                      image = text.split(':')[0];
-                      tag = text.split(':')[1];
+              return <String>[];
+            }(), builder: (context, snapshot) {
+              List<AutoSuggestBoxItem<String>> list = [];
+              if (snapshot.hasData) {
+                for (var i = 0; i < snapshot.data!.length; i++) {
+                  list.add(AutoSuggestBoxItem<String>(
+                    value: snapshot.data![i],
+                    label: snapshot.data![i],
+                  ));
+                }
+              } else if (snapshot.hasError) {}
+              return AutoSuggestBox(
+                key: _autoSuggestBoxKey,
+                focusNode: node,
+                placeholder: sourceType == CreateSourceType.docker
+                    ? 'dockerimageplaceholder-text'.i18n()
+                    : sourceType == CreateSourceType.dockerLocalImage
+                        ? 'localdockerimageplaceholder-text'.i18n()
+                        : sourceType == CreateSourceType.local
+                        ? 'pathtorootfsarchive-text'.i18n()
+                        : sourceType == CreateSourceType.vhdx
+                            ? 'pathtovhdxfile-text'.i18n()
+                            : 'distroname-text'.i18n(),
+                controller: widget.autoSuggestBox,
+                items: list,
+                noResultsFoundBuilder: (context) => Builder(builder: (context) {
+                  String text = 'noresultsfound-text'.i18n();
+                  if (sourceType == CreateSourceType.docker) {
+                    text = widget.autoSuggestBox.text;
+                    if (text.startsWith('dockerhub:')) {
+                      text = text.split('dockerhub:')[1];
+                    } else if (text.startsWith('docker:')) {
+                      text = text.split('docker:')[1];
                     }
-                  } catch (e) {
-                    text = 'Check the image name and tag';
-                    error = true;
+                    String image = text;
+                    String tag = 'latest';
+                    bool error = false;
+                    try {
+                      if (text.contains(':')) {
+                        image = text.split(':')[0];
+                        tag = text.split(':')[1];
+                      }
+                    } catch (e) {
+                      text = 'Check the image name and tag';
+                      error = true;
+                    }
+                    if (!error) {
+                      text = 'Docker Image: $image:$tag';
+                    }
+                  } else if (sourceType == CreateSourceType.dockerLocalImage) {
+                    text = widget.autoSuggestBox.text.isEmpty
+                        ? 'localdockerimagenotfound-text'.i18n()
+                        : 'Local Docker: ${widget.autoSuggestBox.text}';
+                  } else if (sourceType == CreateSourceType.local) {
+                    text = 'selectlocalfile-text'.i18n();
+                  } else if (sourceType == CreateSourceType.vhdx) {
+                    text = 'selectvhdxfile-text'.i18n();
+                  } else {
+                    text = 'noresultsfound-text'.i18n();
                   }
-                  if (!error) {
-                    text = 'Docker Image: $image:$tag';
-                  }
-                } else if (sourceType == CreateSourceType.dockerLocalImage) {
-                  text = widget.autoSuggestBox.text.isEmpty
-                      ? 'localdockerimagenotfound-text'.i18n()
-                      : 'Local Docker: ${widget.autoSuggestBox.text}';
-                } else if (sourceType == CreateSourceType.local) {
-                  text = 'selectlocalfile-text'.i18n();
-                } else if (sourceType == CreateSourceType.vhdx) {
-                  text = 'selectvhdxfile-text'.i18n();
-                } else {
-                  text = 'noresultsfound-text'.i18n();
-                }
-                return Container(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                      color: AppTheme().textColor,
+                  return Container(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Text(
+                      text,
+                      style: TextStyle(
+                        color: AppTheme().textColor,
+                      ),
                     ),
-                  ),
-                );
-              }),
-              onChanged: (String value, TextChangedReason reason) {
-                if (value.startsWith('dockerhub:') ||
-                    value.startsWith('docker:')) {
-                  widget.sourceType.value = CreateSourceType.docker;
-                }
-              },
-              trailingIcon: sourceType == CreateSourceType.local ||
-                      sourceType == CreateSourceType.vhdx
-                  ? IconButton(
-                      icon: const Icon(FluentIcons.open_folder_horizontal,
-                          size: 15.0),
-                      onPressed: () async {
-                        FilePickerResult? result =
-                            await FilePicker.platform.pickFiles(
-                          type: FileType.custom,
-                          allowedExtensions: sourceType == CreateSourceType.vhdx
-                              ? ['vhdx']
-                              : ['*'],
-                        );
-
-                        if (result != null) {
-                          widget.autoSuggestBox.text =
-                              result.files.single.path!;
-                        } else {
-                          // User canceled the picker
-                        }
-                      },
-                    )
-                  : null,
-            );
-          }),
+                  );
+                }),
+                onChanged: (String value, TextChangedReason reason) {
+                  if (value.startsWith('dockerhub:') ||
+                      value.startsWith('docker:')) {
+                    widget.sourceType.value = CreateSourceType.docker;
+                  }
+                },
+                trailingIcon: sourceType == CreateSourceType.local ||
+                        sourceType == CreateSourceType.vhdx
+                    ? IconButton(
+                        icon: const Icon(FluentIcons.open_folder_horizontal,
+                            size: 15.0),
+                        onPressed: () async {
+                          FilePickerResult? result =
+                              await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: sourceType == CreateSourceType.vhdx
+                                ? ['vhdx']
+                                : ['*'],
+                          );
+  
+                          if (result != null) {
+                            widget.autoSuggestBox.text =
+                                result.files.single.path!;
+                          } else {
+                            // User canceled the picker
+                          }
+                        },
+                      )
+                    : null,
+              );
+            }),
+          ),
         ),
         Container(
           height: 10.0,
@@ -670,23 +674,25 @@ class _CreateWidgetState extends State<CreateWidget> {
           Container(
             height: 10.0,
           ),
-          Tooltip(
-            message: 'savelocationhint-text'.i18n(),
-            child: TextBox(
-              key: const ValueKey('test-create-location-input'),
-              controller: widget.locationController,
-              placeholder: 'savelocationplaceholder-text'.i18n(),
-              suffix: IconButton(
-                icon:
-                    const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
-                onPressed: () async {
-                  String? path = await FilePicker.platform.getDirectoryPath();
-                  if (path != null) {
-                    widget.locationController.text = path;
-                  } else {
-                    // User canceled the picker
-                  }
-                },
+          MergeSemantics(
+            child: Tooltip(
+              message: 'savelocationhint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-create-location-input'),
+                controller: widget.locationController,
+                placeholder: 'savelocationplaceholder-text'.i18n(),
+                suffix: IconButton(
+                  icon:
+                      const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+                  onPressed: () async {
+                    String? path = await FilePicker.platform.getDirectoryPath();
+                    if (path != null) {
+                      widget.locationController.text = path;
+                    } else {
+                      // User canceled the picker
+                    }
+                  },
+                ),
               ),
             ),
           ),

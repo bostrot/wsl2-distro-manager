@@ -383,5 +383,7 @@
   "installed-text": "Installed",
   "upgrade-text": "Upgrade",
   "upgrade-pro-text": "Upgrade to Pro",
-  "upgrade-prompt-error": "AI error diagnosis is a Pro feature. Upgrade to unlock it."
+  "upgrade-prompt-error": "AI error diagnosis is a Pro feature. Upgrade to unlock it.",
+  "reportbug-text": "Report a bug",
+  "compact-nospace-text": "Not enough free space to compact: the disk is %s0 but only %s1 is available. Free up space or move the instance to a larger drive."
 }

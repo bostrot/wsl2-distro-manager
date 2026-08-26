@@ -7,6 +7,7 @@ import 'package:localization/localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:system_theme/system_theme.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
@@ -21,6 +22,53 @@ import 'package:wsl2distromanager/nav/router.dart';
 import 'theme.dart';
 
 String appTitle = "WSL Manager v$currentVersion";
+
+/// fluent_ui's NavigationPane only switches to full "open" mode (icons +
+/// labels) at widths >= 1008px, so a fresh install starts above that
+/// breakpoint.
+const Size defaultWindowSize = Size(1180, 780);
+
+/// Reapply the geometry saved by RootPageState, falling back to a centered
+/// default window.
+Future<void> restoreWindowBounds() async {
+  final width = prefs.getDouble('WindowWidth');
+  final height = prefs.getDouble('WindowHeight');
+  final left = prefs.getDouble('WindowLeft');
+  final top = prefs.getDouble('WindowTop');
+
+  await windowManager.setSize(
+      width != null && height != null ? Size(width, height) : defaultWindowSize);
+
+  if (left != null && top != null) {
+    await windowManager.setPosition(Offset(left, top));
+    // A screen that is gone (undocked laptop, changed layout) would leave the
+    // window off-screen.
+    if (!await _isOnAVisibleScreen()) {
+      await windowManager.center();
+    }
+  } else {
+    await windowManager.center();
+  }
+
+  if (prefs.getBool('WindowMaximized') ?? false) {
+    await windowManager.maximize();
+  }
+}
+
+Future<bool> _isOnAVisibleScreen() async {
+  try {
+    final bounds = await windowManager.getBounds();
+    final displays = await screenRetriever.getAllDisplays();
+    return displays.any((display) {
+      final origin = display.visiblePosition ?? Offset.zero;
+      final size = display.visibleSize ?? display.size;
+      final area = Rect.fromLTWH(origin.dx, origin.dy, size.width, size.height);
+      return area.overlaps(bounds);
+    });
+  } catch (_) {
+    return true;
+  }
+}
 
 /// Checks if the current environment is a desktop environment.
 bool get isDesktop {
@@ -46,13 +94,17 @@ void main() async {
     SystemTheme.accentColor.load();
   }
 
+  // Init logging
+  await initLogging();
+  await initPrefs();
+
   if (isDesktop) {
     await flutter_acrylic.Window.initialize();
     if (isWindows) {
       await flutter_acrylic.Window.hideWindowControls();
     }
     await WindowManager.instance.ensureInitialized();
-    windowManager.waitUntilReadyToShow().then((_) async {
+    await windowManager.waitUntilReadyToShow().then((_) async {
       if (isWindows) {
         await windowManager.setTitleBarStyle(
           TitleBarStyle.hidden,
@@ -62,20 +114,12 @@ void main() async {
         await windowManager.setAsFrameless();
       }
       await windowManager.setMinimumSize(const Size(700, 500));
-      // fluent_ui's NavigationPane only switches to full "open" mode (icons
-      // + labels) at widths >= 1008px; anything narrower falls back to
-      // compact (icon-only). Default above that breakpoint so the nav pane
-      // starts fully expanded.
-      await windowManager.setSize(const Size(1180, 780));
+      await restoreWindowBounds();
       await windowManager.show();
       await windowManager.setPreventClose(true);
       await windowManager.setSkipTaskbar(false);
     });
   }
-
-  // Init logging
-  await initLogging();
-  await initPrefs();
 
   // Create execution broker (local shell by default)
   final Shell shell = ProcessShell();

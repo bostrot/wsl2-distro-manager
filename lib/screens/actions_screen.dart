@@ -304,45 +304,49 @@ class QuickPageState extends State<QuickPage> {
                     ),
                     trailing: Row(
                       children: [
-                        Tooltip(
-                          message: 'edit-text'.i18n(),
-                          child: IconButton(
-                            icon: const Icon(FluentIcons.edit),
-                            onPressed: () {
-                              setState(() {
-                                showInput = true;
-                                nameController.text = quickActions[i].name;
-                                contentController.text =
-                                    quickActions[i].content;
-                              });
-                            },
+                        MergeSemantics(
+                          child: Tooltip(
+                            message: 'edit-text'.i18n(),
+                            child: IconButton(
+                              icon: const Icon(FluentIcons.edit),
+                              onPressed: () {
+                                setState(() {
+                                  showInput = true;
+                                  nameController.text = quickActions[i].name;
+                                  contentController.text =
+                                      quickActions[i].content;
+                                });
+                              },
+                            ),
                           ),
                         ),
-                        Tooltip(
-                          message: 'delete-text'.i18n(),
-                          child: IconButton(
-                            icon: const Icon(FluentIcons.delete),
-                            onPressed: () {
-                              // Open remove dialog
-                              dialog(
-                                  item: quickActions[i],
-                                  title: 'deleteinstancequestion-text'
-                                      .i18n([quickActions[i].name]),
-                                  body: 'deleteinstancebody-text'.i18n(),
-                                  submitText: 'delete-text'.i18n(),
-                                  submitInput: false,
-                                  submitStyle: ButtonStyle(
-                                    backgroundColor:
-                                        ButtonState.all(Colors.red),
-                                    foregroundColor:
-                                        ButtonState.all(Colors.white),
-                                  ),
-                                  onSubmit: (inputText) {
-                                    QuickAction.removeFromPrefs(
-                                        quickActions[i]);
-                                    setState(() {});
-                                  });
-                            },
+                        MergeSemantics(
+                          child: Tooltip(
+                            message: 'delete-text'.i18n(),
+                            child: IconButton(
+                              icon: const Icon(FluentIcons.delete),
+                              onPressed: () {
+                                // Open remove dialog
+                                dialog(
+                                    item: quickActions[i],
+                                    title: 'deleteinstancequestion-text'
+                                        .i18n([quickActions[i].name]),
+                                    body: 'deleteinstancebody-text'.i18n(),
+                                    submitText: 'delete-text'.i18n(),
+                                    submitInput: false,
+                                    submitStyle: ButtonStyle(
+                                      backgroundColor:
+                                          ButtonState.all(Colors.red),
+                                      foregroundColor:
+                                          ButtonState.all(Colors.white),
+                                    ),
+                                    onSubmit: (inputText) {
+                                      QuickAction.removeFromPrefs(
+                                          quickActions[i]);
+                                      setState(() {});
+                                    });
+                              },
+                            ),
                           ),
                         ),
                       ],

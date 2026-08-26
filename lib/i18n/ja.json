@@ -383,5 +383,7 @@
   "installed-text": "インストール済み",
   "upgrade-text": "アップグレード",
   "upgrade-pro-text": "Proにアップグレード",
-  "upgrade-prompt-error": "AIエラー診断はPro機能です。アップグレードして利用を開始してください。"
+  "upgrade-prompt-error": "AIエラー診断はPro機能です。アップグレードして利用を開始してください。",
+  "reportbug-text": "バグを報告",
+  "compact-nospace-text": "圧縮に必要な空き容量が足りません: ディスクは %s0 ですが、空き容量は %s1 のみです。空き容量を増やすか、インスタンスをより大きなドライブに移動してください。"
 }

@@ -58,6 +58,7 @@ class MockShell implements Shell {
   List<String> lastRunArguments = [];
   String lastRunExecutable = '';
   String? execCmdAsRootResponse;
+  String defaultUserHome = '/home/tester';
 
   bool simulateExportFailure = false;
   bool simulatePermissionDenied = false;
@@ -97,6 +98,8 @@ class MockShell implements Shell {
         if (simulateCodiumMissing) {
           exitCode = 1;
         }
+      } else if (cmd == r'echo $HOME') {
+        stdout = defaultUserHome;
       }
     }
 

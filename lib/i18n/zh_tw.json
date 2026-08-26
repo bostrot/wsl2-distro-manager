@@ -384,5 +384,7 @@
   "installed-text": "已安裝",
   "upgrade-text": "升級",
   "upgrade-pro-text": "升級至 Pro",
-  "upgrade-prompt-error": "AI 錯誤診斷是 Pro 功能。升級以解鎖。"
+  "upgrade-prompt-error": "AI 錯誤診斷是 Pro 功能。升級以解鎖。",
+  "reportbug-text": "回報問題",
+  "compact-nospace-text": "空間不足，無法壓縮：磁碟為 %s0，但僅有 %s1 可用。請釋放空間或將實例移至更大的磁碟機。"
 }

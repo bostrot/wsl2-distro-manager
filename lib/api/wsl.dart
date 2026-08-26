@@ -469,18 +469,43 @@ class WSLApi {
   }
 
   /// Start VSCode
-  void startVSCode(String distribution, {String path = ''}) async {
+  /// Home directory of the distro's default user, or '' if it can't be read.
+  Future<String> getDefaultUserHome(String distribution) async {
+    try {
+      final result = await _runWsl(
+          ['-d', distribution, '-e', 'sh', '-c', 'echo \$HOME'],
+          stdoutEncoding: null,
+          stderrEncoding: null);
+      if (result.exitCode != 0) return '';
+      final raw = result.stdout;
+      final home =
+          (raw is List<int> ? utf8Convert(raw) : raw.toString()).trim();
+      return home.startsWith('/') ? home : '';
+    } catch (error, stack) {
+      logError(error, stack, null);
+      return '';
+    }
+  }
+
+  Future<void> startVSCode(String distribution, {String path = ''}) async {
     String codeCmd = prefs.getString('VSCodeCmd') ?? 'code';
     if (codeCmd.isEmpty) {
       codeCmd = 'code';
+    }
+
+    // Without a target `code` opens an empty window rather than the distro's
+    // file system, so fall back to the default user's home.
+    var target = path;
+    if (target.isEmpty) {
+      target = await getDefaultUserHome(distribution);
     }
 
     // See start() for why 'ssh' must be included explicitly here.
     List<String> args = _useRemoteWsl
         ? ['ssh', ..._buildRemoteArgs('wsl', ['-d', distribution, codeCmd])]
         : ['wsl', '-d', distribution, codeCmd];
-    if (path != '') {
-      args.add(path);
+    if (target != '') {
+      args.add(target);
     }
 
     if (Platform.isLinux) {
@@ -488,7 +513,10 @@ class WSLApi {
       return;
     }
 
-    shell.start('start', args, mode: ProcessStartMode.normal, runInShell: true);
+    // /b keeps `start` from opening a console window that sticks around for
+    // as long as the VS Code launcher runs.
+    shell.start('start', ['/b', ...args],
+        mode: ProcessStartMode.normal, runInShell: true);
   }
 
   /// Write wslconfig file
@@ -911,6 +939,10 @@ class WSLApi {
           'WSL unregister failed with exit code $result: $errorMsg');
     }
 
+    // Settings keyed by distro name would otherwise be inherited by the next
+    // instance created under the same name.
+    await clearDistroPrefs(distribution);
+
     // Check if folder is empty and delete
     if (!_useRemoteWsl) {
       String path = getInstancePath(distribution).path;
@@ -1332,9 +1364,48 @@ class WSLApi {
     }
   }
 
+  /// Bytes still available on the volume holding [path], or null when the
+  /// query fails (non-Windows, unmapped drive, permission error).
+  Future<int?> freeSpaceBytes(String path) async {
+    if (!Platform.isWindows) return null;
+    final escaped = _escapePowerShellSingleQuoted(path);
+    try {
+      final result = (_broker != null)
+          ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
+              command: 'powershell',
+              arguments: [
+                '-NoProfile',
+                '-Command',
+                "[System.IO.DriveInfo]::new('$escaped').AvailableFreeSpace"
+              ],
+            )))
+          : _ShellResult.fromProcess(await shell.run('powershell', [
+              '-NoProfile',
+              '-Command',
+              "[System.IO.DriveInfo]::new('$escaped').AvailableFreeSpace"
+            ]));
+      if (result.exitCode != 0) return null;
+      return int.tryParse(result.stdout.toString().trim());
+    } catch (error, stack) {
+      logError(error, stack, null);
+      return null;
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var value = bytes.toDouble();
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return '${value.toStringAsFixed(value >= 10 || unit == 0 ? 0 : 1)} ${units[unit]}';
+  }
+
   /// Clean up WSL distros. Compacting the VHDX file.
   Future<String> cleanup(String distribution,
-      {Function(String)? onProgress}) async {
+      {Function(String)? onProgress, bool force = false}) async {
     if (_useRemoteWsl) {
       try {
         onProgress?.call('stopping-distro'.i18n());
@@ -1400,20 +1471,24 @@ try {
       }
     }
 
-    var instancePath = getInstancePath(distribution);
-    var vhdxPath = instancePath.file('ext4.vhdx');
-
-    // Check if VHDX exists
-    bool vhdxExists;
-    try {
-      vhdxExists = File(vhdxPath).existsSync();
-    } on FileSystemException catch (error, stack) {
-      logError(error, stack, null);
-      vhdxExists = false;
+    final vhdxPath = findVhdxPath(distribution);
+    if (vhdxPath == null) {
+      throw Exception('VHDX file not found for "$distribution". Looked in:\n'
+          '${vhdxPathCandidates(distribution).join('\n')}');
     }
+    // Keep the stored path in step with where the disk actually is.
+    prefs.setString('Path_$distribution', SafePath(vhdxPath).parent);
 
-    if (!vhdxExists) {
-      throw Exception('VHDX file not found: $vhdxPath');
+    // diskpart writes the compacted image alongside the original, so a drive
+    // with less free space than the disk is large runs full mid-compact and
+    // leaves the distro unusable.
+    if (!force) {
+      final vhdxSize = File(vhdxPath).lengthSync();
+      final free = await freeSpaceBytes(SafePath(vhdxPath).parent);
+      if (free != null && free < vhdxSize) {
+        throw Exception('compact-nospace-text'
+            .i18n([_formatBytes(vhdxSize), _formatBytes(free)]));
+      }
     }
 
     try {

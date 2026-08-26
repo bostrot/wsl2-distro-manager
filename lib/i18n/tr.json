@@ -383,5 +383,7 @@
   "installed-text": "Yüklü",
   "upgrade-text": "Yükselt",
   "upgrade-pro-text": "Pro'ya Yükselt",
-  "upgrade-prompt-error": "AI hata tanılama bir Pro özelliğidir. Kilidini açmak için yükseltin."
+  "upgrade-prompt-error": "AI hata tanılama bir Pro özelliğidir. Kilidini açmak için yükseltin.",
+  "reportbug-text": "Hata bildir",
+  "compact-nospace-text": "Sıkıştırmak için yeterli boş alan yok: disk %s0 boyutunda ancak yalnızca %s1 kullanılabilir. Yer açın veya örneği daha büyük bir sürücüye taşıyın."
 }

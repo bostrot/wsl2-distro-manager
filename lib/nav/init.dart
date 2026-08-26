@@ -20,14 +20,14 @@ initRoot(statusMsg) async {
   String? version = prefs.getString('version');
   String? lastChangelogVersion = prefs.getString('LastChangelogVersion');
 
-  // Get system dark mode
-  var brightness =
-      WidgetsBinding.instance.platformDispatcher.platformBrightness;
-
-  if (brightness == Brightness.dark) {
-    AppTheme().mode = ThemeMode.dark;
-  } else if (brightness == Brightness.light) {
-    AppTheme().mode = ThemeMode.light;
+  // Seed the theme from the system only on a first run. The setter persists,
+  // so doing this unconditionally overwrote the user's saved choice on every
+  // start.
+  if (prefs.getString('themeMode') == null) {
+    var brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    AppTheme().mode =
+        brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
   }
 
   if (version == null) {

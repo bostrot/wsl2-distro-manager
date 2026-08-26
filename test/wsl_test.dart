@@ -392,7 +392,7 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
 
       expect(mockShell.lastStartExecutable, 'start');
-      expect(mockShell.lastStartArguments.first, 'ssh');
+      expect(mockShell.lastStartArguments, containsAllInOrder(['/b', 'ssh']));
       expect(mockShell.lastStartArguments, contains('user@192.168.1.20'));
       expect(mockShell.lastStartArguments, contains('code'));
     });
@@ -571,5 +571,67 @@ systemd = true
     await Future.delayed(const Duration(milliseconds: 10));
 
     expect(mockShell.lastStartArguments, contains('code'));
+  });
+
+  group('Issue regressions', () {
+    setUp(() async {
+      // Earlier tests in this file reset the mock prefs, which drops the
+      // pinned distro root that these fixtures live under.
+      SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
+      prefs = await SharedPreferences.getInstance();
+    });
+
+    test('remove() drops every preference keyed by the distro name', () async {
+      mockShell.distros.add('stale');
+      for (final prefix in distroPrefKeyPrefixes) {
+        await prefs.setString('$prefix' 'stale', 'x');
+      }
+
+      await wslApi.remove('stale');
+
+      for (final prefix in distroPrefKeyPrefixes) {
+        expect(prefs.get('$prefix' 'stale'), isNull,
+            reason: '$prefix should have been cleared');
+      }
+    });
+
+    test('cleanup() finds the disk when the stored path is stale', () async {
+      mockShell.distros.add('moved');
+      File('C:/WSL2-Distros/moved/ext4.vhdx').createSync(recursive: true);
+      await prefs.setString('Path_moved', r'C:\gone\moved');
+
+      final result = await wslApi.cleanup('moved');
+
+      expect(result, contains('Cleanup completed successfully'));
+      // The stale entry is corrected to where the disk actually is.
+      expect(prefs.getString('Path_moved'), contains('moved'));
+      expect(prefs.getString('Path_moved'), isNot(contains('gone')));
+    });
+
+    test('cleanup() lists the paths it tried when nothing is found', () async {
+      mockShell.distros.add('missing-disk');
+      await prefs.setString('Path_missing-disk', r'C:\nowhere');
+
+      await expectLater(
+        wslApi.cleanup('missing-disk'),
+        throwsA(predicate((e) => e.toString().contains('nowhere'))),
+      );
+    });
+
+    test('startVSCode() opens the default user home when no path is stored',
+        () async {
+      await wslApi.startVSCode('Ubuntu');
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      expect(mockShell.lastStartArguments, contains('/home/tester'));
+    });
+
+    test('startVSCode() still honours an explicit path', () async {
+      await wslApi.startVSCode('Ubuntu', path: '/srv/project');
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      expect(mockShell.lastStartArguments, contains('/srv/project'));
+      expect(mockShell.lastStartArguments, isNot(contains('/home/tester')));
+    });
   });
 }

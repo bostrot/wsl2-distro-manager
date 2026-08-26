@@ -383,5 +383,7 @@
   "installed-text": "Telepítve",
   "upgrade-text": "Frissítés",
   "upgrade-pro-text": "Frissítés Pro-ra",
-  "upgrade-prompt-error": "Az AI hibadiagnosztika Pro funkció. Frissítsen a feloldásához."
+  "upgrade-prompt-error": "Az AI hibadiagnosztika Pro funkció. Frissítsen a feloldásához.",
+  "reportbug-text": "Hiba jelentése",
+  "compact-nospace-text": "Nincs elég szabad hely a tömörítéshez: a lemez %s0, és csak %s1 érhető el. Szabadíts fel helyet, vagy helyezd át a példányt egy nagyobb meghajtóra."
 }

@@ -383,5 +383,7 @@
   "installed-text": "Instalado",
   "upgrade-text": "Mejorar",
   "upgrade-pro-text": "Actualizar a Pro",
-  "upgrade-prompt-error": "El diagnóstico de errores con IA es una función Pro. Actualiza para desbloquearla."
+  "upgrade-prompt-error": "El diagnóstico de errores con IA es una función Pro. Actualiza para desbloquearla.",
+  "reportbug-text": "Informar de un error",
+  "compact-nospace-text": "No hay suficiente espacio libre para compactar: el disco ocupa %s0 y solo hay %s1 disponibles. Libera espacio o mueve la instancia a una unidad más grande."
 }
