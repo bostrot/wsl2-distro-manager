@@ -1,14 +1,9 @@
-// Optional public exposure for the WSL MCP server via a Cloudflare "quick
-// tunnel" (cloudflared connects outbound to Cloudflare's edge — no inbound
-// firewall/port-forwarding changes, no Cloudflare account needed). This
-// turns the local-only MCP endpoint into something reachable from anywhere,
-// e.g. a cloud-hosted agent or another device — the bearer token in
-// WslMcpService is the *only* thing gating access once this is on, so the
-// Settings UI must make that trade-off explicit before enabling it.
+// Optional public exposure for the MCP server via a Cloudflare quick
+// tunnel — outbound only, no account or port forwarding needed.
 //
-// cloudflared itself is downloaded from Cloudflare's official GitHub
-// releases the first time it's needed (or reused if already on PATH), and
-// cached under the app's data directory afterward.
+// Once on, the bearer token is the ONLY thing gating access, so the
+// Settings UI has to spell that out. cloudflared is downloaded on first
+// use and cached under the app data dir.
 
 import 'dart:async';
 import 'dart:convert';
@@ -35,9 +30,8 @@ class CloudflareTunnelService {
       RegExp(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com');
   static const Duration defaultUrlWaitTimeout = Duration(seconds: 25);
 
-  // Static: same reasoning as WslMcpService's _server field — every
-  // CloudflareTunnelService() instance must agree on the one real tunnel
-  // process, not track its own.
+  // Static for the same reason as WslMcpService._server: one real tunnel,
+  // however many wrappers.
   static Process? _process;
   static String? _publicUrl;
   static StreamSubscription<String>? _stdoutSub;
@@ -60,9 +54,7 @@ class CloudflareTunnelService {
 
   String? get publicUrl => _publicUrl;
 
-  /// Finds a usable `cloudflared`, downloading it if necessary. Checks (in
-  /// order): a previously-downloaded copy cached under the app data dir,
-  /// then whatever's on PATH, then downloads a fresh copy.
+  /// Cached copy, then PATH, then a fresh download.
   Future<String> _locateBinary() async {
     if (binaryLocatorOverride != null) {
       final located = await binaryLocatorOverride!();
@@ -80,8 +72,6 @@ class CloudflareTunnelService {
 
     Notify.message('cloudflare-tunnel-downloading-text'.i18n(),
         loading: true);
-    // getDataPath()..cd('bin') (in _cachedBinaryPath) already created the
-    // containing directory — nothing more to prepare before downloading.
     await dio.download(_downloadUrl, cachedPath);
     if (!await _binaryWorks(cachedPath)) {
       throw Exception(
@@ -105,10 +95,8 @@ class CloudflareTunnelService {
     }
   }
 
-  /// Starts a quick tunnel pointed at `http://127.0.0.1:<localPort>` and
-  /// waits for cloudflared to report the public URL. Returns the URL, or
-  /// throws if cloudflared can't be located/run or doesn't report a URL
-  /// within [_urlWaitTimeout].
+  /// Starts a tunnel to `127.0.0.1:<localPort>` and returns the public URL.
+  /// Throws if cloudflared cannot be run or reports no URL in time.
   Future<String> start(int localPort) async {
     if (isRunning && _publicUrl != null) return _publicUrl!;
 

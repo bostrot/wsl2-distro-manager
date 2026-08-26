@@ -1,4 +1,3 @@
-// AI Workspace screen for managing Hermes Agent, OpenClaw, and Open WebUI tools.
 import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -21,20 +20,13 @@ class AiWorkspacePage extends StatefulWidget {
 
 class _AiWorkspacePageState extends State<AiWorkspacePage> {
   late final AiWorkspaceService _service;
-  // Gates only the one genuine prerequisite (does the dedicated distro
-  // exist/need creating) — not the whole page. The page itself (title,
-  // cards) renders immediately regardless of this.
+  // Gates only the distro check, not the page — cards render immediately.
   bool _preparingDistro = true;
   String? _error;
   final Set<AiWorkspaceTool> _busyTools = {};
-  // Every tool starts "checking" and is removed independently as its own
-  // refreshStatus() resolves, so cards populate one at a time instead of
-  // all-or-nothing behind a single page-wide spinner.
+  // Each tool clears independently as its own check resolves.
   final Set<AiWorkspaceTool> _checkingTools = {...AiWorkspaceTool.values};
 
-  /// AI Workspace is a Pro feature — spinning up a dedicated WSL distro and
-  /// Docker is too resource-intensive to run for free, and it's a natural
-  /// premium differentiator alongside the existing AI assistant features.
   bool get _isPro {
     try {
       return GlobalVariable.testProEnabled || LicenseManager().isPro;
@@ -46,22 +38,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   @override
   void initState() {
     super.initState();
-    // The service is a shared instance provided from main.dart, not
-    // constructed fresh here — app startup already kicked off (or, by the
-    // time the user navigates here, may have already finished) the same
-    // distro/tool-status checks this screen needs, via
-    // AiWorkspaceService.ensureInitialized(). Reusing that instance means
-    // this screen can skip straight to already-known state instead of
-    // paying for every WSL round trip again on every visit.
+    // Shared instance from main.dart — startup already began these checks.
     _service = context.read<AiWorkspaceService>();
     if (_isPro) {
-      // Only show a checking spinner for tools with genuinely no known
-      // status yet — a tool with a cached status from a previous app
-      // launch (persisted by AiWorkspaceService) or an already-resolved
-      // background startup check renders its real state immediately
-      // instead. That status might be stale (WSL could have been shut
-      // down since), which is why a live refresh is still kicked off
-      // below regardless — it just doesn't need to block the UI on it.
+      // Spinner only where nothing is known yet; cached state renders at
+      // once and is refreshed below without blocking the UI.
       _checkingTools
         ..clear()
         ..addAll(AiWorkspaceTool.values.where(
@@ -75,18 +56,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   Future<void> _initService() async {
-    // Synchronous, no WSL calls — populates state entries immediately so
-    // the cards below have something to bind to on the very first frame
-    // (seeded from the persisted cache when available). No-op if the
-    // background startup check already seeded these.
     if (_service.toolStates.isEmpty) {
       _service.seedToolStates();
     }
 
     try {
-      // No-op (returns immediately) if the distro was already confirmed
-      // ready by the background startup check or an earlier visit to this
-      // screen — ensureDistro() only does real work the first time.
       await _service.ensureDistro();
     } catch (e) {
       if (mounted) {
@@ -103,14 +77,8 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       setState(() => _preparingDistro = false);
     }
 
-    // A live check still runs for every tool that hasn't been verified
-    // *this session* yet (AiWorkspaceTool.checked) — including ones with
-    // cached data already showing a real badge instead of a spinner via
-    // _checkingTools above, since a cache is a best guess, not a
-    // guarantee. Those just update silently in place if the fresh check
-    // finds something different, rather than flashing back to a spinner
-    // first. Each tool updates independently the moment its own check
-    // resolves, rather than waiting for the slowest of the batch.
+    // Refresh anything not yet verified this session, cached or not.
+    // Results land in place without flashing a spinner.
     for (final tool in AiWorkspaceTool.values) {
       if (_service.getState(tool)?.checked == true) continue;
       unawaited(_service.refreshStatus(tool).then((_) {
@@ -122,11 +90,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   Future<void> _retryInit() async {
-    // Also clear `checked` on every tool — otherwise a tool verified
-    // earlier this session (before whatever caused the failure this retry
-    // is recovering from) would get silently skipped by _initService()'s
-    // checked-gated loop, even though the user explicitly asked to retry
-    // everything.
+    // Clear `checked` so the retry actually re-probes everything.
     for (final tool in AiWorkspaceTool.values) {
       _service.getState(tool)?.checked = false;
     }
@@ -199,7 +163,6 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   Future<void> _handleUninstall(AiWorkspaceTool tool) async {
-    // Show confirmation dialog first.
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => ContentDialog(
@@ -318,9 +281,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       return _buildPaywall(context);
     }
 
-    // Only a genuinely blocking failure (the dedicated distro couldn't be
-    // reached or created at all) gets a full-page state — nothing below it
-    // could work either way. Everything else renders the page immediately.
+    // Only a missing distro blocks the whole page; everything else renders.
     if (_error != null) {
       return Center(
         child: Column(
@@ -360,9 +321,6 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             style: FluentTheme.of(context).typography.bodyStrong,
           ),
           const SizedBox(height: 12),
-          // The whole screen is beta — the tools are real third-party
-          // projects driven through a fresh WSL distro, and that install/
-          // start plumbing hasn't had wide real-world exposure yet.
           const BetaBanner(),
           const SizedBox(height: 16),
           if (_preparingDistro) ...[
@@ -375,10 +333,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     );
   }
 
-  /// Small spinner + light grey explanatory text — used both for the
-  /// page-level "checking environment" banner and per-card status checks,
-  /// so it's always visible *why* something is taking a moment instead of
-  /// just showing a bare spinner.
+  /// Spinner plus a grey label saying what is being waited on.
   Widget _buildInlineStatus(String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,

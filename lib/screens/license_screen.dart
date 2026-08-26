@@ -67,10 +67,8 @@ class _LicenseScreenState extends State<LicenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // LicenseManager is an app-wide singleton (see LicenseManager._internal).
-    // Use .value(), not create(), so Provider doesn't dispose() the shared
-    // instance when this screen unmounts — that would permanently break
-    // Pro-gating (AI chat, AI Workspace, etc.) for the rest of the app.
+    // .value(), not create(): Provider must not dispose() this app-wide
+    // singleton when the screen unmounts.
     return ChangeNotifierProvider.value(
       value: LicenseManager(),
       child: Consumer<LicenseManager>(
@@ -94,10 +92,6 @@ class _LicenseScreenState extends State<LicenseScreen> {
                           _buildHeader(),
                           const SizedBox(height: 24),
 
-                          // Thank-you note for early purchasers using the
-                          // GitHub build (only relevant while the claim
-                          // window is open, or if already claimed, as a
-                          // standing thank-you).
                           if (manager.hasLegacyPro ||
                               (!manager.isPro &&
                                   manager.isLegacyClaimWindowOpen)) ...[
@@ -108,8 +102,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
                           if (manager.isPro) ...[
                             _buildStatusCard(manager),
                           ] else ...[
-                            // Not Pro: this is the GitHub build. The pitch
-                            // is the headline — one-time Store purchase.
+                            // Not Pro: lead with the pitch, status after.
                             _buildStoreSection(),
                             const SizedBox(height: 20),
                             _buildStatusCard(manager),

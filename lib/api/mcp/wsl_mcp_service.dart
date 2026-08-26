@@ -1,17 +1,8 @@
-// Runs the WSL MCP server as a local HTTP endpoint so external MCP clients
-// (Claude Desktop, other agent tools) can list/run commands against the
-// user's WSL distros. Pro-gated: this is meaningfully more powerful than the
-// AI Chat assistant (it's local command execution, not just Q&A), so it's a
-// deliberate premium differentiator alongside AI Workspace.
+// Local HTTP endpoint exposing the WSL API to MCP clients. Pro-gated.
 //
-// Security posture:
-//  - Binds to 127.0.0.1 only — never reachable from the LAN, unlike the
-//    distro-sync server (components/sync.dart), which is intentionally
-//    LAN-reachable for cross-machine sync. This endpoint can run arbitrary
-//    commands, so it must never be reachable by anything but this machine.
-//  - Every request requires a bearer token, generated locally and shown
-//    once in the UI for the user to paste into their MCP client config.
-//    There is no way to discover or use this server without that token.
+// It can run arbitrary commands, so it binds to 127.0.0.1 only (never the
+// LAN, unlike the distro-sync server in components/sync.dart) and requires
+// a bearer token on every request.
 
 import 'dart:convert';
 import 'dart:io';
@@ -39,16 +30,10 @@ class WslMcpService {
   static const int port = 59133;
   static const String path = '/mcp';
 
-  // Static, not instance state: mirrors Sync's `static late HttpServer
-  // server` (components/sync.dart) — callers construct a fresh
-  // WslMcpService() wherever they need it (e.g. each time Settings mounts),
-  // but they must all agree on whether the one real server is running.
+  // Static: callers construct a fresh WslMcpService() wherever they need
+  // one, but all of them must agree on the single running server and its
+  // sessions.
   static HttpServer? _server;
-
-  // Also static and shared for the same reason: terminal sessions are
-  // per-server, not per-WslMcpService-instance, and must survive across
-  // however many WslMcpService() wrappers get constructed while the server
-  // is up.
   static WslTerminalManager? _terminalManager;
 
   final WSLApi wslApi;

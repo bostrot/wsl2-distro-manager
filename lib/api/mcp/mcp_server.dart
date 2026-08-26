@@ -1,15 +1,8 @@
-// Minimal Model Context Protocol (MCP) server core.
+// Minimal MCP server core: the synchronous JSON-RPC subset (initialize,
+// tools/list, tools/call). No SSE streaming or resumable sessions.
 //
-// Implements the synchronous request/response subset of MCP's JSON-RPC
-// message set (initialize, tools/list, tools/call) needed for an MCP client
-// to discover and invoke tools over a single HTTP POST endpoint. This is
-// intentionally not a full implementation of MCP's Streamable HTTP transport
-// (no SSE streaming, no resumable sessions) — sufficient for clients that
-// call a tool and wait for one reply, which covers typical "run a command"
-// use cases.
-//
-// Kept transport-agnostic (operates on decoded JSON maps, not HTTP) so the
-// protocol logic can be unit tested without spinning up a real server.
+// Transport-agnostic — operates on decoded JSON maps so the protocol logic
+// is unit testable without a server.
 
 const String mcpProtocolVersion = '2025-06-18';
 
@@ -49,8 +42,7 @@ class McpServer {
       return id == null ? null : _error(id, -32600, 'Invalid Request');
     }
 
-    // Notifications (no id) never get a response, even on error — the
-    // client isn't listening for one.
+    // Notifications never get a response, even on error.
     if (id == null) {
       return null;
     }
@@ -75,12 +67,9 @@ class McpServer {
         });
 
       case 'tools/call':
-        // Don't rely on the incoming map's generic parameters matching
-        // exactly: real requests arrive via json.decode (which does produce
-        // Map<String, dynamic>), but callers constructing messages directly
-        // (tests, or future in-process callers) may pass a differently
-        // "shaped" Map literal — a rigid `as Map<String, dynamic>` cast
-        // throws on those even though the keys are all strings.
+        // Normalize rather than cast: a Map literal from a direct caller has
+        // different generic parameters than json.decode's output, and a rigid
+        // cast throws on it.
         final rawParams = message['params'];
         final params =
             rawParams is Map ? Map<String, dynamic>.from(rawParams) : null;

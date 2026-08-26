@@ -1,13 +1,8 @@
-// WSL-specific tools exposed over MCP — lets an MCP client (an AI agent)
-// list distros, run one-shot commands, drive persistent interactive
-// terminal sessions, and stop a distro. This is a Pro feature: see
-// lib/api/mcp/wsl_mcp_service.dart for the server + gating.
+// The WSL tools exposed over MCP: list distros, run one-shot commands,
+// drive persistent terminal sessions, stop a distro.
 //
-// Deliberately scoped to non-destructive operations. Distro creation,
-// deletion, export, and move are left out of v1 — those are one-way or
-// disk-heavy actions better made through the GUI where the user directly
-// confirms them, not something an agent should be able to trigger over MCP
-// without a human in the loop.
+// Deliberately non-destructive. Create, delete, export and move stay
+// GUI-only — one-way or disk-heavy actions need a human confirming them.
 
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';

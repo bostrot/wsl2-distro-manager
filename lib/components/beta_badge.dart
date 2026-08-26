@@ -1,15 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 
-/// Amber "BETA" pill for features that ship before they're fully polished —
-/// so users know which parts to expect rough edges in (and where feedback
-/// is most useful) without holding the whole release back for them.
-///
-/// Same visual language as [ProBadge] (compact pill, tiny bold label,
-/// tooltip on hover), deliberately in a warm amber rather than the accent
-/// color so the two read as different things at a glance. The label itself
-/// is intentionally not translated — "BETA" is universally understood, and
-/// keeping it fixed means tests can find it without a localization delegate.
+/// Amber "BETA" pill marking features that ship before they are fully
+/// polished. Amber rather than the accent color so it does not read as
+/// [ProBadge]. The label stays untranslated.
 class BetaBadge extends StatelessWidget {
   const BetaBadge({super.key});
 
@@ -40,8 +34,7 @@ class BetaBadge extends StatelessWidget {
   }
 }
 
-/// Screen-level beta notice, for pages that are beta in their entirety
-/// (e.g. AI Workspace) rather than a single control.
+/// Screen-level notice for pages that are beta in their entirety.
 class BetaBanner extends StatelessWidget {
   const BetaBanner({super.key});
 

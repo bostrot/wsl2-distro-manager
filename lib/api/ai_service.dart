@@ -1,8 +1,6 @@
-// AI chat for Pro users, powered entirely by the user's own
-// OpenAI-compatible API key (BYOK — bring your own key). There is no
-// app-operated AI backend and no query quota: requests go straight from
-// this machine to the endpoint the user configured in Settings, on their
-// own key and their own bill.
+// AI chat for Pro users, running entirely on the user's own
+// OpenAI-compatible API key. No app-operated backend, no quota — requests
+// go straight from this machine to the configured endpoint.
 
 import 'dart:convert';
 
@@ -46,9 +44,8 @@ class AiService {
   @visibleForTesting
   Dio get dioForTesting => _dio;
 
-  // Defaults for the user's OpenAI-compatible endpoint. Any provider works
-  // as long as it speaks the /chat/completions contract (OpenAI itself,
-  // Azure OpenAI proxies, Ollama, LM Studio, etc.).
+  // Any provider speaking /chat/completions works: OpenAI, Azure proxies,
+  // Ollama, LM Studio.
   static const String defaultByokBaseUrl = 'https://api.openai.com/v1';
   static const String defaultByokModel = 'gpt-4o-mini';
 
@@ -64,10 +61,8 @@ class AiService {
     return (stored != null && stored.isNotEmpty) ? stored : defaultByokModel;
   }
 
-  /// Whether a key is present — the one thing AI chat can't work without.
-  /// Pro gating is checked separately in [sendMessage]; keeping this a pure
-  /// "is it configured" signal means the Settings screen can show/save the
-  /// configuration regardless of entitlement state.
+  /// Whether a key is present. Deliberately not Pro-coupled — Settings can
+  /// manage the key regardless; [sendMessage] does the entitlement check.
   bool get hasByokConfigured => byokApiKey.isNotEmpty;
 
   void setByokBaseUrl(String url) {
@@ -126,7 +121,6 @@ class AiService {
       throw Exception('byok-required');
     }
 
-    // Add user message to history
     final userMsg = AiMessage(
       role: 'user',
       content: query,
@@ -138,7 +132,6 @@ class AiService {
     try {
       final reply = await _sendViaByok();
 
-      // Add assistant message to history
       final assistantMsg = AiMessage(
         role: 'assistant',
         content: reply,

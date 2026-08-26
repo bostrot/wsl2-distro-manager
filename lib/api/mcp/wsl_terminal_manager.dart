@@ -1,14 +1,8 @@
-// Persistent, session-based terminal control for the WSL MCP tools — as
-// opposed to wsl_mcp_tools.dart's wsl_run_command, which runs one command
-// and returns once it exits. A session keeps a real WSL shell process alive
-// across multiple MCP calls, so a client can start an interactive/long-running
-// program, send it input over time, and poll for output — e.g. a REPL, a
-// build watcher, or any command that needs stdin after starting.
+// Session-based terminal control: a shell process stays alive across MCP
+// calls, so a client can drive a REPL or a long-running program that needs
+// stdin after starting. Contrast wsl_run_command, which is one-shot.
 //
-// Built on WSLApi.startShell(), which is the exact same "spawn `wsl -d X -u
-// root` with no command, so it drops into the distro's default shell reading
-// from stdin" primitive that execCmds()/runCmds() already use elsewhere in
-// this codebase — not a new, unproven way of talking to WSL.
+// Built on WSLApi.startShell(), the same primitive execCmds()/runCmds() use.
 
 import 'dart:async';
 import 'dart:convert';
@@ -48,8 +42,7 @@ class WslTerminalSession {
 
   bool get isAlive => !_closed;
 
-  /// Send a line of input, as if typed into the terminal and followed by
-  /// Enter.
+  /// Sends a line of input, as if typed and followed by Enter.
   void sendInput(String text) {
     if (_closed) {
       throw StateError('Terminal session $id has already closed.');
@@ -57,10 +50,8 @@ class WslTerminalSession {
     process.stdin.writeln(text);
   }
 
-  /// Output produced since the last call to [readNewOutput] (or since the
-  /// session started, on the first call). Consuming semantics — polling
-  /// twice in a row without new output in between returns an empty string
-  /// the second time, not a repeat.
+  /// Output since the last call. Consuming — a second call with nothing new
+  /// in between returns empty, not a repeat.
   String readNewOutput() {
     final all = _output.toString();
     final fresh = all.substring(_readOffset);
@@ -107,8 +98,8 @@ class WslTerminalManager {
     await session?.close();
   }
 
-  /// Close every open session — call when the MCP server itself stops, so
-  /// disabling the server doesn't leave orphaned WSL shell processes behind.
+  /// Closes every session — call when the server stops, so no orphaned WSL
+  /// shells are left behind.
   Future<void> closeAll() async {
     final all = _sessions.values.toList();
     _sessions.clear();

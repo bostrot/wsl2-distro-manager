@@ -281,7 +281,7 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("RemoteWSLTarget");
     }
 
-    // BYOK (bring-your-own-AI-key) settings
+    // BYOK settings
     _aiService.setByokBaseUrl(_byokBaseUrlController.text);
     _aiService.setByokApiKey(_byokApiKeyController.text);
     _aiService.setByokModel(_byokModelController.text);
@@ -571,8 +571,6 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  /// Expander header with a trailing BETA pill, for the sections that
-  /// shipped in this release ahead of full polish.
   Widget _betaHeader(String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -609,9 +607,7 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-        // No enable/disable toggle: with no app-operated backend, the key
-        // isn't an alternative route — it's the only one. Present = chat
-        // works, absent = chat prompts for it.
+        // No enable toggle — the key is the only chat path, not an option.
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

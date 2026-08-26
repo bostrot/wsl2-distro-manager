@@ -84,24 +84,15 @@ void main() async {
   // Init license manager
   await LicenseManager().init();
 
-  // Auto-start the WSL MCP server if the user previously enabled it and
-  // still has Pro — mirrors how the app doesn't otherwise remember to turn
-  // features back on after a restart, but this one needs to actually be
-  // running for external MCP clients to reach it.
+  // Restart the MCP server if it was left enabled — external clients need
+  // it actually listening.
   final mcpService = WslMcpService();
   if (mcpService.enabled && LicenseManager().isPro) {
     await mcpService.start();
   }
 
-  // Kick off the AI Workspace distro/tool-status checks now, in the
-  // background, instead of waiting until the user opens that screen — each
-  // check is a real `wsl` round trip, and doing three of them cold only
-  // once the user is already staring at a loading spinner is exactly the
-  // wait this is meant to avoid. Not awaited: startup shouldn't block on
-  // it, and the screen re-attaches to this same in-flight/completed check
-  // (AiWorkspaceService.ensureInitialized() is memoized) rather than
-  // starting its own redundant one. Skipped entirely for non-Pro users —
-  // the screen is paywalled for them, so there's nothing to pre-check.
+  // Probe AI Workspace in the background so the screen has results by the
+  // time it opens. Not awaited; the screen joins this same memoized run.
   final aiWorkspaceService = AiWorkspaceService(broker: executionBroker);
   if (LicenseManager().isPro) {
     unawaited(aiWorkspaceService.ensureInitialized());

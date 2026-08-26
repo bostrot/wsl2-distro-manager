@@ -1,14 +1,9 @@
-// Pro entitlement for the one-time-purchase model.
-//
-// The app is sold as a one-time purchase on the Microsoft Store; the GitHub
-// release is the same code, free, with Pro features behind this gate. There
-// is no subscription, no license key, and no validation backend: being
-// installed from the Store *is* the license. Detection works via MSIX
-// package identity — a Store install always runs with package identity,
-// while the portable GitHub build does not. (Someone side-loading a
-// self-built MSIX gets Pro too; the codebase is open source, so any gate
-// here is an honor-system nudge, not protection — same reasoning as the
-// legacy grant below.)
+// Pro entitlement. The app is a one-time Microsoft Store purchase — no
+// subscription, no license key, no validation backend: being installed from
+// the Store *is* the license, detected via MSIX package identity. The
+// portable GitHub build runs unpackaged and stays free. A self-built MSIX
+// unlocks Pro too; the repo is open source, so this is a nudge, not
+// protection.
 
 import 'dart:ffi';
 import 'dart:io';
@@ -30,18 +25,13 @@ class LicenseManager extends ChangeNotifier {
   factory LicenseManager() => _instance;
   LicenseManager._internal();
 
-  // -----------------------------------------------------------------------
-  // Store entitlement
-  // -----------------------------------------------------------------------
-
   bool _storeLicensed = false;
 
   /// Whether this process runs as a Store-installed (MSIX-packaged) app.
   bool get isStoreLicensed => _storeLicensed;
 
-  /// Test seam for the package-identity check — the real check asks the OS
-  /// about the *test runner's* process, which is never packaged. Reset to
-  /// null in tearDown; the singleton outlives individual tests.
+  /// Test seam — the real check asks about the test runner's process, which
+  /// is never packaged. Reset to null in tearDown.
   @visibleForTesting
   static bool Function()? storeInstallCheckOverride;
 
@@ -56,8 +46,7 @@ class LicenseManager extends ChangeNotifier {
   Future<void> init() async {
     _storeLicensed = _detectStoreInstall();
 
-    // One-time cleanup of prefs left over from the retired Stripe
-    // subscription experiment (never shipped beyond test mode).
+    // Cleanup of prefs from the retired subscription experiment.
     for (final key in [
       'LicenseKey',
       'LicenseLastCheck',
@@ -80,30 +69,20 @@ class LicenseManager extends ChangeNotifier {
     try {
       return using((arena) {
         final length = arena<Uint32>();
-        // With no package identity this returns APPMODEL_ERROR_NO_PACKAGE;
-        // with identity it returns ERROR_INSUFFICIENT_BUFFER (buffer too
-        // small for the name we don't actually need).
+        // Without identity: APPMODEL_ERROR_NO_PACKAGE. With it:
+        // ERROR_INSUFFICIENT_BUFFER, since we pass no buffer.
         final result = GetCurrentPackageFullName(length, nullptr);
         return result != _appModelErrorNoPackage;
       });
     } catch (_) {
-      // FFI failure — assume unpackaged rather than crashing the gate.
+      // Assume unpackaged rather than crashing the gate.
       return false;
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Legacy "thank you" grant.
-  //
-  // A goodwill gesture for people who bought the app before the current
-  // pricing existed: a permanent, free Pro grant claimed by entering the
-  // purchase email on the License screen. This is intentionally
-  // client-side only and NOT backend-verified — there's no way to
-  // cross-check Microsoft Store purchase records here — so it's an
-  // honor-system claim. Exposure is bounded by [legacyClaimWindowCloses]:
-  // once that date passes, the claim UI disappears entirely (grants made
-  // before then remain permanent).
-  // -----------------------------------------------------------------------
+  // Legacy grant for people who bought before the current pricing existed.
+  // Honor-system: Store purchase records cannot be checked from here, so
+  // exposure is bounded by [legacyClaimWindowCloses].
 
   /// Claims made after this date are no longer accepted.
   static final DateTime legacyClaimWindowCloses = DateTime(2026, 11, 2);
@@ -117,9 +96,8 @@ class LicenseManager extends ChangeNotifier {
 
   static final RegExp _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-  /// Grant a permanent local "legacy Pro" status. Returns false (granting
-  /// nothing) if [email] doesn't look like an email or the claim window has
-  /// already closed.
+  /// Grants permanent local Pro. False if [email] is malformed or the claim
+  /// window has closed.
   bool claimLegacyPro(String email) {
     final trimmed = email.trim();
     if (!_emailPattern.hasMatch(trimmed) || !isLegacyClaimWindowOpen) {
