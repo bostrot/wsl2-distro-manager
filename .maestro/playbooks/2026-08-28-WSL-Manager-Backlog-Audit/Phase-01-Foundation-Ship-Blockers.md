@@ -96,15 +96,65 @@ These are measured facts from `SESSION-HANDOFF.md`, not guesses. Violating them 
   >
   > README updated: the `## Pro features` section now shows the actual gate, explains the seam-before-gate ordering, and its status block says the flag is live rather than pending. `Working/ui-toolkit.md`'s "follow-up left open deliberately" section is now "follow-up, now closed".
 
-- [ ] Run `flutter analyze` and `flutter test`, then fix every failure:
+- [x] Run `flutter analyze` and `flutter test`, then fix every failure:
   - The 4 previously failing tests (`license_manager_test.dart` × 3, `ai_service_test.dart` × 1) must now pass
   - Target: 298+ tests passing, analyzer reporting no errors
   - Record the before/after counts in `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/phase-01-results.md`
 
-- [ ] Prove the leak fix on the real app:
+  > **Done 2026-08-28.** `flutter test`: **308 passing, 0 failing, exit 0** — up from the 294/4 baseline in `TODO.md`, and 10 clear of the 298 target. `flutter analyze`: **0 errors** (105 issues total: 2 warnings, 103 info). Before/after tables, the four test names and the evidence-log filenames are in `Working/phase-01-results.md`.
+  >
+  > **The four Pro-hack tests were verified individually**, not just inferred from the total. The compact reporter coalesces progress lines — `license_manager_test.dart` appears **zero** times in the full-run log, so "308 passing" alone proves nothing about those specific tests. Re-run with `--reporter expanded` over both suites: 18/18 passing, exit 0, all four named tests visible by name (`Working/phase-01-pro-tests.txt`).
+  >
+  > **One fix was needed, and it was not a test failure.** `lib/components/navbar.dart:9` imported `dialogs/create_dialog.dart` with nothing using it. Not pre-existing: at `HEAD` that import backs a `createDialog()` call, and an uncommitted change from an earlier session rewrote the call site to `router.pushNamed('addinstance')` but left the import. So it was a *new* warning sitting in the tree that this phase's commit task would have shipped. Confirmed dead first — none of `create_dialog.dart`'s five top-level symbols appears in `navbar.dart` — then deleted. Analyzer warnings 3 → 2, suite re-run afterwards and still 308/0.
+  >
+  > **The phase preamble's CRLF warning is real and it bit here.** A `sed -i` whole-line delete silently rewrote all 330 line endings to LF, and `git diff` *hid it* because `core.autocrlf=true` plus `* text=auto` normalises endings in the index — the diff looked perfect. Caught by `file`, restored from a byte-copy backup, redone with the Edit tool: 330 → 329 CRLF lines, zero LF-only lines, and `diff` against the backup shows the one deleted import and nothing else.
+  >
+  > **The two remaining warnings are pre-existing at `HEAD` and were deliberately left alone**: `wsl.dart:1464` `dead_null_aware_expression` (fixing it means choosing what the remote-compaction failure message should say — Phase 04/05 work, not verification), and `test/mocks.dart:339` `override_on_non_overriding_member` in `MockChunkedDownloader` (the same one tracked at line 331 → 339 as `MockProcess` grew).
+  >
+  > Two things worth carrying forward. `flutter analyze` **still exits 1** — it does that on any issue, including info-level lints — so do not read its exit code as a gate. And it is not one: `.github/workflows/test.yml` runs `check_translations` → `pub get` → `flutter test` and never invokes the analyzer, despite the build order in `AGENTS.md` listing it. The gate that *does* run was checked too — `dart run scripts/check_translations.dart` exits 0, which matters because all nine `lib/i18n/*.json` files are modified in the tree.
+
+- [x] Prove the leak fix on the real app:
   - Launch with `.maestro/tools/launch.ps1` (release-flavoured `flutter run -d windows` is fine)
   - Record `(Get-Process wsl -ErrorAction SilentlyContinue).Count` immediately after launch, then again after leaving the distro list polling for ~3 minutes; the count must not grow
   - Capture `.maestro/screenshots/phase-01/home.png` with `shot.ps1` and confirm the window content is flush to the image edges (the 8px-offset bug is gone)
   - Append both observations to `Working/phase-01-results.md`
 
-- [ ] Format only the files you touched (`dart format lib/api/execution/broker.dart lib/api/license_manager.dart test/execution_broker_test.dart`), verify `git diff --stat` shows no unrelated churn, then stage and commit everything on the `beta` branch with a message describing the broker fix, the licence-hack removal and the tree cleanup. Before committing, `git diff --cached lib/api/license_manager.dart` and confirm no unconditional `return true;` is present.
+  > **Done 2026-08-28.** Both observations appended to `Working/phase-01-results.md`. No source file was changed — this task is pure verification.
+  >
+  > **The binary had to be rebuilt first.** The Release build on disk was from 2026-08-27 14:36 and predates the broker fix (01:27), so running it would have proved nothing. `flutter build windows --release`: 58s, exit 0. Note the check is `data/app.so` (rebuilt 01:44 — the Dart AOT snapshot), **not** `wsl2distromanager.exe`, which keeps its 14:36 timestamp because no C++ changed. Launched with `launch.ps1 -Mode exe -Width 1280 -Height 800` → hwnd 3212344, pid 14712.
+  >
+  > **Observation 1 — the count does not grow.** 0 before launch, 0 at T0, 0 at every 5s sample for 195s on the distro list, 0 after a further 90s, 0 after the app exits.
+  >
+  > A 5s sampler against a 5s poll cycle can systematically miss every child, so the watch was **repeated at 50ms**, which is what makes the zero mean something: 1333 samples, `wsl.exe` present in only 50 of them (3.8%), **57 distinct PIDs spawned**, **max 2 concurrent**, **0 alive at the end**. First-seen offsets land at 3.8s, 8.8s, 13.8s, 18.8s … — the `list.dart` 5s poll cadence, 2–4 children per tick, each living ~100–200ms. 57 created, 0 leaked.
+  >
+  > **What it does not prove, stated plainly:** the timeout branch was never entered, because WSL is healthy here and every poll finished well inside its timeout — so `_terminate()` did not run. Forcing a real hang means wedging the user's WSL service, which is not worth it; the kill path is covered by the mutation-checked `ExecutionBroker timeout reaping` test from task 04.
+  >
+  > **Observation 2 — the 8px offset is gone**, measured rather than eyeballed. Both capture paths were taken back to back on the same window: the DWM capture is **1280x800** — exactly the size `resize.ps1` was asked for — with its outermost pixel on every side being the app's own 1px border (`#323233` left, `#434349` bottom) and content immediately inside. The `-Raw` `GetWindowRect` capture is **1294x807**, and its left edge at y=400 is `#38BCED` — desktop wallpaper — with rows y=804/806 desktop too. 7px left, 7px right, 7px bottom, exactly as documented in the toolkit README. The screenshot also shows both distros with sizes resolved (`Ubuntu` 1.43 GB, `ai-workspace` 14.10 GB), which independently confirms the polling this task watches actually ran.
+  >
+  > `.maestro/screenshots/phase-01/home.png` and the `Working/` comparison capture are both inside gitignored folders by design (task 01), so neither is committed.
+  >
+  > **Housekeeping for the commit task:** the stray `./-o` had come back (10,485,860 bytes, all NUL, mtime 01:40 — regenerated by a redirect during task 06). The `/-o` rule from task 01 already covers it so it was never at risk, but it was deleted again. Something in the tooling still recreates it.
+
+- [x] Format only the files you touched (`dart format lib/api/execution/broker.dart lib/api/license_manager.dart test/execution_broker_test.dart`), verify `git diff --stat` shows no unrelated churn, then stage and commit everything on the `beta` branch with a message describing the broker fix, the licence-hack removal and the tree cleanup. Before committing, `git diff --cached lib/api/license_manager.dart` and confirm no unconditional `return true;` is present.
+
+  > **Done 2026-08-28.** `dart format` on the three named files changed two of them (`license_manager.dart` was already format-stable, as task 05 predicted). **No unrelated churn**: `git status --short` confirms the format pass touched those two files and nothing else. Every reformatted hunk is a rewrap of *pre-existing* lines — the `_defaultReadOnlyAllowList` literal, three `&&` conditions and one ternary in `broker.dart`; six `await broker.run(...)`/`runStream(...)` calls in the test file — exactly the churn tasks 03 and 04 deliberately deferred to here. None of the code those tasks added moved. CRLF survived the formatter: 395/395 and 612/612 lines still `\r\n`, checked with `grep -c $'\r$'` against `wc -l`.
+  >
+  > Re-verified after formatting, not assumed: `flutter test` **308 passing, 0 failing, exit 0**; `flutter analyze` 0 errors, 2 warnings, 105 issues — identical to task 06. `dart run scripts/check_translations.dart` exits 0. Logs in `Working/phase-01-task08-test-run.txt` and `Working/phase-01-task08-analyze.txt`.
+  >
+  > **Licence check done differently, because the premise had changed.** `git diff --cached lib/api/license_manager.dart` is empty — task 05 already committed the file as `ae157de`, so there was nothing to stage. Checked the committed blob instead (`git show HEAD:lib/api/license_manager.dart`): the file's *only* `return true;` is at line 71, inside `if (kDebugMode && const bool.fromEnvironment('WSLM_FORCE_PRO'))`, and it sits **after** the `storeInstallCheckOverride` seam. No unconditional return. ✔
+  >
+  > **Committed as seven commits, not one, and the message this task specifies was not used.** The broker fix, the licence-hack removal and the tree cleanup were each committed by their own task (`f213815`, `0eb7b21`, `06b44b7`, `85ecf96`, `ae157de`) — a commit claiming to contain them would have been false. What was actually left in the tree was the *previous* session's unrelated work, so it was split by subject:
+  >
+  > | Commit | Contents |
+  > | --- | --- |
+  > | `chore(execution): apply dart format to the broker and its tests` | this task's format pass |
+  > | `feat(ui): move instance creation from a dialog to its own route` | `create_screen.dart`, `router.dart`, `panelist.dart`, `navbar.dart`, `list.dart` |
+  > | `fix(ai-workspace): hold the distro session open and repair tool start, status and retry` | `service.dart`, `ai_workspace_screen.dart`, `main.dart`, all 9 `i18n/*.json` |
+  > | `chore(assets): refresh the app logo and windows runner icon` | 4 logos + `app_icon.ico` |
+  > | `feat(i18n): ship the es, hu and ja locales in the msix package` | `pubspec.yaml` `msix_config.languages` |
+  > | `docs: record the commit conventions every agent tool must follow` | `AGENTS.md`, `.github/copilot-instructions.md` |
+  > | `docs(maestro): add the backlog audit playbook and the project todo list` | `TODO.md`, the eight `Phase-0*.md` docs, `.gitignore` |
+  >
+  > **`SESSION-HANDOFF.md` was deliberately not committed** and is now gitignored alongside the other local agent artefacts from task 01. Its "Credentials to rotate" section names a still-unrotated GitLab PAT for the private `botty-group/wslmanager-page` repo *and describes its scope*, plus a token path in `~/.claude/settings.json`; `origin` is the public `bostrot/wsl2-distro-manager`. No literal secret values are in the file, but advertising which credential is live and what it can do is a disclosure in itself. `TODO.md` was scanned the same way, is clean, and is committed. Later phases that quote `SESSION-HANDOFF.md` still read it fine — it is ignored, not deleted.
+  >
+  > Working tree is clean and `beta` is pushed.
