@@ -24,6 +24,35 @@ After implementing or changing anything in the code, run the following to check 
 2. `flutter test integration_test/` — verify UI flows still work end-to-end
 3. `flutter run -d windows` — verify the app builds and runs without runtime errors on Windows
 
+## Commits
+Applies to every agent and tool that commits here — Maestro, Claude Code,
+Copilot, opencode, anything else.
+
+- **One author, always: `Eric Trenkel <eric@bostrot.com>`.** Do not add a second
+  author, and do not add `Co-Authored-By:` trailers.
+- **No tool attribution.** No `Generated with …`, no `Claude-Session:`, no
+  session links, no bot signatures, no emoji footers — not in commit messages
+  and not in PR descriptions. A reader should not be able to tell which tool
+  wrote the change.
+- **Conventional Commits**, matching the existing history:
+  `type(scope): short description in lower case`
+  Types in use: `feat`, `fix`, `refactor`, `docs`, `ci`, `test`, `chore`.
+  Scope is optional — use it when it narrows things usefully (`fix(ui):`,
+  `feat(license):`, `fix(i18n):`).
+- **Short and descriptive.** One line, imperative, no trailing period. Say what
+  changed and why it matters, not which files moved.
+- Add a body only when the *why* is not obvious from the subject. Wrap at ~72
+  characters. No checklists, no summaries of the diff.
+
+Recent examples to match:
+
+```
+fix(ui): repair broken locales and unreadable copy across the app
+feat(license): drop the legacy Pro thank-you claim
+ci: pin Flutter SDK and upgrade re_editor to fix broken builds
+refactor: trim over-explanatory comments
+```
+
 ## Build Order (CI)
 `check_translations` → `flutter pub get` → `flutter analyze` → `flutter test` → `flutter build windows` → `dart run msix:create` → Inno Setup installer
 
