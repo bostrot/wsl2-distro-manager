@@ -4,6 +4,10 @@ const String title = 'WSL Distro Manager by Bostrot';
 
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
+
+/// Opens the Store app straight on the review pane for this product.
+const String storeReviewUrl =
+    "ms-windows-store://review?ProductId=9NWS9K95NMJB";
 const String defaultPath = 'C:\\WSL2-Distros';
 const int chunkSize = 16 * 1024;
 const String updateUrl =

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 void main() {
@@ -63,6 +64,48 @@ void main() {
 
       expect(LicenseManager().isPro, false);
       expect(prefs.getBool('LegacyProGranted'), isNull);
+    });
+  });
+
+  group('rating prompt gate', () {
+    test('a GitHub build is never asked - it cannot post a Store review',
+        () async {
+      LicenseManager.storeInstallCheckOverride = () => false;
+      await LicenseManager().init();
+      prefs.setInt('InstancesCreated', 99);
+
+      await maybeShowRatingPrompt();
+
+      // Nothing was recorded, because the prompt bailed before showing.
+      expect(prefs.getBool('RatingPromptDone'), isNull);
+      expect(prefs.getInt('RatingPromptNextAt'), isNull);
+    });
+
+    test('a Store install below the threshold is not asked yet', () async {
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      prefs.setInt('InstancesCreated', 1);
+
+      await maybeShowRatingPrompt();
+
+      expect(prefs.getBool('RatingPromptDone'), isNull);
+    });
+
+    test('recordInstanceCreated counts up', () {
+      prefs.setInt('InstancesCreated', 2);
+      recordInstanceCreated();
+      expect(prefs.getInt('InstancesCreated'), 3);
+    });
+
+    test('a dismissed prompt stays dismissed', () async {
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      prefs.setBool('RatingPromptDone', true);
+      prefs.setInt('InstancesCreated', 99);
+
+      await maybeShowRatingPrompt();
+
+      expect(prefs.getBool('RatingPromptDone'), true);
     });
   });
 }

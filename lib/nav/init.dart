@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter/gestures.dart';
@@ -9,6 +11,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/changelog_dialog.dart';
 import 'package:wsl2distromanager/dialogs/firststart_dialog.dart';
+import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 initRoot(statusMsg) async {
@@ -56,6 +59,10 @@ initRoot(statusMsg) async {
       await prefs.setString('LastChangelogVersion', currentVersion);
     }
   }
+
+  // Asked on a later start rather than right after a creation, so the
+  // prompt never lands on top of the dialog the user just closed.
+  unawaited(maybeShowRatingPrompt());
 
   // Check for interrupted move operation
   String? moveOpDistro = prefs.getString('MoveOp_Distro');

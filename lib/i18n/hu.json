@@ -391,5 +391,10 @@
   "plan-free-detail": "Minden, ami a WSL helyi kezeléséhez kell. Az MI-funkciók nem tartoznak bele.",
   "plan-store-detail": "Egyszeri vásárlás a Microsoft Store-ban. Minden Pro funkció fel van oldva, a frissítésekkel együtt.",
   "selectdockerimage-text": "Válassz ki vagy adj meg egy helyi Docker-képfájlt",
-  "byok-required-note": "Az MI-funkciók a saját, OpenAI-kompatibilis API-kulcsodat használják. Nincs MI-szolgáltatás üzemeltetve vagy mellékelve — közvetlenül a szolgáltatódnak fizetsz, vagy helyi modellt használsz."
+  "byok-required-note": "Az MI-funkciók a saját, OpenAI-kompatibilis API-kulcsodat használják. Nincs MI-szolgáltatás üzemeltetve vagy mellékelve — közvetlenül a szolgáltatódnak fizetsz, vagy helyi modellt használsz.",
+  "rate-title": "Hasznosnak találod a WSL Managert?",
+  "rate-text": "A Microsoft Store-ban adott értékelés segít másoknak megtalálni az alkalmazást. Néhány másodperc, és egy kis projektnek tényleg sokat számít.",
+  "rate-now": "Értékelés a Store-ban",
+  "rate-later": "Talán később",
+  "rate-never": "Ne kérdezd többet"
 }

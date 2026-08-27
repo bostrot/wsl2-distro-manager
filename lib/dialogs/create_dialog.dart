@@ -10,6 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/theme.dart';
 
@@ -352,6 +353,7 @@ Future<bool> createInstance(
       prefs.setString('DistroName_$name', label);
       // Save distro path
       prefs.setString('Path_$name', effectiveLocation);
+      recordInstanceCreated();
       return true;
     }
     // Download distro check

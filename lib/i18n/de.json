@@ -392,5 +392,10 @@
   "plan-free-detail": "Alles zum lokalen Verwalten von WSL. KI-Funktionen sind nicht enthalten.",
   "plan-store-detail": "Einmalig im Microsoft Store gekauft. Alle Pro-Funktionen sind freigeschaltet, Updates inklusive.",
   "selectdockerimage-text": "Bitte ein lokales Docker-Image auswählen oder eingeben",
-  "byok-required-note": "Die KI-Funktionen laufen über deinen eigenen OpenAI-kompatiblen API-Schlüssel. Es wird kein KI-Dienst gehostet oder mitgeliefert — du zahlst direkt bei deinem Anbieter oder verwendest ein lokales Modell."
+  "byok-required-note": "Die KI-Funktionen laufen über deinen eigenen OpenAI-kompatiblen API-Schlüssel. Es wird kein KI-Dienst gehostet oder mitgeliefert — du zahlst direkt bei deinem Anbieter oder verwendest ein lokales Modell.",
+  "rate-title": "Nützt dir WSL Manager?",
+  "rate-text": "Eine Bewertung im Microsoft Store hilft anderen, die App zu finden. Das dauert ein paar Sekunden und macht für ein kleines Projekt wirklich einen Unterschied.",
+  "rate-now": "Im Store bewerten",
+  "rate-later": "Später",
+  "rate-never": "Nicht mehr fragen"
 }

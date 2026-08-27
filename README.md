@@ -12,25 +12,56 @@
     English | <a href='./readme/README_zh.md'>简体中文</a> | <a href='./readme/README_zh_tw.md'>繁體中文</a> | <a href='./readme/README_de.md'>Deutsch</a> | <a href='./readme/README_es.md'>Español</a> | <a href='./readme/README_ja.md'>日本語</a> | <a href='./readme/README_hu.md'>Magyar</a> | <a href='./readme/README_pt.md'>Português</a> | <a href='./readme/README_tr.md'>Türkçe</a>
 </p>
 
-![Screenshot with Darkmode](https://user-images.githubusercontent.com/7342321/233077564-794d15dd-d8d6-48b2-aee6-20e67de3da29.png)
+![WSL Distro Manager, dark theme](./readme/images/home-dark.png)
 
 <details>
-<summary>Preview with Lightmode</summary>
+<summary>Preview with light theme</summary>
 
-![Screenshot with Lightmode](https://user-images.githubusercontent.com/7342321/233077521-69bd6b3f-1e2a-48a1-a6df-2d346736cfb3.png)
+![WSL Distro Manager, light theme](./readme/images/home-light.png)
 
 </details>
 
-> WSL Distro Manager is a free and open source app that provides a user-friendly graphical interface for managing Windows Subsystem for Linux (WSL) distributions. With WSL Distro Manager, you can easily install, uninstall, update, backup and restore WSL distros, as well as configure their settings and launch them with a single click. WSL Distro Manager also offers some extra features to enhance your WSL experience, such as sharing Distros between multiple machines, and creating actions to quickly do repetitive tasks. Whether you are a beginner or an expert in WSL, WSL Distro Manager will help you get the most out of it.
+> **WSL Distro Manager** is a free, open source GUI for the Windows Subsystem
+> for Linux. Install, copy, rename, move, back up and delete WSL distros
+> without memorising a single `wsl.exe` flag — plus templates, saved command
+> snippets, disk mounting, `.wslconfig` editing, remote WSL over SSH, and an
+> MCP server that lets AI agents drive your WSL environment.
 
 ## 🚀 Features
 
-- [x] Manage WSL instances
-- [x] Download and use Docker images as WSL instances - without Docker!
-- [x] Quick Actions (execute pre-defined scripts directly on your instances for quick configurations)
-- [x] Download and use Turnkey or other LXC containers (experimental, tested with e.g. Turnkey WordPress)
-- [x] Use your own repository for rootfs' or LXC containers
-- [x] and more...
+**Manage distros**
+- [x] Install from a built-in catalogue, or bring your own rootfs
+- [x] Copy, rename, move to another drive, back up and delete instances
+- [x] Compact virtual disks to reclaim space WSL never gives back
+- [x] Supports Ubuntu, Debian, Alpine, Kali Linux, openSUSE, SLES and anything else WSL accepts
+
+**Get instances running faster**
+- [x] Use any Docker image as a distro — Docker itself is not required
+- [x] Save a configured distro as a template and spin up fresh copies from it
+- [x] Turnkey Linux and other LXC containers (experimental)
+- [x] Snippets: keep your setup commands in the app and run them on any instance
+- [x] Point the app at your own repository of rootfs images
+
+**Configure without editing files by hand**
+- [x] systemd, automount, default user, start command and start path per distro
+- [x] Memory, processors, swap, networking mode, DNS and the rest of `.wslconfig`
+- [x] Mount a physical disk or a VHD into WSL, with partition and filesystem control
+
+**Work the way you already do**
+- [x] Open Windows Terminal, VS Code or Explorer straight inside a distro
+- [x] Manage WSL on a *different* Windows machine over SSH
+- [x] Sync a distro between two machines on your network
+- [x] Dark and light themes, available in nine languages
+
+**Pro** *(optional one-time purchase on the Microsoft Store — not a subscription)*
+- [x] **AI Workspace** — run Hermes Agent, OpenClaw and Open WebUI in a dedicated, isolated WSL distro
+- [x] **MCP server** — expose WSL to Claude Desktop and other MCP clients; agents can list distros, run commands and drive real terminal sessions
+- [x] **AI assistant** — configuration help, script generation and error diagnosis
+
+> The AI assistant features run on **your own** OpenAI-compatible API key. No AI
+> service is hosted or included, there is no quota, and no requests pass through
+> anyone else's servers. Pro unlocks the features in the app; it does not buy AI
+> credits. See [Free vs Pro](https://github.com/bostrot/wsl2-distro-manager/wiki/Pro-Version).
 
 ## 📦 Install
 
@@ -118,7 +149,7 @@ Give a ⭐️ if this project helped you!
 
 ## 📝 License
 
-Copyright © 2023 [Eric Trenkel](https://github.com/bostrot).\
+Copyright © 2026 [Eric Trenkel](https://github.com/bostrot).\
 This project is [GPL-3.0](https://github.com/bostrot/wsl2-distro-manager/blob/main/LICENSE) licensed.
 
 ---

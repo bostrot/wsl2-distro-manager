@@ -391,5 +391,10 @@
   "plan-free-detail": "Todo para gestionar WSL en local. Las funciones de IA no están incluidas.",
   "plan-store-detail": "Comprado una sola vez en Microsoft Store. Todas las funciones Pro están desbloqueadas, actualizaciones incluidas.",
   "selectdockerimage-text": "Selecciona o introduce una imagen local de Docker",
-  "byok-required-note": "Las funciones de IA usan tu propia clave de API compatible con OpenAI. No se aloja ni se incluye ningún servicio de IA: pagas directamente a tu proveedor o apuntas a un modelo local."
+  "byok-required-note": "Las funciones de IA usan tu propia clave de API compatible con OpenAI. No se aloja ni se incluye ningún servicio de IA: pagas directamente a tu proveedor o apuntas a un modelo local.",
+  "rate-title": "¿Te resulta útil WSL Manager?",
+  "rate-text": "Una valoración en Microsoft Store ayuda a que otras personas encuentren la aplicación. Lleva unos segundos y marca una diferencia real para un proyecto pequeño.",
+  "rate-now": "Valorar en la Store",
+  "rate-later": "Más tarde",
+  "rate-never": "No preguntar más"
 }
