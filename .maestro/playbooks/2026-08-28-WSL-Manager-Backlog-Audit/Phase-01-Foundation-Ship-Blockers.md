@@ -80,11 +80,21 @@ These are measured facts from `SESSION-HANDOFF.md`, not guesses. Violating them 
   >
   > Not formatted, same reasoning as the broker task: `dart format` rewraps eight pre-existing lines in the `audit log accumulates entries` / `clearAuditLog` / `runStream` blocks that this change never touched. One new test name was shortened so that the formatter leaves every added line alone — verified by formatting in place and confirming the only changed ranges are the pre-existing ones. `mocks.dart` is already format-clean.
 
-- [ ] Remove the Pro test hack and replace it with a safe developer override:
+- [x] Remove the Pro test hack and replace it with a safe developer override:
   - Delete the unconditional `return true;` at the top of `_detectStoreInstall()` in `lib/api/license_manager.dart:64`
   - Keep the existing `storeInstallCheckOverride` hook untouched (tests depend on it)
   - Add a debug-only gate immediately after it: when `kDebugMode` is true **and** `const bool.fromEnvironment('WSLM_FORCE_PRO')` is true, return `true`. In a release build and with no dart-define the behaviour is unchanged, so this can be committed safely
   - Document the flag in `.maestro/tools/README.md`: Pro click-throughs in later phases run `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true`
+
+  > **Done 2026-08-28.** The `return true;` is gone from `_detectStoreInstall()`. The `storeInstallCheckOverride` seam is untouched and still checked **first**, so the debug gate can never shadow a test that pins the flag; the gate sits immediately after it as `if (kDebugMode && const bool.fromEnvironment('WSLM_FORCE_PRO')) return true;`. With no dart-define `bool.fromEnvironment` is a compile-time `false`, and in a release build `kDebugMode` is `false`, so the real `GetCurrentPackageFullName` package-identity check runs exactly as before — the flag is safe to commit.
+  >
+  > **Regression test added** (`license_manager_test.dart`, `Store entitlement` group, 8 → 9 tests): with the override cleared to `null`, the *real* detection runs against an unpackaged test runner with no dart-define and must report `isPro == false` / `LicensePlan.none`. Mutation-checked — re-inserting `return true;` at the top of `_detectStoreInstall()` fails four tests including this one, and the file was restored byte-for-byte afterwards (`git diff` confirms only the intended hunk).
+  >
+  > **Suite is green for the first time this phase: 308 passing, 0 failing** (from 303 passing / 4 failing). All four Pro-hack failures are fixed — `license_manager_test.dart` × 3 and `ai_service_test.dart` × 1 (`sendMessage throws pro-required when not Pro`). Log in `Working/full-test-run-task05.txt`; the next task records the before/after in `phase-01-results.md`.
+  >
+  > `flutter analyze` on both changed Dart files: clean. `dart format` on both: **no changes** — the added code is format-stable, so the formatting pass at the end of this phase has nothing to do here. Note the one unrelated hunk already in the working tree from a previous session: the `LicensePlan get plan =>` getter was re-wrapped onto one line. It is pre-existing, `dart format` agrees with it, and it was left alone.
+  >
+  > README updated: the `## Pro features` section now shows the actual gate, explains the seam-before-gate ordering, and its status block says the flag is live rather than pending. `Working/ui-toolkit.md`'s "follow-up left open deliberately" section is now "follow-up, now closed".
 
 - [ ] Run `flutter analyze` and `flutter test`, then fix every failure:
   - The 4 previously failing tests (`license_manager_test.dart` × 3, `ai_service_test.dart` × 1) must now pass

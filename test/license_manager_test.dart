@@ -32,6 +32,21 @@ void main() {
       expect(manager.getPlanText(), 'plan-free');
     });
 
+    // Regression guard for the ship-blocker: `_detectStoreInstall()` once
+    // began with an unconditional `return true;`, granting Pro to every
+    // install. With the test seam cleared this runs the real check — an
+    // unpackaged test runner, and no --dart-define=WSLM_FORCE_PRO — so it
+    // only passes while neither shortcut is hard-coded on.
+    test('the real detection grants nothing to an unpackaged process',
+        () async {
+      LicenseManager.storeInstallCheckOverride = null;
+
+      await LicenseManager().init();
+
+      expect(LicenseManager().isPro, false);
+      expect(LicenseManager().plan, LicensePlan.none);
+    });
+
     test('package identity (Store install) grants Pro', () async {
       LicenseManager.storeInstallCheckOverride = () => true;
       await LicenseManager().init();

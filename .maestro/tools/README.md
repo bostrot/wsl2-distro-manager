@@ -258,10 +258,25 @@ flutter run -d windows --dart-define=WSLM_FORCE_PRO=true
 It is gated behind `kDebugMode`, so a release build ignores it and the flag is
 safe to commit.
 
-> **Status:** the `WSLM_FORCE_PRO` gate in `lib/api/license_manager.dart` is
-> added by a later task in
-> [[Phase-01-Foundation-Ship-Blockers]]. Until then `-ForcePro` passes the
-> dart-define through but the app ignores it.
+The gate lives at the top of `_detectStoreInstall()` in
+`lib/api/license_manager.dart`, immediately after the `storeInstallCheckOverride`
+test seam:
+
+```dart
+if (kDebugMode && const bool.fromEnvironment('WSLM_FORCE_PRO')) {
+  return true;
+}
+```
+
+Order matters — the test seam is checked first, so `license_manager_test.dart`
+still drives the gate through `storeInstallCheckOverride` regardless of any
+dart-define. With no `--dart-define`, `bool.fromEnvironment` is `false` and the
+real MSIX package-identity check runs unchanged.
+
+> **Status:** live as of 2026-08-28 (added in
+> [[Phase-01-Foundation-Ship-Blockers]]). `-ForcePro` only has an effect on
+> `-Mode run` (a debug build); the switch warns when used with a profile or
+> release build, where `kDebugMode` is `false` and the flag is compiled out.
 
 ## Notes
 

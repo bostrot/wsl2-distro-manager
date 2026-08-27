@@ -36,8 +36,7 @@ class LicenseManager extends ChangeNotifier {
 
   bool get isPro => _storeLicensed;
 
-  LicensePlan get plan =>
-      _storeLicensed ? LicensePlan.store : LicensePlan.none;
+  LicensePlan get plan => _storeLicensed ? LicensePlan.store : LicensePlan.none;
 
   Future<void> init() async {
     _storeLicensed = _detectStoreInstall();
@@ -64,6 +63,14 @@ class LicenseManager extends ChangeNotifier {
   bool _detectStoreInstall() {
     final override = storeInstallCheckOverride;
     if (override != null) return override();
+
+    // Developer escape hatch for click-throughs of the Pro-gated screens:
+    // `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true`. Gated behind
+    // kDebugMode, so a release build always ignores it.
+    if (kDebugMode && const bool.fromEnvironment('WSLM_FORCE_PRO')) {
+      return true;
+    }
+
     if (!Platform.isWindows) return false;
 
     try {
