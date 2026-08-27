@@ -4,7 +4,7 @@
 // broker instead of spawning processes directly.
 import 'dart:async';
 import 'dart:convert' show Utf8Decoder;
-import 'dart:io' show ProcessResult, systemEncoding;
+import 'dart:io' show Process, ProcessSignal, systemEncoding;
 
 import '../shell.dart';
 import 'models.dart';
@@ -59,6 +59,39 @@ class ExecutionBroker {
     return command.toLowerCase() == 'wsl' || command.toLowerCase().endsWith('wsl.exe');
   }
 
+  /// Decode with the platform encoding, mirroring the `systemEncoding` that
+  /// [run] used to hand to `Process.run` for non-WSL commands. Falls back to a
+  /// lenient UTF-8 decode so one bad byte cannot fail the whole call.
+  static String _decodeSystem(List<int> bytes) {
+    if (bytes.isEmpty) return '';
+    try {
+      return systemEncoding.decode(bytes);
+    } on FormatException {
+      return const Utf8Decoder(allowMalformed: true).convert(bytes);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Process lifetime
+  // -----------------------------------------------------------------------
+
+  /// Terminate a child that outlived its timeout, escalating to SIGKILL when
+  /// it does not go away on its own.
+  static Future<void> _terminate(Process process) async {
+    try {
+      process.kill();
+      await process.exitCode.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          process.kill(ProcessSignal.sigkill);
+          return -1;
+        },
+      );
+    } catch (_) {
+      // Already reaped, or the platform refused the signal — nothing to undo.
+    }
+  }
+
   // -----------------------------------------------------------------------
   // Policy enforcement
   // -----------------------------------------------------------------------
@@ -107,44 +140,89 @@ class ExecutionBroker {
     try {
       final isWsl = _isWslCommand(request.command);
 
-      final ProcessResult result = await _shell.run(
+      // Deliberately `start` and not `run`: `Process.run` hands back no handle,
+      // so a timeout could only abandon the child. With `list.dart` re-polling
+      // every 5s that leaked hundreds of orphaned wsl.exe processes.
+      final process = await _shell.start(
         request.command,
         request.arguments,
         workingDirectory: request.workingDirectory,
         environment: request.environment,
         runInShell: request.runInShell,
-        // WSL outputs UTF-16LE on Windows; get raw bytes and decode manually.
-        stdoutEncoding: isWsl ? null : systemEncoding,
-        stderrEncoding: isWsl ? null : systemEncoding,
-      ).timeout(
-        request.timeout,
-        onTimeout: () => throw TimeoutException(
-          'Command timed out after ${request.timeout.inSeconds}s: '
-          '${request.command} ${request.arguments.join(' ')}',
-          request.timeout,
-        ),
       );
+
+      final stdoutBytes = <int>[];
+      final stderrBytes = <int>[];
+      final stdoutDone = Completer<void>();
+      final stderrDone = Completer<void>();
+
+      StreamSubscription<List<int>> drain(
+        Stream<List<int>> stream,
+        List<int> sink,
+        Completer<void> done,
+      ) {
+        return stream.listen(
+          sink.addAll,
+          onDone: () {
+            if (!done.isCompleted) done.complete();
+          },
+          onError: (Object e) {
+            if (!done.isCompleted) done.completeError(e);
+          },
+        );
+      }
+
+      final stdoutSub = drain(process.stdout, stdoutBytes, stdoutDone);
+      final stderrSub = drain(process.stderr, stderrBytes, stderrDone);
+
+      final completion = () async {
+        final code = await process.exitCode;
+        await Future.wait([stdoutDone.future, stderrDone.future]);
+        return code;
+      }();
+
+      final int exitCode;
+      try {
+        exitCode = await completion.timeout(request.timeout);
+      } catch (e) {
+        // Reap the child before surfacing anything, otherwise it outlives us.
+        await _terminate(process);
+        await stdoutSub.cancel();
+        await stderrSub.cancel();
+        if (e is TimeoutException) {
+          throw TimeoutException(
+            'Command timed out after ${request.timeout.inSeconds}s: '
+            '${request.command} ${request.arguments.join(' ')}',
+            request.timeout,
+          );
+        }
+        rethrow;
+      }
 
       stopwatch.stop();
 
-      final severity = result.exitCode == 0
-          ? AuditSeverity.info
-          : AuditSeverity.error;
+      final severity = exitCode == 0 ? AuditSeverity.info : AuditSeverity.error;
 
       // Update audit log entry.
       _auditLog.removeLast();
       _auditLog.add(AuditEntry(
         timestamp: entry.timestamp,
         request: request,
-        exitCode: result.exitCode,
+        exitCode: exitCode,
         duration: stopwatch.elapsed,
         severity: severity,
       ));
 
+      // WSL emits UTF-16LE, so its bytes go to the manual decoder untouched;
+      // everything else decodes with the system encoding first. Same split
+      // `stdoutEncoding: isWsl ? null : systemEncoding` used to express.
+      String decode(List<int> bytes) =>
+          decodeWslOutput(isWsl ? bytes : _decodeSystem(bytes));
+
       return ExecutionResult(
-        exitCode: result.exitCode,
-        stdout: decodeWslOutput(result.stdout),
-        stderr: decodeWslOutput(result.stderr),
+        exitCode: exitCode,
+        stdout: decode(stdoutBytes),
+        stderr: decode(stderrBytes),
         duration: stopwatch.elapsed,
         auditSeverity: severity,
       );
@@ -168,6 +246,22 @@ class ExecutionBroker {
         auditSeverity: AuditSeverity.error,
       );
     }
+  }
+
+  /// Starts a long-running process and hands back the handle.
+  ///
+  /// No timeout and no output capture: the caller owns the lifetime and must
+  /// `kill()` it. Used for session keep-alives, where the point is that the
+  /// process outlives any single command.
+  Future<Process> startPersistent(ExecutionRequest request) {
+    _checkPolicy(request);
+    return _shell.start(
+      request.command,
+      request.arguments,
+      workingDirectory: request.workingDirectory,
+      environment: request.environment,
+      runInShell: request.runInShell,
+    );
   }
 
   /// Execute a command and stream events as it runs.

@@ -6,6 +6,8 @@ import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 
+import 'mocks.dart';
+
 /// A minimal mock shell that returns configurable results.
 class TestShell implements Shell {
   String stdoutData = 'ok';
@@ -15,6 +17,9 @@ class TestShell implements Shell {
 
   List<String> lastCommand = [];
   List<List<String>> allCommands = [];
+
+  /// The last process handed out by [start], so tests can inspect kill counts.
+  MockProcess? lastProcess;
 
   bool throwOnRun = false;
 
@@ -47,14 +52,25 @@ class TestShell implements Shell {
       bool includeParentEnvironment = true,
       ProcessStartMode mode = ProcessStartMode.inheritStdio,
       bool runInShell = false}) async {
+    if (throwOnRun) throw Exception('shell error');
     lastCommand = [executable, ...arguments];
     allCommands.add([executable, ...arguments]);
-    throw UnsupportedError('start not implemented in TestShell');
+    // `artificialDelay` becomes the child's lifetime rather than a delay before
+    // the result arrives — that is what a hung command actually looks like now
+    // that run() owns a killable handle.
+    lastProcess = MockProcess(
+      exitCode: exitCode,
+      stdout: stdoutData,
+      stderr: stderrData,
+      delay: artificialDelay,
+    );
+    return lastProcess!;
   }
 
   void reset() {
     lastCommand.clear();
     allCommands.clear();
+    lastProcess = null;
   }
 }
 
@@ -258,7 +274,7 @@ void main() {
       expect(entry.request.arguments, ['--list', '--quiet']);
     });
 
-    test('forwards runInShell to shell.run()', () async {
+    test('forwards runInShell to the shell', () async {
       final result = await broker.run(const ExecutionRequest(
         command: 'cmd',
         arguments: ['/c', 'echo hello'],
@@ -277,9 +293,8 @@ void main() {
       broker = ExecutionBroker(shell: testShell);
     });
 
-    // Note: runStream() delegates to Shell.start() which spawns a real process.
-    // Unit tests can only verify behavior when start() fails (ExecutionError path).
-    // Full stream event ordering is verified by integration/e2e tests.
+    // Note: these cover the failure path only — full stream event ordering
+    // against a live process is verified by integration/e2e tests.
 
     test('runStream emits ExecutionStarted before error', () async {
       testShell.throwOnRun = true;
@@ -293,13 +308,13 @@ void main() {
     });
 
     test('StdOutChunk events not emitted when start fails', () async {
+      testShell.throwOnRun = true;
       final events = <ExecutionEvent>[];
       await broker.runStream(const ExecutionRequest(
         command: 'echo',
         arguments: ['data'],
       )).forEach(events.add);
 
-      // TestShell.start() throws, so no stdout chunks
       final stdoutEvents = events.whereType<StdOutChunk>().toList();
       expect(stdoutEvents.isEmpty, true);
     });
@@ -317,14 +332,15 @@ void main() {
     });
 
     test('ExecutionExited not emitted when start fails (gets Error instead)', () async {
+      testShell.throwOnRun = true;
       final events = <ExecutionEvent>[];
       await broker.runStream(const ExecutionRequest(
         command: 'echo',
         arguments: ['done'],
       )).forEach(events.add);
 
-      // Last event is ExecutionError because TestShell.start() throws
       expect(events.last, isA<ExecutionError>());
+      expect(events.whereType<ExecutionExited>().isEmpty, true);
     });
   });
 

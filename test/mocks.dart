@@ -226,17 +226,45 @@ class MockProcess implements Process {
   final int _exitCode;
   final String _stdout;
   final String _stderr;
+  final Completer<int> _exited = Completer<int>();
+  Timer? _exitTimer;
 
-  MockProcess({int exitCode = 0, String stdout = '', String stderr = ''})
-      : _exitCode = exitCode,
+  /// How many times [kill] was called. `ExecutionBroker.run()` must reap a
+  /// timed-out child exactly once, so tests assert on this.
+  int killCount = 0;
+
+  /// The signal handed to the last [kill] call, if any.
+  ProcessSignal? lastKillSignal;
+
+  /// When set, the process stays alive for [delay] before exiting — the shape
+  /// of a hung command. [kill] cuts it short.
+  MockProcess({
+    int exitCode = 0,
+    String stdout = '',
+    String stderr = '',
+    Duration? delay,
+  })  : _exitCode = exitCode,
         _stdout = stdout,
-        _stderr = stderr;
+        _stderr = stderr {
+    if (delay == null) {
+      _exited.complete(exitCode);
+    } else {
+      _exitTimer = Timer(delay, () {
+        if (!_exited.isCompleted) _exited.complete(_exitCode);
+      });
+    }
+  }
 
   @override
-  Future<int> get exitCode => Future.value(_exitCode);
+  Future<int> get exitCode => _exited.future;
 
   @override
   bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    killCount++;
+    lastKillSignal = signal;
+    _exitTimer?.cancel();
+    if (_exited.isCompleted) return false;
+    _exited.complete(-1);
     return true;
   }
 

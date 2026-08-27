@@ -9,6 +9,8 @@ import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
+import 'mocks.dart';
+
 /// A minimal mock shell that returns configurable results.
 class TestShell implements Shell {
   String stdoutData = '';
@@ -47,9 +49,17 @@ class TestShell implements Shell {
       bool includeParentEnvironment = true,
       ProcessStartMode mode = ProcessStartMode.inheritStdio,
       bool runInShell = false}) async {
+    if (throwOnRun) throw Exception('shell error');
     lastCommand = [executable, ...arguments];
     allCommands.add([executable, ...arguments]);
-    throw UnsupportedError('start not implemented in TestShell');
+    // ExecutionBroker.run() goes through start() so it owns a killable handle;
+    // startPersistent() uses the same entry point for keep-alive sessions.
+    return MockProcess(
+      exitCode: exitCode,
+      stdout: stdoutData,
+      stderr: stderrData,
+      delay: artificialDelay,
+    );
   }
 
   void reset() {
