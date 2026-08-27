@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
+import 'package:wsl2distromanager/nav/router.dart';
 import 'list_item.dart';
 import 'helpers.dart';
 
@@ -92,7 +93,7 @@ class DistroListState extends State<DistroList> {
                     bottom: 20,
                     child: FilledButton(
                       onPressed: () {
-                        createDialog();
+                        router.pushNamed('addinstance');
                       },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

@@ -4,7 +4,6 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/dialogs/create_dialog.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/dialogs/mount_dialog.dart';
 import 'package:wsl2distromanager/nav/linkaction.dart';
@@ -64,7 +63,9 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('addinstance-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      createDialog();
+      if (router.state.uri.toString() != '/addinstance') {
+        router.pushNamed('addinstance');
+      }
     },
   ),
   PaneItem(

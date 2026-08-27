@@ -6,6 +6,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 import 'package:wsl2distromanager/screens/ai_workspace_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
+import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
 import 'package:wsl2distromanager/screens/license_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
@@ -70,6 +71,13 @@ final router = GoRouter(
           path: '/ai-workspace',
           name: 'ai-workspace',
           builder: (context, state) => const AiWorkspacePage(),
+        ),
+
+        /// Create a new instance
+        GoRoute(
+          path: '/addinstance',
+          name: 'addinstance',
+          builder: (context, state) => const CreatePage(),
         ),
       ],
     ),
