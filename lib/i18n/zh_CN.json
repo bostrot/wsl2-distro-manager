@@ -361,6 +361,7 @@
   "ai-workspace-pro-required-text": "AI Workspace 是 Pro 功能。升级后即可在独立隔离环境中运行 Hermes Agent、OpenClaw 和 Open WebUI。",
   "ai-workspace-preparing-text": "正在设置 AI workspace 环境(可能需要几分钟)...",
   "ai-workspace-docker-setup-text": "正在 AI workspace 中安装 Docker(可能需要几分钟)...",
+  "ai-workspace-docker-unavailable-text": "Docker 未在 AI workspace 中运行，因此无法检查工具状态。",
   "ai-workspace-pulling-image-text": "正在下载 %s 镜像...",
   "ai-workspace-installing-text": "正在安装 %s...",
   "ai-workspace-install-success-text": "%s 安装成功",

@@ -26,6 +26,8 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   final Set<AiWorkspaceTool> _busyTools = {};
   // Each tool clears independently as its own check resolves.
   final Set<AiWorkspaceTool> _checkingTools = {...AiWorkspaceTool.values};
+  // Re-attaches this page to an install that a previous instance started.
+  Timer? _installWatch;
 
   bool get _isPro {
     try {
@@ -55,10 +57,39 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     }
   }
 
+  @override
+  void dispose() {
+    _installWatch?.cancel();
+    super.dispose();
+  }
+
+  /// An install started before this page was rebuilt is still running in the
+  /// service. Poll until it finishes so the card stops showing progress and
+  /// picks up the real status.
+  void _watchOngoingInstalls() {
+    final ongoing = AiWorkspaceTool.values.where(_service.isInstalling).toSet();
+    if (ongoing.isEmpty) return;
+    _installWatch?.cancel();
+    _installWatch = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final finished = ongoing.where((t) => !_service.isInstalling(t)).toSet();
+      if (finished.isEmpty) return;
+      timer.cancel();
+      for (final tool in finished) {
+        await _service.refreshStatus(tool);
+      }
+      if (mounted) setState(() {});
+    });
+  }
+
   Future<void> _initService() async {
     if (_service.toolStates.isEmpty) {
       _service.seedToolStates();
     }
+    _watchOngoingInstalls();
 
     try {
       await _service.ensureDistro();
@@ -106,7 +137,16 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   Future<void> _handleInstall(AiWorkspaceTool tool) async {
     if (!context.mounted) return;
-    setState(() => _busyTools.add(tool));
+    setState(() {
+      // Drop the previous failure so a retry does not render under a stale
+      // error message.
+      final state = _service.getState(tool);
+      if (state?.status == ToolStatus.error) {
+        state?.errorMessage = null;
+        state?.status = ToolStatus.notInstalled;
+      }
+      _busyTools.add(tool);
+    });
     try {
       await _service.install(tool);
     } finally {
@@ -149,10 +189,16 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
         Notify.message('ai-workspace-dashboard-failed-text'.i18n());
         return;
       }
+      // No canLaunchUrl gate: on Windows it reports false for perfectly
+      // launchable http URLs, which is what made a healthy dashboard look
+      // unreachable. Every other launch site in this app calls launchUrl
+      // directly for the same reason.
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
+      try {
+        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          Notify.message('ai-workspace-dashboard-failed-text'.i18n());
+        }
+      } catch (_) {
         Notify.message('ai-workspace-dashboard-failed-text'.i18n());
       }
     } finally {
@@ -361,7 +407,14 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
     final isChecking = _checkingTools.contains(tool);
     final statusColor = _statusToColor(state?.status);
-    final isBusy = _busyTools.contains(tool);
+    // The service, not this page, owns install progress: the page is rebuilt
+    // from scratch when the user navigates away and back, but the install
+    // keeps running.
+    final isBusy = _busyTools.contains(tool) || _service.isInstalling(tool);
+    // `error` means the last attempt failed, not that the tool is present —
+    // a retry has to stay reachable.
+    final canInstall = state?.status == ToolStatus.notInstalled ||
+        state?.status == ToolStatus.error;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -407,13 +460,16 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             Row(
               children: [
                 _buildAction(
-                  label: state?.status == ToolStatus.notInstalled
-                      ? 'install-text'.i18n()
+                  // A failed install leaves the tool in `error`, which is not
+                  // "installed" — labelling it that way and greying the
+                  // button out strands the user with no way to try again.
+                  label: canInstall
+                      ? (state?.status == ToolStatus.error
+                          ? 'retry-text'.i18n()
+                          : 'install-text'.i18n())
                       : 'installed-text'.i18n(),
-                  enabled: state?.status == ToolStatus.notInstalled &&
-                      !isBusy &&
-                      !isChecking,
-                  busy: isBusy && state?.status == ToolStatus.notInstalled,
+                  enabled: canInstall && !isBusy && !isChecking,
+                  busy: isBusy && canInstall,
                   onPressed: () => _handleInstall(tool),
                 ),
                 const SizedBox(width: 8),

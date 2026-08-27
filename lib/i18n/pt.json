@@ -362,6 +362,7 @@
   "ai-workspace-pro-required-text": "AI Workspace é um recurso Pro. Atualize para executar o Hermes Agent, o OpenClaw e o Open WebUI em seu próprio ambiente isolado.",
   "ai-workspace-preparing-text": "Configurando o ambiente do AI Workspace (isso pode levar alguns minutos)...",
   "ai-workspace-docker-setup-text": "Instalando o Docker no AI Workspace (isso pode levar alguns minutos)...",
+  "ai-workspace-docker-unavailable-text": "O Docker não está em execução no AI Workspace, portanto não foi possível verificar o status das ferramentas.",
   "ai-workspace-pulling-image-text": "Baixando a imagem do %s...",
   "ai-workspace-installing-text": "Instalando %s...",
   "ai-workspace-install-success-text": "%s instalado com sucesso",

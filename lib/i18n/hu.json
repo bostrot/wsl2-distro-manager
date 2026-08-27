@@ -360,6 +360,7 @@
   "ai-workspace-pro-required-text": "Az AI Workspace egy Pro funkció. Frissítsen, hogy a Hermes Agentet, az OpenClaw-ot és az Open WebUI-t saját elszigetelt környezetben futtathassa.",
   "ai-workspace-preparing-text": "AI workspace környezet beállítása (ez néhány percet igénybe vehet)...",
   "ai-workspace-docker-setup-text": "Docker telepítése az AI workspace-ben (ez néhány percet igénybe vehet)...",
+  "ai-workspace-docker-unavailable-text": "A Docker nem fut az AI workspace-ben, ezért az eszközök állapota nem ellenőrizhető.",
   "ai-workspace-pulling-image-text": "%s image letöltése...",
   "ai-workspace-installing-text": "%s telepítése...",
   "ai-workspace-install-success-text": "%s sikeresen telepítve",

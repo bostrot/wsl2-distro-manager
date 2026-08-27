@@ -360,6 +360,7 @@
   "ai-workspace-pro-required-text": "AI Workspace bir Pro özelliğidir. Hermes Agent, OpenClaw ve Open WebUI'yi kendi yalıtılmış ortamında çalıştırmak için yükseltin.",
   "ai-workspace-preparing-text": "AI workspace ortamı hazırlanıyor (birkaç dakika sürebilir)...",
   "ai-workspace-docker-setup-text": "AI workspace içine Docker yükleniyor (birkaç dakika sürebilir)...",
+  "ai-workspace-docker-unavailable-text": "AI workspace içinde Docker çalışmıyor, bu nedenle araç durumu denetlenemedi.",
   "ai-workspace-pulling-image-text": "%s imajı indiriliyor...",
   "ai-workspace-installing-text": "%s yükleniyor...",
   "ai-workspace-install-success-text": "%s başarıyla yüklendi",

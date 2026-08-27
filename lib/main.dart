@@ -185,8 +185,10 @@ class WSLManager extends StatelessWidget {
         Provider<ExecutionBroker>.value(
           value: broker,
         ),
-        Provider<AiWorkspaceService>.value(
-          value: workspaceService,
+        Provider<AiWorkspaceService>(
+          create: (_) => workspaceService,
+          // Releases the held WSL session so the distro can shut down.
+          dispose: (_, service) => service.dispose(),
         ),
       ],
       builder: (context, _) {
