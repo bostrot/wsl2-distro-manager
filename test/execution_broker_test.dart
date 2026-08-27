@@ -210,14 +210,18 @@ void main() {
     });
 
     test('audit log accumulates entries', () async {
-      await broker.run(const ExecutionRequest(command: 'echo', arguments: ['a']));
-      await broker.run(const ExecutionRequest(command: 'ls', arguments: ['-la']));
-      await broker.run(const ExecutionRequest(command: 'cat', arguments: ['/etc/hostname']));
+      await broker
+          .run(const ExecutionRequest(command: 'echo', arguments: ['a']));
+      await broker
+          .run(const ExecutionRequest(command: 'ls', arguments: ['-la']));
+      await broker.run(
+          const ExecutionRequest(command: 'cat', arguments: ['/etc/hostname']));
       expect(broker.auditLog.length, 3);
     });
 
     test('clearAuditLog empties history', () async {
-      await broker.run(const ExecutionRequest(command: 'echo', arguments: ['test']));
+      await broker
+          .run(const ExecutionRequest(command: 'echo', arguments: ['test']));
       expect(broker.auditLog.length, 1);
       broker.clearAuditLog();
       expect(broker.auditLog.isEmpty, true);
@@ -478,10 +482,12 @@ void main() {
     test('runStream emits ExecutionStarted before error', () async {
       testShell.throwOnRun = true;
       final events = <ExecutionEvent>[];
-      await broker.runStream(const ExecutionRequest(
-        command: 'echo',
-        arguments: ['streaming'],
-      )).forEach(events.add);
+      await broker
+          .runStream(const ExecutionRequest(
+            command: 'echo',
+            arguments: ['streaming'],
+          ))
+          .forEach(events.add);
 
       expect(events.first, isA<ExecutionStarted>());
     });
@@ -489,10 +495,12 @@ void main() {
     test('StdOutChunk events not emitted when start fails', () async {
       testShell.throwOnRun = true;
       final events = <ExecutionEvent>[];
-      await broker.runStream(const ExecutionRequest(
-        command: 'echo',
-        arguments: ['data'],
-      )).forEach(events.add);
+      await broker
+          .runStream(const ExecutionRequest(
+            command: 'echo',
+            arguments: ['data'],
+          ))
+          .forEach(events.add);
 
       final stdoutEvents = events.whereType<StdOutChunk>().toList();
       expect(stdoutEvents.isEmpty, true);
@@ -500,23 +508,28 @@ void main() {
 
     test('ExecutionStarted event has correct metadata', () async {
       final events = <ExecutionEvent>[];
-      await broker.runStream(const ExecutionRequest(
-        command: 'test-cmd',
-        arguments: ['arg1', 'arg2'],
-      )).forEach(events.add);
+      await broker
+          .runStream(const ExecutionRequest(
+            command: 'test-cmd',
+            arguments: ['arg1', 'arg2'],
+          ))
+          .forEach(events.add);
 
       final started = events.first as ExecutionStarted;
       expect(started.command, 'test-cmd');
       expect(started.arguments, ['arg1', 'arg2']);
     });
 
-    test('ExecutionExited not emitted when start fails (gets Error instead)', () async {
+    test('ExecutionExited not emitted when start fails (gets Error instead)',
+        () async {
       testShell.throwOnRun = true;
       final events = <ExecutionEvent>[];
-      await broker.runStream(const ExecutionRequest(
-        command: 'echo',
-        arguments: ['done'],
-      )).forEach(events.add);
+      await broker
+          .runStream(const ExecutionRequest(
+            command: 'echo',
+            arguments: ['done'],
+          ))
+          .forEach(events.add);
 
       expect(events.last, isA<ExecutionError>());
       expect(events.whereType<ExecutionExited>().isEmpty, true);
@@ -545,10 +558,12 @@ void main() {
     test('runStream() emits ExecutionError on shell exception', () async {
       testShell.throwOnRun = true;
       final events = <ExecutionEvent>[];
-      await broker.runStream(const ExecutionRequest(
-        command: 'bad',
-        arguments: [],
-      )).forEach(events.add);
+      await broker
+          .runStream(const ExecutionRequest(
+            command: 'bad',
+            arguments: [],
+          ))
+          .forEach(events.add);
 
       expect(events.first, isA<ExecutionStarted>());
       expect(events.any((e) => e is ExecutionError), true);

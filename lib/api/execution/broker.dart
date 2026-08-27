@@ -11,9 +11,19 @@ import 'models.dart';
 
 /// Default list of commands considered safe for read-only mode.
 const List<String> _defaultReadOnlyAllowList = [
-  'cat', 'ls', 'pwd', 'echo', 'id', 'whoami',
-  'uname', 'hostname', 'df', 'du', 'free',
-  'wsl', 'docker',
+  'cat',
+  'ls',
+  'pwd',
+  'echo',
+  'id',
+  'whoami',
+  'uname',
+  'hostname',
+  'df',
+  'du',
+  'free',
+  'wsl',
+  'docker',
 ];
 
 /// Central execution broker.
@@ -56,7 +66,8 @@ class ExecutionBroker {
 
   /// Returns true when the command is a WSL invocation that produces UTF-16LE output.
   static bool _isWslCommand(String command) {
-    return command.toLowerCase() == 'wsl' || command.toLowerCase().endsWith('wsl.exe');
+    return command.toLowerCase() == 'wsl' ||
+        command.toLowerCase().endsWith('wsl.exe');
   }
 
   /// Decode with the platform encoding, mirroring the `systemEncoding` that
@@ -98,7 +109,8 @@ class ExecutionBroker {
 
   void _checkPolicy(ExecutionRequest request) {
     // Allowed-commands whitelist
-    if (request.allowedCommands != null && request.allowedCommands!.isNotEmpty) {
+    if (request.allowedCommands != null &&
+        request.allowedCommands!.isNotEmpty) {
       if (!request.allowedCommands!.contains(request.command)) {
         throw Exception(
           'Command "${request.command}" is not in the allowed list',
@@ -107,7 +119,8 @@ class ExecutionBroker {
     }
 
     // Read-only mode blocks known-writable commands
-    if (request.readOnly && !_defaultReadOnlyAllowList.contains(request.command)) {
+    if (request.readOnly &&
+        !_defaultReadOnlyAllowList.contains(request.command)) {
       final lower = request.command.toLowerCase();
       if (lower.contains('install') ||
           lower.contains('remove') ||
@@ -319,7 +332,8 @@ class ExecutionBroker {
           await stdoutSub.cancel();
           await stderrSub.cancel();
 
-          final severity = exitCode == 0 ? AuditSeverity.info : AuditSeverity.error;
+          final severity =
+              exitCode == 0 ? AuditSeverity.info : AuditSeverity.error;
 
           controller.add(ExecutionExited(
             exitCode: exitCode,
