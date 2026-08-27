@@ -224,8 +224,8 @@ class MockShell implements Shell {
 
 class MockProcess implements Process {
   final int _exitCode;
-  final String _stdout;
-  final String _stderr;
+  final List<List<int>> _stdoutChunks;
+  final List<List<int>> _stderrChunks;
   final Completer<int> _exited = Completer<int>();
   Timer? _exitTimer;
 
@@ -238,14 +238,21 @@ class MockProcess implements Process {
 
   /// When set, the process stays alive for [delay] before exiting — the shape
   /// of a hung command. [kill] cuts it short.
+  ///
+  /// [stdoutChunks]/[stderrChunks] override the [stdout]/[stderr] strings and
+  /// emit raw bytes in as many stream events as they contain, so tests can pin
+  /// that a reader buffers the bytes before decoding rather than decoding each
+  /// chunk on its own (a multi-byte sequence can straddle a chunk boundary).
   MockProcess({
     int exitCode = 0,
     String stdout = '',
     String stderr = '',
+    List<List<int>>? stdoutChunks,
+    List<List<int>>? stderrChunks,
     Duration? delay,
   })  : _exitCode = exitCode,
-        _stdout = stdout,
-        _stderr = stderr {
+        _stdoutChunks = stdoutChunks ?? _asChunks(stdout),
+        _stderrChunks = stderrChunks ?? _asChunks(stderr) {
     if (delay == null) {
       _exited.complete(exitCode);
     } else {
@@ -254,6 +261,9 @@ class MockProcess implements Process {
       });
     }
   }
+
+  static List<List<int>> _asChunks(String text) =>
+      text.isEmpty ? const <List<int>>[] : <List<int>>[utf8.encode(text)];
 
   @override
   Future<int> get exitCode => _exited.future;
@@ -272,15 +282,13 @@ class MockProcess implements Process {
   int get pid => 123;
 
   @override
-  Stream<List<int>> get stderr =>
-      _stderr.isEmpty ? const Stream.empty() : Stream.value(utf8.encode(_stderr));
+  Stream<List<int>> get stderr => Stream.fromIterable(_stderrChunks);
 
   @override
   IOSink get stdin => IOSink(StreamController<List<int>>().sink);
 
   @override
-  Stream<List<int>> get stdout =>
-      _stdout.isEmpty ? const Stream.empty() : Stream.value(utf8.encode(_stdout));
+  Stream<List<int>> get stdout => Stream.fromIterable(_stdoutChunks);
 }
 
 class MockDockerImage extends DockerImage {

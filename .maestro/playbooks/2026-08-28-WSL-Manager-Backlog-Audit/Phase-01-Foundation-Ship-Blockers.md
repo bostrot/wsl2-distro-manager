@@ -61,10 +61,24 @@ These are measured facts from `SESSION-HANDOFF.md`, not guesses. Violating them 
   >
   > Not formatted: `dart format` would rewrap ~12 pre-existing lines in `broker.dart` and ~25 in the test file that this change never touched. New code was hand-checked to be format-stable, so the formatting pass at the end of this phase produces no surprises.
 
-- [ ] Update `test/execution_broker_test.dart` for the new execution path:
+- [x] Update `test/execution_broker_test.dart` for the new execution path:
   - ~~The existing mocks stub `Shell.run`; move them to `Shell.start` with a fake `Process` exposing stdout/stderr streams, `exitCode` and `kill()`~~ — **already done** by the broker task above (see its note); the mock lives in `test/mocks.dart` as `MockProcess` and is used by both `execution_broker_test.dart` and `ai_workspace_service_test.dart`
   - Add a regression test proving a command that exceeds its timeout results in `kill()` being called on the child exactly once and a `TimeoutException` propagating to the caller
   - Add a test that stdout/stderr are still assembled correctly for both the WSL (raw bytes) and non-WSL (`systemEncoding`) branches
+
+  > **Done 2026-08-28.** Nine tests added in two new groups; `execution_broker_test.dart` goes 30 → 39, all green.
+  >
+  > **`ExecutionBroker timeout reaping`** — a 30s child against a 50ms timeout asserts `killCount == 1` and `lastKillSignal == sigterm` (SIGKILL escalation only fires when the child ignores the first signal, so a second kill here would be a bug, not thoroughness). A companion test pins where the `TimeoutException` surfaces: `run()` reports failures on the result rather than throwing, so it arrives as `result.error` with the message `Command timed out after 0s: wsl --list --verbose`, mirrored into `result.stderr` and `auditLog.last.errorMessage`. A third test guards the other direction — a command that finishes inside its timeout must have `killCount == 0`.
+  >
+  > **`ExecutionBroker output decoding`** — six tests over the `isWsl ? bytes : _decodeSystem(bytes)` split. WSL stdout *and* stderr decode `h\0e\0l\0l\0o\0` to `hello` (`utf8.encode` maps `'\u0000'` to one 0x00 byte, so the Dart string literal *is* the byte sequence wsl.exe writes); a full `C:\Windows\System32\wsl.exe` path takes the same branch; UTF-8 `café` bytes on a non-WSL command decode to whatever `systemEncoding` says rather than to UTF-8 — asserted against `systemEncoding.decode` itself so the test still holds on a UTF-8-codepage host, though on this machine the two genuinely differ (`cafÃ©` vs `café`), so the split is really pinned. Plus ASCII passthrough and empty-output cases.
+  >
+  > **Chunk assembly.** `MockProcess` emitted each stream as one `Stream.value`, which cannot show whether `run()` buffers bytes before decoding. It now takes optional `stdoutChunks`/`stderrChunks` (`List<List<int>>`, one stream event per entry) that override the string form; `TestShell` forwards them. A test splits the two UTF-8 bytes of `é` across two events and expects `é!` — per-chunk decoding would yield replacement characters. No new fake was added; `MockProcess` was extended, as it was for the broker task.
+  >
+  > **Mutation-checked, so the tests demonstrably bite.** Replacing `decodeWslOutput(isWsl ? bytes : _decodeSystem(bytes))` with `decodeWslOutput(bytes)` and deleting the `await _terminate(process)` call fails exactly two tests and no others (`Expected: <1> Actual: <0>` and `Expected: 'cafÃ©' Actual: 'café'`). `broker.dart` was restored byte-for-byte afterwards — `git status` confirms it is untouched.
+  >
+  > `flutter analyze` on both files: clean (the `override_on_non_overriding_member` warning now at `test/mocks.dart:339` is the same pre-existing one in `MockChunkedDownloader`, shifted by 8 lines). Full suite: **303 passing, 4 failing** — up from 294 passing, with the same four Pro-hack failures the next task removes (`license_manager_test.dart` × 3, `ai_service_test.dart` × 1). Log in `Working/full-test-run-task04.txt`.
+  >
+  > Not formatted, same reasoning as the broker task: `dart format` rewraps eight pre-existing lines in the `audit log accumulates entries` / `clearAuditLog` / `runStream` blocks that this change never touched. One new test name was shortened so that the formatter leaves every added line alone — verified by formatting in place and confirming the only changed ranges are the pre-existing ones. `mocks.dart` is already format-clean.
 
 - [ ] Remove the Pro test hack and replace it with a safe developer override:
   - Delete the unconditional `return true;` at the top of `_detectStoreInstall()` in `lib/api/license_manager.dart:64`

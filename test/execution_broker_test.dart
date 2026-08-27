@@ -1,5 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show ProcessResult, Process, ProcessStartMode;
+import 'dart:io'
+    show
+        Process,
+        ProcessResult,
+        ProcessSignal,
+        ProcessStartMode,
+        systemEncoding;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
@@ -14,6 +21,12 @@ class TestShell implements Shell {
   String stderrData = '';
   int exitCode = 0;
   Duration? artificialDelay;
+
+  /// Raw bytes to emit instead of [stdoutData]/[stderrData], one stream event
+  /// per entry. Lets a test hand the broker output that is not valid UTF-8, or
+  /// split a multi-byte sequence across two chunks.
+  List<List<int>>? stdoutChunks;
+  List<List<int>>? stderrChunks;
 
   List<String> lastCommand = [];
   List<List<String>> allCommands = [];
@@ -62,6 +75,8 @@ class TestShell implements Shell {
       exitCode: exitCode,
       stdout: stdoutData,
       stderr: stderrData,
+      stdoutChunks: stdoutChunks,
+      stderrChunks: stderrChunks,
       delay: artificialDelay,
     );
     return lastProcess!;
@@ -71,6 +86,8 @@ class TestShell implements Shell {
     lastCommand.clear();
     allCommands.clear();
     lastProcess = null;
+    stdoutChunks = null;
+    stderrChunks = null;
   }
 }
 
@@ -281,6 +298,168 @@ void main() {
         runInShell: true,
       ));
       expect(result.exitCode, 0);
+    });
+  });
+
+  group('ExecutionBroker timeout reaping', () {
+    late TestShell testShell;
+    late ExecutionBroker broker;
+
+    setUp(() {
+      testShell = TestShell();
+      broker = ExecutionBroker(shell: testShell);
+    });
+
+    // Regression: `Process.run` handed back no handle, so a timeout could only
+    // abandon the child. With list.dart re-polling every 5s that leaked 842
+    // orphaned wsl.exe processes on 2026-08-27.
+    test('a timed-out command is killed exactly once', () async {
+      testShell.artificialDelay = const Duration(seconds: 30);
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'wsl',
+        arguments: ['--list', '--verbose'],
+        timeout: Duration(milliseconds: 50),
+      ));
+
+      final process = testShell.lastProcess;
+      expect(process, isNotNull, reason: 'run() must go through Shell.start');
+      expect(process!.killCount, 1);
+      // SIGKILL escalation only happens when the child ignores the first
+      // signal; this one exits, so the polite signal is the only one sent.
+      expect(process.lastKillSignal, ProcessSignal.sigterm);
+      expect(result.exitCode, -1);
+    });
+
+    test('the TimeoutException reaches the caller', () async {
+      testShell.artificialDelay = const Duration(seconds: 30);
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'wsl',
+        arguments: ['--list', '--verbose'],
+        timeout: Duration(milliseconds: 50),
+      ));
+
+      // run() reports failures on the result rather than throwing, so the
+      // exception travels in `error` — callers need no try/catch.
+      expect(result.error, isA<TimeoutException>());
+      expect(
+        (result.error as TimeoutException).message,
+        contains('Command timed out after 0s: wsl --list --verbose'),
+      );
+      expect(result.stderr, contains('timed out'));
+      expect(result.auditSeverity, AuditSeverity.error);
+      expect(broker.auditLog.last.errorMessage, contains('timed out'));
+    });
+
+    test('a command inside its timeout is never killed', () async {
+      testShell.artificialDelay = const Duration(milliseconds: 20);
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'echo',
+        arguments: ['quick'],
+        timeout: Duration(seconds: 5),
+      ));
+
+      expect(result.exitCode, 0);
+      expect(testShell.lastProcess!.killCount, 0);
+    });
+  });
+
+  group('ExecutionBroker output decoding', () {
+    late TestShell testShell;
+    late ExecutionBroker broker;
+
+    // 'hello' the way wsl.exe writes it: UTF-16LE, so every ASCII byte is
+    // followed by a null. utf8.encode maps '\u0000' to a single 0x00 byte, so
+    // this string is exactly that byte sequence.
+    const utf16leHello = 'h\u0000e\u0000l\u0000l\u0000o\u0000';
+
+    setUp(() {
+      testShell = TestShell();
+      broker = ExecutionBroker(shell: testShell);
+    });
+
+    test('WSL stdout and stderr take the raw-bytes branch', () async {
+      testShell.stdoutData = utf16leHello;
+      testShell.stderrData = 'w\u0000a\u0000r\u0000n\u0000';
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'wsl',
+        arguments: ['--list', '--quiet'],
+      ));
+
+      expect(result.stdout, 'hello');
+      expect(result.stderr, 'warn');
+    });
+
+    test('a wsl.exe path is treated as WSL too', () async {
+      testShell.stdoutData = utf16leHello;
+
+      final result = await broker.run(const ExecutionRequest(
+        command: r'C:\Windows\System32\wsl.exe',
+        arguments: ['--list'],
+      ));
+
+      expect(result.stdout, 'hello');
+    });
+
+    test('WSL bytes are assembled before decoding, not per chunk', () async {
+      // 'é' is C3 A9 in UTF-8; the split puts one byte in each stream event.
+      // Decoding chunk-by-chunk would yield two replacement characters.
+      testShell.stdoutChunks = [
+        [0xC3],
+        [0xA9, 0x21],
+      ];
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'wsl',
+        arguments: ['-d', 'Ubuntu', 'echo'],
+      ));
+
+      expect(result.stdout, 'é!');
+    });
+
+    test('non-WSL output decodes with systemEncoding', () async {
+      // The old code expressed this split as
+      // `stdoutEncoding: isWsl ? null : systemEncoding`. Asserting against
+      // systemEncoding rather than a literal keeps the test honest on a host
+      // whose ANSI codepage is UTF-8, where both branches happen to agree.
+      final bytes = utf8.encode('café');
+      testShell.stdoutChunks = [bytes];
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'echo',
+        arguments: ['café'],
+      ));
+
+      expect(result.stdout, systemEncoding.decode(bytes));
+    });
+
+    test('non-WSL ASCII passes through unchanged', () async {
+      testShell.stdoutData = 'line one\nline two\n';
+      testShell.stderrData = 'a warning\n';
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'echo',
+        arguments: ['hi'],
+      ));
+
+      expect(result.stdout, 'line one\nline two\n');
+      expect(result.stderr, 'a warning\n');
+    });
+
+    test('empty output yields empty strings, not nulls', () async {
+      testShell.stdoutData = '';
+      testShell.stderrData = '';
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'true',
+        arguments: [],
+      ));
+
+      expect(result.stdout, '');
+      expect(result.stderr, '');
     });
   });
 
