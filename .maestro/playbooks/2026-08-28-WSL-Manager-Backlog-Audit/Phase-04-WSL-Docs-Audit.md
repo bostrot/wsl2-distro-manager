@@ -6,10 +6,50 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
 
 ## Tasks
 
-- [ ] Fetch the authoritative source material into scratch space (never into the repo tree):
+- [x] Fetch the authoritative source material into scratch space (never into the repo tree):
   - Clone `https://github.com/microsoftdocs/wsl` into `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/wsl-docs/` (shallow clone is fine)
   - Record the cloned commit SHA and date — every finding must cite it, so the audit stays falsifiable later
   - Identify the reference pages that matter: `wsl-config.md`, `basic-commands.md`, `filesystems.md`, `networking.md`, `disk-space.md`, `systemd.md`, `wsl-plugins.md`, `use-custom-distro.md`, `build-custom-distro.md`, the WSL Settings app page, and the release-notes/changelog pages
+
+  **Result (2026-08-28):** Cloned shallow (`--depth 1`) to
+  `Working/wsl-docs/` — 37 Markdown files, 83 MB, 1 commit.
+  **Citation string for every finding: `microsoftdocs/wsl@8842def (2026-07-30)`**
+  (full SHA `8842def77a852af26318b9ebec78063a94b068ed`, branch `main`, subject
+  "Removed workflow"). `.gitignore:72` (`.maestro/playbooks/**/Working/`) already
+  excludes the path — confirmed with `git check-ignore -v`, so the nested `.git`
+  does not reach the app repo's `git status`. Full provenance record, page
+  inventory with `ms.date` stamps, and the caveats below:
+  `Working/wsl-docs-source.md`.
+
+  Three things the task list assumed that do not hold, found while identifying
+  the pages — they change how the later tasks must be sourced:
+
+  1. **There is no WSL Settings app page.** Not in the repo, not in `WSL/toc.yml`.
+     The whole coverage is one callout at `wsl-config.md:216` ("It is recommended
+     to modify WSL configurations directly in WSL Settings…"). The `features.md`
+     finding for that surface must be researched against the shipping app or
+     `microsoft/WSL`, and must say so rather than cite a page that isn't there.
+  2. **Both changelog pages are dead and cannot supply the per-key minimum WSL
+     version.** `release-notes.md` stops at Windows Insider Build 21364 (2021);
+     `kernel-release-notes.md` stops at kernel 5.15.57.1 (2022);
+     `store-release-notes.md` is a 14-line stub pointing at
+     `https://github.com/microsoft/WSL/releases`. Use instead (a) the inline
+     version gates in `wsl-config.md`, which annotate the modern keys in prose,
+     and (b) the `microsoft/WSL` releases page for anything unannotated.
+  3. **`wsl2-mount-disk.md` is the real reference for the `--mount` flag family**
+     (`--vhd`, `--bare`, `--partition`, `--type`, `--options`, `--unmount`) and was
+     not named in the list. Added to the primary set. Also added as secondary
+     config surface to sweep: `enterprise.md` and `intune.md` (policy-controlled
+     `.wslconfig`), `case-sensitivity.md` and `file-permissions.md` (automount
+     `options=`), `troubleshooting.md` (the "requires `wsl --shutdown`" claims).
+     23 of the 37 pages contain a `wsl --<flag>` invocation; `wsl-exe-flags.md`
+     must sweep all 23, not just `basic-commands.md`.
+
+  One discrepancy surfaced early and is parked for `wslconfig-keys.md` rather than
+  resolved here: `networkingMode`'s documented values are
+  `none | nat | bridged | mirrored | virtioproxy` (`wsl-config.md:242`), with
+  `bridged` deprecated since WSL 2.4.5 and `virtioproxy` the NAT fallback since
+  2.3.25 — not the two-value `NAT | mirrored` this phase's brief assumes.
 
 - [ ] Extract the documented surface into machine-checkable inventories in `Working/`:
   - `wslconfig-keys.md` — every `[wsl2]`, `[experimental]` and other section key, with its type, default, minimum WSL version and one-line description
