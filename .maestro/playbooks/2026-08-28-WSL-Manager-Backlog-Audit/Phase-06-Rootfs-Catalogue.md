@@ -320,4 +320,57 @@
   > with a zero-byte body — see [[cdn-upload]]. The payload still needs pushing
   > by hand.
 
-- [ ] Run `flutter test` and `flutter analyze`, fix any fallout from importer changes, then commit the updated `images.json` plus any code fixes on `beta`. In the commit message, state explicitly that the CDN payload still needs to be pushed manually.
+- [x] Run `flutter test` and `flutter analyze`, fix any fallout from importer changes, then commit the updated `images.json` plus any code fixes on `beta`. In the commit message, state explicitly that the CDN payload still needs to be pushed manually.
+
+  **Done 2026-08-28** → [[catalogue-final-verification]]. Nothing needed fixing,
+  and nothing was changed — the tree is byte-identical to `cec8081`.
+
+  - **Gates, measured:** `flutter test` **708 pass / 0 fail** (exit 0);
+    `flutter analyze` 109 issues — **0 errors, 2 warnings, 107 infos**;
+    `dart run scripts/check_translations.dart` exit 0; `flutter test
+    integration_test/` **+17 −4**, the same four *load* failures (`Unable to
+    start the app on the device`) already recorded in
+    `phase-02-task05-integration.txt` and `phase-05-task06-integration.txt` —
+    this machine's debug-connection limitation, unchanged across three phases.
+  - **The analyze number was diffed against a real baseline, not reasoned
+    about.** `flutter analyze` exits 1 at *every* commit in this repo — 107
+    infos are enough to fail the bare exit code — so "109 issues" means nothing
+    on its own. `a1af143` (the last commit before phase 06) was checked out into
+    a throwaway worktree, `pub get`'d and analyzed under the same SDK: **108
+    issues**. Set-diffing the two normalised outputs gives **exactly one new
+    issue for the entire phase**, and nothing dropped:
+    `dangling_library_doc_comments` on the `///` file-header of the new
+    `test/rootfs_catalogue_test.dart`. No new error, no new warning, nothing in
+    `lib/`. Worktree removed; baseline kept as
+    `phase-06-task07-analyze-baseline.txt`.
+  - **Both warnings pre-date the phase, checked by hand rather than assumed.**
+    `lib/api/wsl.dart:1744 dead_null_aware_expression` looked like a candidate —
+    phase 06 rewrote 203 lines of that file — but `git show
+    a1af143:lib/api/wsl.dart` has the identical `compactResult.stdout ?? …` at
+    line 1594 on the remote-diskpart path; only the line number moved.
+    `test/mocks.dart:597` is in a file the phase never touched. The infos in
+    `docker_images.dart` and `create_dialog.dart` all sit outside every changed
+    hunk.
+  - **The one new lint was left in place deliberately, not overlooked.** The
+    canonical fix is a bare `library;`, and it **does not compile here**:
+    `pubspec.yaml` pins `sdk: ">=2.17.0 <4.0.0"`, so unnamed libraries (2.19+)
+    are off and adding it turned the info into a hard `experiment_not_enabled`
+    **error**. Reverted. Demoting `///` to `//` in this one file would make it
+    the odd one out against **eight sibling test files carrying the identical
+    lint** (`wsl_test`, `templates_test`, `safepaths_test`, …) without making
+    `flutter analyze` exit 0 either way; raising the SDK floor is a repo-wide
+    change unrelated to the catalogue. Phase 06 is +1 info and this is it.
+  - **No commit was needed for code.** Tasks 4 and 6 had already committed
+    everything — `images.json` in `2970c85`, the create-path fixes in `cec8081`
+    — and `beta` was already level with `origin/beta`. `Working/` is gitignored
+    (`.gitignore:72`), so the evidence logs stay local by design; this task
+    commits the playbook notes only.
+
+  > [!IMPORTANT]
+  > **The CDN payload still has to be pushed by hand.** This task did not do it
+  > and could not. `images.json` in the repo is the bundled *fallback*; at
+  > runtime the catalogue comes from
+  > `https://n8n.aachen.dev/webhook/cdn/images.json`, which still answers **200
+  > with a zero-byte body**. Until a maintainer uploads the payload from
+  > [[cdn-upload]], every online user gets the empty response and falls back to
+  > the bundled file. Green test output does not change this.
