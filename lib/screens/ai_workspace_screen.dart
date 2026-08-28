@@ -139,12 +139,9 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     if (!context.mounted) return;
     setState(() {
       // Drop the previous failure so a retry does not render under a stale
-      // error message.
-      final state = _service.getState(tool);
-      if (state?.status == ToolStatus.error) {
-        state?.errorMessage = null;
-        state?.status = ToolStatus.notInstalled;
-      }
+      // error message. install() does this too — doing it here as well is
+      // what makes the card update on the same frame as the button press.
+      _service.clearError(tool);
       _busyTools.add(tool);
     });
     try {
@@ -158,13 +155,30 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   Future<void> _handleStart(AiWorkspaceTool tool) async {
     if (!context.mounted) return;
-    setState(() => _busyTools.add(tool));
+    setState(() {
+      _service.clearError(tool);
+      _busyTools.add(tool);
+    });
     try {
       await _service.start(tool);
     } finally {
       if (context.mounted) {
         setState(() => _busyTools.remove(tool));
       }
+    }
+  }
+
+  /// A failed install or start holds the card until the user acknowledges it.
+  /// Dismissing releases it and asks WSL what the truth actually is.
+  Future<void> _handleDismissError(AiWorkspaceTool tool) async {
+    if (!context.mounted) return;
+    setState(() {
+      _service.clearError(tool);
+      _checkingTools.add(tool);
+    });
+    await _service.refreshStatus(tool);
+    if (mounted) {
+      setState(() => _checkingTools.remove(tool));
     }
   }
 
@@ -451,9 +465,26 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             ],
             if (state?.errorMessage != null) ...[
               const SizedBox(height: 4),
-              Text(
-                'Error: ${state!.errorMessage}',
-                style: TextStyle(color: Colors.red, fontSize: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Error: ${state!.errorMessage}',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                  // Without this a sticky failure has no way out: the status
+                  // probe deliberately leaves it alone until the user acts.
+                  Tooltip(
+                    message: 'close-text'.i18n(),
+                    child: IconButton(
+                      key: ValueKey('test-ai-dismiss-error-${tool.name}'),
+                      icon: const Icon(FluentIcons.cancel, size: 10),
+                      onPressed: () => _handleDismissError(tool),
+                    ),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: 12),

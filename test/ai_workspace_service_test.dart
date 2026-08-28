@@ -380,6 +380,118 @@ void main() {
         );
       });
 
+      test('a failed install keeps its error and message across a background '
+          'refresh', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'curl failed';
+        await service.install(AiWorkspaceTool.openClaw);
+
+        // The probe that follows an install would otherwise report a bare
+        // "missing" and wipe the only explanation the user ever gets.
+        testShell.exitCode = 0;
+        testShell.stderrData = '';
+        testShell.stdoutData = 'missing';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        final state = service.getState(AiWorkspaceTool.openClaw);
+        expect(state?.status, ToolStatus.error);
+        expect(state?.errorMessage, contains('curl failed'));
+        // The card still has to stop showing a spinner.
+        expect(state?.checked, true);
+        expect(state?.hasKnownStatus, true);
+      });
+
+      test('a sticky failure still leaves the tool installable, so Retry '
+          'works', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'curl failed';
+        await service.install(AiWorkspaceTool.openClaw);
+        testShell.stdoutData = 'missing';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+        expect(service.getState(AiWorkspaceTool.openClaw)?.status,
+            ToolStatus.error);
+
+        // Retry is the same install() call the UI's "Retry" button makes.
+        testShell.exitCode = 0;
+        testShell.stderrData = '';
+        testShell.stdoutData = '';
+        final retried = await service.install(AiWorkspaceTool.openClaw);
+
+        expect(retried, true);
+        final state = service.getState(AiWorkspaceTool.openClaw);
+        expect(state?.status, ToolStatus.stopped);
+        expect(state?.errorMessage, isNull);
+        expect(state?.errorSticky, false);
+      });
+
+      test('clearError() releases the tool back to the status probe',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'curl failed';
+        await service.install(AiWorkspaceTool.openClaw);
+
+        service.clearError(AiWorkspaceTool.openClaw);
+        expect(service.getState(AiWorkspaceTool.openClaw)?.errorMessage,
+            isNull);
+
+        testShell.exitCode = 0;
+        testShell.stderrData = '';
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        expect(service.getState(AiWorkspaceTool.openClaw)?.status,
+            ToolStatus.stopped);
+      });
+
+      test('a failed start is sticky too', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        service.getState(AiWorkspaceTool.hermesAgent)?.status =
+            ToolStatus.stopped;
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'gateway never bound';
+        await service.start(AiWorkspaceTool.hermesAgent);
+
+        testShell.exitCode = 0;
+        testShell.stderrData = '';
+        testShell.stdoutData = 'missing';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent);
+        expect(state?.status, ToolStatus.error);
+        expect(state?.errorMessage, contains('gateway never bound'));
+      });
+
+      test('a transient probe failure is not sticky — the next probe still '
+          'corrects it', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'some transient docker error';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+        expect(service.getState(AiWorkspaceTool.openWebUi)?.status,
+            ToolStatus.error);
+
+        testShell.exitCode = 0;
+        testShell.stderrData = '';
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        expect(service.getState(AiWorkspaceTool.openWebUi)?.status,
+            ToolStatus.running);
+      });
+
       test('installing Open WebUI prepares docker before pulling the image',
           () async {
         testShell.stdoutData = 'ai-workspace';

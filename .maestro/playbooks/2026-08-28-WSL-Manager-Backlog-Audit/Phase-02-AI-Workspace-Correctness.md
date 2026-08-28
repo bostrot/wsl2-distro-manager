@@ -6,10 +6,31 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
 
 ## Tasks
 
-- [ ] Preserve the failure reason after a failed install in `lib/api/ai_workspace/service.dart`:
+- [x] Preserve the failure reason after a failed install in `lib/api/ai_workspace/service.dart`:
   - Today the post-install `refreshStatus()` re-probe overwrites `error` with `notInstalled` and clears `errorMessage`, so the user never gets to read why the install failed
   - Keep the `error` state and its `errorMessage` sticky until the next explicit user action (retry, install, start or an explicit dismiss), rather than until the next background probe
   - Make sure the existing "Retry" affordance (added 2026-08-27, `error` counts as installable) still works from that sticky state
+
+  **Done (2026-08-28).** `ToolState.errorSticky` marks a failure that came from a
+  *user action*. `_recordActionFailure()` sets it on every install/start failure
+  path (including the `_ensureDockerReady()` ones); `refreshStatus()` returns
+  early when it is set, only flipping `checked`/`hasKnownStatus` so the card
+  still stops spinning. `clearError()` is the single release point and is called
+  by `install()`, `start()`, `stop()`, `uninstall()` and the new dismiss button;
+  it restores `status` from the last *confirmed* cached answer rather than
+  guessing, since an error is never persisted. A probe-produced error is
+  deliberately **not** sticky — a transient WSL hiccup must still be corrected by
+  the next probe (covered by a test). The screen's `_handleInstall` now calls
+  `_service.clearError(tool)` instead of hand-clearing the fields, so
+  `canInstall` still sees `error` and the "Retry" label/enabled state is
+  unchanged. Added an `X` (`FluentIcons.cancel`, reusing the existing
+  `close-text` key — no new i18n) next to the error line, keyed
+  `test-ai-dismiss-error-<tool>`, which clears and re-probes; without it a sticky
+  failure had no way out. Five tests added in `test/ai_workspace_service_test.dart`.
+  `flutter analyze` clean on the touched files, `flutter test` 313/313,
+  `flutter test integration_test/ai_workspace_test.dart -d windows` 17/17.
+  Note: `dart format` was **not** run — this repo predates the tall-style
+  formatter and reformatting these files produces ~80 lines of unrelated churn.
 
 - [ ] Clear the stale `installPath` in `refreshStatus()` when a tool resolves to `notInstalled`, so a card can no longer read "Not installed" while showing `Installed: cmd://openclaw` underneath. Check every place `installPath` is assigned and make `notInstalled` the single point that resets it.
 

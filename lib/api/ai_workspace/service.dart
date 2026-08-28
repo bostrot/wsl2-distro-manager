@@ -139,6 +139,13 @@ class ToolState {
   /// default — decides spinner vs. badge in the UI.
   bool hasKnownStatus;
 
+  /// [status] and [errorMessage] describe a failed *user action* and belong to
+  /// the user until they act again. [AiWorkspaceService.refreshStatus] leaves
+  /// a sticky failure alone; without this the probe that follows a failed
+  /// install replaces the reason with a bare "Not installed" before anyone
+  /// can read it. Cleared by [AiWorkspaceService.clearError].
+  bool errorSticky;
+
   ToolState({
     required this.tool,
     this.status = ToolStatus.notInstalled,
@@ -149,6 +156,7 @@ class ToolState {
     this.errorMessage,
     this.checked = false,
     this.hasKnownStatus = false,
+    this.errorSticky = false,
   });
 }
 
@@ -407,9 +415,39 @@ class AiWorkspaceService {
   // Lifecycle operations
   // -----------------------------------------------------------------------
 
+  /// Records a failed user action and makes it stick: [refreshStatus] will not
+  /// touch this tool again until [clearError] runs. A failed install used to
+  /// be erased by the very next background probe, which reported the tool as
+  /// plain `notInstalled` with no message.
+  void _recordActionFailure(AiWorkspaceTool tool, String? message) {
+    final state = _toolStates[tool];
+    if (state == null) return;
+    state.status = ToolStatus.error;
+    state.errorMessage = message;
+    state.errorSticky = true;
+  }
+
+  /// Hands the tool back to the status probe after a sticky failure. Every
+  /// explicit user action calls this — install, start, stop, and the UI's
+  /// dismiss affordance. [status] falls back to the last *confirmed* answer
+  /// rather than a guess, since an error is never cached.
+  void clearError(AiWorkspaceTool tool) {
+    final state = _toolStates[tool];
+    if (state == null) return;
+    state.errorMessage = null;
+    state.errorSticky = false;
+    if (state.status != ToolStatus.error) return;
+    final cached = _loadCachedStatus(tool);
+    state.status = (cached == null || cached == ToolStatus.error)
+        ? ToolStatus.notInstalled
+        : cached;
+  }
+
   /// Install a workspace tool.
   Future<bool> install(AiWorkspaceTool tool) async {
     if (_installing.contains(tool)) return false;
+    // An explicit retry owns the card again; the previous failure is history.
+    clearError(tool);
     _installing.add(tool);
     try {
       return await _install(tool);
@@ -426,8 +464,7 @@ class AiWorkspaceService {
       try {
         await _ensureDockerReady();
       } catch (e) {
-        _toolStates[tool]?.errorMessage = e.toString();
-        _toolStates[tool]?.status = ToolStatus.error;
+        _recordActionFailure(tool, e.toString());
         return false;
       }
     }
@@ -454,6 +491,7 @@ class AiWorkspaceService {
         state?.status = ToolStatus.stopped;
         state?.installPath = config.defaultInstallPath;
         state?.errorMessage = null;
+        state?.errorSticky = false;
         state?.checked = true;
         state?.hasKnownStatus = true;
         _persistConfirmedState(tool);
@@ -461,15 +499,13 @@ class AiWorkspaceService {
             'ai-workspace-install-success-text'.i18n([config.name]));
         return true;
       } else {
-        _toolStates[tool]?.errorMessage = result.stderr;
-        _toolStates[tool]?.status = ToolStatus.error;
+        _recordActionFailure(tool, result.stderr);
         Notify.message(
             'ai-workspace-install-failed-text'.i18n([config.name]));
         return false;
       }
     } catch (e) {
-      _toolStates[tool]?.errorMessage = e.toString();
-      _toolStates[tool]?.status = ToolStatus.error;
+      _recordActionFailure(tool, e.toString());
       Notify.message('ai-workspace-install-failed-text'.i18n([config.name]));
       return false;
     }
@@ -482,6 +518,10 @@ class AiWorkspaceService {
       return false;
     }
 
+    // An explicit start is a user action: it takes the card back from any
+    // sticky failure left by the previous attempt.
+    clearError(tool);
+
     await ensureDistro();
     // Must be held before the tool starts, or the distro tears the service
     // back down as soon as this call returns.
@@ -492,8 +532,7 @@ class AiWorkspaceService {
       try {
         await _ensureDockerReady();
       } catch (e) {
-        state.errorMessage = e.toString();
-        state.status = ToolStatus.error;
+        _recordActionFailure(tool, e.toString());
         return false;
       }
     }
@@ -513,20 +552,19 @@ class AiWorkspaceService {
         state.status = ToolStatus.running;
         state.lastStarted = DateTime.now();
         state.errorMessage = null;
+        state.errorSticky = false;
         state.checked = true;
         state.hasKnownStatus = true;
         _persistConfirmedState(tool);
         Notify.message('ai-workspace-started-text'.i18n([config.name]));
         return true;
       } else {
-        state.errorMessage = result.stderr;
-        state.status = ToolStatus.error;
+        _recordActionFailure(tool, result.stderr);
         Notify.message('ai-workspace-start-failed-text'.i18n([config.name]));
         return false;
       }
     } catch (e) {
-      state.errorMessage = e.toString();
-      state.status = ToolStatus.error;
+      _recordActionFailure(tool, e.toString());
       Notify.message('ai-workspace-start-failed-text'.i18n([config.name]));
       return false;
     }
@@ -534,6 +572,8 @@ class AiWorkspaceService {
 
   /// Stop a running tool instance.
   Future<bool> stop(AiWorkspaceTool tool) async {
+    // Another explicit action — releases any sticky failure for this tool.
+    clearError(tool);
     await ensureDistro();
     final config = _toolConfigs[tool]!;
     final request = ExecutionRequest(
@@ -568,6 +608,9 @@ class AiWorkspaceService {
     if (state != null && state.status == ToolStatus.running) {
       await stop(tool);
     }
+    // Explicit action, and the closing refreshStatus() below would otherwise
+    // be skipped while a sticky failure is showing.
+    clearError(tool);
 
     try {
       await ensureDistro(forUninstall: true);
@@ -639,6 +682,17 @@ class AiWorkspaceService {
     // mid-install reports "missing" and would persist notInstalled over a
     // download that is still running.
     if (_installing.contains(tool)) return;
+
+    // A failed install or start is the user's to read. This probe runs
+    // immediately afterwards and would report the tool as plain "not
+    // installed" with no message, so the reason it failed never reached the
+    // screen. Only an explicit action ([clearError]) hands the card back.
+    final failed = _toolStates[tool];
+    if (failed != null && failed.errorSticky) {
+      failed.checked = true;
+      failed.hasKnownStatus = true;
+      return;
+    }
 
     await ensureDistro();
     final config = _toolConfigs[tool]!;
