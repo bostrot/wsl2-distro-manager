@@ -157,6 +157,20 @@ class MockShell implements Shell {
   // checks). Defaults large enough to pass move()'s size-safety check.
   int remoteFileSizeBytes = 10 * 1024 * 1024;
 
+  /// The remote `%UserProfile%\.wslconfig`, as the PowerShell probe sees it.
+  ///
+  /// This is the one `.wslconfig` transport a test can own: the local one
+  /// resolves through `%USERPROFILE%`, which a test process cannot move, so a
+  /// local round trip would be a round trip through the developer's own file.
+  /// Null is a host with no `.wslconfig` at all — which reads as an *empty*
+  /// config, never as a failure.
+  String? remoteWslConfigContents;
+
+  /// The remote write fails — a read-only profile, or a host that let the read
+  /// through and not the write. [WSLApi.writeWslConfig] has to report that
+  /// rather than assume it landed.
+  bool remoteWslConfigWriteFails = false;
+
   @override
   Future<ProcessResult> run(String executable, List<String> arguments,
       {String? workingDirectory,
@@ -340,6 +354,34 @@ class MockShell implements Shell {
         arguments.isNotEmpty &&
         arguments.last.contains('Get-Item')) {
       stdout = remoteFileSizeBytes.toString();
+    }
+
+    // WSLApi._readRemoteWslConfigText / _writeRemoteWslConfigText. The whole
+    // file crosses the wire inside a PowerShell **single-quoted** string
+    // literal, so the doubled `''` is undone here on the way in: a writer that
+    // stopped escaping would land a truncated script rather than the value.
+    if (arguments.contains('-Command') &&
+        arguments.isNotEmpty &&
+        arguments.last.contains('.wslconfig')) {
+      final String script = arguments.last;
+      const String writeMarker = "WriteAllText(\$p, '";
+      const String writeSuffix = "', [Text.UTF8Encoding]::new(\$false))";
+
+      if (script.contains(writeMarker)) {
+        if (remoteWslConfigWriteFails) {
+          stderr = 'Access to the path is denied.';
+          exitCode = 1;
+        } else {
+          final start = script.indexOf(writeMarker) + writeMarker.length;
+          final end = script.lastIndexOf(writeSuffix);
+          remoteWslConfigContents =
+              script.substring(start, end).replaceAll("''", "'");
+        }
+      } else if (script.contains('Get-Content')) {
+        // `Get-Content -Raw` on a file that is not there prints nothing, and
+        // the `if (Test-Path …)` around it keeps the exit code at 0.
+        stdout = remoteWslConfigContents ?? '';
+      }
     }
 
     if (arguments.contains('--unregister')) {

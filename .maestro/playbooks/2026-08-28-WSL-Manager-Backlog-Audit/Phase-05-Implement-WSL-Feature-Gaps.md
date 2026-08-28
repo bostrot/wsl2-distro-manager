@@ -410,10 +410,72 @@ Every setting added must be gated on the minimum WSL version recorded in the aud
     the four touched files were left in their own style and only the added hunks were
     written to match it.
 
-- [ ] Write tests for the new surface:
+- [x] Write tests for the new surface:
   - Extend `test/wsl_test.dart` for `.wslconfig` and `wsl.conf` read/write round-trips of the new keys, including quoting and unusual values
   - Add tests for any new `wsl.exe` command construction (argument order, flags, timeout)
   - Add tests that version-gated settings are hidden below their minimum WSL version
+
+  **Done 2026-08-28.** 17 new tests — `flutter test` **692 passing** (was 675) — and no
+  production code changed, which is the point: this task is the one that finds out whether the
+  previous five shipped what they claimed.
+
+  - **`.wslconfig` had no API-layer round trip at all.** `test/wslconfig_test.dart`'s 42 tests
+    exercise the *model*, and the three tests already in `wsl_test.dart` pin routing decisions
+    against a `WslConfigFile` built in the test itself — nothing went through
+    `readWslConfig` → mutate → `writeWslConfig` → `readWslConfig`. The new
+    `.wslconfig round trips through the API (P05-02)` group (8 tests) does, over the
+    **remote** transport, which is the only `.wslconfig` a test can own: the local path
+    resolves through `%USERPROFILE%`, a test process cannot move that, and a suite that
+    rewrites the developer's own `.wslconfig` is not one anybody runs twice. It is also the
+    transport with quoting in it — the whole file crosses the wire inside a PowerShell
+    single-quoted literal — so it covers the half the model cannot be asked about. All 27
+    documented keys round-trip into the section WSL reads them from and out of the other one;
+    `memory=8589934592`, `swap=0`, `processors=64`, `defaultVhdSize`, `vmIdleTimeout`,
+    `mirrored` and `dropCache` are written as typed; a `C:\Program Files\…` path is escaped
+    **exactly once** and read back as the user picked it; a hand-edited CRLF file with a
+    comment, a lower-case `swapfile` and an `[experimental]` section comes back
+    byte-identical apart from the edited line; `#memory = 4GB` does not absorb the write; and
+    a failed remote write is reported rather than assumed.
+  - **The mock grew a remote `.wslconfig`** (`remoteWslConfigContents`,
+    `remoteWslConfigWriteFails`) that undoes the PowerShell `''` doubling on the way in, so a
+    writer that stopped escaping lands a truncated script instead of a value — which is what
+    makes the quoting assertion mean something rather than pass by symmetry.
+  - **Four more `wsl.conf` tests** for what P05-03 and P05-13 added: the four keys this phase
+    made editable with the values they will really be given (including both `enabled` keys,
+    which differ only by section), a non-ASCII value through the base64 payload and back
+    through `utf8Convert`, a `#` inside a value staying a value, and a backslash *not* being
+    escaped — the two files share one model but not one dialect, and a doubled backslash here
+    would be a real path with a wrong name in it.
+  - **The timeout test covers every brokered verb now**, not seven of them: the three
+    remaining `--manage` options, `writeDistroFile`, `isExecutableInDistro`,
+    `readDistroFileList`, and `runVerb`'s 5-minute default. Its helper also asserts the audit
+    log **grew by one**, because reading `auditLog.last` after a call that never reached the
+    broker reads the *previous* verb's timeout — and two verbs sharing a number would have
+    made an unbrokered one look bounded. Argument order and flags were already pinned
+    (`--manage <distro>` before the option, `--set-sparse` unquoted, `--install --from-file`
+    with `--name`/`--location`/`--no-launch` in order, `--export --format`), so nothing was
+    duplicated there.
+  - **The version gates were tested at the wrong end.** Both widget gates were pinned against
+    the *inbox* build — the unknown-version case — so a version number was never actually
+    compared. Added: the disk dialog on a **known** 2.4.13, which is the version a lexical
+    compare reads as newer than 2.5, with an assertion that nothing reaches wsl.exe and not
+    merely that the buttons are grey; the dialog on exactly 2.5.0; the package screen on
+    exactly 2.4.4 and a below-floor push that runs no command; and `supportsWslPackages`'
+    boundary table, the app's one floor with a patch component, where a two-component `2.4`
+    and a lexical `2.4.10` both go wrong.
+  - **Mutation-checked, not just green.** Removing `escapeWslConfigPath`, removing the
+    PowerShell quote doubling and moving the package floor to 2.4.3 each failed exactly the
+    new test written for it and nothing else, so these assertions are load-bearing rather
+    than decorative. The three edits were reverted; `git status` shows five test files and no
+    `lib/` change.
+  - **Verification:** `flutter test` **692 passing**, 0 failures
+    (`Working/phase-05-task06-test-run.txt`). `flutter analyze` **108 issues, 0 errors** —
+    byte-identical to the baseline the previous two tasks recorded.
+    `dart run scripts/check_translations.dart` exit 0 (no user-facing strings were touched).
+    `flutter test integration_test/` is `+17 -4`
+    (`Working/phase-05-task06-integration.txt`), the same four "Unable to start the app on the
+    device" failures as the pre-existing baseline — no `lib/` code changed, so it could not
+    have moved.
 
 - [ ] Run `flutter test` and `flutter analyze`, fix all failures, then verify in the running app:
   - Open global settings, set and save each new `.wslconfig` key, and confirm the written `%USERPROFILE%\.wslconfig` matches exactly (read it back with PowerShell)

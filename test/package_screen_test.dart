@@ -105,6 +105,33 @@ void main() {
       expect(packageButton.onPressed, isNull);
     });
 
+    /// 2.4.4 is the documented floor itself (`build-custom-distro.md:16`), so
+    /// it is the version the gate has to let through rather than round up.
+    testWidgets('2.4.4 exactly is enough', (tester) async {
+      shell.wslVersionOutput = 'WSL version: 2.4.4.0';
+      await pump(tester);
+
+      expect(find.text('custompackageunsupported-text'), findsNothing);
+      final packageButton = tester.widget<FilledButton>(
+          find.byKey(const ValueKey('test-package-button')));
+      expect(packageButton.onPressed, isNotNull);
+    });
+
+    /// Disabled is only half of the gate: below the floor `--from-file` is an
+    /// invalid option and `--format` is ignored, so nothing may reach wsl.exe
+    /// no matter which control is pushed.
+    testWidgets('below the floor no packaging command runs', (tester) async {
+      shell.wslVersionOutput = _wsl243;
+      await pump(tester);
+
+      await tester.tap(find.byKey(const ValueKey('test-package-button')),
+          warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(shell.installCalls, isEmpty);
+      expect(shell.runCalls.any((call) => call.contains('--export')), false);
+    });
+
     testWidgets('2.6.3 offers them', (tester) async {
       await pump(tester);
 

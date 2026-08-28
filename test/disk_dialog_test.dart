@@ -119,6 +119,38 @@ void main() {
       expect(resize.onPressed, isNull);
     });
 
+    /// The inbox build above is the *unknown*-version case. A Store build
+    /// that is merely older answers `--version` perfectly well, and 2.4.13 is
+    /// the version a lexical compare reads as newer than 2.5.
+    testWidgets('a known pre-2.5 build is gated the same way', (tester) async {
+      mockShell.wslVersionOutput = 'WSL version: 2.4.13.0\n';
+      await pump(tester);
+
+      expect(find.text('requireswsl-text'), findsOneWidget);
+
+      for (final label in const ['setsparseon-text', 'setsparseoff-text']) {
+        final button = tester.widget<Button>(find
+            .ancestor(of: find.text(label), matching: find.byType(Button)));
+        expect(button.onPressed, isNull, reason: '$label is not gated');
+      }
+
+      // Disabled is only half of it: nothing may reach wsl.exe, because what
+      // an older wsl.exe answers is `Invalid command line option`.
+      await tester.enterText(find.byType(TextBox), '256');
+      await tester.tap(find.text('resizedisk-text').last);
+      await tester.pumpAndSettle();
+      expect(mockShell.manageCalls, isEmpty);
+    });
+
+    /// 2.5.0 exactly is the floor `disk-space.md:48-58` documents, so it is
+    /// the version the gate must let through rather than round down.
+    testWidgets('2.5.0 exactly is enough', (tester) async {
+      mockShell.wslVersionOutput = 'WSL version: 2.5.0.0\n';
+      await pump(tester);
+
+      expect(find.text('requireswsl-text'), findsNothing);
+    });
+
     testWidgets('offers the actions on WSL 2.5+', (tester) async {
       mockShell.wslVersionOutput = 'WSL version: 2.6.3.0\n';
       await pump(tester);

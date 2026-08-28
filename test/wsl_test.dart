@@ -526,6 +526,62 @@ systemd = true
       expect(config['boot']!['command'], 'echo a = b');
     });
 
+    /// The four keys P05-03 added, with the values they will actually be
+    /// given rather than a placeholder — `[user] default` is the one CC-6 is
+    /// about, and the other three are booleans whose section is their only
+    /// distinguishing feature (`enabled` belongs to two of them).
+    test('the keys this phase added take their real values', () async {
+      mockShell.wslConfContents = '';
+
+      expect(await wslApi.setSetting('Ubuntu', 'user', 'default', 'ada.love'),
+          true);
+      await wslApi.setSetting('Ubuntu', 'boot', 'protectBinfmt', 'false');
+      await wslApi.setSetting('Ubuntu', 'gpu', 'enabled', 'true');
+      await wslApi.setSetting('Ubuntu', 'time', 'useWindowsTimezone', 'false');
+      await wslApi.setSetting('Ubuntu', 'interop', 'enabled', 'false');
+
+      final config = await wslApi.getWSLConf('Ubuntu');
+      expect(config['user']!['default'], 'ada.love');
+      expect(config['boot']!['protectBinfmt'], 'false');
+      expect(config['gpu']!['enabled'], 'true');
+      expect(config['time']!['useWindowsTimezone'], 'false');
+      // Two sections, two keys spelled `enabled`, and neither may answer for
+      // the other.
+      expect(config['interop']!['enabled'], 'false');
+    });
+
+    test('a non-ASCII value survives the base64 payload', () async {
+      // The content goes in base64-encoded UTF-8 and comes back out through
+      // utf8Convert; a byte-oriented step anywhere in that chain shows up
+      // here before it shows up in a bug report.
+      mockShell.wslConfContents = '';
+      const value = "echo 'Grüße, 世界'";
+
+      await wslApi.setSetting('Ubuntu', 'boot', 'command', value);
+      expect((await wslApi.getWSLConf('Ubuntu'))['boot']!['command'], value);
+    });
+
+    test('a # inside a value is a value, not a comment', () async {
+      mockShell.wslConfContents = '';
+      const value = 'echo "#1 distro" > /tmp/motd';
+
+      await wslApi.setSetting('Ubuntu', 'boot', 'command', value);
+      expect((await wslApi.getWSLConf('Ubuntu'))['boot']!['command'], value);
+    });
+
+    test('a backslash in a wsl.conf value is not escaped', () async {
+      // The two files share one model but not one dialect: `.wslconfig`
+      // doubles backslashes because WSL's parser reads them as escapes (R-6),
+      // and `/etc/wsl.conf` takes the rest of the line verbatim. A value that
+      // came back doubled here would be a real path with a wrong name in it.
+      mockShell.wslConfContents = '';
+      const value = r'/mnt/c/Program\ Files/tool/run.sh';
+
+      await wslApi.setSetting('Ubuntu', 'boot', 'command', value);
+      expect(mockShell.wslConfContents, contains('command = $value'));
+      expect((await wslApi.getWSLConf('Ubuntu'))['boot']!['command'], value);
+    });
+
     test('every documented key round-trips through the writer', () async {
       mockShell.wslConfContents = '';
 
@@ -1060,6 +1116,177 @@ systemd = true
     });
   });
 
+  /// The same read → mutate → write → read round trip test/wslconfig_test.dart
+  /// makes against the model, but through [WSLApi] — so the transport is in
+  /// the loop as well as the parser.
+  ///
+  /// The remote target is the only `.wslconfig` transport a test can own: the
+  /// local one resolves through `%USERPROFILE%`, which a test process cannot
+  /// move, and a suite that writes the developer's own `.wslconfig` is not a
+  /// suite anyone can run twice. It is also the transport with quoting in it —
+  /// the whole file crosses the wire inside a PowerShell single-quoted string
+  /// literal — which is the half [WslConfigFile] cannot be asked about.
+  group('.wslconfig round trips through the API (P05-02)', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({
+        'DistroPath': defaultPath,
+        'UseRemoteWSL': true,
+        'RemoteWSLTarget': 'user@host',
+      });
+      prefs = await SharedPreferences.getInstance();
+      mockShell.remoteWslConfigContents = '';
+    });
+
+    tearDown(() async {
+      SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
+      prefs = await SharedPreferences.getInstance();
+    });
+
+    test('every documented key round-trips, in the section WSL reads it from',
+        () async {
+      for (final section in kWslConfigKeys.entries) {
+        for (final key in section.value) {
+          expect(await wslApi.setConfig(key, 'v-$key'), true,
+              reason: '$key could not be written');
+        }
+      }
+
+      final config = await wslApi.readWslConfig();
+      for (final section in kWslConfigKeys.entries) {
+        for (final key in section.value) {
+          expect(config!.get(section.key, key), 'v-$key',
+              reason: '[${section.key}] $key did not survive');
+          // R-4: an `[experimental]` key filed under `[wsl2]` is rejected and
+          // the setting stays off, with only a stderr line to say so.
+          final wrong = section.key == 'wsl2' ? 'experimental' : 'wsl2';
+          expect(config.get(wrong, key), isNull,
+              reason: '$key was also written to [$wrong]');
+        }
+      }
+      expect((await wslApi.readConfig()).length,
+          kWslConfigWsl2Keys.length + kWslConfigExperimentalKeys.length);
+    });
+
+    test('the unusual values the widgets can produce are written as typed',
+        () async {
+      // Every one of these is a value P05-01/P05-09/P05-11 made reachable and
+      // the old writer mangled or refused: a byte count too large for the
+      // slider, an explicit `0`, and the two enumerations.
+      const values = <String, String>{
+        'memory': '8589934592',
+        'swap': '0',
+        'processors': '64',
+        'defaultVhdSize': '1099511627776',
+        'vmIdleTimeout': '60000',
+        'networkingMode': 'mirrored',
+        'autoMemoryReclaim': 'dropCache',
+        'kernelCommandLine':
+            'cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1',
+      };
+
+      for (final entry in values.entries) {
+        await wslApi.setConfig(entry.key, entry.value);
+      }
+
+      final config = await wslApi.readConfig();
+      for (final entry in values.entries) {
+        expect(config[entry.key], entry.value,
+            reason: '${entry.key} was not written as typed');
+      }
+      // `0` is a value, not an absence: it is how the docs say to turn swap
+      // off, and an empty string would remove the key instead.
+      expect(mockShell.remoteWslConfigContents, contains('swap = 0'));
+    });
+
+    test('a picked Windows path crosses the wire escaped exactly once',
+        () async {
+      // R-6: a single backslash is `wsl: Ungültiges Escapezeichen` and the
+      // line is discarded, so every path the file picker produced used to be
+      // a dead line.
+      const picked = r'C:\Program Files\WSL\my kernel';
+      expect(await wslApi.setConfig('kernel', picked), true);
+
+      expect(mockShell.remoteWslConfigContents,
+          contains(r'kernel = C:\\Program Files\\WSL\\my kernel'));
+      expect((await wslApi.readConfig())['kernel'], picked,
+          reason: 'the user must see the path they picked, not the escaping');
+
+      // Saving again must not escape what is already escaped.
+      await wslApi.setConfig('kernel', picked);
+      expect(mockShell.remoteWslConfigContents,
+          contains(r'kernel = C:\\Program Files\\WSL\\my kernel'));
+    });
+
+    test('a single quote is escaped for PowerShell, not passed through',
+        () async {
+      const value = "init='/bin/sh -c id'";
+      expect(await wslApi.setConfig('kernelCommandLine', value), true);
+
+      // Unescaped, the quote closes the string literal the file is being
+      // carried in and the remainder is parsed as PowerShell code.
+      expect(mockShell.runCalls.last.last, contains("init=''/bin/sh -c id''"));
+      expect((await wslApi.readConfig())['kernelCommandLine'], value);
+    });
+
+    test('a hand-edited file keeps its comments, spelling and line endings',
+        () async {
+      const original = '# tuned by hand\r\n'
+          '[wsl2]\r\n'
+          'memory = 4GB\r\n'
+          'swapfile = C:\\\\Temp\\\\wsl.vhdx\r\n'
+          '\r\n'
+          '[experimental]\r\n'
+          'sparseVhd = true\r\n';
+      mockShell.remoteWslConfigContents = original;
+
+      expect(await wslApi.setConfig('memory', '8GB'), true);
+
+      // Only the edited line moves: the comment stays, the lower-case
+      // `swapfile` keeps its spelling rather than being appended a second
+      // time under the documented one (R-8), `[experimental]` stays where it
+      // is (R-4), and a Windows file stays CRLF.
+      expect(mockShell.remoteWslConfigContents,
+          original.replaceFirst('memory = 4GB', 'memory = 8GB'));
+
+      final config = await wslApi.readConfig();
+      expect(config['swapFile'], r'C:\Temp\wsl.vhdx');
+      expect(config['sparseVhd'], 'true');
+    });
+
+    test('a commented-out key does not absorb the write', () async {
+      // CC-5: the old writer's regex was unanchored, so `#memory=8GB` took
+      // the write and stayed commented out — the setting silently did
+      // nothing, on that boot and every later one.
+      mockShell.remoteWslConfigContents = '[wsl2]\n#memory = 4GB\n';
+
+      expect(await wslApi.setConfig('memory', '8GB'), true);
+
+      expect(mockShell.remoteWslConfigContents, contains('#memory = 4GB'));
+      expect(mockShell.remoteWslConfigContents, contains('memory = 8GB'));
+      expect((await wslApi.readConfig())['memory'], '8GB');
+    });
+
+    test('removeConfig deletes the line so the documented default applies',
+        () async {
+      mockShell.remoteWslConfigContents =
+          '[wsl2]\nmemory = 4GB\nguiApplications = false\n';
+
+      expect(await wslApi.removeConfig('guiApplications'), true);
+
+      expect(mockShell.remoteWslConfigContents, '[wsl2]\nmemory = 4GB\n');
+      expect((await wslApi.readConfig()).containsKey('guiApplications'), false,
+          reason: 'absent and false are different answers to the toggle');
+    });
+
+    test('a failed write is reported, not assumed', () async {
+      mockShell.remoteWslConfigContents = '[wsl2]\nmemory = 4GB\n';
+      mockShell.remoteWslConfigWriteFails = true;
+
+      expect(await wslApi.setConfig('memory', '8GB'), false);
+      expect(mockShell.remoteWslConfigContents, '[wsl2]\nmemory = 4GB\n');
+    });
+  });
+
   /// The in-distro file plumbing P05-24 generalised out of `readWSLConf` /
   /// `writeWSLConf`, plus the `/etc/wsl-distribution.conf` round trip built on
   /// top of it (doc/audit/wsl-docs/features.md F-8).
@@ -1178,7 +1405,13 @@ systemd = true
       // Read off the broker's own audit log, so this pins what was actually
       // requested rather than what the call site looks like.
       Future<Duration> lastTimeout(Future<void> Function() call) async {
+        final before = wslApi.executionBroker.auditLog.length;
         await call();
+        // Otherwise a call that never reached the broker reads the *previous*
+        // entry's timeout, and two verbs that happen to share a number make
+        // an unbrokered one look bounded.
+        expect(wslApi.executionBroker.auditLog.length, before + 1,
+            reason: 'the call did not go through the broker at all');
         return wslApi.executionBroker.auditLog.last.request.timeout;
       }
 
@@ -1204,6 +1437,38 @@ systemd = true
           await lastTimeout(
               () => wslApi.readDistroFile('Ubuntu', '/etc/os-release')),
           const Duration(seconds: 60));
+
+      // The other three `--manage` options are the same half-hour of work as
+      // the move: each of them copies or rewrites the whole VHD.
+      expect(await lastTimeout(() => wslApi.manageResize('Ubuntu', '256GB')),
+          const Duration(minutes: 30));
+      expect(await lastTimeout(() => wslApi.manageSetSparse('Ubuntu', true)),
+          const Duration(minutes: 30));
+      expect(
+          await lastTimeout(
+              () => wslApi.manageSetDefaultUser('Ubuntu', 'ada')),
+          const Duration(minutes: 30));
+
+      // The in-distro primitives are all sized for a distro that has to cold
+      // start to answer, not for the few hundred bytes they move.
+      mockShell.wslConfContents = '';
+      expect(
+          await lastTimeout(() =>
+              wslApi.writeDistroFile('Ubuntu', '/etc/wsl.conf', '[boot]\n')),
+          const Duration(seconds: 60));
+      expect(
+          await lastTimeout(
+              () => wslApi.isExecutableInDistro('Ubuntu', '/etc/oobe.sh')),
+          const Duration(seconds: 60));
+      expect(
+          await lastTimeout(() =>
+              wslApi.readDistroFileList('Ubuntu', const ['/etc/wsl.conf'])),
+          const Duration(seconds: 60));
+
+      // A verb that names no timeout still carries one: the point of routing
+      // everything through the broker is that nothing can wait forever.
+      expect(await lastTimeout(() => wslApi.runVerb(['--list', '--quiet'])),
+          const Duration(minutes: 5));
     });
 
     test('a wedged verb is killed, not abandoned', () async {

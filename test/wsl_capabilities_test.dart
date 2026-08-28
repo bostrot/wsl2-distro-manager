@@ -145,6 +145,22 @@ void main() {
       expect(at('2.5.0').supportsManage, true);
       expect(at('2.6.3.0').supportsManage, true);
     });
+
+    /// `build-custom-distro.md:16` states the floor in so many words — "This
+    /// guide only applies to WSL release 2.4.4 and higher" — and it is the
+    /// one floor in this app with a *patch* component, which is where a
+    /// two-component version and a lexical compare both go wrong.
+    test('.wsl packages are gated on 2.4.4', () {
+      expect(at('2.4.3.0').supportsWslPackages, false);
+      expect(at('2.4').supportsWslPackages, false,
+          reason: 'a missing patch component is patch 0, not "close enough"');
+      expect(at('2.4.4').supportsWslPackages, true);
+      expect(at('2.4.4.0').supportsWslPackages, true);
+      expect(at('2.4.10').supportsWslPackages, true,
+          reason: '10 > 4 component-wise, even though "10" < "4" as text');
+      expect(at('2.5.0').supportsWslPackages, true);
+      expect(const WslCapabilities().supportsWslPackages, false);
+    });
   });
 
   /// `disk-space.md:30`'s documented usage check. `-k` is used rather than `-h`
