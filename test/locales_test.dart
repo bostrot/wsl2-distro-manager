@@ -82,6 +82,9 @@ void main() {
     const auditKeys = [
       'settingdefault-text',
       'settingunset-text',
+      'settingoutofrange-text',
+      'settinginvalidsize-text',
+      'settinginvalidnumber-text',
       'defaultuserinfo-text',
       'wslconfrestart-text',
       'terminatedistro-text',

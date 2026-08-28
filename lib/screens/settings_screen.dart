@@ -13,11 +13,16 @@ import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/components/wsl_size.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/theme.dart';
 
-enum SettingsType { bool, text, size }
+/// How a `.wslconfig` key is rendered. One member per documented value type in
+/// `wsl-config.md`: `size` is byte-valued and carries an optional unit suffix,
+/// `number` is a plain count, and `enumeration` is a closed set of values that
+/// must not be typeable by hand (doc/audit/wsl-docs/ P05-09, P05-11).
+enum SettingsType { bool, text, size, number, enumeration }
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -1021,43 +1026,34 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'kernel',
             tooltip: 'absolutewindowspath-text'.i18n(),
-            placeholder: ''),
+            placeholder: '',
+            suffix: _filePickerSuffix('kernel')),
         settingsWidget(context,
             title: 'kernelModules',
             tooltip: 'kernelmodulesinfo-text'.i18n(),
             placeholder: '',
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
-              onPressed: () async {
-                FilePickerResult? result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['vhdx'],
-                );
-                if (result != null) {
-                  _settings['kernelModules']!.text = result.files.single.path!;
-                }
-              },
-            )),
+            suffix: _filePickerSuffix('kernelModules', extensions: ['vhdx'])),
         settingsWidget(context,
             title: 'memory',
             tooltip: 'memoryinfo-text'.i18n(),
             type: SettingsType.size,
             sizePostfix: 'GB',
             sizeMin: 1,
-            sizeMax:
-                (SysInfo.getTotalPhysicalMemory() ~/ 1024 ~/ 1024 ~/ 1024) + 1,
+            sizeMax: _hostMemoryGb + 1,
             placeholder: ''),
         settingsWidget(context,
             title: 'processors',
             tooltip: 'processorinfo-text'.i18n(),
-            type: SettingsType.size,
+            type: SettingsType.number,
             sizeMin: 1,
             sizeMax: SysInfo.cores.length,
             placeholder: ''),
         settingsWidget(context,
             title: 'localhostForwarding',
             tooltip: 'wildcardinfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _networkingMode() != 'mirrored',
+            disabledReason: 'ignoredinmirrored-text'.i18n()),
         settingsWidget(context,
             title: 'kernelCommandLine',
             tooltip: 'kernelcmdinfo-text'.i18n(),
@@ -1067,9 +1063,18 @@ class SettingsPageState extends State<SettingsPage> {
             tooltip: 'safemodeinfo-text'.i18n(),
             type: SettingsType.bool),
         settingsWidget(context,
-            title: 'swap', tooltip: 'swapinfo-text'.i18n(), placeholder: ''),
+            title: 'swap',
+            tooltip: 'swapinfo-text'.i18n(),
+            type: SettingsType.size,
+            sizePostfix: 'GB',
+            sizeMin: 0,
+            sizeMax: _hostMemoryGb * 2,
+            placeholder: ''),
         settingsWidget(context,
-            title: 'swapFile', tooltip: 'vhdinfo-text'.i18n(), placeholder: ''),
+            title: 'swapFile',
+            tooltip: 'vhdinfo-text'.i18n(),
+            placeholder: '%Temp%\\swap.vhdx',
+            suffix: _filePickerSuffix('swapFile', extensions: ['vhdx'])),
         settingsWidget(context,
             title: 'guiApplications',
             tooltip: 'guiinfo-text'.i18n(),
@@ -1085,18 +1090,33 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'vmIdleTimeout',
             tooltip: 'vmidleinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.number,
+            unitLabel: 'milliseconds-text'.i18n(),
+            placeholder: '60000'),
         settingsWidget(context,
             title: 'maxCrashDumpCount',
             tooltip: 'maxcrashdumpcountinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.number,
+            placeholder: '10'),
         settingsWidget(context,
             title: 'dnsProxy',
             tooltip: 'dnsproxyinfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _networkingMode() == 'nat',
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['networkingMode = nat'])),
         settingsWidget(context,
             title: 'networkingMode',
             tooltip: 'networkingmodeinfo-text'.i18n(),
+            type: SettingsType.enumeration,
+            options: const [
+              'none',
+              'nat',
+              'bridged',
+              'mirrored',
+              'virtioproxy'
+            ],
+            optionNotes: {'bridged': 'deprecatedvalue-text'.i18n()},
             placeholder: 'nat'),
         settingsWidget(context,
             title: 'firewall',
@@ -1113,8 +1133,49 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'defaultVhdSize',
             tooltip: 'defaultvhdsizeinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.size,
+            sizePostfix: 'GB',
+            placeholder: 'unitexample-text'.i18n()),
       ],
+    );
+  }
+
+  /// Host memory in whole GB, the ceiling the `memory` and `swap` sliders are
+  /// scaled against.
+  int get _hostMemoryGb =>
+      SysInfo.getTotalPhysicalMemory() ~/ 1024 ~/ 1024 ~/ 1024;
+
+  /// A `.wslconfig` boolean read the way WSL reads it: an absent key means the
+  /// key's documented default, not `false`. Used for the conditional
+  /// dependencies below, so an untouched `dnsTunneling` does not grey out the
+  /// two keys it gates (doc/audit/wsl-docs/ CC-6).
+  bool _configBool(String name, {required bool fallback}) {
+    final value = _settings[name]?.text.trim().toLowerCase() ?? '';
+    if (value.isEmpty) return fallback;
+    return value == 'true';
+  }
+
+  /// `networkingMode` as WSL resolves it: unset or unrecognised means NAT.
+  String _networkingMode() {
+    final value = _settings['networkingMode']?.text.trim().toLowerCase() ?? '';
+    const known = ['none', 'nat', 'bridged', 'mirrored', 'virtioproxy'];
+    return known.contains(value) ? value : 'nat';
+  }
+
+  /// The folder-picker button shared by every `.wslconfig` path key. Restricted
+  /// to [extensions] where the documentation names a file type.
+  Widget _filePickerSuffix(String name, {List<String>? extensions}) {
+    return IconButton(
+      icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+      onPressed: () async {
+        FilePickerResult? result = await FilePicker.platform.pickFiles(
+          type: extensions == null ? FileType.any : FileType.custom,
+          allowedExtensions: extensions,
+        );
+        if (result != null) {
+          _settings[name]!.text = result.files.single.path!;
+        }
+      },
     );
   }
 
@@ -1125,7 +1186,9 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'autoMemoryReclaim',
             tooltip: 'automemoryreclaiminfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.enumeration,
+            options: const ['disabled', 'gradual', 'dropCache'],
+            placeholder: 'dropCache'),
         settingsWidget(context,
             title: 'sparseVhd',
             tooltip: 'sparsevhdinfo-text'.i18n(),
@@ -1133,23 +1196,39 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'bestEffortDnsParsing',
             tooltip: 'besteffortdnsparsinginfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _configBool('dnsTunneling', fallback: true),
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['dnsTunneling = true'])),
         settingsWidget(context,
             title: 'dnsTunnelingIpAddress',
             tooltip: 'dnstunnelingipaddressinfo-text'.i18n(),
-            placeholder: ''),
+            placeholder: '10.255.255.254',
+            enabled: _configBool('dnsTunneling', fallback: true),
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['dnsTunneling = true'])),
         settingsWidget(context,
             title: 'initialAutoProxyTimeout',
             tooltip: 'initialautoproxytimeoutinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.number,
+            unitLabel: 'milliseconds-text'.i18n(),
+            placeholder: '1000',
+            enabled: _configBool('autoProxy', fallback: true),
+            disabledReason: 'onlyapplieswhen-text'.i18n(['autoProxy = true'])),
         settingsWidget(context,
             title: 'ignoredPorts',
             tooltip: 'ignoredportsinfo-text'.i18n(),
-            placeholder: ''),
+            placeholder: '3000,9000,9090',
+            enabled: _networkingMode() == 'mirrored',
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['networkingMode = mirrored'])),
         settingsWidget(context,
             title: 'hostAddressLoopback',
             tooltip: 'hostaddressloopbackinfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _networkingMode() == 'mirrored',
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['networkingMode = mirrored'])),
       ],
     );
   }
@@ -1165,6 +1244,11 @@ class SettingsPageState extends State<SettingsPage> {
     String sizePostfix = '',
     int sizeMax = 0,
     int sizeMin = 0,
+    String unitLabel = '',
+    List<String> options = const <String>[],
+    Map<String, String> optionNotes = const <String, String>{},
+    bool enabled = true,
+    String disabledReason = '',
   }) {
     if (name.isEmpty) {
       name = title;
@@ -1174,6 +1258,9 @@ class SettingsPageState extends State<SettingsPage> {
     }
     // First letter to capital
     title = title.replaceFirst(title[0], title[0].toUpperCase());
+    if (unitLabel.isNotEmpty) {
+      title = '$title ($unitLabel)';
+    }
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: InfoLabel(
@@ -1189,56 +1276,56 @@ class SettingsPageState extends State<SettingsPage> {
                     style: TextStyle(
                         color: secondaryTextColor(context), fontSize: 12)),
               ),
+            // The documented "Only applicable when…" conditions. The control is
+            // disabled rather than hidden, so the key stays discoverable and
+            // the reason says why WSL would ignore it right now.
+            if (!enabled && disabledReason.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(disabledReason,
+                    style: TextStyle(
+                        color: disabledTextColor(context),
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic)),
+              ),
             Padding(
               padding: const EdgeInsets.only(top: 0.0),
               child: Builder(
                 builder: (context) {
-                  double size = double.tryParse(
-                          _settings[name]!.text.replaceAll(sizePostfix, '')) ??
-                      sizeMin.toDouble();
                   switch (type) {
+                    case SettingsType.bool:
+                      return ToggleSwitch(
+                          checked: _settings[name]!.text == 'true',
+                          onChanged: enabled
+                              ? (value) {
+                                  _settings[name]!.text =
+                                      value ? 'true' : 'false';
+                                  setState(() {
+                                    _settings = _settings;
+                                  });
+                                }
+                              : null,
+                          content: Text(_settings[name]!.text));
+                    case SettingsType.enumeration:
+                      return _enumerationBox(name,
+                          options: options,
+                          notes: optionNotes,
+                          placeholder: placeholder,
+                          enabled: enabled);
+                    case SettingsType.size:
+                    case SettingsType.number:
+                      return _numericSetting(context, name,
+                          type: type,
+                          sizePostfix: sizePostfix,
+                          sizeMin: sizeMin,
+                          sizeMax: sizeMax,
+                          placeholder: placeholder,
+                          enabled: enabled);
                     case SettingsType.text:
                       return TextBox(
                         controller: _settings[name],
                         placeholder: placeholder,
-                        suffix: suffix != 0 ? suffix : Container(),
-                      );
-                    case SettingsType.bool:
-                      return ToggleSwitch(
-                          checked: _settings[name]!.text == 'true',
-                          onChanged: (value) {
-                            _settings[name]!.text = value ? 'true' : 'false';
-                            setState(() {
-                              _settings = _settings;
-                            });
-                          },
-                          content: Text(_settings[name]!.text));
-                    case SettingsType.size:
-                      if (_settings[name] == null) {
-                        _settings[name] = TextEditingController(
-                            text: sizeMin.toDouble().toString());
-                      }
-                      return SizedBox(
-                          width: MediaQuery.of(context).size.width,
-                          child: Slider(
-                              min: sizeMin.toDouble(),
-                              max: sizeMax.toDouble(),
-                              //divisions: 1,
-                              value: size,
-                              style: SliderThemeData(
-                                labelBackgroundColor: AppTheme().color,
-                              ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _settings[name]!.text =
-                                      value.toInt().toString() + sizePostfix;
-                                });
-                              },
-                              label: _settings[name]!.text));
-                    default:
-                      return TextBox(
-                        controller: _settings[name],
-                        placeholder: placeholder,
+                        enabled: enabled,
                         suffix: suffix != 0 ? suffix : Container(),
                       );
                   }
@@ -1249,5 +1336,131 @@ class SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+
+  /// A closed set of documented values. Anything already in the file that is not
+  /// one of them is kept as an extra item rather than dropped, so opening the
+  /// screen never rewrites a value the user put there by hand — and never trips
+  /// `ComboBox`'s "value must be among the items" assert.
+  Widget _enumerationBox(
+    String name, {
+    required List<String> options,
+    required Map<String, String> notes,
+    required String placeholder,
+    required bool enabled,
+  }) {
+    final current = _settings[name]!.text.trim();
+    final match = options.cast<String?>().firstWhere(
+        (option) => option!.toLowerCase() == current.toLowerCase(),
+        orElse: () => null);
+    final selected = current.isEmpty ? null : (match ?? current);
+    final items = <String>[
+      ...options,
+      if (selected != null && match == null) selected,
+    ];
+
+    return ComboBox<String>(
+      isExpanded: true,
+      placeholder: Text(placeholder),
+      value: selected,
+      items: items
+          .map((option) => ComboBoxItem<String>(
+                value: option,
+                child: Text(notes.containsKey(option)
+                    ? '$option — ${notes[option]}'
+                    : option),
+              ))
+          .toList(),
+      onChanged: enabled
+          ? (value) {
+              if (value == null) return;
+              _settings[name]!.text = value;
+              setState(() {
+                _settings = _settings;
+              });
+            }
+          : null,
+    );
+  }
+
+  /// The `size` and `number` keys.
+  ///
+  /// A slider only when the value the file holds actually fits on it: a
+  /// documented-legal `memory=8589934592` or a `processors=64` copied from a
+  /// bigger machine is out of range, and `Slider` asserts on that in its
+  /// constructor (doc/audit/wsl-docs/ CC-9). Those fall back to a text box that
+  /// says so, so the value is left exactly as written instead of being silently
+  /// clamped or snapped to the minimum.
+  Widget _numericSetting(
+    BuildContext context,
+    String name, {
+    required SettingsType type,
+    required String sizePostfix,
+    required int sizeMin,
+    required int sizeMax,
+    required String placeholder,
+    required bool enabled,
+  }) {
+    final raw = _settings[name]!.text.trim();
+    final double? value = type == SettingsType.size
+        ? parseWslSize(raw,
+            unit: sizePostfix.isEmpty ? 'B' : sizePostfix,
+            bareUnitMax: sizeMax.toDouble())
+        : parseWslCount(raw)?.toDouble();
+    final hasSlider = sizeMax > sizeMin;
+    final fits = wslSliderFits(value, min: sizeMin, max: sizeMax);
+
+    if (!hasSlider || (raw.isNotEmpty && !fits)) {
+      String warning = '';
+      if (raw.isNotEmpty && value == null) {
+        warning = type == SettingsType.size
+            ? 'settinginvalidsize-text'.i18n()
+            : 'settinginvalidnumber-text'.i18n();
+      } else if (hasSlider && raw.isNotEmpty) {
+        warning =
+            'settingoutofrange-text'.i18n(['$sizeMin – $sizeMax$sizePostfix']);
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextBox(
+            controller: _settings[name],
+            placeholder: placeholder,
+            enabled: enabled,
+          ),
+          if (warning.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                warning,
+                style:
+                    TextStyle(color: Colors.warningPrimaryColor, fontSize: 12),
+              ),
+            ),
+        ],
+      );
+    }
+
+    return SizedBox(
+        width: MediaQuery.of(context).size.width,
+        child: Slider(
+            min: sizeMin.toDouble(),
+            max: sizeMax.toDouble(),
+            value: value ?? sizeMin.toDouble(),
+            style: SliderThemeData(
+              labelBackgroundColor: AppTheme().color,
+            ),
+            onChanged: enabled
+                ? (value) {
+                    setState(() {
+                      _settings[name]!.text = type == SettingsType.size
+                          ? formatWslSize(value, sizePostfix)
+                          : value.round().toString();
+                    });
+                  }
+                : null,
+            label: _settings[name]!.text.isEmpty
+                ? '$sizeMin$sizePostfix'
+                : _settings[name]!.text));
   }
 }
