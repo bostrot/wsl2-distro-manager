@@ -54,6 +54,10 @@ class MockHttpClientAdapter implements HttpClientAdapter {
 class MockShell implements Shell {
   final List<String> distros = [];
   List<String> lastStartArguments = [];
+
+  /// Whether the last [run] was routed through cmd.exe. In-distro WSL
+  /// commands must not be — see lib/api/wsl_args.dart.
+  bool lastRunInShell = false;
   String lastStartExecutable = '';
   List<String> lastRunArguments = [];
   String lastRunExecutable = '';
@@ -83,12 +87,17 @@ class MockShell implements Shell {
       Encoding? stderrEncoding = systemEncoding}) async {
     lastRunExecutable = executable;
     lastRunArguments = arguments;
+    lastRunInShell = runInShell;
 
     String stdout = '';
     String stderr = '';
     int exitCode = 0;
 
-    if (arguments.contains('sh') && arguments.contains('-c')) {
+    // Every in-distro invocation now arrives as `--exec <shell> -c <script>`
+    // (see lib/api/wsl_args.dart), so the command is the last argument
+    // rather than a run of separate argv entries.
+    if ((arguments.contains('sh') || arguments.contains('bash')) &&
+        arguments.contains('-c')) {
       String cmd = arguments.last;
       if (cmd == 'command -v code') {
         if (simulateCodeMissing) {
@@ -100,6 +109,10 @@ class MockShell implements Shell {
         }
       } else if (cmd == r'echo $HOME') {
         stdout = defaultUserHome;
+      } else if (cmd == 'ls /testfile') {
+        stdout = '/testfile\n';
+      } else if (cmd == 'cat /etc/wsl.conf' && execCmdAsRootResponse != null) {
+        stdout = execCmdAsRootResponse!;
       }
     }
 
@@ -170,16 +183,6 @@ class MockShell implements Shell {
       if (arguments.contains('-d')) {
         String distro = arguments[arguments.indexOf('-d') + 1];
         distros.add(distro);
-      }
-    }
-
-    if (arguments.contains('ls') && arguments.contains('/testfile')) {
-      stdout = '/testfile\n';
-    }
-
-    if (arguments.contains('cat') && arguments.contains('/etc/wsl.conf')) {
-      if (execCmdAsRootResponse != null) {
-        stdout = execCmdAsRootResponse!;
       }
     }
 

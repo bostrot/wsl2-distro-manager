@@ -634,4 +634,79 @@ systemd = true
       expect(mockShell.lastStartArguments, isNot(contains('/home/tester')));
     });
   });
+
+  // Regression guard for the `bash: -c: line 2: syntax error near unexpected
+  // token` class of failure: wsl.exe re-joins its argv and re-parses it
+  // through the distro's default shell unless `--exec` is present, so a
+  // pre-split command loses its quoting on the way in.
+  // See lib/api/wsl_args.dart.
+  group('in-distro invocations go through wsl_args', () {
+    test('execCmdAsRoot hands the whole command to bash -c behind --exec',
+        () async {
+      await wslApi.execCmdAsRoot('Ubuntu', "echo 'hello world' > /tmp/out");
+
+      expect(mockShell.lastRunExecutable, 'wsl');
+      expect(mockShell.lastRunArguments, [
+        '-d',
+        'Ubuntu',
+        '-u',
+        'root',
+        '--exec',
+        'bash',
+        '-c',
+        "echo 'hello world' > /tmp/out",
+      ]);
+    });
+
+    test('execCmdAsRoot does not pre-split the command into argv', () async {
+      await wslApi.execCmdAsRoot('Ubuntu', 'ls -la /etc');
+
+      // The old form appended splitShellArgs() to the argument list, which
+      // stripped quotes and left the re-parse to do the rest.
+      expect(mockShell.lastRunArguments, isNot(contains('-la')));
+      expect(mockShell.lastRunArguments.last, 'ls -la /etc');
+    });
+
+    test('execCmdAsRoot does not run through cmd.exe', () async {
+      // runInShell: true would let cmd.exe eat &, |, <, > and ^ before
+      // wsl.exe ever saw them.
+      await wslApi.execCmdAsRoot('Ubuntu', 'cat /proc/net/tcp');
+      expect(mockShell.lastRunInShell, isFalse);
+    });
+
+    test('exec() keeps a quoted redirection intact', () async {
+      const cmd =
+          "echo 'tester ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/wslsudo";
+      await wslApi.exec('Ubuntu', [cmd]);
+
+      expect(mockShell.lastRunArguments,
+          ['-d', 'Ubuntu', '--exec', 'bash', '-c', cmd]);
+      // The bare `(` that the old split left behind is what the distro's
+      // shell choked on.
+      expect(mockShell.lastRunArguments, isNot(contains('ALL=(ALL)')));
+    });
+
+    test('getDefaultUser execs whoami rather than letting a shell see it',
+        () async {
+      await wslApi.getDefaultUser('Ubuntu');
+      expect(mockShell.lastRunArguments, ['-d', 'Ubuntu', '--exec', 'whoami']);
+    });
+
+    test('getDefaultUserHome passes the HOME echo through sh -c', () async {
+      await wslApi.getDefaultUserHome('Ubuntu');
+      expect(mockShell.lastRunArguments,
+          ['-d', 'Ubuntu', '--exec', 'sh', '-c', r'echo $HOME']);
+    });
+
+    test('start() keeps the default-shell re-parse it depends on', () async {
+      // The trailing `;/bin/sh` only becomes a second command because the
+      // distro's shell re-parses the flattened argv — this one call site must
+      // NOT gain --exec.
+      wslApi.start('Ubuntu', startCmd: 'htop');
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      expect(mockShell.lastStartArguments, contains(';/bin/sh'));
+      expect(mockShell.lastStartArguments, isNot(contains('--exec')));
+    });
+  });
 }

@@ -11,6 +11,7 @@ import '../../components/helpers.dart';
 import '../../components/notify.dart';
 import '../execution/broker.dart';
 import '../execution/models.dart';
+import '../wsl_args.dart';
 
 /// The dedicated WSL distro name used for AI workspace tools.
 const String kAiWorkspaceDistro = 'ai-workspace';
@@ -402,29 +403,13 @@ class AiWorkspaceService {
 
   /// Runs as root — this distro is automation-only.
   ///
-  /// `--exec` is load-bearing, not decoration. Without it `wsl.exe` re-joins
-  /// the argv it was given into one string and hands that to the distro's
-  /// default shell, which strips a level of quoting: `bash -c '<script>'`
-  /// arrives as `bash -c <first word of script>` followed by the rest of the
-  /// script running in the *outer* shell. Measured against a live distro on
-  /// 2026-08-28 — `bash -c 'X=hello; echo [$X]'` prints `[]`, because the
-  /// assignment happened in a throwaway child, and `$BASH_EXECUTION_STRING`
-  /// comes back as `bash -c echo …` rather than the script itself. That is
-  /// what made the status probe's `_s=$(…)` permanently empty (so the
-  /// `running` branch could never be taken) and what silently defeated
-  /// `set -o pipefail` on installs. `--exec` skips the default shell and
-  /// passes argv through intact.
+  /// The `--exec` in [wslShellArgs] is load-bearing, not decoration: without
+  /// it `wsl.exe` re-parses the flattened command through the distro's
+  /// default shell and this service's probes silently stop working. The full
+  /// explanation lives on the builder in `lib/api/wsl_args.dart`; every
+  /// in-distro invocation in the app now goes through it.
   List<String> _wslArgs(String shellCommand) {
-    return [
-      '-d',
-      kAiWorkspaceDistro,
-      '-u',
-      'root',
-      '--exec',
-      'bash',
-      '-c',
-      shellCommand,
-    ];
+    return wslShellArgs(kAiWorkspaceDistro, shellCommand, user: 'root');
   }
 
   /// Installs docker.io on first use — the base Ubuntu image has no Docker.

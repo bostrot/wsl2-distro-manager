@@ -47,8 +47,20 @@ void main() {
           .handler({'distro': 'Ubuntu', 'command': 'echo hi'});
 
       expect(mockShell.lastRunArguments,
-          containsAllInOrder(['--distribution', 'Ubuntu', '-u', 'root']));
-      expect(mockShell.lastRunArguments, containsAll(['echo', 'hi']));
+          ['-d', 'Ubuntu', '-u', 'root', '--exec', 'bash', '-c', 'echo hi']);
+    });
+
+    test('forwards the client command verbatim, quoting intact', () async {
+      // This tool hands an MCP client's command straight to the distro, so it
+      // is the call site that suffered most from the old pre-split form: the
+      // split stripped the quotes and wsl.exe's default shell then re-parsed
+      // the unquoted result. See lib/api/wsl_args.dart.
+      const cmd = "grep -c 'root:x:0' /etc/passwd | tee /tmp/n";
+      await tool('wsl_run_command').handler({'distro': 'Ubuntu', 'command': cmd});
+
+      expect(mockShell.lastRunArguments.last, cmd);
+      expect(mockShell.lastRunArguments, contains('--exec'));
+      expect(mockShell.lastRunInShell, isFalse);
     });
 
     test('rejects a missing distro argument', () async {

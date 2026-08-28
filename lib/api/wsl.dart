@@ -15,6 +15,7 @@ import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
+import 'package:wsl2distromanager/api/wsl_args.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -392,6 +393,12 @@ class WSLApi {
       wslArgs.addAll(['--user', startUser]);
     }
     if (startCmd != '') {
+      // Deliberately NOT wslShellArgs(): this is the one call site that
+      // *wants* wsl.exe's default-shell re-parse. The trailing `;/bin/sh`
+      // only becomes a second command because the distro's shell re-parses
+      // the flattened argv, and that is what keeps the terminal window open
+      // after startCmd finishes. Adding `--exec` here would exec `;/bin/sh`
+      // as a literal argument instead. See lib/api/wsl_args.dart.
       for (String cmd in splitShellArgs(startCmd)) {
         wslArgs.add(cmd);
       }
@@ -473,7 +480,7 @@ class WSLApi {
   Future<String> getDefaultUserHome(String distribution) async {
     try {
       final result = await _runWsl(
-          ['-d', distribution, '-e', 'sh', '-c', 'echo \$HOME'],
+          wslShellArgs(distribution, 'echo \$HOME', shell: 'sh'),
           stdoutEncoding: null,
           stderrEncoding: null);
       if (result.exitCode != 0) return '';
@@ -1014,17 +1021,11 @@ class WSLApi {
     result.stdin.writeln('script -B /tmp/currentsessionlog -f');
     // Start windows with output
     await _startWsl(
-      [
-        '-d',
+      wslExecArgs(
         distribution,
-        '-u',
-        user ?? 'root',
-        'tail',
-        '-n',
-        '+1',
-        '-f',
-        '/tmp/currentsessionlog'
-      ],
+        const ['tail', '-n', '+1', '-f', '/tmp/currentsessionlog'],
+        user: user ?? 'root',
+      ),
       mode: showOutput ? ProcessStartMode.detached : ProcessStartMode.normal,
       runInShell: !_useRemoteWsl,
       allocateTty: _useRemoteWsl,
@@ -1066,14 +1067,11 @@ class WSLApi {
     await Future.delayed(const Duration(milliseconds: 500));
 
     // Execute commands in /tmp/cmds
-    List<String> args = [
-      '-d',
+    List<String> args = wslExecArgs(
       distribution,
-      '-u',
-      user ?? 'root',
-      '/bin/bash',
-      '/tmp/wdmcmds'
-    ];
+      const ['/bin/bash', '/tmp/wdmcmds'],
+      user: user ?? 'root',
+    );
 
     Process results = await _startWsl(
       args,
@@ -1085,14 +1083,26 @@ class WSLApi {
     return results;
   }
 
-  /// Executes a command in a WSL distro and returns the output
+  /// Executes a shell command in a WSL distro as root and returns its stdout.
+  ///
+  /// [cmd] is a *shell* command, not argv — callers pass pipelines,
+  /// redirections and quoted arguments, and `WslMcpTools` forwards whatever
+  /// the MCP client asks for — so it goes to `bash -c` as a single argument
+  /// via [wslShellArgs].
+  ///
+  /// This used to append `splitShellArgs(cmd)` to the argument list and leave
+  /// the rest to wsl.exe's default-shell re-parse. That silently corrupted
+  /// every command carrying quotes: the split strips them, wsl.exe re-joins
+  /// the pieces with spaces, and the shell inside the distro then parses the
+  /// unquoted result. `runInShell` is false for the same class of reason —
+  /// `cmd.exe /c` would eat `&`, `|`, `<`, `>` and `^` before wsl.exe ever
+  /// saw them. See lib/api/wsl_args.dart.
   Future<String> execCmdAsRoot(String distribution, String cmd) async {
-    List<String> args = ['--distribution', distribution, '-u', 'root'];
-    for (var arg in splitShellArgs(cmd)) {
-      args.add(arg);
-    }
-    ProcessResult results = await _runWsl(args,
-        runInShell: true, stdoutEncoding: utf8, stderrEncoding: utf8);
+    ProcessResult results = await _runWsl(
+        wslShellArgs(distribution, cmd, user: 'root'),
+        runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8);
     return results.stdout;
   }
 
@@ -1140,10 +1150,12 @@ class WSLApi {
         }
         processes.add(exitCode);
       } else {
-        args = ['-d', distribution];
-        splitShellArgs(cmd).forEach((String arg) {
-          args.add(arg);
-        });
+        // A shell command, not argv: create_dialog feeds this lines like
+        // `echo 'someone ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/wslsudo`.
+        // Splitting it here stripped the quotes and left the bare `(` for
+        // wsl.exe's default-shell re-parse to choke on. Hand the whole string
+        // to `bash -c` instead. See lib/api/wsl_args.dart.
+        args = wslShellArgs(distribution, cmd);
         ProcessResult result = await _runWsl(args, runInShell: false);
         exitCode = result.exitCode;
         processes.add(exitCode);
@@ -1833,7 +1845,7 @@ try {
 
   /// Get default user of a distro
   Future<String> getDefaultUser(String distribution) async {
-    ProcessResult result = await _runWsl(['-d', distribution, '-e', 'whoami'],
+    ProcessResult result = await _runWsl(wslExecArgs(distribution, ['whoami']),
         stdoutEncoding: null, stderrEncoding: null);
 
     if (result.exitCode != 0) {

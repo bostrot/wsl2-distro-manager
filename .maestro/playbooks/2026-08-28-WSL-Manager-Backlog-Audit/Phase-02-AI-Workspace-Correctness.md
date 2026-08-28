@@ -259,23 +259,104 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   (`Working/phase-02-task05-integration.txt`). `git diff --stat` is 3 files,
   9 insertions / 334 deletions, no unrelated churn.
 
-- [ ] Isolate the `bash: -c: line 2: syntax error near unexpected token '2'` error:
+- [x] Isolate the `bash: -c: line 2: syntax error near unexpected token '2'` error:
   - It appeared when a start command containing `$(seq 1 20)` and subshell parentheses was added, and vanished when both were removed — yet identical constructs elsewhere in the same file work, and the error was reported by a user before those constructs existed, so "parentheses are mangled" is not sufficient
   - Write a focused reproduction under `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/` that sends escalating command strings through `ExecutionBroker` to a real distro and logs the exact argv that reaches `wsl.exe`
   - Identify the trigger (candidates: embedded newlines in the command string, Dart's Windows argument escaping, `runInShell` interaction) and record the finding in `Working/bash-line2-syntax-error.md`
   - Fix it if the cause is on our side; if it is a WSL/bash behaviour we must avoid, add the constraint to `AGENTS.md` and enforce it wherever long WSL command strings are built
 
-  **Root cause already found (2026-08-28), task still open.** Isolated while
-  doing the Open WebUI health gate above, because that gate could not work
-  until it was understood. `wsl.exe` re-joins argv and re-parses it through
-  the distro's default shell, so `bash -c '<script>'` loses a quoting level;
-  `--exec` fixes it. Full write-up and two runnable reproductions:
+  **Done (2026-08-28).** The root cause was isolated earlier, while doing the
+  Open WebUI health gate above, because that gate could not work until it was
+  understood: `wsl.exe` does not exec the command it is given — it re-joins
+  its argv into one string and hands that to the distro's *default shell*,
+  which parses it a second time and destroys one level of quoting. So
+  `bash -c '<script>'` arrives as `bash -c <first word>` (a throwaway child)
+  with the rest of the script running in the *outer* shell. When the string
+  contains a newline, the outer shell's failed re-parse is what surfaces as
+  `bash: -c: line 2: …` — which is why "parentheses are mangled" was never
+  sufficient and why a user could hit it before `$(seq 1 20)` existed: the
+  trigger is the *newline plus the re-parse*, not any particular construct.
+  Write-up and two runnable reproductions were already in
   `Working/bash-line2-syntax-error.md`, `Working/probe_repro.dart`,
-  `Working/probe_live.dart`. **Still owed here:** the audit of every other
-  `wsl.exe` call site (`lib/api/wsl.dart`, `mount_service.dart`, `mcp/`,
-  `components/sync.dart`), the `AGENTS.md` constraint, and enforcement
-  wherever long WSL command strings are built. Only
-  `AiWorkspaceService._wslArgs()` is fixed so far.
+  `Working/probe_live.dart`.
+
+  This session closed the three things that were still owed — the
+  codebase-wide audit, the `AGENTS.md` constraint, and enforcement.
+
+  **Enforcement.** Rather than sprinkling `--exec` around, the hand-rolled
+  builder inside `AiWorkspaceService` was promoted to a shared module,
+  `lib/api/wsl_args.dart`, which is now the single place in-distro `wsl`
+  arguments are built: `wslExecArgs(distro, argv, user:)` for real argv and
+  `wslShellArgs(distro, script, user:, shell:)` for a shell script handed to
+  `bash -c` as **one** argument. Both emit `--exec`. The module carries the
+  full explanation so the next reader does not have to rediscover it.
+
+  **Audit — two call sites were genuinely broken, not merely fragile:**
+  - `WSLApi.execCmdAsRoot()` appended `splitShellArgs(cmd)` to the argument
+    list. The split strips the quotes, wsl.exe re-joins the pieces with
+    spaces, and the distro's shell then parses the *unquoted* result. This is
+    the path `WslMcpTools.wsl_run_command` uses to forward an MCP client's
+    arbitrary command, so any client command with quoting, a pipe or a
+    redirection was silently corrupted. It also passed `runInShell: true`, a
+    second independent mangling layer — `cmd.exe /c` eats `&`, `|`, `<`, `>`
+    and `^` before wsl.exe ever sees them. Now `wslShellArgs(...)` with
+    `runInShell: false`.
+  - `WSLApi.exec()`'s non-`passwd` branch, same split-then-rejoin defect, and
+    demonstrably live rather than theoretical: `create_dialog.dart` feeds it
+    `echo '$user ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/wslsudo`, whose
+    quotes the split removes, leaving a bare `(` for bash to reject — so the
+    sudoers line was never actually written when creating a distro with a
+    user. Now `wslShellArgs(...)`.
+
+  Four more sites were correct only by luck (`getDefaultUserHome`,
+  `getDefaultUser` already passed `-e`; `execCmds`' `tail -f` spawn and
+  `runCmds`' `/bin/bash /tmp/wdmcmds` spawn re-join to something that happens
+  to re-parse identically) and were converted to the builders for uniformity.
+
+  **`WSLApi.start()` was deliberately left alone** — it is the one call site
+  that *depends* on the re-parse. Its trailing `;/bin/sh` only becomes a
+  second command because the default shell re-parses the flattened argv, and
+  that is what keeps the terminal window open after `startCmd` finishes.
+  Adding `--exec` would exec `;/bin/sh` as a literal argument. Commented in
+  place, with a test asserting `--exec` stays absent. Also untouched, for the
+  same "nothing to protect" reason: the interactive stdin-driven spawns
+  (`startShell`, `execCmds`/`runCmds` first spawn), the terminal launches
+  (`openBashrc`, `startVSCode`, `exec`'s `passwd` branch), and every
+  host-level verb (`--list`, `--import`, `--mount`, …), where `--exec` is not
+  even valid. `mount_service.dart` never sends a command into a distro;
+  `lib/api/mcp/*` and `lib/components/sync.dart` make no direct `wsl.exe`
+  call — the MCP tools route through `execCmdAsRoot`/`startShell` and are
+  fixed transitively.
+
+  **`AGENTS.md`** gained the rule under **WSL / Windows Subprocess Gotchas**:
+  the flattening itself, "never build in-distro `wsl` args by hand — use the
+  builders", "never `splitShellArgs()` and append the pieces", the list of
+  legitimate exceptions, and the `runInShell: true` layer.
+
+  **Known gap, recorded not hidden.** Remote WSL mode still flattens a *third*
+  time inside `ssh` (`ssh host wsl -d X --exec bash -c '<script>'`), because
+  `_buildRemoteArgs()` does not quote what it appends. `--exec` fixes the
+  wsl.exe layer but not the ssh layer. Fixing it means shell-quoting every
+  argument that helper emits, which touches every remote path
+  (move/import/export/mount) and deserves its own task rather than being
+  smuggled into this one. Written into `AGENTS.md` as a known gap and into
+  the Remaining-work section of `Working/bash-line2-syntax-error.md`.
+
+  14 tests added: `test/wsl_args_test.dart` (7, covering the builders — the
+  script is never split, `--exec` precedes the shell, metacharacters survive)
+  and a group of 7 in `test/wsl_test.dart` asserting each converted call site
+  emits the right argv, that `execCmdAsRoot` no longer runs through `cmd.exe`,
+  and that `start()` still does *not* get `--exec`. Two existing tests
+  asserted the old shape and were updated: `test/mocks.dart`'s `sh -c`
+  dispatch now also matches `bash -c` and reads the command off the last
+  argument, and `wsl_mcp_tools_test.dart`'s argv expectation — the latter
+  gained a case proving a client's quoting reaches the distro verbatim.
+  `flutter analyze` 105 issues before **and** after, none in the touched
+  files. `flutter test` 345/345,
+  `flutter test integration_test/ai_workspace_test.dart -d windows` 17/17,
+  `dart run scripts/check_translations.dart` clean. `git diff --stat` is 6
+  files + 2 new, no unrelated churn. `dart format` again not run, for the
+  reason recorded above.
 
 - [ ] Add or extend tests for the changed behaviour in `test/ai_workspace_service_test.dart`:
   - Failed install keeps `error` + `errorMessage` across a background refresh
