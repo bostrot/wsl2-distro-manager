@@ -44,11 +44,22 @@
   - Deliberate exclusions recorded with reasons: Ubuntu 25.10 (EOL Jul 2026) and 20.04 (ESM-only since Apr 2025), Fedora ≤42 (gone from the release tree), Rocky 8 (no WSL-Base, newest build 2024-05), SLES 12 (no official replacement — do not re-source), AlmaLinux 8/Kitten, eLxr, MicroOS/Aeon, and all disk-image formats.
   - Proposed keys carried forward respect constraint rules 9 and 10 — notably `OpenSUSE`, `Kali Linux` and `SLES 15` **must be re-keyed**, or existing users keep importing the 2022 tarball out of the on-disk download cache forever.
 
-- [ ] Verify every candidate URL mechanically before it goes anywhere near the catalogue:
+- [x] Verify every candidate URL mechanically before it goes anywhere near the catalogue:
   - `curl -sIL --max-time 60` each URL and record final status, `Content-Type`, `Content-Length` and the redirect chain
   - Reject anything that 404s, redirects to an HTML page, or is implausibly small for a rootfs
   - For each survivor, download the first few MB and confirm the magic bytes match the extension (gzip/xz/zstd/tar)
   - Tabulate results in `Working/catalogue-verification.md` with a pass/fail column and the reason for every rejection
+
+  **Done 2026-08-28** → `Working/catalogue-verification.md`; raw evidence in `Working/phase-06/verify/`. **28 URLs checked (19 primaries + all 9 tabulated fallbacks), 28 pass, 0 fail** — no substitutions needed, no fallback promotions required. Four checks per URL, not two: headers, magic bytes, and — beyond the brief — `ustar` magic at offset 257 plus a full `tar -tf` of the decompressed head, because [[catalogue-constraints]] §1.3 measured that a validly-compressed tar with a nested prefix still fails `WSL_E_NOT_A_LINUX_DISTRO`; magic bytes alone would have passed the Arch bootstrap tarball that §1.3 rejected. Findings that change later tasks:
+  - **`.wsl` is not a format.** The 12 `.wsl` candidates are **7 gzip and 5 xz**, split by vendor (xz: both SLE, both openSUSE `.wsl`, **Arch**; gzip: Fedora, Rocky, Alma, Kali, Ubuntu, Debian-salsa). Both import fine, but **no code may infer the archive format from the URL suffix** — that would be wrong for 5 of 19 primaries on day one.
+  - **The Debian OCI-blob question is settled**: `index.json` declares exactly one `tar+gzip` layer whose `size` equals the URL's `Content-Length`, the gzip header names the original file `rootfs.tar`, and the full download hashes to the manifest's layer digest. Flat 5 441-entry rootfs, no `blobs/`/`index.json`/`oci-layout` member. It never touches `layer_processor.dart`.
+  - **Six artifacts downloaded in full and SHA256-matched** against vendor sidecars (Debian 13/12, Alpine ×2, openSUSE Tumbleweed/Leap). Release identity read from inside: Debian **13.6** / **12.15**, Alpine **3.24.1** / **3.23.5**, Tumbleweed **20260826**, Leap **16.0**. SLE 15 SP7 (**15.7**) fell inside the 6 MiB sample too.
+  - **Every primary has a publishable checksum** (all 19 recorded, values in the doc) — the only candidate with none is the Debian salsa job artifact F04, one more reason the container-artifact path is the better primary. Arch's is `archlinux.wsl.SHA256`, **uppercase**; `.sha256` is a 404.
+  - **`releases.ubuntu.com` sends no `Content-Type` header at all.** A check that rejects on "Content-Type is not an archive type" would have failed all three Ubuntu `.wsl` fallbacks; only the magic-byte check saved them.
+  - **The Fedora redirector hands out a different mirror per request** (`mirror.dogado.de` and `mirror.23m.com`, seconds apart in one run), so this verification covers the redirector, **not** any particular mirror. A single broken mirror is invisible here and would reach the user as the forever-spinning dialog. Weakest link in the catalogue — if an install test fails on Fedora, suspect the mirror before the entry.
+  - **GitHub release assets 302 to signed `release-assets.githubusercontent.com` URLs with ~1 h expiry.** The canonical `releases/download/...` URL is what belongs in `images.json`; the resolved URL must never be cached or recorded.
+  - **Rocky's `.latest` alias is real** — proven from the gzip headers of the bytes actually served (`Rocky-WSL-Base.x86_64-10.2.0.wsl`, `…-9.8.0.wsl`), not from the directory listing.
+  - Caveat carried forward: reachability ≠ usability. Nothing here says a distro boots to something usable (no init, no default user, no repos on unregistered SLE) — that stays the install-test task's call.
 
 - [ ] Rewrite the repo copy of `images.json`:
   - Keep the existing flat `"Name": "url"` schema and the app's expectations exactly — this file is a fallback for a live CDN payload, so a schema change would break older clients
