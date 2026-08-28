@@ -283,6 +283,24 @@ Populated by the per-area passes below; empty until they run. Severity is
 | PS-44 | Dismissing every recommendation leaves an empty bordered box titled "Recommendations" | [[pro-surfaces]] | `recommendations_panel.dart:19` | nit | S | _source-derived_ |
 | PS-45 | The dismiss X chases the label instead of the right edge; 11px and 10px text | [[pro-surfaces]] | `recommendations_panel.dart:36` | nit | S | `160b-recommendations-zoom.png` |
 | PS-46 | Every toast is `InfoBarSeverity.info` with one decoration -- install-failed looks like install-succeeded | [[pro-surfaces]] | `notify.dart:22` | major | M | `167`/`170`/`147` |
+| TL-01 | AI Workspace status pill and dot invisible in dark: hardcoded `Colors.grey` `#323130` on a `#333333` card, **1.03:1** (10.50:1 in light) | [[theme-and-locales]] | `ai_workspace_screen.dart:745` | blocker | S | `206-dark-hermes-card-zoom.png` |
+| TL-02 | AI chat empty state invisible in dark: hint text **1.07:1**, icon likewise; panel dividers and bubble fills vanish with it | [[theme-and-locales]] | `ai_chat_panel.dart:143` | blocker | S | `207-dark-chat-emptystate-zoom.png` |
+| TL-03 | Under the default `ThemeMode.system`, `systemTextColor` returns black -- five call sites hand black text to a dark UI | [[theme-and-locales]] | `theme.dart:161` | major | S | _probe-measured_ |
+| TL-04 | The `stopped` pill fails AA in both themes (2.70:1 light, 3.60:1 dark) -- hardcoded `Colors.orange` | [[theme-and-locales]] | `ai_workspace_screen.dart:743` | major | S | `202-dark-aiworkspace.png` |
+| TL-05 | The amber BETA pill fails in *light* (**1.40:1**) and passes in dark (5.89:1); the colour is also duplicated as a raw literal in the nav | [[theme-and-locales]] | `beta_badge.dart:10`, `panelist.dart:107` | major | S | `208`/`209-beta-pill-zoom.png` |
+| TL-06 | The AI Assistant FAB is **1.02:1** against the page in dark (1.25:1 light); only its border ring makes it findable | [[theme-and-locales]] | `home_screen.dart:163` | major | S | `202-dark-home.png` |
+| TL-07 | `systemBackgroundColor` is 30 lines of theme code nothing consumes, and it carries TL-03's bug | [[theme-and-locales]] | `theme.dart:132` | nit | S | _source-derived_ |
+| TL-08 | Card, panel and border greys written with six different alphas across five files; no shared constant | [[theme-and-locales]] | `ai_chat_panel.dart:101` | nit | M | _source-derived_ |
+| TL-09 | The Mount Disk dialog is entirely English in six of eight non-English locales -- 35..37 of its 40 keys | [[theme-and-locales]] | `lib/i18n/{es,hu,ja,pt,tr,zh_TW}.json` | blocker | M | `22-zh_TW-mount-dialog.png` |
+| TL-10 | The CI translation gate is a key-*presence* check; the rule that catches TL-09 exists but is scoped to 60 keys. Widening it fails on 131 locale-key pairs | [[theme-and-locales]] | `locales_test.dart:244` | major | S | _measured_ |
+| TL-11 | Turkish translates "instance" as "örnek" (sample) in 10 strings, colliding with 5 that legitimately mean sample | [[theme-and-locales]] | `lib/i18n/tr.json` | major | M | `21-tr-home.png` |
+| TL-12 | German's nav pane shows "Home" and "Mount Disk" in English beside ten German entries | [[theme-and-locales]] | `lib/i18n/de.json` | major | S | `21-de-home.png` |
+| TL-13 | "AI Workspace" is English in all nine locales -- the only Latin script in the `ja` and `zh_TW` nav panes | [[theme-and-locales]] | `lib/i18n/*.json` | nit | S | `21-ja-home.png` |
+| TL-14 | An all-caps `DONE:` log prefix on four success messages, translated eight different ways (Turkish `TAMAM` = "OK") | [[theme-and-locales]] | `lib/i18n/*.json` | nit | S | _source-derived_ |
+| TL-15 | 59 English keys nothing renders, translated nine times each; 19 of them are an unshipped subscription flow | [[theme-and-locales]] | `lib/i18n/en.json` | nit | M | _measured_ |
+| TL-16 | The three `recommend-*` keys are missing from all nine locales including `en`, so the panel prints its own keys; no tool can see it | [[theme-and-locales]] | `recommender_service.dart:34` | major | S | _source-derived_ |
+| TL-17 | 98 Title Case vs 91 sentence case short labels in `en.json`; the drift is inherited by locales that have no Title Case | [[theme-and-locales]] | `lib/i18n/en.json` | major | M | `201-light-create.png` |
+| TL-18 | "(Optional)" written three ways across nine labels -- including both ways on the same field | [[theme-and-locales]] | `lib/i18n/en.json` | nit | S | `201-light-create.png` |
 
 ## Per-area files
 
@@ -292,7 +310,7 @@ Populated by the per-area passes below; empty until they run. Severity is
 | [[create-and-install]] | create screen, install/copy/QA dialogs | **done** -- 40 findings (CI-01..CI-40) |
 | [[settings-and-tools]] | app settings, per-distro settings, templates, mount, actions | **done** -- 62 findings (ST-01..ST-62) |
 | [[pro-surfaces]] | AI Workspace, license, badges, AI chat, recommendations, MCP | **done** -- 46 findings (PS-01..PS-46) |
-| [[theme-and-locales]] | dark/light diff, all nine locales, text quality | not started |
+| [[theme-and-locales]] | dark/light diff, all nine locales, text quality | **done** -- 18 findings (TL-01..TL-18) |
 | [[interaction-and-a11y]] | tab order, tooltips, long operations, error text | not started |
 
 ## Ordered fix list
@@ -322,6 +340,20 @@ Recorded as the audit runs, so it never implies coverage it does not have.
 - **The `passwd` console window** that the create flow spawns when a default user is given
   (CI-13) -- deliberately not triggered, so the audit does not leave a passwordless
   account on the host.
+- **Windows in dark mode.** This host runs `AppsUseLightTheme = 1` and the OS theme was
+  deliberately not flipped, so TL-03 -- the app handing black text to a dark UI under the
+  default `ThemeMode.system` -- is measured from the getter by a probe test rather than
+  screenshotted. The in-app Dark Mode toggle *was* exercised on eight screens.
+- **Dark mode for the dialogs.** The light/dark pass covers the eight top-level screens.
+  The distro-settings dialog, the mount dialog, the template and snippet dialogs and the
+  *free-user* licence comparison table were not re-walked in dark; their `Colors.grey`
+  sites are recorded from source in TL-08.
+- **Locales beyond home / create / settings.** The three screens the task names were
+  captured in all nine locales; the mount dialog was added in `zh_TW` because TL-09
+  needed a picture. Templates, snippets, the AI Workspace and the licence screen were
+  seen in English only.
+- **Right-to-left languages** -- none are shipped, and nothing in the app opts into
+  `Directionality`.
 - **Store-packaged build** -- the audit runs an unpackaged debug build with the Pro gate
   forced. Anything whose appearance depends on real MSIX package identity (the Store
   purchase flow, a *false negative* from `GetCurrentPackageFullName`) is out of scope for

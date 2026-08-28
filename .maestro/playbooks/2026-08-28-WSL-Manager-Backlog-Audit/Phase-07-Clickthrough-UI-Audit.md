@@ -260,11 +260,76 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
     2 warnings**, both pre-existing (`wsl.dart:1744`, `test/mocks.dart:597`) — identical
     to the baseline the previous task recorded.
 
-- [ ] Audit theme, locale and text quality — the highest-yield nitpicking:
+- [x] Audit theme, locale and text quality — the highest-yield nitpicking:
   - Repeat the main screens in **dark and light** themes and diff the screenshots; flag any hardcoded `Colors.grey`, any low-contrast text, and any icon that disappears against its background
   - Switch through **all nine locales** (de, en, es, hu, ja, pt, tr, zh_CN, zh_TW); capture at least the home, create and settings screens per locale, and flag every truncated label, overflowing button, untranslated English string and machine-translated phrase that reads wrong
   - Verify no locale blanks the app (the `zh_TW`/`zh_HK` class of bug) and that `test/locales_test.dart` still guards the invariant
   - Write `doc/audit/ui-ux/theme-and-locales.md`
+
+  **Done 2026-08-28.** 18 findings (TL-01..TL-18) in `doc/audit/ui-ux/theme-and-locales.md`,
+  all copied into the master table in `doc/audit/ui-ux/index.md`. 44 screenshots in
+  `.maestro/screenshots/phase-07/` (gitignored, `200`..`209` and `21-<locale>-*`/`22-*`),
+  including four nearest-neighbour zoom crops -- the dark status pill, the dark chat empty
+  state and the amber pill in both themes are not legible at 1:1.
+
+  - **The theme half was decided by pixel identity, not by looking.** `theme-invariant.ps1`
+    (new, in `Working/`) answers the opposite question to a diff: which pixels are
+    *byte-identical* across a full light->dark flip? Anything that survives is painted from
+    a hardcoded colour. Result: `home`, `templates`, `create` and `packages` score **0 of
+    938,184** -- fully theme-driven -- while `aiworkspace` scores 452 in four tight bands
+    that turned out to be one status dot + pill per tool card plus a BETA pill, and that is
+    how TL-01, TL-04 and TL-05 were found.
+  - **TL-01 and TL-02 are the two to fix first, and both are the same mistake.**
+    `_statusToColor()` returns a bare `Colors.grey` (`#323130`) for *Not Installed*, which
+    against the dark card `#333333` measures **1.03:1** -- the dot and the pill are simply
+    not in the image (`206-dark-hermes-card-zoom.png`), against 10.50:1 in light. The AI
+    chat empty state -- the only thing in the panel before the first message -- measures
+    **1.07:1** in dark. `helpers.dart:505` already has `secondaryTextColor(context)` with a
+    doc comment saying exactly why hardcoded grey fails in dark; twelve call sites ignore it.
+  - **`contrast.ps1` had to be replaced for this pass.** It takes the darkest pixel in the
+    region as the glyph, which in dark mode is the *card fill*; its first run reported
+    "1.03:1" for a pill whose text was fine. `contrast2.ps1` uses the modal pixel as
+    background and the furthest pixel by luminance as glyph, and works in both themes.
+    Every dark number here comes from it.
+  - **TL-05 is the one defect that runs the other way.** The amber BETA pill is **1.40:1 in
+    light and 5.89:1 in dark** -- a dark-only review passes it and "make it darker" would
+    break the theme that currently works. Worth having both numbers before Phase 08 touches it.
+  - **TL-03 was measured with a throwaway probe test rather than asserted.**
+    `systemTextColor` under the default `ThemeMode.system` returns `ff000000`, byte-identical
+    to the light branch, so a Windows-dark user gets black text from five call sites. The
+    probe printed all three modes and was deleted; `git status` lists only the two Markdown
+    files. The OS theme was deliberately **not** flipped, so the rendering is inferred and
+    labelled as such in the index's "not examined" section.
+  - **TL-09 is the locale blocker and it is counted, not estimated.** `mount_dialog.dart`
+    renders 40 i18n keys; **35 to 37 of them are byte-identical to English in es, hu, ja, pt,
+    tr and zh_TW** (de: 2, zh_CN: 1). `22-zh_TW-mount-dialog.png` is a Traditional Chinese
+    app showing an all-English modal whose one translated string is the Cancel button.
+  - **TL-10 is why nothing caught it, and the fix is one line.**
+    `dart run scripts/check_translations.dart` **exits 0** on this tree -- it diffs key
+    *sets*, and an English value is still a present key. `test/locales_test.dart:244` already
+    contains the correct rule ("are translated, not copied from English", skip strings ≤ 20
+    chars), scoped to ~60 audit keys. Applying it to all 542 fails on **131 locale-key pairs
+    across 22 distinct keys**, 21 of which are the mount dialog.
+  - **TL-16 closes the loop on PS-40.** A scan for `'literal'.i18n()` finds **zero** missing
+    keys tree-wide; sweeping every key-shaped string literal instead surfaces the three
+    `recommend-*` keys, which reach `.i18n()` through a variable and exist in no locale file
+    including `en.json`. The same sweep also *clears* `pro-required` / `byok-*`, which look
+    like keys but are internal exception sentinels.
+  - **Two numbers for the copy itself:** `en.json`'s multi-word short labels split **98 Title
+    Case / 91 sentence case** (TL-17), and 59 of its 542 keys are rendered by nothing -- 531
+    translated strings maintained for dead code, 19 of them an unshipped subscription flow
+    (TL-15), which is PS-01 seen from the other end.
+  - **Verified passes worth keeping:** no locale blanks the app (all nine logged
+    `Loaded lib/i18n/<locale>.json` and rendered; `zh_TW` renders its full nav, list and
+    settings), `test/locales_test.dart` passes all **17** tests, and **no locale truncates or
+    overflows a label at 1400x860** despite German expanding to 2.38x English.
+  - **Host state restored and re-verified:** prefs restored from
+    `%TEMP%\wslm-prefs-p07-theme.json` (`language=en`, `themeMode=light`, `version=1.11.0`),
+    the probe test deleted, and no `.wslconfig` or distro touched by this pass.
+  - No Dart code changed -- this task produced two Markdown files and screenshots -- so there
+    is nothing new to unit-test. `flutter analyze` was run anyway: **109 issues, 0 errors and
+    2 warnings**, both pre-existing (`wsl.dart:1744`, `test/mocks.dart:597`) -- identical to
+    the baseline the previous two tasks recorded.
 
 - [ ] Audit interaction and accessibility details:
   - Tab order and keyboard reachability on every screen; can a keyboard-only user create, start, stop and delete a distro?
