@@ -484,4 +484,99 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
 
   No source file was touched — this task is documentation only.
 
-- [ ] Add the new i18n keys required by the S-sized findings to every file in `lib/i18n/` by appending (never sorting), with real translations for de, en, es, hu, ja, pt, tr, zh_CN and zh_TW, so Phase 05 can wire up UI without a translation detour. Run `dart scripts/check_translations.dart` (or the equivalent script in `scripts/`) and `flutter test test/locales_test.dart` to confirm the locale set stays consistent.
+- [x] Add the new i18n keys required by the S-sized findings to every file in `lib/i18n/` by appending (never sorting), with real translations for de, en, es, hu, ja, pt, tr, zh_CN and zh_TW, so Phase 05 can wire up UI without a translation detour. Run `dart scripts/check_translations.dart` (or the equivalent script in `scripts/`) and `flutter test test/locales_test.dart` to confirm the locale set stays consistent.
+
+  **Result (2026-08-28):** **46 new keys × 9 locales = 414 strings appended**, every one
+  hand-written per locale rather than copied from English. The classification pass
+  estimated "roughly 45"; the extra one is the eleventh `wsl.conf` label/description pair
+  (`bootcommand-text`), which its per-item table folded into the P05-13 count without
+  naming.
+
+  Scope taken literally: the task says **add the new keys**. The inventory's **18
+  rewrites** (P05-12's 17 `*info-text` strings, P05-07's `globalconfigurationinfo-text`),
+  the **one deletion** (`unusedmemoryinfo-text`) and the **one rename**
+  (`wslsettings-text`) all change strings the app renders *today*, so they belong with the
+  UI change that motivates them — P05-12, P05-07 and P05-22 — not here. Nothing existing
+  was touched; the diff is 47 added lines and 1 changed line (the trailing comma) per
+  locale file.
+
+  What went in, by item:
+
+  | Item | Keys | n |
+  |:---|:---|---:|
+  | P05-04 | `settingdefault-text`, `settingunset-text` | 2 |
+  | P05-05 | `defaultuserinfo-text` — and it names the trap: it states that this is the *distro's* default user, unlike the Start user box above it, which only affects launches from this app | 1 |
+  | P05-06 | `wslconfrestart-text`, `terminatedistro-text` | 2 |
+  | P05-07 | `restartwslnow-text`, `restartwslprompt-text` | 2 |
+  | P05-09 | `deprecatedvalue-text` | 1 |
+  | P05-10 | `onlyapplieswhen-text` (`%s`), `ignoredinmirrored-text` | 2 |
+  | P05-11 | `milliseconds-text`, `unitexample-text` | 2 |
+  | P05-13 | 11 label + 11 description pairs for the `wsl.conf` keys | 22 |
+  | P05-14 | `gpu-text` / `time-text` / `user-text` section headers + 3 label/description pairs | 9 |
+  | P05-19 | `setdefaultdistro-text`, `setwslversion-text` | 2 |
+  | P05-22 | `microsoftwslsettings-text` | 1 |
+
+  Reuse held: `wsldefaultuser-text`, `stopwsl-text`, `selectfile-text`, `move-text` and
+  `size-text` were left alone, and all 46 names were checked against the 284 existing
+  keys before writing — zero collisions. `mountoptions-text` already exists for the *disk
+  mount* dialog, so the `wsl.conf` one is `automountoptions-text`, deliberately not a
+  reuse: they are different settings with different value grammars.
+
+  Two descriptions were written **from behaviour, not from upstream prose**, as
+  [[wslconf-keys]] instructed:
+
+  1. **`protectbinfmtinfo-text`** — the documented sentence describes the `false` case and
+     would mislead as a tooltip. The key says what `true` (the default) does: WSL keeps
+     its own binfmt registration for Windows interop and systemd cannot replace it.
+  2. **`automountoptionsinfo-text`** — carries the `metadata` precondition the docs state
+     and the app never did (`umask`, `fmask`, `dmask` are inert without it), plus a
+     worked example. That is the guidance behind the #224-class confusion.
+
+  Mechanism: `Working/new-i18n-keys.json` holds the nine locale blocks;
+  `Working/append_i18n_keys.dart` appends them textually — it finds the closing brace,
+  re-serialises nothing, and preserves each file's CRLF endings, so the existing 284
+  entries keep their byte-for-byte formatting and their order. Re-running is a no-op.
+  This is what "appending (never sorting)" needs: `scripts/add_translation_key.dart`
+  round-trips the whole map through `JsonEncoder`, which would have reformatted every
+  file, and it fills gaps with the **English string** — the exact failure this task exists
+  to avoid.
+
+  **Verification:**
+
+  - `dart scripts/check_translations.dart` — clean, no missing keys in any locale.
+  - `flutter test test/locales_test.dart` — **7 tests pass** (4 existing + 3 added).
+  - `flutter test` — **393 tests pass**, no regressions.
+  - `flutter analyze test/locales_test.dart` — no issues.
+
+  Three tests added to `test/locales_test.dart`, in its existing "explain why the
+  invariant matters" style:
+
+  - **placeholder parity** — every locale must use as many `%s` / `%sN` as English, for
+    every key. A translation that drops one loses the value it was meant to show; one that
+    invents one renders a raw `%s`. Counts only, because the localization package
+    (`localization-2.1.1`, `localization_service.dart:154-171`) fills `%s` positionally
+    and `%sN` by index, so `%s` and `%s0` are interchangeable for a single argument.
+  - **the 46 audit keys are present and non-empty in every locale.**
+  - **the 46 audit keys are not verbatim English** in the eight non-English locales,
+    skipping values of 20 characters or less so `gpu-text` ("GPU" everywhere) and de's
+    `networkhostname-text` ("Hostname") do not read as failures. This is the one that
+    actually pins the work: an English fallback is one careless
+    `add_translation_key.dart` run away.
+
+  **Two things found while measuring, neither in scope, both worth Phase 05 knowing:**
+
+  1. **`zh_CN`'s `cleanuptitle-text` uses `%s` where the other eight use `%s0`** — checked
+     against the package and the call site (`list_item.dart:351`, one argument), and it is
+     **correct**, not a bug: `%s` and `%s0` both resolve to `arguments[0]`. Recorded
+     because the parity test had to be written around it, and because it looks like a
+     defect at a glance.
+  2. **A pre-existing English-fallback backlog of ~7 long strings per locale** —
+     `nodisksfound-text`, `unmountfailed-msg`, `usbdetected-msg`, `mountoptionshint-text`,
+     `diskofflinehint-text`, `unknownmounterror-text`, `exampleunmountpath-text` in es,
+     hu, ja, pt, tr and zh_TW, plus `consoleinfo-text` in hu. All from the disk-mount
+     feature, all untouched here. This is why the third test is scoped to the audit's own
+     keys rather than the whole file: a global rule would fail on debt this task did not
+     create and was not asked to pay down. Worth a task of its own.
+
+  Not done here: no UI code was wired up. Every key is unreferenced until Phase 05 renders
+  it, which is the point — the translation detour is now paid in advance.
