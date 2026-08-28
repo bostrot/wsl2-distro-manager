@@ -358,11 +358,62 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   files + 2 new, no unrelated churn. `dart format` again not run, for the
   reason recorded above.
 
-- [ ] Add or extend tests for the changed behaviour in `test/ai_workspace_service_test.dart`:
+- [x] Add or extend tests for the changed behaviour in `test/ai_workspace_service_test.dart`:
   - Failed install keeps `error` + `errorMessage` across a background refresh
   - `notInstalled` clears `installPath`
   - Open WebUI reports `starting` (not `running`) when `docker inspect` yields `starting`, and `running` on `healthy`
   - Port-based status returns `stopped` when the process exists but nothing is listening
+
+  **Done (2026-08-28).** All four bullets already had a service-level test,
+  added alongside the fixes themselves: sticky error across a refresh
+  (`install` group), `notInstalled` clears `installPath` plus the re-assert and
+  cached-seed complements, `starting`/`running` from the health gate, and a
+  not-listening gateway reading as stopped while keeping its path. Rather than
+  restate them, this task closed the gap those tests share: **every one of them
+  feeds the mock shell a canned answer**, so they assert how the service *reads*
+  a probe result and can say nothing about whether the probe produces the right
+  result.
+
+  That gap is where every bug in this phase actually lived. The probes are bash
+  programs assembled from Dart string fragments — `[ -d "~/.hermes" ]` that
+  never matched because `~` does not expand inside double quotes, `grep -q
+  18789` that also matched `:187890`, and the `wsl.exe` argv flattening that
+  made `_s=$(…)` permanently empty. A mock returning `'running'` sees none of
+  them.
+
+  New group `probe script semantics` (11 tests) runs **the exact string
+  `refreshStatus` sends into the distro** — captured from
+  `testShell.lastCommand.last`, not re-typed — under a real bash, stubbing the
+  distro's commands with *shell functions*, which take precedence over `PATH`
+  and so need no temp dir, no `chmod` and no `PATH` juggling that msys would
+  mangle. Covered: a listening port reads `running` (both gateways); a process
+  that exists while nothing listens reads `exists` — the literal fourth bullet,
+  with `pgrep` stubbed to succeed to show what the old probe would have said;
+  neither listening nor installed reads `missing`; `:187890` is not `:18789`;
+  and for Open WebUI `starting`/`healthy`/`unhealthy`/no-HEALTHCHECK/not-up plus
+  the `dockerdown` marker.
+
+  Two file-scope helpers were added: `_locateBash()` (Git Bash, else WSL's
+  `bash.exe` — the scripts are POSIX-only and reference no host paths; the group
+  carries `skip:` when neither exists, so CI without bash stays green) and
+  `_hostPortIsOpen()`, because the probe's `/dev/tcp` fallback makes a genuine
+  connection attempt — the three "nothing is listening" tests call
+  `markTestSkipped` rather than fail if a real service happens to hold 18789.
+
+  **Verified the tests have teeth by mutation**, not by watching them pass:
+  breaking the anchor (`[^0-9]` → `[^X]`) and the health gate (`xstarting` →
+  `xstartingZ`) in `service.dart` made exactly the two intended new tests fail.
+  The pre-existing `reports Open WebUI as starting while its container is
+  migrating` **passed against the broken gate** — which is the concrete
+  demonstration that this group covers something the canned-stdout tests
+  cannot. Mutations reverted; `git diff` is the test file only.
+
+  `flutter analyze` 105 issues before and after, none in the touched file
+  (`flutter analyze test/ai_workspace_service_test.dart` clean). `flutter test`
+  356/356 (was 345), `flutter test integration_test/ai_workspace_test.dart -d
+  windows` 17/17. `git diff --stat` is 1 file, 242 insertions / 1 deletion (the
+  `dart:io` import gained `Socket`) — no unrelated churn. `dart format` again
+  not run, for the reason recorded above.
 
 - [ ] Run `flutter test` and `flutter analyze`, fix every failure, then launch the app with `.maestro/tools/launch.ps1 --dart-define=WSLM_FORCE_PRO=true` and click through the AI Workspace screen: capture `.maestro/screenshots/phase-02/` shots of the not-installed, installing, error-with-message and running states, and confirm no card shows a stale `Installed:` path.
 

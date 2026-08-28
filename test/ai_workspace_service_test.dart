@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show ProcessResult, Process, ProcessStartMode;
+import 'dart:io' show ProcessResult, Process, ProcessStartMode, Socket;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,6 +70,61 @@ class TestShell implements Shell {
     allCommands.clear();
     artificialDelay = null;
     throwOnRun = false;
+  }
+}
+
+/// A real bash for the probe-script tests below, or null when none is
+/// installed on this machine.
+///
+/// The status probes are bash *programs* assembled from string fragments, and
+/// every status bug this file guards against was a defect in that program
+/// rather than in the Dart around it: `[ -d "~/.hermes" ]` never matched
+/// because `~` does not expand inside double quotes, and `grep -q 18789` also
+/// matched `:187890`. A mock shell handing back a canned `running` cannot see
+/// either. Prefers Git Bash, but WSL's `bash.exe` works too — the scripts are
+/// POSIX-only and reference no host paths.
+String? _locateBash() {
+  const candidates = [
+    r'C:\Program Files\Git\bin\bash.exe',
+    r'C:\Program Files (x86)\Git\bin\bash.exe',
+    'bash',
+  ];
+  for (final candidate in candidates) {
+    try {
+      if (Process.runSync(candidate, ['-c', 'echo ok']).exitCode == 0) {
+        return candidate;
+      }
+    } catch (_) {
+      // Not on this machine — try the next candidate.
+    }
+  }
+  return null;
+}
+
+final String? _bash = _locateBash();
+
+/// Runs [script] — the exact string the service sends into the distro — under
+/// a real bash, with [prelude]'s shell functions standing in for the distro's
+/// commands. Functions take precedence over `PATH` lookups, so no temporary
+/// directory or `PATH` juggling is needed.
+Future<String> _runProbeScript(String prelude, String script) async {
+  final result = await Process.run(_bash!, ['-c', '$prelude$script']);
+  return (result.stdout as String).trim();
+}
+
+/// True when something on this machine really is listening on [port].
+///
+/// The gateway probe's `/dev/tcp` fallback makes a genuine connection attempt,
+/// so a "nothing is listening" case cannot be asserted while a real service
+/// holds the port.
+Future<bool> _hostPortIsOpen(int port) async {
+  try {
+    final socket = await Socket.connect('127.0.0.1', port,
+        timeout: const Duration(milliseconds: 200));
+    socket.destroy();
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 
@@ -1320,5 +1375,191 @@ void main() {
         );
       });
     });
+
+    // Every test above stubs the probe's *answer* and asserts how the service
+    // reads it. These run the exact bash program the service sends into the
+    // distro and assert the program itself produces the right answer, with
+    // shell functions standing in for `ss`, `docker` and the tool binaries.
+    group('probe script semantics', () {
+      /// The bash program `refreshStatus` sends for [tool].
+      Future<String> probeScriptFor(AiWorkspaceTool tool) async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(tool);
+        return testShell.lastCommand.last;
+      }
+
+      /// Fast-forwards the daemon wait loop; nothing here needs real seconds.
+      const noSleep = 'sleep() { :; }; ';
+
+      /// A `docker` stub. [health] is the body of the `inspect` branch, [ps]
+      /// what `docker ps` prints.
+      String dockerStub({
+        required String health,
+        String ps = 'abcd open-webui Up 2 minutes',
+      }) =>
+          '$noSleep'
+          'docker() { case \$1 in '
+          'info) return 0;; '
+          "ps) echo '$ps';; "
+          'inspect) $health;; '
+          'esac; }; ';
+
+      test('a gateway whose port is listening reads as running', () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openClaw);
+
+        final answer = await _runProbeScript(
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:18789 0.0.0.0:*'; }; ",
+          script,
+        );
+
+        expect(answer, 'running');
+      });
+
+      test('the hermes probe answers on its own port', () async {
+        final script = await probeScriptFor(AiWorkspaceTool.hermesAgent);
+
+        final answer = await _runProbeScript(
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:9119 0.0.0.0:*'; }; ",
+          script,
+        );
+
+        expect(answer, 'running');
+      });
+
+      // The bullet this phase set out to prove: `pgrep` finds the gateway and
+      // would have reported it running, while nothing answers on the port.
+      // The probe has to say "installed, not serving" instead — which
+      // refreshStatus maps to stopped, keeping the card and its install path.
+      test('a gateway process that exists while nothing listens reads as '
+          'installed, not running', () async {
+        if (await _hostPortIsOpen(18789)) {
+          markTestSkipped('a real service holds 18789 on this machine, so the '
+              '/dev/tcp fallback cannot be exercised');
+          return;
+        }
+        final script = await probeScriptFor(AiWorkspaceTool.openClaw);
+
+        final answer = await _runProbeScript(
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:22 0.0.0.0:*'; }; "
+          'pgrep() { echo 4242; }; openclaw() { :; }; ',
+          script,
+        );
+
+        expect(answer, 'exists');
+      });
+
+      test('a gateway that is neither listening nor installed reads as '
+          'missing', () async {
+        if (await _hostPortIsOpen(18789)) {
+          markTestSkipped('a real service holds 18789 on this machine');
+          return;
+        }
+        final script = await probeScriptFor(AiWorkspaceTool.openClaw);
+
+        final answer = await _runProbeScript('ss() { :; }; ', script);
+
+        expect(answer, 'missing');
+      });
+
+      // Regression: a bare `grep -q 18789` matches `:187890` and any other
+      // column carrying those digits, so an unrelated socket reported the
+      // gateway as running.
+      test('a neighbouring port is not mistaken for the gateway port',
+          () async {
+        if (await _hostPortIsOpen(18789)) {
+          markTestSkipped('a real service holds 18789 on this machine');
+          return;
+        }
+        final script = await probeScriptFor(AiWorkspaceTool.openClaw);
+
+        final answer = await _runProbeScript(
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:187890 0.0.0.0:*'; }; "
+          'openclaw() { :; }; ',
+          script,
+        );
+
+        expect(answer, 'exists');
+      });
+
+      // Open WebUI runs ~2 minutes of alembic migrations while its container
+      // already reports `Up`, and probing or restarting it inside that window
+      // kills it. `docker ps` alone cannot tell the difference.
+      test('a migrating Open WebUI container reads as starting, not running',
+          () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openWebUi);
+
+        final answer = await _runProbeScript(
+          dockerStub(health: 'echo starting'),
+          script,
+        );
+
+        expect(answer, 'starting');
+      });
+
+      test('a healthy Open WebUI container reads as running', () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openWebUi);
+
+        final answer = await _runProbeScript(
+          dockerStub(health: 'echo healthy'),
+          script,
+        );
+
+        expect(answer, 'running');
+      });
+
+      test('an unhealthy Open WebUI container reads as stopped', () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openWebUi);
+
+        final answer = await _runProbeScript(
+          dockerStub(health: 'echo unhealthy'),
+          script,
+        );
+
+        expect(answer, 'stopped');
+      });
+
+      // An image with no HEALTHCHECK makes `docker inspect` fail and leaves
+      // the variable empty. An empty answer is no evidence of a problem, so
+      // the gate must fall through to running rather than strand the card.
+      test('an Open WebUI image with no healthcheck still reads as running',
+          () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openWebUi);
+
+        final answer = await _runProbeScript(
+          dockerStub(health: 'return 1'),
+          script,
+        );
+
+        expect(answer, 'running');
+      });
+
+      test('a container that is not up falls through to the existence check',
+          () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openWebUi);
+
+        final answer = await _runProbeScript(
+          dockerStub(health: 'echo healthy', ps: ''),
+          script,
+        );
+
+        expect(answer, 'exists');
+      });
+
+      // A daemon that never answers says nothing about whether the tool is
+      // installed, so the probe reports that instead of guessing.
+      test('a docker daemon that never comes up prints the dockerdown marker',
+          () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openWebUi);
+
+        final answer = await _runProbeScript(
+          '${noSleep}docker() { return 1; }; ',
+          script,
+        );
+
+        expect(answer, 'dockerdown');
+      });
+    }, skip: _bash == null ? 'no bash available to run the probe scripts' : null);
   });
 }
