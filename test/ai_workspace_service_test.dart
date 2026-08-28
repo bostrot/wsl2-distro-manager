@@ -665,6 +665,42 @@ void main() {
         expect(state.status, ToolStatus.starting);
         expect(service.getUrl(AiWorkspaceTool.openWebUi), isNull);
       });
+
+      // The launcher exits 0 even when the gateway dies immediately, so the
+      // start command's own success gate has to be the port. Without it
+      // start() flips the card to "running" against a dead port.
+      test('starting hermes waits for its port instead of trusting pgrep',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        service.getState(AiWorkspaceTool.hermesAgent)!.status =
+            ToolStatus.stopped;
+        testShell.stdoutData = '';
+        await service.start(AiWorkspaceTool.hermesAgent);
+
+        final command = testShell.lastCommand.last;
+        expect(command.contains('setsid hermes gateway'), true);
+        expect(command.contains('for _i in'), true);
+        expect(command.contains('/dev/tcp/127.0.0.1/9119'), true);
+        expect(command.contains('pgrep'), false);
+      });
+
+      test('starting openclaw waits for its port', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        service.getState(AiWorkspaceTool.openClaw)!.status =
+            ToolStatus.stopped;
+        testShell.stdoutData = '';
+        await service.start(AiWorkspaceTool.openClaw);
+
+        final command = testShell.lastCommand.last;
+        expect(command.contains('openclaw gateway restart'), true);
+        expect(command.contains('for _i in'), true);
+        expect(command.contains(r':18789([^0-9]|$)'), true);
+        expect(command.contains('"'), false);
+      });
     });
 
     group('uninstall', () {
@@ -961,6 +997,75 @@ void main() {
 
         expect(
           testShell.lastCommand.any((a) => a.contains('command -v openclaw')),
+          true,
+        );
+      });
+
+      // Both gateways used to be probed with `pgrep`, which proves only that
+      // a process exists: OpenClaw's gateway stays alive after a failed bind
+      // and Hermes' launcher exits 0 while its gateway is already dead, so a
+      // card read "running" against a port that refused every connection.
+      test('hermes agent status is decided by its port, not by pgrep',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+        final command = testShell.lastCommand.last;
+        expect(command.contains('9119'), true);
+        expect(command.contains('/dev/tcp/127.0.0.1/9119'), true);
+        expect(command.contains('pgrep'), false);
+      });
+
+      test('openclaw status is decided by its port, not by pgrep', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        final command = testShell.lastCommand.last;
+        expect(command.contains('18789'), true);
+        expect(command.contains('/dev/tcp/127.0.0.1/18789'), true);
+        expect(command.contains('pgrep'), false);
+      });
+
+      // A bare `grep -q 18789` also matches `:187890` and any other column
+      // carrying those digits, so the port has to be anchored.
+      test('the port probe anchors the port number', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        expect(
+          testShell.lastCommand.last.contains(r':18789([^0-9]|$)'),
+          true,
+        );
+        // `runInShell: false` means a `"` reaches bash literally.
+        expect(testShell.lastCommand.last.contains('"'), false);
+      });
+
+      // The port probe answering "not listening" must not be read as "not
+      // installed": the probe falls through to the exists check, and an
+      // installed-but-dead gateway keeps its card and its install path.
+      test('a gateway that is not listening reads as stopped, keeping its '
+          'install path', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent);
+        expect(state?.status, ToolStatus.stopped);
+        expect(state?.installPath, 'cmd://hermes');
+        // The else-branch of the port probe is what produced that answer.
+        expect(
+          testShell.lastCommand.last.contains('command -v hermes'),
           true,
         );
       });

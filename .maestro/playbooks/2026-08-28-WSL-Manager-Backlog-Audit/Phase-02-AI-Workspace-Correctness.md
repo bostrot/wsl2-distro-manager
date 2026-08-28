@@ -133,10 +133,65 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   `dart run scripts/check_translations.dart` clean. `dart format` again not
   run, for the reason recorded above.
 
-- [ ] Make the OpenClaw and Hermes status checks reflect service health rather than process existence:
+- [x] Make the OpenClaw and Hermes status checks reflect service health rather than process existence:
   - `pgrep -f '[o]openclaw'` / `pgrep -f '[h]ermes.*gateway'` only prove a process exists; the gateway was live while nothing listened on 18789
   - Probe the port (or use the tool's own `gateway status`) so a card cannot read "running" while the service is unusable
   - Reuse the existing `_firstServiceUrl` Dart-side parsing rather than adding shell-side `grep`/`$(...)`/redirection, which does not survive Dart's Windows argument escaping
+
+  **Done (2026-08-28).** Half the premise was already stale: OpenClaw's
+  `statusCheck` stopped being `pgrep` in `13652e6` and was already
+  `ss -ltn | grep -q 18789`. Hermes was still `pgrep -f '[h]ermes.*gateway'`.
+  Rather than porting the OpenClaw one-liner across, both tools now share one
+  Dart-side helper trio, so the probe exists in exactly one place:
+  `_listeningTest(port)` (a bash *condition*), `_listeningStatusCheck(port)`
+  (the `ToolConfig.statusCheck` wrapper that echoes running/stopped) and
+  `_waitForPort(port)` (the start gate). `_toolConfigs` became `final` instead
+  of `const` so the entries can call them, and the ports are named
+  (`_kHermesPort`, `_kOpenClawPort`) instead of appearing as three literals
+  each. The twenty-iteration list is now one constant, `_kWaitIterations`,
+  shared with the existing `_kDockerWaitLoop`.
+
+  The probe is `ss -ltn | grep -qE ':<port>([^0-9]|$)'` with an
+  `(exec 3<>/dev/tcp/127.0.0.1/<port>)` fallback. Two deliberate changes from
+  the old OpenClaw line: the port is **anchored**, because a bare
+  `grep -q 18789` also matches `:187890` and any other column carrying those
+  digits; and the `/dev/tcp` fallback keeps an image without iproute2 from
+  reporting every gateway as stopped forever, which the `ss`-only form would
+  do silently.
+
+  Start commands were gated too, not just the probe — otherwise `start()` sets
+  `status = running` on a command whose success meant nothing. Hermes' trailing
+  `sleep 1; pgrep …` became the shared port wait; OpenClaw's hand-rolled
+  `for i in …` loop became the same helper. `start()` itself is unchanged: the
+  command is now self-gating on the port, so a `true` return really does mean
+  something is listening.
+
+  A gateway that is alive but not listening now answers `stopped`, which sends
+  `refreshStatus()` into the `_existsCheck()` branch — so it reads "Stopped"
+  and keeps its `Installed: cmd://hermes` line, rather than falling through to
+  `notInstalled` and losing the path.
+
+  **Deviation from the third bullet, deliberate.** `_firstServiceUrl` parses a
+  *URL* out of dashboard output; a port probe has no URL to parse, so there is
+  nothing to reuse there — it stays the dashboard path's parser and is
+  untouched. The bullet's stated rationale ("shell-side `grep`/`$(...)` does
+  not survive Dart's Windows argument escaping") was root-caused in the
+  previous task and is no longer true: it was `wsl.exe` flattening argv, fixed
+  by `--exec` (see `Working/bash-line2-syntax-error.md`). Verified live against
+  the real `ai-workspace` distro rather than assumed — `ss` is present there,
+  a listening port returned `running`, a closed one `stopped`, and
+  `grep -qE ':3338([^0-9]|$)'` correctly refused to match a socket on `:33387`.
+  The `/dev/tcp` fallback was exercised separately in a shell with no `ss` and
+  also returned `running` against an open port.
+
+  Six tests added to `test/ai_workspace_service_test.dart` (port-not-pgrep for
+  each gateway, port anchoring plus the no-double-quotes rule, not-listening
+  reads as stopped and keeps its install path, and both start commands waiting
+  on the port). `flutter analyze` 105 issues before and after — no new ones,
+  none in the touched files. `flutter test` 330/330,
+  `flutter test integration_test/ai_workspace_test.dart -d windows` 17/17.
+  `git diff --stat` is 2 files, no unrelated churn. `dart format` again not
+  run, for the reason recorded above.
 
 - [ ] Delete `lib/components/navbar.dart` after confirming nothing imports it:
   - Verify with `grep -rn "navbar" lib/ test/ integration_test/`

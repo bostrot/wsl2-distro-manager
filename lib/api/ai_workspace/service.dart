@@ -29,9 +29,47 @@ const String _kDockerDownMarker = 'dockerdown';
 /// found 2026-08-28 — `wsl.exe` re-ran the flattened command through the
 /// distro's default shell; see the `--exec` note on [_wslArgs]. The explicit
 /// list is kept because it costs nothing and works under either form.
-const String _kDockerWaitLoop =
-    'for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do '
+const String _kDockerWaitLoop = 'for _i in $_kWaitIterations; do '
     'docker info >/dev/null 2>&1 && break; sleep 1; done; ';
+
+/// Twenty iterations, shared by every wait loop here. Spelled out for the
+/// reason given on [_kDockerWaitLoop].
+const String _kWaitIterations =
+    '1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20';
+
+/// Ports the two gateways bind. Referenced by their status probe, their start
+/// gate and [ToolConfig.port], so they get a name rather than three literals.
+const int _kHermesPort = 9119;
+const int _kOpenClawPort = 18789;
+
+/// Shell condition, true when something is accepting TCP connections on
+/// [port] inside the distro.
+///
+/// This replaced `pgrep` for both gateways, which proved only that a process
+/// exists: OpenClaw's gateway stays alive after a failed bind and Hermes'
+/// launcher exits 0 while its gateway is already dead, so a card read
+/// "running" against a port that refused every connection.
+///
+/// `ss` (iproute2) is the primary probe; the `/dev/tcp` fallback stops an
+/// image without iproute2 from reporting every tool as stopped forever. The
+/// port is anchored — a bare `grep -q 18789` also matches `:187890` and any
+/// other column that happens to contain those digits.
+///
+/// Single quotes only: `runInShell: false` means a `"` reaches bash literally.
+String _listeningTest(int port) =>
+    '{ ss -ltn 2>/dev/null | grep -qE \':$port([^0-9]|\$)\' '
+    '|| (exec 3<>/dev/tcp/127.0.0.1/$port) 2>/dev/null; }';
+
+/// [ToolConfig.statusCheck] for a tool whose health is "is the port serving".
+String _listeningStatusCheck(int port) =>
+    '${_listeningTest(port)} && echo running || echo stopped';
+
+/// Gives a just-started gateway ~20s to bind. Both gateways exist for seconds
+/// before they listen, so the command that starts them has to wait or its exit
+/// code says nothing about whether the service came up.
+String _waitForPort(int port) =>
+    'for _i in $_kWaitIterations; do ${_listeningTest(port)} && break; '
+    'sleep 1; done; ';
 
 /// Supported AI workspace tools.
 enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi }
@@ -80,22 +118,23 @@ class ToolConfig {
 }
 
 /// Commands assume an Ubuntu environment (curl, bash, docker available).
-const Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
+final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
   AiWorkspaceTool.hermesAgent: ToolConfig(
     name: 'Hermes Agent',
     installCommand: 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh '
         '| bash -s -- --non-interactive',
     // setsid, not `nohup &`: the launcher survives this one-shot wsl call.
-    // The trailing pgrep is the real success check — the launcher exits 0
-    // even if the gateway dies immediately.
+    // The trailing port wait is the real success check — the launcher exits 0
+    // even if the gateway dies immediately, and a `pgrep` gate here reported
+    // success for a gateway that never bound 9119.
     startCommand: 'pkill -f \'[h]ermes.*gateway\' >/dev/null 2>&1; '
         'mkdir -p \$HOME/.hermes; '
         'setsid hermes gateway </dev/null >>\$HOME/.hermes/gateway.log 2>&1 & '
-        'disown; sleep 1; pgrep -f \'[h]ermes.*gateway\' >/dev/null',
+        'disown; ${_waitForPort(_kHermesPort)}${_listeningTest(_kHermesPort)}',
     stopCommand: 'pkill -f \'[h]ermes.*gateway\' || true',
-    statusCheck:
-        'pgrep -f \'[h]ermes.*gateway\' > /dev/null && echo running || echo stopped',
-    port: 9119,
+    // A live process proves nothing — see [_listeningTest].
+    statusCheck: _listeningStatusCheck(_kHermesPort),
+    port: _kHermesPort,
     defaultInstallPath: 'cmd://hermes',
     dashboardCommand: 'hermes dashboard',
   ),
@@ -104,22 +143,16 @@ const Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     installCommand:
         'curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard --no-prompt',
     // `gateway install --force` first leaves the service unable to bind, so
-    // restart on its own is tried first and the reinstall is only a fallback.
-    // The wait is on the port, not the process: the gateway takes several
-    // seconds to listen and exists long before it serves.
-    // `gateway install --force` first leaves the service unable to bind, so
     // plain restart is what runs. The wait is on the port, not the process:
-    // the gateway exists for seconds before it ever listens.
+    // the gateway exists for seconds before it ever listens, and stays alive
+    // after a bind that failed outright.
     startCommand: 'openclaw gateway restart >/dev/null 2>&1; '
-        'for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do '
-        'sleep 1; ss -ltn 2>/dev/null | grep -q 18789 && break; done; '
-        'ss -ltn 2>/dev/null | grep -q 18789',
+        '${_waitForPort(_kOpenClawPort)}${_listeningTest(_kOpenClawPort)}',
     stopCommand: 'openclaw gateway stop >/dev/null 2>&1; '
         'pkill -f \'[o]penclaw\' || true',
     // A live process proves nothing — it routinely runs without ever binding.
-    statusCheck:
-        'ss -ltn 2>/dev/null | grep -q 18789 && echo running || echo stopped',
-    port: 18789,
+    statusCheck: _listeningStatusCheck(_kOpenClawPort),
+    port: _kOpenClawPort,
     defaultInstallPath: 'cmd://openclaw',
     dashboardCommand: 'openclaw dashboard',
   ),
