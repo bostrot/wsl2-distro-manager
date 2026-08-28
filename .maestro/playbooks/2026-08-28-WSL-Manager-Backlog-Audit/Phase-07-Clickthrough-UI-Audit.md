@@ -79,10 +79,44 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
     there is nothing new to unit-test. `flutter analyze` was run anyway to confirm the
     tree is unchanged and clean.
 
-- [ ] Audit the create and install flows:
+- [x] Audit the create and install flows:
   - `lib/screens/create_screen.dart` (the new dedicated screen): field order, validation messages, what happens with an empty name, a duplicate name, a name with spaces or non-ASCII characters, the catalogue dropdown, the custom-rootfs path, install progress, cancel, and the error/retry state
   - `lib/dialogs/install_dialog.dart`, `copy_dialog.dart`, `qa_dialog.dart`: consistency with the screen, button order, destructive-action confirmation
   - Write `doc/audit/ui-ux/create-and-install.md`
+
+  **Done 2026-08-28.** 40 findings (CI-01..CI-40) in `doc/audit/ui-ux/create-and-install.md`,
+  all copied into the master table in `doc/audit/ui-ux/index.md`. 45 screenshots in
+  `.maestro/screenshots/phase-07/` (gitignored), including four nearest-neighbour zoom
+  crops for the toast text and the snippet-selection contrast.
+
+  - **Two real instances were created and destroyed**, so progress/success/error are
+    captured from actual runs, not reasoned about. `AuditTest` installed Ubuntu 24.04 end
+    to end (CI-16: the toast stalls at "Downloading 100%" for the whole `wsl --import`
+    phase); `AuditFail` was pointed at `C:\nope\missing-rootfs.tar.gz` to reach the error
+    branch. `AuditTest` was `wsl --unregister`ed and prefs restored from
+    `%TEMP%\wslm-prefs-p07-create.json` afterwards -- `wsl --list` and a prefs `-Show`
+    both re-verified.
+  - **CI-17 is the one to fix first.** `Notify.message('creatinginstance-text',
+    loading: true)` is never cleared on any of `createInstance`'s seven `return false`
+    paths, so 30+ seconds after the red failure banner appeared the status bar still read
+    "Creating instance. This might take a while..." with a live spinner
+    (`57-create-error-stuck-spinner.png`). Measured, not inferred.
+  - **CI-34 is the one measured number in this pass.** Selecting a community snippet drops
+    its title from `#1A1A1A` on `#FFFFFF` (17.4:1) to `#838689` on `#BBD9F0` (**2.49:1**)
+    -- sampled per-pixel out of `66-qa-selected.png`, so selecting an item is what makes
+    it unreadable.
+  - **CI-08 explains a behaviour the UI actively lies about.** A catalogue pick survives a
+    Source Type change, and pressing Create with source "Local RootFS File" and value
+    "Ubuntu 24.04" started a *repo download* and succeeded -- the source type visibly
+    disagreed with what the app did.
+  - **CI-11, CI-13, CI-28, CI-38..CI-40 are labelled source-derived, not screenshotted.**
+    No Docker daemon, no spare `.vhdx`, WSL is installed here, and the `passwd` console
+    was deliberately not triggered so no passwordless account was left behind. All are
+    listed in the index's "not examined" section rather than quietly implied to be covered.
+  - No Dart code changed -- `git status` lists only the three Markdown files -- so there is
+    nothing new to unit-test. `flutter analyze` was run anyway to confirm nothing regressed:
+    182 issues, **0 errors and 2 warnings**, the rest `info` lints, i.e. the tree's
+    pre-existing baseline. (Not "clean" -- the earlier phases' notes overstate that.)
 
 - [ ] Audit settings, templates, mount and actions:
   - `lib/screens/settings_screen.dart` including everything Phase 05 added: grouping, scroll length, tooltip legibility, which controls need `wsl --shutdown` to take effect and whether the UI says so, save/discard affordances, and whether an invalid value can be saved

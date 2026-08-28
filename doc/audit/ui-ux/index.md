@@ -135,13 +135,53 @@ Populated by the per-area passes below; empty until they run. Severity is
 | LN-24 | AI chat button nearly invisible in both themes; hardcoded `Colors.grey` / `Colors.white` | [[list-and-navigation]] | `home_screen.dart:163` | nit | S | `26-list-1400x860-home-dark.png` |
 | LN-25 | Size column unlabelled; silently blanks on failure; never says it is VHDX-on-disk | [[list-and-navigation]] | `list.dart:120` | nit | S | `10-list-1400x860-home.png` |
 | LN-26 | Start stays enabled and still says "Start" on a running distro | [[list-and-navigation]] | `list_item.dart:56` | nit | S | `10-list-1400x860-home.png` |
+| CI-01 | Error banner keeps showing a failure the user already fixed; two contradictory messages at once | [[create-and-install]] | `create_screen.dart:61` | major | S | `33-create-duplicate-name.png` |
+| CI-02 | Duplicate name reported twice simultaneously, in two different visual styles | [[create-and-install]] | `create_dialog.dart:501` | major | S | `34-create-duplicate-submit.png` |
+| CI-03 | Inline validation message is hardcoded `Colors.red`, bold 12px, unlike every other error | [[create-and-install]] | `create_dialog.dart:507` | nit | S | `33-create-duplicate-name.png` |
+| CI-04 | Name silently rewritten (`[^A-Za-z0-9]` -> `_`); an all-non-ASCII name becomes `___` | [[create-and-install]] | `create_dialog.dart:149` | major | S | `36b-create-name-nonascii-zoom.png` |
+| CI-05 | Create and Copy sanitise names by different rules; Copy skips the duplicate check | [[create-and-install]] | `copy_dialog.dart:71` | major | M | _source-derived_ |
+| CI-06 | Name field has no label -- placeholder only -- while the field below it gets an `InfoLabel` | [[create-and-install]] | `create_dialog.dart:488` | nit | S | `31-create-1400x860-default.png` |
+| CI-07 | Name field shows a clear (X) button when the field is empty | [[create-and-install]] | `create_dialog.dart:492` | nit | S | `31-create-1400x860-default.png` |
+| CI-08 | Changing Source Type keeps the old value: a catalogue pick sits in "Path to RootFS Archive" | [[create-and-install]] | `create_dialog.dart:425` | major | S | `44-create-source-switch-stale.png` |
+| CI-09 | One static tooltip for a field that means six different things; it covers the Source Type box | [[create-and-install]] | `create_dialog.dart:558` | nit | S | `70-create-wrong-tooltip-localdocker.png` |
+| CI-10 | "No results" panel repurposed as a fake suggestion row; three hardcoded English strings | [[create-and-install]] | `create_dialog.dart:601` | major | S | `69-create-docker-image.png` |
+| CI-11 | `snapshot.hasError` branch is literally empty; no loading state; future refetched per build | [[create-and-install]] | `create_dialog.dart:586` | nit | S | _source-derived_ |
+| CI-12 | "Create default user" + empty username silently creates no user and reports success | [[create-and-install]] | `create_dialog.dart:337` | major | S | `41-create-user-toggle.png` |
+| CI-13 | Password step opens an external console with no warning and is not awaited | [[create-and-install]] | `wsl.dart:1255` | major | M | _source-derived_ |
+| CI-14 | Cancel disabled for the whole install while the nav pane stays live; no way to abort | [[create-and-install]] | `create_screen.dart:127` | major | M | `48-create-progress.png` |
+| CI-15 | Create button collapses to a 38px spinner square; the action row jumps sideways | [[create-and-install]] | `create_screen.dart:117` | nit | S | `48-create-progress.png` |
+| CI-16 | Progress is a text percentage in a corner toast and stalls at "Downloading 100%" through import | [[create-and-install]] | `create_dialog.dart:119` | major | M | `52-create-after.png` |
+| CI-17 | After a failure the "Creating instance..." spinner keeps running indefinitely | [[create-and-install]] | `create_dialog.dart:166` | major | S | `57-create-error-stuck-spinner.png` |
+| CI-18 | Status messages never expire and follow the user across screens for minutes | [[create-and-install]] | `root_screen.dart:83` | major | S | `68-qa-download-invisible-selection.png` |
+| CI-19 | Every status message renders `InfoBarSeverity.info`; "ERROR:" gets a blue info icon | [[create-and-install]] | `notify.dart:66` | major | S | `63b-copy-empty-name-toast.png` |
+| CI-20 | Messages carry severity in shouting capitals ("DONE:", "ERROR:", "WARNING:") | [[create-and-install]] | `en.json:30` | nit | S | `53-create-importing.png` |
+| CI-21 | Two near-identical strings for one condition (`entername-text` / `errorentername-text`) | [[create-and-install]] | `en.json:31` | nit | S | _source-derived_ |
+| CI-22 | Raw WSL stderr shown verbatim with its error code -- and in the Windows locale, not the app's | [[create-and-install]] | `create_dialog.dart:291` | major | M | `56-create-error-state.png` |
+| CI-23 | Only remedy offered is "Diagnose with AI"; with no key it answers with a go-to-Settings toast | [[create-and-install]] | `ai_diagnosis.dart:20` | major | M | `58-create-ai-diagnose.png` |
+| CI-24 | On a short window the never-expiring status bar covers the Create/Cancel buttons | [[create-and-install]] | `notify.dart:23` | major | S | `60-create-900x400-short.png` |
+| CI-25 | Source-type popup covers the page title, the Name field and the source field | [[create-and-install]] | `create_dialog.dart:518` | nit | S | `71-create-sourcetype-covers-form.png` |
+| CI-26 | Six source types are developer jargon, ungrouped, with no description line | [[create-and-install]] | `en.json:307` | nit | M | `42-create-sourcetype-open.png` |
+| CI-27 | Turnkey warning is a five-line italic paragraph containing `fake_systemd` and a shell pipeline | [[create-and-install]] | `en.json:48` | major | S | `72-create-turnkey-warning.png` |
+| CI-28 | `createDialog()` is dead code and carries the opposite button order to the screen replacing it | [[create-and-install]] | `create_dialog.dart:31` | nit | S | _source-derived_ |
+| CI-29 | Copy dialog's primary action is a plain `Button`, equal-width with Cancel -- no visual primary | [[create-and-install]] | `base_dialog.dart:62` | nit | S | `62-copy-dialog.png` |
+| CI-30 | Copy dialog looks pre-filled (placeholder = source name) and pops before it validates | [[create-and-install]] | `base_dialog.dart:64` | major | S | `63b-copy-empty-name-toast.png` |
+| CI-31 | Nothing warns that a copy duplicates the whole disk and stops the source distro | [[create-and-install]] | `copy_dialog.dart:63` | nit | S | `62-copy-dialog.png` |
+| CI-32 | Community dialog's button order is reversed against every other dialog in the app | [[create-and-install]] | `qa_dialog.dart:151` | major | S | `65-qa-community-dialog.png` |
+| CI-33 | Community dialog has no title | [[create-and-install]] | `qa_dialog.dart:133` | nit | S | `65-qa-community-dialog.png` |
+| CI-34 | Selecting a snippet drops its text contrast from 17.4:1 to 2.49:1 (measured) | [[create-and-install]] | `qa_list.dart:129` | major | S | `66b-qa-selected-zoom.png` |
+| CI-35 | Empty search shows a blank 570px panel; selections hidden by the filter are downloaded anyway | [[create-and-install]] | `qa_list.dart:112` | major | S | `67-qa-no-results.png` |
+| CI-36 | Snippet download has no progress and no success message; a failure closes as if it worked | [[create-and-install]] | `qa_dialog.dart:158` | major | S | `68-qa-download-invisible-selection.png` |
+| CI-37 | Community dialog is full window height, leaving ~300px of dead space around a stray link | [[create-and-install]] | `qa_dialog.dart:135` | nit | S | `65-qa-community-dialog.png` |
+| CI-38 | `wsl --install` is a hyperlink that runs an elevated system change, described as text to copy | [[create-and-install]] | `install_dialog.dart:26` | major | S | _source-derived_ |
+| CI-39 | "install it with following command" -- missing article, in all nine locales | [[create-and-install]] | `en.json:74` | nit | S | _source-derived_ |
+| CI-40 | Hardcoded 20%-black chip invisible in dark theme; `InstallDialog` is an inline panel, not a dialog | [[create-and-install]] | `install_dialog.dart:22` | nit | S | _source-derived_ |
 
 ## Per-area files
 
 | File | Covers | Status |
 |:---|:---|:---|
 | [[list-and-navigation]] | distro list, list rows, nav pane, title bar, narrow width | **done** -- 26 findings (LN-01..LN-26) |
-| [[create-and-install]] | create screen, install/copy/QA dialogs | not started |
+| [[create-and-install]] | create screen, install/copy/QA dialogs | **done** -- 40 findings (CI-01..CI-40) |
 | [[settings-and-tools]] | app settings, per-distro settings, templates, mount, actions | not started |
 | [[pro-surfaces]] | AI Workspace, license, badges, AI chat, recommendations, MCP | not started |
 | [[theme-and-locales]] | dark/light diff, all nine locales, text quality | not started |
@@ -166,6 +206,14 @@ Recorded as the audit runs, so it never implies coverage it does not have.
   Docker containers on this host, and WSL is installed.
 - **The row's quick-actions dropdown with snippets configured** -- none are configured, so
   only the empty branch was seen (LN-07).
+- **The WSL-not-installed panel** (`install_dialog.dart`) -- WSL is installed on this host,
+  so CI-38..CI-40 are read from source and labelled as such in [[create-and-install]].
+- **A real Docker Hub pull, a real local `docker save`, and `Import VHDX`** -- no Docker
+  daemon and no spare `.vhdx` here. Those three source types were exercised as far as the
+  create *form* goes (CI-08, CI-10, CI-26); no image or disk was actually fetched.
+- **The `passwd` console window** that the create flow spawns when a default user is given
+  (CI-13) -- deliberately not triggered, so the audit does not leave a passwordless
+  account on the host.
 - **Store-packaged build** -- the audit runs an unpackaged debug build with the Pro gate
   forced. Anything whose appearance depends on real MSIX package identity (the genuine
   free-tier experience, Store purchase flow) is out of scope for the click-through.
