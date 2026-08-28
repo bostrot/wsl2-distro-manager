@@ -120,7 +120,7 @@ Populated by the per-area passes below; empty until they run. Severity is
 | LN-09 | Hovering a row highlights only the chevron 660px away | [[list-and-navigation]] | `list_item.dart:52` | nit | S | `11-list-1400x860-row-hover.png` |
 | LN-10 | BETA badge paints over the AI Workspace icon in compact mode, hiding the only affordance | [[list-and-navigation]] | `panelist.dart:52` | major | S | `13b-list-compact-betabadge-zoom.png` |
 | LN-11 | Snippets and Templates icons indistinguishable at 16px | [[list-and-navigation]] | `panelist.dart:26` | nit | S | `13b-list-compact-betabadge-zoom.png` |
-| LN-12 | No visible keyboard focus indicator anywhere on home -- six Tabs, zero pixels changed | [[list-and-navigation]] | `root_screen.dart:222` | major | M | `17-list-tab-1..6.png` |
+| LN-12 | No visible keyboard focus indicator anywhere on home -- six Tabs, zero pixels changed (**re-diagnosed by IA-01: focus was not moving; a ring does exist**) | [[list-and-navigation]] | `root_screen.dart:222` | major | M | `17-list-tab-1..6.png` |
 | LN-13 | Back button permanently disabled and inert; renders near-white (enabled-looking) in dark | [[list-and-navigation]] | `root_screen.dart:144` | major | S | `26b-back-dark.png` |
 | LN-14 | "Dark Mode" toggle label hardcoded English in all nine locales | [[list-and-navigation]] | `root_screen.dart:212` | major | S | `25-nav-dark-mode.png` |
 | LN-15 | Nav labels mix Title Case and sentence case | [[list-and-navigation]] | `en.json` | nit | S | `10-list-1400x860-home.png` |
@@ -301,6 +301,28 @@ Populated by the per-area passes below; empty until they run. Severity is
 | TL-16 | The three `recommend-*` keys are missing from all nine locales including `en`, so the panel prints its own keys; no tool can see it | [[theme-and-locales]] | `recommender_service.dart:34` | major | S | _source-derived_ |
 | TL-17 | 98 Title Case vs 91 sentence case short labels in `en.json`; the drift is inherited by locales that have no Title Case | [[theme-and-locales]] | `lib/i18n/en.json` | major | M | `201-light-create.png` |
 | TL-18 | "(Optional)" written three ways across nine labels -- including both ways on the same field | [[theme-and-locales]] | `lib/i18n/en.json` | nit | S | `201-light-create.png` |
+| IA-01 | Tab does nothing until the user clicks: focus parks on the Root Focus Scope at launch and after every window switch, with no keyboard way back | [[interaction-and-a11y]] | `root_screen.dart:230` | blocker | M | `301-a11y-tab00..20.png` |
+| IA-02 | An invisible 126x62 status bar on every screen takes a tab stop and swallows mouse clicks | [[interaction-and-a11y]] | `notify.dart:27` | major | S | `362-a11y-no-status-message.png` |
+| IA-03 | The permanently disabled back arrow is a tab stop on every screen | [[interaction-and-a11y]] | `root_screen.dart:143` | major | S | `301-a11y-tab07.png` |
+| IA-04 | Three `GestureDetector` controls -- including the AI panel's only entry point -- cannot be reached or activated by keyboard | [[interaction-and-a11y]] | `home_screen.dart:152` | major | S | `300-a11y-home-baseline.png` |
+| IA-05 | Tab order runs content -> app bar -> nav pane, and the row stop lights the chevron 1,100px from the name | [[interaction-and-a11y]] | `root_screen.dart:222` | major | M | `322-a11y-rowfocus-chevron-zoom.png` |
+| IA-06 | Two focus rings lit at once on a distro row: the Start button and the expander chevron | [[interaction-and-a11y]] | `list_item.dart:51` | major | S | `342-a11y-doublering-before.png` |
+| IA-07 | The focus indicator is a 1px hairline (8.12:1, but one pixel) -- fails WCAG 2.4.13's 2px perimeter | [[interaction-and-a11y]] | fluent `FocusBorder` | nit | S | `356-a11y-dialog-buttons-deletefocus-zoom.png` |
+| IA-08 | The delete confirmation's first Tab lands on **Delete**, not Cancel | [[interaction-and-a11y]] | `base_dialog.dart:60` | major | S | `352-a11y-kb-delete-dialog.png` |
+| IA-09 | 22 of 38 tap targets have no accessible name; `settings_screen.dart` has 11 of them and zero `MergeSemantics` | [[interaction-and-a11y]] | `settings_screen.dart:421` | blocker | M | _measured_ |
+| IA-10 | Not one `Semantics(label:)` in the codebase -- all 18 `Semantics` hits are `MergeSemantics` | [[interaction-and-a11y]] | tree-wide | major | M | _measured_ |
+| IA-11 | Seven icon-only buttons have no tooltip either, so they are unlabelled for sighted users too | [[interaction-and-a11y]] | `template_screen.dart:182` | major | S | `300-a11y-home-baseline.png` |
+| IA-12 | Start, stop and delete post no spinner and no message; delete says "DONE" while the row is still listed | [[interaction-and-a11y]] | `list_item.dart:126` | major | M | `346`/`357-a11y-kb-*.png` |
+| IA-13 | `WSLApi.start` is `async void`, so the failure catch is unreachable and the "started" toast fires unconditionally | [[interaction-and-a11y]] | `wsl.dart:517` | blocker | S | _source-derived_ |
+| IA-14 | The only control on a running operation is a X that hides the progress and leaves it running | [[interaction-and-a11y]] | `notify.dart:63` | major | M | _source-derived_ |
+| IA-15 | `statusMsg`'s `severity` parameter is unreachable -- `Notify.message`'s type has no such parameter | [[interaction-and-a11y]] | `root_screen.dart:58` | nit | S | _source-derived_ |
+| IA-16 | A failed mount shows a dialog whose entire body is "Exception:" -- wsl.exe wrote the reason to stdout, the app reads stderr | [[interaction-and-a11y]] | `mount_service.dart:338` | blocker | S | `382-a11y-mount-error-raw-exception.png` |
+| IA-17 | Five messages interpolate a raw exception; two render "Error: Exception: ..." | [[interaction-and-a11y]] | `docker_images.dart:640` | major | S | _measured_ |
+| IA-18 | Sixteen hardcoded English messages, three of them describing the implementation ("Exporting, removing and importing back...") | [[interaction-and-a11y]] | `list_item.dart:385` | major | M | _measured_ |
+| IA-19 | The "disk is offline" hint is gated on English Windows text and cannot fire on a localized host | [[interaction-and-a11y]] | `mount_dialog.dart:233` | major | S | _source-derived_ |
+| IA-20 | Two strings tell the user to run `wsl --shutdown` / install xterm; one of them sits above a button that does it | [[interaction-and-a11y]] | `en.json:117` | nit | S | _source-derived_ |
+| IA-21 | The recommendation link label is built with an if/else on a route string, in hardcoded English | [[interaction-and-a11y]] | `recommendations_panel.dart:98` | nit | S | _source-derived_ |
+| IA-22 | The snippet list signals hover by dropping the row to 50% opacity -- less contrast, not more | [[interaction-and-a11y]] | `hoverable.dart:33` | nit | S | _source-derived_ |
 
 ## Per-area files
 
@@ -311,7 +333,7 @@ Populated by the per-area passes below; empty until they run. Severity is
 | [[settings-and-tools]] | app settings, per-distro settings, templates, mount, actions | **done** -- 62 findings (ST-01..ST-62) |
 | [[pro-surfaces]] | AI Workspace, license, badges, AI chat, recommendations, MCP | **done** -- 46 findings (PS-01..PS-46) |
 | [[theme-and-locales]] | dark/light diff, all nine locales, text quality | **done** -- 18 findings (TL-01..TL-18) |
-| [[interaction-and-a11y]] | tab order, tooltips, long operations, error text | not started |
+| [[interaction-and-a11y]] | tab order, tooltips, long operations, error text | **done** -- 22 findings (IA-01..IA-22) |
 
 ## Ordered fix list
 
@@ -383,8 +405,11 @@ Recorded as the audit runs, so it never implies coverage it does not have.
 - **A real disk mount** -- no spare physical disk or `.vhdx`, and `wsl --mount` of a disk
   Windows is using is not something to try on the audit machine. The mount forms, the
   empty-unmount state and the empty-field guard were exercised (ST-44..ST-52); no disk was
-  attached, and the four mount/unmount error-recovery dialogs
-  (`mount_dialog.dart:110-251`) were never reached.
+  attached. Of the four mount/unmount error-recovery dialogs (`mount_dialog.dart:110-251`),
+  **the generic one at `:242` was reached** by [[interaction-and-a11y]] -- a VHD mount
+  pointed at a missing path, which is what produced IA-16. The unmount-by-name (`:110-160`)
+  and attached-but-not-mounted (`:184-230`) branches still need a genuinely attached disk
+  and were not reached.
 - **Sync over the network** (`Sync().startServer()`, `download()`) -- needs a second
   machine. ST-23, ST-30 and ST-31 are about the controls, not the transport.
 - **`Move`, and `Templates().useTemplate()`** -- the confirmations were opened and
@@ -392,3 +417,18 @@ Recorded as the audit runs, so it never implies coverage it does not have.
   export/unregister/imported and no instance was created from a template.
 - **The zero-template state and the sub-5MB template disappearance** -- one real template
   (`test-4`) exists here; ST-37 is read from source and `notemplates-text` was not reached.
+- **Actual screen-reader output.** IA-09's "22 of 38 tap targets have no accessible name"
+  and IA-10's "no `Semantics(label:)` anywhere" are counted from the widget tree and from
+  the `MergeSemantics(Tooltip(...))` contract AGENTS.md documents. No Narrator or NVDA
+  session was run, so the counts are claimed and the exact utterances are not.
+- **Windows High Contrast mode, the "Show focus rectangle" setting, and non-100% display
+  scaling.** IA-07's one-pixel focus ring was measured in the default theme at
+  `devicePixelRatio` 1.0.
+- **Stop-by-stop tab order beyond four surfaces.** Home, Add an Instance, Settings and the
+  delete confirmation were walked keystroke by keystroke with the VM-Service focus probe;
+  Snippets, Templates, Distro packages, AI Workspace, License and About were only checked
+  for reachability from the nav pane. IA-02 and IA-03 live in the shell and were confirmed
+  on two screens each.
+- **Reverse (`Shift+Tab`) traversal order.** Only exercised from IA-01's dead root-scope
+  state, where nothing moves. The forward order recorded in IA-05 was not verified to be
+  symmetric.

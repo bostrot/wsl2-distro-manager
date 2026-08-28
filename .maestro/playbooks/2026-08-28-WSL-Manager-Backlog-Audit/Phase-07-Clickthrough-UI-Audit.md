@@ -331,12 +331,89 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
     2 warnings**, both pre-existing (`wsl.dart:1744`, `test/mocks.dart:597`) -- identical to
     the baseline the previous two tasks recorded.
 
-- [ ] Audit interaction and accessibility details:
+- [x] Audit interaction and accessibility details:
   - Tab order and keyboard reachability on every screen; can a keyboard-only user create, start, stop and delete a distro?
   - Tooltips on icon-only buttons — a fluent_ui `Tooltip` cannot label a `BaseButton` because `IconButton` opens its own semantics container; the fix is `MergeSemantics` around the pair, so flag every icon button lacking it
   - Long-running operations: is there always a spinner, a cancel and an error path? Does anything lock the whole UI unnecessarily?
   - Error text quality: flag every message containing a raw exception, a bare colon, a stack trace or a shell command a user cannot act on
   - Write `doc/audit/ui-ux/interaction-and-a11y.md`
+
+  **Done 2026-08-28.** 22 findings (IA-01..IA-22) in `doc/audit/ui-ux/interaction-and-a11y.md`,
+  all copied into the master table in `doc/audit/ui-ux/index.md`. 75 screenshots in
+  `.maestro/screenshots/phase-07/` (gitignored, `300`..`382`; 28 of them are the
+  frame-by-frame Tab walks), including four nearest-neighbour zoom crops -- a one-pixel
+  focus ring is not visible at 1:1.
+
+  - **Tab order was read out of the running app, not inferred from screenshots.** An
+    app whose focus ring is one pixel wide cannot be audited by pixel diff, so this pass
+    attached to the debug build over the Dart VM Service (`Working/focus_probe.dart`,
+    new) and evaluated `FocusManager.instance.primaryFocus` after every keystroke,
+    printing each stop as its `Tooltip` message or `ValueKey`. That produced the complete
+    21-stop home cycle and 24-stop create cycle in IA-05. Two gotchas are documented in
+    the file: the service truncates `valueAsString` at 128 chars (re-fetch with
+    `getObject`), and `main.dart`'s scope has `RenderBox` but not `BoxHitTestResult`, so
+    `--lib=widgets/binding.dart` is needed for a hit test.
+  - **IA-01 is the blocker and it corrects an earlier finding.** From a cold launch,
+    20 Tab presses changed **0 of 1,204,000 pixels** *and* `primaryFocus` never left the
+    `Root Focus Scope` -- Tab is inert, not invisible. Proven to be a recurring state,
+    not a start-up quirk: with focus confirmed on the Start button, one
+    `Shell.MinimizeAll()` + restore round trip put it back on the root scope, and three
+    further Tabs did nothing. **Nine recovery keys were tried** (shift+tab, F6, Down,
+    Right, Enter, Space, Ctrl+Tab, Ctrl+F, Esc, Home) and none restored traversal; only a
+    mouse click or a route change does. [[list-and-navigation]]'s LN-12 measured the same
+    zero pixels and concluded "no focus indicator"; a ring does exist (268 px for a row,
+    552 for a button), so LN-12 now carries a correction note pointing at IA-01/05/07.
+  - **The task's headline question is answered by doing it, not reasoning about it.**
+    A 200-byte rootfs tarball (`etc/os-release` and nothing else) made the create/delete
+    cycle seconds long instead of gigabytes, so `AuditKb` was **created, started, stopped
+    and deleted entirely from the keyboard** -- including choosing the source type from
+    the `ComboBox` with Enter/Down/Down/Enter and navigating the delete confirmation with
+    Tab and Enter. `wsl --list` confirmed each transition. Answer: yes, once IA-01's mouse
+    click has woken the keyboard up.
+  - **IA-02 needed a hit test to be a claim rather than a suspicion.** With no status
+    message showing, the `InfoBar` still occupies `Offset(746,786) Size(126,62)` and its
+    Close button `Offset(831,801) Size(32,32)`, and it is tab stop 6 of 21 with a 0-pixel
+    diff. A hit test on the live app at (350,817) returns the bar's own
+    `RenderDecoratedBox`; 37 px higher at (350,780) it returns the page's scroll view. So
+    it is a permanent invisible dead zone, not just an invisible tab stop.
+  - **IA-16 was reproduced live and the mechanism measured.** Mount Disk -> VHD Image ->
+    a missing path produces a modal whose entire body is `Exception:`. Running the same
+    command directly shows why: `wsl --mount --vhd` writes 182 bytes to **stdout**
+    (`Wsl/ERROR_PATH_NOT_FOUND`) and **0 bytes** to stderr, and
+    `mount_service.dart:338` throws `Exception(result.stderr...)`. The app has the
+    actionable text, including the stable error code, and discards it. This is also the
+    first of the four mount error-recovery dialogs to be reached; the index's
+    "not examined" entry was updated accordingly.
+  - **IA-13 is two bugs in eleven lines, both source-verified.** `WSLApi.start` is
+    declared `void start(...) async` (`wsl.dart:517`), so `startInstance()`'s `catch`
+    can never run -- a failed start is silently swallowed. And
+    `Future.delayed(500ms, Notify.message(...))` *calls* `Notify.message` to compute the
+    argument, so the "started" toast is posted synchronously, before wsl.exe has been
+    asked to do anything, and the delay is a no-op. `stop()` and `remove()` return
+    `Future<String>` and are awaited, so they are fine -- `start` is the odd one out.
+  - **The semantics sweep is a count.** `Working/a11y_audit.dart` (new) brace-scans `lib/`
+    and reports **38 tap targets, 16 with both `Tooltip` and `MergeSemantics`, 22
+    without an accessible name** -- eleven of them in `settings_screen.dart`, which
+    contains zero `MergeSemantics`. It also found that the whole codebase contains **no
+    `Semantics(label:)` at all**: all 18 `Semantics` hits are `MergeSemantics`. Two
+    `settings_screen` entries are a trap for a quick fix -- `:471` and `:499` sit inside a
+    `Tooltip` that wraps the *TextBox* and describes the field, not the button.
+  - **Nine verified passes are recorded**, so a later regression is visible: dialogs trap
+    focus in a clean two-stop cycle and **Esc cancels, returning focus to the invoking
+    button**; `list_item.dart` gets `MergeSemantics(Tooltip(IconButton))` right 11 times
+    out of 11; the nav pane paints a real 208x84 focus ring; and `grep` for
+    `AbsorbPointer` / `IgnorePointer` / `ModalBarrier` / `PopScope` across `lib/` returns
+    **zero** -- nothing in the app locks the whole UI.
+  - **Host state restored and re-verified:** `AuditKb` unregistered, the empty GUID
+    directory WSL leaves behind under `%LOCALAPPDATA%\wsl` removed, the 200-byte tarball
+    deleted, `ai-workspace` restarted to the state it was found in, and prefs restored
+    from `%TEMP%\wslm-prefs-p07-a11y.json`. `wsl --list --verbose` and the Lxss registry
+    key both re-checked.
+  - No Dart code changed -- `git status` lists only the three Markdown files -- so there is
+    nothing new to unit-test. `flutter analyze` was run anyway: **109 issues, 0 errors and
+    2 warnings**, both pre-existing (`wsl.dart:1744`, `test/mocks.dart:597`) -- identical
+    to the baseline the previous three tasks recorded. (`.maestro/` is outside the
+    analyzed set, so the two new helper scripts do not affect it.)
 
 - [ ] Consolidate the findings into `doc/audit/ui-ux/index.md`:
   - One table of every finding, cross-linked with `[[list-and-navigation]]`-style wiki-links to the per-area files

@@ -197,6 +197,17 @@ headers, the Start/Stop buttons, or the action bar.
 A keyboard-only user cannot tell what is selected. Follows up in
 [[interaction-and-a11y]].
 
+> **Corrected by [[interaction-and-a11y]] (IA-01, IA-05, IA-07).** The observation is
+> right and the diagnosis is not. Reading `FocusManager.instance.primaryFocus` over the
+> VM Service during the same key sequence shows that **focus was not moving at all** --
+> it sat on the `Root Focus Scope` for all six presses (and for twenty, when repeated),
+> because Tab is inert until a click or a route change puts focus in the page scope. Once
+> traversal is running, home *does* paint a focus ring: 268 changed pixels for a row and
+> 552 for a button. The real defects are the dead keyboard (IA-01, blocker), the ring
+> landing on the chevron 1,100px from the row it belongs to (IA-05), and the ring being
+> one pixel thick (IA-07). Phase 08 should fix those rather than adding an indicator that
+> already exists.
+
 ### LN-13 -- The back button is permanently disabled, inert, and looks enabled in dark mode
 
 **major / S** -- `lib/nav/root_screen.dart:144-181` -- `22b-nav-backbutton-zoom.png`,
