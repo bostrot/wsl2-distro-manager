@@ -415,8 +415,52 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
     to the baseline the previous three tasks recorded. (`.maestro/` is outside the
     analyzed set, so the two new helper scripts do not affect it.)
 
-- [ ] Consolidate the findings into `doc/audit/ui-ux/index.md`:
+- [x] Consolidate the findings into `doc/audit/ui-ux/index.md`:
   - One table of every finding, cross-linked with `[[list-and-navigation]]`-style wiki-links to the per-area files
   - Severity (blocker / major / nit) and an effort estimate for each
   - An explicit ordered fix list, most impactful first — this is the input to Phase 08 and must be complete
   - A short "not examined" section for anything skipped (e.g. remote WSL over SSH if no second machine is available), so the audit does not imply coverage it does not have
+
+  **Done 2026-08-28.** `doc/audit/ui-ux/index.md` now carries the complete master table
+  (**214 findings**, LN/CI/ST/PS/TL/IA), a per-area severity/effort rollup, and an
+  ordered fix list of **20 work items covering all 214 findings exactly once**.
+
+  - **The fix list is grouped by root cause and file, not by audit area.** Most findings
+    are one bug seen from several screens: the 22 unnamed tap targets are one
+    `MergeSemantics` pass, the six invisible controls are one theme-token pass, and the
+    eleven "raw exception in the UI" findings are one error-mapping pass. Fixing them
+    screen by screen would mean touching `notify.dart`, `theme.dart` and `en.json`
+    twenty times each. The `Fix` column is the change to make, not a restatement of the
+    finding.
+  - **Order is impact, not severity count.** FIX-01..FIX-05 are where the app is *wrong*
+    (work vanishes, a failure reports success, a dialog body is the word `Exception:`);
+    FIX-06/07 are the a11y floor; FIX-08/09 are safety around irreversible actions;
+    FIX-10..FIX-12 are cross-cutting passes that each close a double-digit number of
+    findings in one file; FIX-13 is the paid surface that sells two features with no
+    implementation. All 14 blockers land in FIX-01..FIX-15.
+  - **Sequencing and free closures are called out** so Phase 08 does not redo work:
+    FIX-03 (a `Notify` that can express failure) before FIX-02/FIX-05; FIX-06 before
+    re-checking LN-12, which may close for free; FIX-10's token pass before FIX-13/14/17;
+    FIX-11 before FIX-12, or TL-10's widened CI gate fails every string FIX-12 adds.
+    PS-40 = TL-16, LN-10 = PS-10, and TL-06/PS-14/LN-24 are one control -- noted, so the
+    estimate is not read as additive.
+  - **Completeness is checked by script, not by eye.** `Working/index_check.dart` verifies
+    the master table against the per-area files (214 rows, 0 missing, 0 extra, every row
+    with a severity, an effort, a `file:line`, a wiki-link and a screenshot/marker) and
+    `Working/fixlist_check.dart` verifies the fix list (every ID cited exactly once, each
+    row's severity matching the master table, each batch's count matching the summary
+    table, every `#fix-nn` anchor resolving to its heading slug). Both report 0 errors.
+    Three real errors were caught this way and fixed: ST-15 and CI-26 were swapped between
+    batches, PS-17/PS-32 severities were transposed, and every summary-table anchor was
+    one hyphen short of GitHub's slug for a ` -- ` heading.
+  - **The "not examined" section is now the union of all six per-area sections**, not just
+    the index's own. Seven entries were merged in that only existed in a per-area file:
+    copy over remote WSL, the MCP server's Pro half beyond the gate, a failed
+    `AiWorkspaceService.stop()`, locales at the 900px width, the recommendations panel in
+    dark, long operations on the Docker/remote/AI-Workspace paths, and the `loading: true`
+    X pressed mid-operation.
+  - No Dart code in `lib/` changed -- this task edited one Markdown file and added four
+    helper scripts under `.maestro/` -- so there is nothing new to unit-test.
+    `flutter analyze` was run anyway: **109 issues, 0 errors, 2 warnings**
+    (`wsl.dart:1744`, `test/mocks.dart:597`), identical to the baseline the previous five
+    tasks recorded.

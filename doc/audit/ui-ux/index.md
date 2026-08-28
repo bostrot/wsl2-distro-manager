@@ -102,10 +102,25 @@ Pro reachability was verified rather than assumed: the License screen renders
 
 ## Findings
 
-Populated by the per-area passes below; empty until they run. Severity is
+All six passes are complete: **214 findings**, every one carrying an area, a
+`file:line`, a severity, an effort estimate and either a screenshot or an explicit
+`_measured_` / `_source-derived_` marker. Severity is
 **blocker** (a user cannot complete the task, or the app looks broken) /
 **major** (completable but confusing, wrong or ugly enough to notice) /
 **nit** (polish). Effort is a rough implementation estimate for Phase 08.
+
+| Area | Findings | blocker | major | nit | S | M | L |
+|:---|---:|---:|---:|---:|---:|---:|---:|
+| [[list-and-navigation]] | 26 | 0 | 12 | 14 | 23 | 3 | 0 |
+| [[create-and-install]] | 40 | 0 | 23 | 17 | 33 | 7 | 0 |
+| [[settings-and-tools]] | 62 | 2 | 25 | 35 | 58 | 4 | 0 |
+| [[pro-surfaces]] | 46 | 5 | 25 | 16 | 39 | 6 | 1 |
+| [[theme-and-locales]] | 18 | 3 | 9 | 6 | 13 | 5 | 0 |
+| [[interaction-and-a11y]] | 22 | 4 | 13 | 5 | 15 | 7 | 0 |
+| **Total** | **214** | **14** | **107** | **93** | **181** | **32** | **1** |
+
+The [ordered fix list](#ordered-fix-list) below regroups all 214 by root cause into 20
+work items -- that, not this table, is what Phase 08 works from.
 
 | ID | Finding | Area | Where | Severity | Effort | Screenshot |
 |:---|:---|:---|:---|:---|:---|:---|
@@ -337,15 +352,446 @@ Populated by the per-area passes below; empty until they run. Severity is
 
 ## Ordered fix list
 
-Input to Phase 08. Empty until the passes above produce findings.
+Input to Phase 08. **All 214 findings appear here exactly once** (verified by
+`Working/batch_tally.dart`), grouped into 20 work items and ordered most impactful
+first. The grouping is by *root cause and file*, not by audit area, because most
+findings are one bug seen from several screens: 22 unnamed tap targets are one
+`MergeSemantics` pass, six invisible controls are one theme-token pass, and eleven
+"raw exception in the UI" findings are one error-mapping pass. Fixing them one screen
+at a time would mean touching `notify.dart`, `theme.dart` and `en.json` twenty times
+each.
+
+Each work item is self-contained -- it can be a single commit and a single PR -- and
+the `Fix` column is the change to make, not a restatement of the finding. Follow the
+ID back to the master table above for the evidence and the screenshot.
+
+### Order and totals
+
+| # | Work item | Findings | Severity | Effort | Main files |
+|:---|:---|---:|:---|:---|:---|
+| FIX-01 | [Stop discarding what the user typed](#fix-01----stop-discarding-what-the-user-typed) | 7 | 2 blocker, 5 major | 5S 2M | `settings_screen.dart`, `settings_dialog.dart`, `ai_chat_panel.dart` |
+| FIX-02 | [Report what actually happened](#fix-02----report-what-actually-happened) | 10 | 1 blocker, 8 major, 1 nit | 9S 1M | `wsl.dart`, `list_item.dart`, `create_dialog.dart`, `service.dart` |
+| FIX-03 | [One honest notification surface](#fix-03----one-honest-notification-surface) | 9 | 6 major, 3 nit | 7S 2M | `notify.dart`, `root_screen.dart`, `en.json` |
+| FIX-04 | [Long operations: moving progress and a way out](#fix-04----long-operations-moving-progress-and-a-way-out) | 7 | 4 major, 3 nit | 3S 4M | `create_screen.dart`, `create_dialog.dart`, `ai_workspace_screen.dart` |
+| FIX-05 | [Error text a user can act on](#fix-05----error-text-a-user-can-act-on) | 12 | 1 blocker, 8 major, 3 nit | 7S 5M | `mount_service.dart`, `list.dart`, `list_item.dart`, `docker_images.dart` |
+| FIX-06 | [Keyboard operability](#fix-06----keyboard-operability) | 9 | 1 blocker, 7 major, 1 nit | 6S 3M | `root_screen.dart`, `home_screen.dart`, `base_dialog.dart` |
+| FIX-07 | [Accessible names and honest tooltips](#fix-07----accessible-names-and-honest-tooltips) | 10 | 1 blocker, 4 major, 5 nit | 8S 2M | `settings_screen.dart`, `template_screen.dart`, `mount_dialog.dart` |
+| FIX-08 | [Destructive actions must look and behave destructive](#fix-08----destructive-actions-must-look-and-behave-destructive) | 12 | 9 major, 3 nit | 11S 1M | `list_item.dart`, `settings_dialog.dart`, `template_screen.dart`, `actions_screen.dart` |
+| FIX-09 | [One dialog contract](#fix-09----one-dialog-contract) | 11 | 3 major, 8 nit | 11S | `base_dialog.dart`, `create_dialog.dart`, `qa_dialog.dart` |
+| FIX-10 | [Contrast and theme tokens](#fix-10----contrast-and-theme-tokens) | 21 | 2 blocker, 11 major, 8 nit | 20S 1M | `theme.dart`, `ai_workspace_screen.dart`, `ai_chat_panel.dart`, `beta_badge.dart` |
+| FIX-11 | [Close the localization holes](#fix-11----close-the-localization-holes) | 13 | 2 blocker, 7 major, 4 nit | 11S 2M | `lib/i18n/*.json`, `locales_test.dart`, `recommender_service.dart` |
+| FIX-12 | [Copy, casing and terminology](#fix-12----copy-casing-and-terminology) | 14 | 4 major, 10 nit | 10S 4M | `lib/i18n/en.json`, `settings_screen.dart`, `actions_screen.dart` |
+| FIX-13 | [Sell only what exists, gate it once](#fix-13----sell-only-what-exists-gate-it-once) | 13 | 2 blocker, 5 major, 6 nit | 10S 2M 1L | `license_screen.dart`, `pro_badge.dart`, `license_manager.dart` |
+| FIX-14 | [AI Workspace card lifecycle](#fix-14----ai-workspace-card-lifecycle) | 4 | 1 blocker, 3 major | 3S 1M | `ai_workspace_screen.dart` |
+| FIX-15 | [Settings: validate `.wslconfig`, restore the missing controls](#fix-15----settings-validate-wslconfig-restore-the-missing-controls) | 12 | 1 blocker, 4 major, 7 nit | 11S 1M | `settings_screen.dart` |
+| FIX-16 | [The create / install form](#fix-16----the-create--install-form) | 11 | 7 major, 4 nit | 10S 1M | `create_dialog.dart`, `copy_dialog.dart`, `qa_list.dart` |
+| FIX-17 | [Home list and navigation layout](#fix-17----home-list-and-navigation-layout) | 15 | 6 major, 9 nit | 15S | `list_item.dart`, `list.dart`, `panelist.dart`, `home_screen.dart` |
+| FIX-18 | [Recommendations panel](#fix-18----recommendations-panel) | 4 | 2 major, 2 nit | 4S | `recommendations_panel.dart`, `recommender_service.dart` |
+| FIX-19 | [AI chat panel](#fix-19----ai-chat-panel) | 3 | 1 major, 2 nit | 3S | `ai_chat_panel.dart`, `home_screen.dart` |
+| FIX-20 | [Templates, snippets, mount and the per-distro dialog](#fix-20----templates-snippets-mount-and-the-per-distro-dialog) | 17 | 3 major, 14 nit | 17S | `template_screen.dart`, `actions_screen.dart`, `mount_dialog.dart`, `settings_dialog.dart` |
+| | **Total** | **214** | **14 blocker, 107 major, 93 nit** | **181S 32M 1L** | |
+
+**Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
+awkward: work vanishes, a failure is reported as a success, a dialog body is the word
+`Exception:`. FIX-06 and FIX-07 are the accessibility floor -- the app is currently not
+operable by keyboard at all until the user clicks something, which is the single
+worst finding in the audit. FIX-08 and FIX-09 are safety and consistency around
+irreversible actions. FIX-10 to FIX-12 are cross-cutting passes that each close a
+double-digit number of findings in one file. FIX-13 is the paid surface, which sells
+two features that do not exist. FIX-14 onward is per-screen work that no longer blocks
+anything else.
+
+**Sequencing.** Four items are groundwork and should land before the ones that depend
+on them:
+
+- **FIX-03 before FIX-02 and FIX-05.** Both need a `Notify` layer that can express
+  failure. Fixing the messages first means rewriting them again.
+- **FIX-06 before re-checking LN-12.** LN-12 ("no focus ring on home") was re-diagnosed
+  by IA-01: focus was never moving, so nothing could light up. It may close for free.
+- **FIX-10 before FIX-13 / FIX-14 / FIX-17.** All three touch the same hardcoded
+  `Colors.grey` / `Colors.orange` literals; do the token pass once.
+- **FIX-11 before FIX-12.** No point restyling copy that is about to be re-keyed, and
+  TL-10's widened CI gate will fail every string FIX-12 adds if it lands second.
+
+**Findings that close together.** PS-40 and TL-16 are the same three missing i18n keys
+from two directions. LN-10 and PS-10 are the same overlapping BETA badge. TL-06, PS-14
+and LN-24 are the same invisible FAB in two themes. Six or so hours of the estimate
+above is shared, not additive.
+
+### FIX-01 -- Stop discarding what the user typed
+
+Two blockers. The app throws away typed input on a navigation the user did not
+understand to be destructive, and in one case navigates *itself*.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| ST-01 | blocker | Track a dirty flag on the Settings draft and intercept every exit route (nav pane, back, window close) with a Save / Discard / Cancel prompt |
+| PS-33 | blocker | Keep the typed question when Send hits a missing API key; offer the key inline or return to the panel with the text intact |
+| ST-02 | major | Route language through the same draft-and-Save path as everything else, and apply it live rather than requiring a restart |
+| ST-03 | major | Save stays on the Settings page and confirms in place; it must not navigate to Home |
+| ST-27 | major | Read `wsl.conf` without booting the distro, or say up front that opening settings will start it |
+| ST-28 | major | Buffer per-distro `wsl.conf` edits and write them on Save, so Cancel actually cancels |
+| PS-11 | major | The free MCP toggle must upsell in place; it may not navigate to License and drop unsaved settings on the way |
+
+### FIX-02 -- Report what actually happened
+
+An operation that failed must not say it succeeded, and one that succeeded must not
+leave a spinner running. `IA-13` is the root of the pattern: an `async void` API whose
+`catch` is unreachable.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| IA-13 | blocker | Change `WSLApi.start` to return `Future<void>`, await it at the call site, and post the toast *after* it resolves -- `Future.delayed(d, Notify.message(...))` calls the function immediately, so remove the delay too |
+| CI-12 | major | Validate the username when "Create default user" is ticked; never report success for a user that was not created |
+| CI-17 | major | Stop the "Creating instance..." spinner on the failure path |
+| CI-36 | major | Give the snippet download progress and a real failure state; a failed download may not close the dialog as if it worked |
+| ST-53 | major | Replace the `// Error` no-op branch with a field-level validation message on the snippet name |
+| ST-45 | major | A primary button may never silently no-op -- validate the required field and say what is missing |
+| IA-12 | major | Show in-flight state for start / stop / delete, and only report DONE once the row is actually gone |
+| PS-19 | major | Move the card into an explicit "Installing" state for the duration of the install |
+| PS-17 | major | Clear the status line when the operation it describes finishes -- it still read "Starting Open WebUI..." 105s after the tool was running |
+| PS-32 | nit | A failed stop must leave the badge showing the state the tool is really in, not "running" in green |
+
+### FIX-03 -- One honest notification surface
+
+`Notify` is the single most-reused UI component in the app and it cannot express
+failure. Everything downstream inherits that.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| CI-19 | major | Derive `InfoBarSeverity` from the message kind; "ERROR:" must not render with a blue info icon |
+| PS-46 | major | Same at the toast layer -- one decoration for every outcome means install-failed looks like install-succeeded |
+| CI-18 | major | Give status messages a lifetime and clear them on navigation |
+| CI-24 | major | Lay the status bar out so it cannot cover the Create / Cancel row on a short window |
+| IA-02 | major | An empty status bar must take no space, no tab stop and no clicks (currently an invisible 126x62 hit target on every screen) |
+| IA-14 | major | The X on a running operation must cancel it, or not be offered -- hiding the progress while the work continues is worse than no control |
+| CI-20 | nit | Drop the shouting `DONE:` / `ERROR:` / `WARNING:` prefixes now that severity is carried by the InfoBar |
+| TL-14 | nit | Remove the eight divergent translations of `DONE:` along with it (Turkish renders it `TAMAM`) |
+| IA-15 | nit | Delete `statusMsg`'s unreachable `severity` parameter, or wire it to the new severity |
+
+### FIX-04 -- Long operations: moving progress and a way out
+
+Every operation over ~30 seconds in this app is uncancellable, and two of them freeze
+their only progress indicator for minutes.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| CI-14 | major | Make Cancel work for the whole install; if it genuinely cannot, disable the nav pane too and say why |
+| CI-16 | major | Report real progress across download *and* import instead of stalling at "Downloading 100%" |
+| PS-18 | major | Add cancel to the AI Workspace install and keep its progress line moving (measured: 2 minutes, 0 px changed) |
+| CI-13 | major | Warn before spawning the external `passwd` console, and await it |
+| LN-20 | nit | Centre the loading state where the results will land so content does not jump 330px; translate the string; offer cancel |
+| CI-15 | nit | Keep the Create button's width when it becomes a spinner |
+| ST-36 | nit | Label the per-distro dialog's 4s+ spinner and disable Save while it runs |
+
+### FIX-05 -- Error text a user can act on
+
+Eleven findings, one rule: never put a raw exception in front of a user, and never
+match on English text.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| IA-16 | blocker | `mount_service.dart:338` throws `Exception(result.stderr)`, but `wsl --mount` writes its reason (including the stable `Wsl/ERROR_*` code) to **stdout** -- read both streams, and never build a dialog body from a bare `Exception` |
+| LN-17 | major | Translate the list-error strings and map the WSL error code to a sentence instead of dumping `Exception: ...` |
+| LN-18 | major | Offer a remedy and a route back to local WSL; Retry that repeats the same failure is not a recovery path |
+| CI-22 | major | Map the WSL error code to a translated sentence; keep the raw stderr behind a "details" disclosure |
+| IA-17 | major | Stop interpolating raw exceptions into the five `docker_images.dart` messages -- two currently read "Error: Exception: ..." |
+| IA-18 | major | Move the sixteen hardcoded English messages into `en.json` and drop the implementation detail ("Exporting, removing and importing back...") |
+| PS-31 | major | Translate the AI Workspace page-level failure and stop wrapping `Exception.toString()` |
+| IA-19 | major | Gate the "disk is offline" hint on the stable error code, not on English Windows text -- it can never fire on a localized host |
+| ST-07 | major | Only surface "WSL reported:" for stderr that actually concerns `.wslconfig` |
+| ST-22 | nit | Same treatment for the tunnel error, and use the theme's error colour rather than `Colors.red` |
+| IA-20 | nit | Replace the "run `wsl --shutdown`" and "install xterm" prose with the buttons that do it |
+| ST-13 | nit | Same string in Settings, 400px above the button that performs it |
+
+### FIX-06 -- Keyboard operability
+
+IA-01 is the audit's worst single finding: **the app cannot be operated by keyboard at
+all until the user first clicks something**, and there is no keyboard route back.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| IA-01 | blocker | Focus a real control at launch and on window activation instead of parking on the Root Focus Scope |
+| LN-12 | major | Re-verify after IA-01 -- the ring exists, focus was not moving. Likely closes for free; confirm with the Tab-diff capture |
+| IA-03 | major | Take the permanently disabled back arrow out of the tab order |
+| LN-13 | major | Wire the back button or remove it; a disabled control may not render near-white (enabled-looking) in dark |
+| IA-04 | major | Replace the three `GestureDetector` controls -- including the AI panel's only entry point -- with focusable, activatable buttons |
+| IA-05 | major | Tab order should reach the nav pane before deep content, and the row stop must land on the row, not on a chevron 1,100px away |
+| IA-06 | major | One focus ring lit at a time per distro row |
+| IA-08 | major | Cancel takes initial focus in the delete confirmation, not Delete |
+| IA-07 | nit | Widen the focus indicator to a 2px perimeter (WCAG 2.4.13) |
+
+### FIX-07 -- Accessible names and honest tooltips
+
+The codebase contains **no `Semantics(label:)` at all** and 22 of 38 tap targets have
+no accessible name. `list_item.dart` already does it right 11 times out of 11 -- copy
+that pattern.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| IA-09 | blocker | `MergeSemantics(Tooltip(...))` on the 22 unnamed tap targets; 11 are in `settings_screen.dart`, which has zero `MergeSemantics` today. Watch the trap at `:471` and `:499` -- those sit inside a `Tooltip` that describes the *TextBox*, not the button |
+| IA-10 | major | Add `Semantics(label:)` where a visible tooltip is not appropriate |
+| IA-11 | major | Tooltip the seven icon-only buttons that have none -- they are unlabelled for sighted users too |
+| ST-18 | major | Name the four MCP icon buttons and differentiate the two identical copy glyphs |
+| ST-44 | major | Give the mount confirmation the full disk identity, with a tooltip on the truncated form |
+| ST-14 | nit | A tooltip that repeats its own label is noise -- make it explain or remove it |
+| PS-30 | nit | Same for the Open Dashboard tooltip |
+| ST-30 | nit | Make the sync buttons' tooltips match their labels |
+| LN-23 | nit | Tooltip the truncated distro name |
+| ST-51 | nit | One folder glyph across all pickers, with a tooltip |
+
+### FIX-08 -- Destructive actions must look and behave destructive
+
+Nothing in this app that destroys data is styled differently from anything that does
+not, and three destructive actions have no confirmation at all.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| ST-04 | major | Confirm "Stop WSL" (it shuts down every distro), move it away from Save, and write a tooltip that adds information |
+| ST-19 | major | Confirm MCP token regeneration and state that existing clients break |
+| LN-04 | major | Label the row's nine icon buttons, group them, move Delete out of the middle, and style it destructively |
+| ST-29 | major | Style the four irreversible per-distro actions as actions, not as the Expander headers above them |
+| PS-27 | major | Use the red destructive button for uninstall, as every other destructive dialog does |
+| PS-35 | major | Confirm clear-chat-history, disable it when the history is empty, and give it a label |
+| ST-38 | major | Write template-delete copy instead of reusing the distro string ("Delete instance ... permanently?") |
+| ST-54 | major | Same for snippet delete |
+| ST-46 | major | State that a physical mount needs elevation and detaches the disk from Windows -- before it fails |
+| ST-40 | nit | Move the template delete next to the labelled buttons, give it a tooltip and destructive styling |
+| PS-28 | nit | Name the tool inside the uninstall sentence rather than on a bare line above "this tool" |
+| CI-31 | nit | Say that a copy duplicates the whole disk and stops the source distro |
+
+### FIX-09 -- One dialog contract
+
+Button order, primary styling, titles and sizing differ per dialog; the one that
+deletes things is the one with the odd button order.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| ST-62 | major | One button order everywhere, including the delete dialog (Cancel is currently on the opposite side there) |
+| CI-32 | major | Same for the community snippets dialog |
+| CI-30 | major | Validate before popping, and stop using the source name as a placeholder -- the field looks pre-filled |
+| CI-29 | nit | `FilledButton` for the copy dialog's primary action |
+| CI-25 | nit | Keep the source-type flyout off the page title and the fields it belongs to |
+| CI-28 | nit | Delete the dead `createDialog()` -- it also carries the opposite button order |
+| CI-33 | nit | Give the community dialog a title |
+| CI-37 | nit | Size it to its content instead of full window height |
+| ST-32 | nit | Size the per-distro dialog to its twenty controls instead of a fixed 500x500 |
+| ST-33 | nit | Title it with the distro name, not the bare word "Settings" |
+| ST-43 | nit | Stop pre-filling the new-instance name box with the template's own name as a placeholder |
+
+### FIX-10 -- Contrast and theme tokens
+
+Twenty-one findings, one root cause: hardcoded `Colors.grey` / `Colors.orange` /
+`Colors.red` literals spread across eleven files, plus a `systemTextColor` that assumes
+light. Introduce the tokens once and most of this collapses.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| TL-01 | blocker | The AI Workspace status pill is **1.03:1** in dark (`#323130` on `#333333`) -- replace with a theme resource |
+| TL-02 | blocker | The chat empty state is **1.07:1** in dark; the dividers and bubble fills vanish with it |
+| TL-03 | major | `systemTextColor` returns black under the default `ThemeMode.system` -- resolve the *effective* brightness at all five call sites |
+| TL-04 | major | The `stopped` pill fails AA in both themes (2.70:1 / 3.60:1) -- hardcoded `Colors.orange` |
+| TL-05 | major | The amber BETA pill is **1.40:1** in light; move the colour to a token (it is also duplicated as a raw literal in the nav) |
+| TL-06 | major | The AI Assistant FAB is **1.02:1** in dark -- only its border ring makes it findable |
+| PS-14 | major | Same control in light (1.29:1); fix once |
+| LN-24 | nit | Same control's hardcoded `Colors.grey` / `Colors.white` |
+| PS-09 | major | The BETA/NEW badges measure 1.35:1 / 1.37:1 -- and amber means two different things |
+| PS-20 | major | "stopped" (2.70:1) and "Starting up..." (3.84:1) both fail AA; stopped is the most-shown state |
+| PS-21 | major | Disabled `FilledButton` labels are white on `#C6C6C6` (1.71:1), and two of three are always disabled |
+| PS-36 | major | Chat empty-state hint at 3.69:1; remove the five `Colors.grey` literals in that file |
+| ST-10 | major | The disabled-control explanation renders at 2.51:1 while the line above it is 6.00:1 |
+| CI-34 | major | Selecting a snippet drops its contrast from 17.4:1 to 2.49:1 |
+| TL-08 | nit | One shared set of surface/border greys -- currently six alphas across five files |
+| TL-07 | nit | Delete `systemBackgroundColor`: 30 lines nothing consumes, carrying TL-03's bug |
+| PS-24 | nit | The `notInstalled` dot is darker than running or stopped and reads as a bullet |
+| ST-57 | nit | "(by you)" and "[v0.0.0]" at 4.41:1 and 3.96:1, both sub-AA |
+| CI-03 | nit | Inline validation uses hardcoded `Colors.red` bold 12px, unlike every other error in the app |
+| CI-40 | nit | The 20%-black chip is invisible in dark theme |
+| ST-59 | nit | The code editor hardcodes `atomOneLightTheme`, so syntax colours ignore the app theme |
+
+### FIX-11 -- Close the localization holes
+
+Two blockers: one panel renders its own i18n keys, and a whole dialog is untranslated
+in six of eight non-English locales. The CI gate that should have caught both only
+checks that keys are *present*.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| TL-09 | blocker | Translate the 35-37 missing Mount Disk keys in `es`, `hu`, `ja`, `pt`, `tr`, `zh_TW` |
+| PS-40 | blocker | Add the three `recommend-*` keys -- they are missing from **all nine** locales including `en`, so the panel prints its key names |
+| TL-16 | major | Same three keys, recorded from the locale side; closes with PS-40 |
+| TL-10 | major | Widen `locales_test.dart`'s gate from key-presence to the untranslated-value rule that already exists but is scoped to 60 keys; expect 131 locale-key pairs to fail and fix them |
+| TL-12 | major | Translate the German nav pane's "Home" and "Mount Disk" |
+| PS-43 | major | Build the "Go to Templates" label from one key with a placeholder, not three English fragments |
+| CI-10 | major | Key the three hardcoded English strings in the "no results" panel |
+| TL-11 | major | Fix the Turkish "örnek" collision -- ten strings mean *instance*, five legitimately mean *sample* |
+| LN-14 | major | Move the hardcoded "Dark Mode" toggle label into `en.json` |
+| PS-26 | nit | "Installed: cmd://openclaw" -- key it and stop leaking the internal URI sentinel |
+| PS-29 | nit | Build the uninstall success toast from a key with a placeholder, not concatenation |
+| IA-21 | nit | Same for the recommendation link built by an if/else on a route string |
+| TL-13 | nit | Decide whether "AI Workspace" is a product name; if not, translate it (it is the only Latin script in the `ja` and `zh_TW` nav panes) |
+
+### FIX-12 -- Copy, casing and terminology
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| TL-17 | major | Pick sentence case (98 Title Case vs 91 sentence case short labels in `en.json`) and apply it across the locales that inherited the drift |
+| LN-22 | major | Rewrite the empty-state copy: split the two unrelated states it merges and give a next step |
+| ST-09 | major | Label the 26 `.wslconfig` settings in prose instead of the raw camelCase key |
+| CI-27 | major | Rewrite the turnkey warning -- five italic lines containing `fake_systemd` and a shell pipeline |
+| TL-15 | nit | Delete the 59 English keys nothing renders (19 of them an unshipped subscription flow), and their nine translations each |
+| TL-18 | nit | One spelling of "(Optional)" -- currently three, including both on the same field |
+| PS-25 | nit | One casing convention in the status badge column ("Not Installed" / "Starting up..." / "running") |
+| LN-15 | nit | Nav pane labels to one case convention |
+| CI-39 | nit | "install it with **the** following command" -- fix in all nine locales |
+| CI-21 | nit | Merge `entername-text` and `errorentername-text` |
+| ST-11 | nit | Stop repeating the description verbatim 20px below itself as the disabled reason |
+| ST-12 | nit | Name the label, not the raw key, in the disabled reason |
+| CI-26 | nit | Group the six source types and give each a description line instead of bare developer jargon |
+| ST-56 | nit | One name for a snippet -- currently Snippets / snippet / "Name of setting" / quick action |
+
+### FIX-13 -- Sell only what exists, gate it once
+
+The purchase screen sells two features with no reachable implementation and never shows
+a price. Separately, there are four gating components of which three have no call sites.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| PS-01 | blocker | Remove Script Generation and Smart Recommendations from the purchase table, or ship them (the L in this list) |
+| PS-02 | blocker | Show the price on the purchase screen |
+| PS-04 | major | Show the feature list to Pro users too -- it currently lives only in the non-Pro branch |
+| PS-05 | major | Add a restore-purchase / support path for a wrong MSIX entitlement result |
+| PS-08 | major | One gate component with one vocabulary; delete `ProBadge` / `ProFeatureWrapper` / `UpgradePrompt` or use them |
+| PS-03 | major | Give the comparison glyphs text or semantics; the "not included" mark measures 1.85:1 |
+| CI-23 | major | Offer a non-AI remedy first -- with no key, the only remedy answers with a go-to-Settings toast |
+| LN-19 | nit | Do not show "Diagnose with AI" to users who cannot use it |
+| PS-06 | nit | One name: the nav says "Upgrade to Pro", the page says "License" |
+| PS-07 | nit | Drop the `canLaunchUrl` gate on the store button -- the codebase works around that bug everywhere else |
+| PS-12 | nit | Per-field reason on the disabled BYOK fields, and placeholders that do not read as filled-in values |
+| PS-13 | nit | Keep the BETA badge on the paywall that the Pro build shows on the same page |
+| PS-39 | nit | Remove the chat panel's unreachable Upgrade button (the FAB that opens it is Pro-only) |
+
+### FIX-14 -- AI Workspace card lifecycle
+
+One shared `isBusy` flag drives every button on every card, so the spinner appears on
+the wrong control in three of four cases.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| PS-15 | blocker | Per-action busy state: Start currently spins Uninstall, the dashboard spins Stop+Uninstall, and uninstall spins Start |
+| PS-16 | major | Allow Stop on a tool stuck in "Starting up..." -- Uninstall is not an acceptable only option |
+| PS-22 | major | Remove the permanently disabled "Installed" button that repeats the badge on the same row |
+| PS-23 | major | On a running tool, Open Dashboard is the primary action, not Stop |
+
+### FIX-15 -- Settings: validate `.wslconfig`, restore the missing controls
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| ST-05 | blocker | Validate `.wslconfig` values before writing -- WSL rejects them on stderr with exit code 0, so the app currently reports nothing |
+| ST-06 | major | Run the validation on change, not on an unrelated rebuild |
+| ST-08 | major | Fix or replace `SysInfo` -- it reports 0 bytes and 1 core here, so the Memory / Processors / Swap sliders never render at all |
+| ST-16 | major | Give enumerations a "not set" item so a value can be un-chosen, as the booleans allow |
+| ST-20 | major | The public-internet warning currently shows whenever MCP is on, contradicting the hint two lines above it |
+| ST-17 | nit | Position the enumeration flyout so it does not cover its own field, and mark the current value |
+| ST-21 | nit | Give the copy buttons feedback |
+| ST-23 | nit | Explain the sync group; remove the plaintext example password from a masked field; move the non-sync setting out |
+| ST-24 | nit | Disable "Remote SSH target" while the toggle that uses it is off |
+| ST-25 | nit | Distinguish a set path from an unset one -- both currently render as grey placeholder text |
+| ST-26 | nit | Do not materialise a Docker repository default the user never chose on Save |
+| ST-15 | nit | "true (Default)" and "Not set -- using the default" state one fact twice on one row, twelve times over |
+
+### FIX-16 -- The create / install form
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| CI-04 | major | Show the sanitised name, or reject the input -- silently rewriting `[^A-Za-z0-9]` to `_` turns an all-non-ASCII name into `___` |
+| CI-05 | major | One sanitiser and one duplicate check shared by Create and Copy; Copy currently skips the duplicate check entirely |
+| CI-01 | major | Clear the error banner when the input that caused it changes |
+| CI-02 | major | One duplicate-name message, not two simultaneously in two visual styles |
+| CI-08 | major | Reset the source value when Source Type changes |
+| CI-35 | major | An empty search must say so, and only visibly-selected snippets may be downloaded |
+| CI-38 | major | Make `wsl --install` a button that states it needs elevation, not a hyperlink described as text to copy |
+| CI-06 | nit | Give the name field an `InfoLabel`, like the field below it |
+| CI-07 | nit | Hide the clear (X) button when the field is empty |
+| CI-09 | nit | Per-source-type tooltip text, positioned off the Source Type box |
+| CI-11 | nit | Implement the empty `snapshot.hasError` branch, add a loading state, and hoist the future out of `build` |
+
+### FIX-17 -- Home list and navigation layout
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| LN-03 | major | Hoist the `GlobalKey` out of `build` -- a new key per build tears down the list subtree (and leaks `reloadEvery5Seconds`'s `for(;;)` loop) every time the AI panel toggles |
+| LN-01 | major | Give the distro name the row width it has; `Expanded` + `Flexible` both at flex 1 split it 50/50 and leave ~480px empty |
+| LN-02 | major | Reserve the running indicator's space so the name does not jump ~30px when a distro starts or stops |
+| LN-10 | major | Keep the BETA badge off the AI Workspace icon in compact mode -- it hides the only affordance |
+| PS-10 | major | Same overlap, recorded from the Pro pass; closes with LN-10 |
+| LN-21 | major | Separate the empty-state CTA from the AI chat FAB -- they occupy the same corner |
+| LN-05 | nit | Replace the one solid glyph among eight outlines |
+| LN-06 | nit | Redraw the rename / disk-usage icons and differentiate save-template from copy |
+| LN-08 | nit | One icon size within a row (header default vs action bar pinned to 16px) |
+| LN-09 | nit | Hover the whole row, not the chevron 660px from the cursor |
+| LN-11 | nit | Differentiate the Snippets and Templates nav icons at 16px |
+| LN-07 | nit | Say what fills the expanded row when no snippets are configured |
+| LN-16 | nit | `PaneItemAction` for Mount Disk and About -- they open modals, not destinations |
+| LN-25 | nit | Label the size column and say it is VHDX-on-disk; do not blank silently on failure |
+| LN-26 | nit | Start must not stay enabled, and must not still say "Start", on a running distro |
+
+### FIX-18 -- Recommendations panel
+
+The dismiss control writes to prefs and changes nothing, and the "clear" function adds
+to the list it claims to clear.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| PS-41 | major | Dismiss must remove the card from the panel, not just write `DismissedRecommendations` |
+| PS-42 | major | `clearDismissed()` must clear, and the "Go to" link must not dismiss as a side effect |
+| PS-44 | nit | Hide the panel when every recommendation is dismissed instead of leaving an empty bordered box |
+| PS-45 | nit | Pin the dismiss X to the right edge and raise the 11px / 10px text |
+
+### FIX-19 -- AI chat panel
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| PS-34 | major | Say up front that the panel needs an API key, and give it a close and a cancel |
+| PS-37 | nit | Use a person glyph for the user avatar, not `FluentIcons.add` |
+| PS-38 | nit | Make the 360px panel responsive below ~1000px, where it takes 40% of the window |
+
+### FIX-20 -- Templates, snippets, mount and the per-distro dialog
+
+Pure polish, but it is where a third of the audit's nits live. Safe to parallelise
+across contributors -- four independent files.
+
+| ID | Sev | Fix |
+|:---|:---|:---|
+| ST-37 | major | Format sub-GB template sizes properly and never silently drop a template from the list because it formats to "0 GB" |
+| ST-39 | major | Title the new-instance dialog for what it does, not "Copy ... the WSL instance" |
+| ST-55 | major | Size the snippet expander to its content instead of a 430px panel that is 97% empty |
+| ST-42 | nit | Same size formatter ("0.01 GB") |
+| ST-41 | nit | Give the templates screen a title, an explanation of what a template is, and a way to create one |
+| ST-47 | nit | Replace the three radio buttons used as a tab strip, and change the title in unmount mode |
+| ST-48 | nit | Say the list is empty rather than making the picker vanish |
+| ST-49 | nit | Finish the mount-options placeholder sentence, or tooltip it |
+| ST-50 | nit | Space the Partition / Filesystem Type labels |
+| ST-52 | nit | Say which distro the disk lands in and where it appears |
+| ST-58 | nit | Frame and label the code editor -- 580px of invisible click target |
+| ST-60 | nit | Say that a snippet is a root bash script in a distro, and let it be run from this screen |
+| ST-61 | nit | One "add" affordance; fix "Add Community snippets" |
+| ST-31 | nit | Show which state "Start/Stop serving on network" is in, and persist `isSyncing` |
+| ST-34 | nit | One visual language for "unset" -- the dialog's currently looks like a hyperlink |
+| ST-35 | nit | Remove the duplicated user-section label and the orphaned parenthetical |
+| IA-22 | nit | Hover must add contrast, not drop the row to 50% opacity |
 
 ## Not examined
 
-Recorded as the audit runs, so it never implies coverage it does not have.
+Recorded as the audit runs, so it never implies coverage it does not have. This is the
+union of the six per-area "not examined" sections; nothing is listed there that is not
+listed here.
 
 - **Remote WSL over SSH** -- needs a second Windows host; not available here. The *failure*
   path was exercised deliberately by pointing `RemoteWSLTarget` at an unreachable host
-  (LN-17, LN-18, LN-20); the happy path was not.
+  (LN-17, LN-18, LN-20); the happy path was not. `copyDialog` branches on `UseRemoteWSL`
+  (`copy_dialog.dart:73`, `:101`), so **copy over remote WSL** is unexamined for the same
+  reason.
 - **The zero-distro home empty state, live** -- reaching it means deleting the host's real
   distros, and `HomePage` constructs its own `WSLApi()` with no injection seam, so it
   cannot be substituted in a widget test either. LN-21 and LN-22 are recorded from source
@@ -432,3 +878,21 @@ Recorded as the audit runs, so it never implies coverage it does not have.
 - **Reverse (`Shift+Tab`) traversal order.** Only exercised from IA-01's dead root-scope
   state, where nothing moves. The forward order recorded in IA-05 was not verified to be
   symmetric.
+- **Long-running operations on the Docker, remote-WSL and AI Workspace paths.** IA-12 was
+  measured on start / stop / delete against a real distro; the Docker messages in IA-18 are
+  read from source (no Docker daemon here), and the cancel gaps on the other two paths are
+  recorded as CI-14 and PS-18 rather than re-walked.
+- **The `loading: true` X pressed mid-operation.** IA-14 is derived from
+  `notify.dart:63-67` and `root_screen.dart:231`; no multi-minute operation was started
+  purely to click its close button.
+- **A failed `AiWorkspaceService.stop()`** (PS-32) -- would mean deliberately breaking a
+  tool inside the distro. Read from source.
+- **The MCP server's Pro half beyond the gate.** The endpoint, token, copy and regenerate
+  controls were audited under the Pro build (ST-19..ST-22); [[pro-surfaces]] adds only the
+  free-user gate (PS-11). The tunnel stays untriggered for the reason above.
+- **Locales at the narrow 900px width.** Below fluent_ui's 1008px threshold the pane is
+  icon-only, so the labels that could overflow are not rendered there at all; the narrow
+  pass covers the layout itself, not the translated labels in it.
+- **The recommendations panel in dark.** Reaching it needs `DockerImageCount` seeded as
+  [[pro-surfaces]] did; its border (`recommendations_panel.dart:29`) is in TL-08 from
+  source.
