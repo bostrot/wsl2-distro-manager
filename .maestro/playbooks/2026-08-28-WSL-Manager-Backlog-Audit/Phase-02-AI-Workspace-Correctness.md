@@ -32,7 +32,38 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   Note: `dart format` was **not** run — this repo predates the tall-style
   formatter and reformatting these files produces ~80 lines of unrelated churn.
 
-- [ ] Clear the stale `installPath` in `refreshStatus()` when a tool resolves to `notInstalled`, so a card can no longer read "Not installed" while showing `Installed: cmd://openclaw` underneath. Check every place `installPath` is assigned and make `notInstalled` the single point that resets it.
+- [x] Clear the stale `installPath` in `refreshStatus()` when a tool resolves to `notInstalled`, so a card can no longer read "Not installed" while showing `Installed: cmd://openclaw` underneath. Check every place `installPath` is assigned and make `notInstalled` the single point that resets it.
+
+  **Done (2026-08-28).** Rather than patching the one `refreshStatus()` branch,
+  `ToolState.status` became a getter/setter over a private `_status`, and the
+  setter is now the *single* reset point: assigning `notInstalled` nulls
+  `installPath`, everywhere, unconditionally. The constructor repeats the
+  invariant so a freshly seeded state obeys it too. Audit of every assignment:
+  `seedToolStates()` (cache seed — the `cachedStatus != null ? … : null`
+  branch is gone, since a cached `notInstalled` now drops the path in the
+  constructor), `_install()` success (sets `stopped` *then* the path — order
+  matters, the setter only fires on `notInstalled`), `uninstall()` (its manual
+  `installPath = null` was removed as redundant), and `refreshStatus()`'s three
+  outcome branches plus the `_indicatesMissingDistro` branch. The `error` and
+  docker-down branches deliberately leave the path alone — neither is a
+  statement about installation.
+
+  One complement was needed: because a `notInstalled` probe now clears the
+  path, a later `running`/`exists` answer would otherwise leave the card with
+  no `Installed:` line at all. `refreshStatus()` re-asserts
+  `config.defaultInstallPath` on those two outcomes — legitimate, since
+  `_existsCheck()` builds the probe from exactly that string, so an `exists`
+  reply *is* a confirmation of that path. `_persistConfirmedState()` already
+  removes the pref when the path is null, so the cache follows automatically.
+
+  Three tests added to the `refreshStatus` group in
+  `test/ai_workspace_service_test.dart`: stale path cleared on `notInstalled`,
+  path re-asserted on a following `exists`, and a cached `notInstalled` not
+  resurrecting a persisted path at seed time. `flutter analyze` clean on the
+  touched files, `flutter test` 316/316,
+  `flutter test integration_test/ai_workspace_test.dart -d windows` 17/17.
+  `git diff --stat` is 2 files, no unrelated churn (`dart format` again not
+  run, for the reason recorded above).
 
 - [ ] Add an Open WebUI health gate before the tool is reported as running:
   - The container needs ~2 minutes of alembic migrations before it becomes healthy, and probing or restarting it inside that window kills it (measured 2026-08-27)

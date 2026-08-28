@@ -125,7 +125,24 @@ const Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
 /// State tracker for a single tool instance.
 class ToolState {
   final AiWorkspaceTool tool;
-  ToolStatus status;
+
+  ToolStatus _status;
+
+  ToolStatus get status => _status;
+
+  /// The single reset point for [installPath]: a tool that is not installed
+  /// cannot have one. Routing every assignment through this setter is what
+  /// stops a card from reading "Not installed" while still showing
+  /// `Installed: cmd://openclaw` underneath — the probe that downgrades a
+  /// tool to [ToolStatus.notInstalled] used to leave the path from the last
+  /// successful install behind. Callers set [installPath] *after* the status.
+  set status(ToolStatus value) {
+    _status = value;
+    if (value == ToolStatus.notInstalled) {
+      installPath = null;
+    }
+  }
+
   String? installPath;
   int port;
   DateTime? lastStarted;
@@ -148,7 +165,7 @@ class ToolState {
 
   ToolState({
     required this.tool,
-    this.status = ToolStatus.notInstalled,
+    ToolStatus status = ToolStatus.notInstalled,
     this.installPath,
     required this.port,
     this.lastStarted,
@@ -157,7 +174,13 @@ class ToolState {
     this.checked = false,
     this.hasKnownStatus = false,
     this.errorSticky = false,
-  });
+  }) : _status = status {
+    // The setter's invariant has to hold for a freshly built state too: a
+    // persisted install path must not outlive a cached notInstalled.
+    if (_status == ToolStatus.notInstalled) {
+      installPath = null;
+    }
+  }
 }
 
 /// Checks whether [url] is actually serving requests yet. Injectable so
@@ -394,8 +417,9 @@ class AiWorkspaceService {
         tool: tool,
         port: config.port,
         status: cachedStatus ?? ToolStatus.notInstalled,
-        installPath:
-            cachedStatus != null ? prefs.getString(_installPathPrefsKey(tool)) : null,
+        // A cached notInstalled drops the path in the constructor, so the
+        // no-cache case needs no branch of its own.
+        installPath: prefs.getString(_installPathPrefsKey(tool)),
         hasKnownStatus: cachedStatus != null,
       );
     }
@@ -647,8 +671,8 @@ class AiWorkspaceService {
     try {
       final result = await _broker.run(request);
       if (result.isSuccess) {
+        // Clears installPath too — see the ToolState.status setter.
         _toolStates[tool]?.status = ToolStatus.notInstalled;
-        _toolStates[tool]?.installPath = null;
       } else {
         _toolStates[tool]?.errorMessage = result.stderr;
         return false;
@@ -743,7 +767,15 @@ class AiWorkspaceService {
         } else if (output.contains('exists')) {
           _toolStates[tool]?.status = ToolStatus.stopped;
         } else {
+          // The setter drops installPath with it: "Not installed" and
+          // "Installed: <path>" must never appear on the same card.
           _toolStates[tool]?.status = ToolStatus.notInstalled;
+        }
+        // A confirmed running/exists answer is a confirmation of exactly the
+        // path the check was built from, so re-assert it — the probe that
+        // last said notInstalled cleared it.
+        if (_toolStates[tool]?.status != ToolStatus.notInstalled) {
+          _toolStates[tool]?.installPath = config.defaultInstallPath;
         }
         _toolStates[tool]?.errorMessage = null;
         _persistConfirmedState(tool);

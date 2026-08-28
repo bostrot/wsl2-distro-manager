@@ -709,6 +709,66 @@ void main() {
         );
       });
 
+      // Regression: the card read "Not installed" while still printing
+      // "Installed: cmd://openclaw" underneath, because only uninstall()
+      // ever reset the path.
+      test('a notInstalled result clears a stale installPath', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.openClaw);
+        expect(service.getState(AiWorkspaceTool.openClaw)?.installPath,
+            'cmd://openclaw');
+
+        // The binary is gone (uninstalled outside the app, distro reset, ...).
+        testShell.stdoutData = 'missing';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        final state = service.getState(AiWorkspaceTool.openClaw);
+        expect(state?.status, ToolStatus.notInstalled);
+        expect(state?.installPath, isNull);
+      });
+
+      test('a confirmed install is re-asserted after a notInstalled probe',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'missing';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+        expect(service.getState(AiWorkspaceTool.openClaw)?.installPath, isNull);
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        final state = service.getState(AiWorkspaceTool.openClaw);
+        expect(state?.status, ToolStatus.stopped);
+        expect(state?.installPath, 'cmd://openclaw');
+      });
+
+      test('a cached notInstalled does not resurrect a persisted install path',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.openClaw);
+        testShell.stdoutData = 'missing';
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+
+        // Whatever a stale pref still holds, a notInstalled seed must not
+        // show a path before the first live probe answers.
+        await prefs.setString(
+            'AiWorkspaceInstallPath_openClaw', 'cmd://openclaw');
+        final restarted = AiWorkspaceService(broker: broker);
+        restarted.seedToolStates();
+
+        final state = restarted.getState(AiWorkspaceTool.openClaw);
+        expect(state?.status, ToolStatus.notInstalled);
+        expect(state?.installPath, isNull);
+      });
+
       test('issues a single wsl call, not two', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
