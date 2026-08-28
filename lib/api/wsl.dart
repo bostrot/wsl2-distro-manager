@@ -2104,18 +2104,54 @@ try {
   Future<bool> writeWSLConf(String distro, WslConfFile conf) =>
       writeDistroFile(distro, '/etc/wsl.conf', conf.serialize());
 
+  /// Pending read-modify-write cycle per in-distro config file, so the next
+  /// one starts after it rather than on top of it.
+  static final Map<String, Future<void>> _configWriteQueue =
+      <String, Future<void>>{};
+
+  /// Run [action] after every earlier cycle on the same file has finished.
+  ///
+  /// The config editors write per key — a debounce for a text box, the tap
+  /// itself for a toggle — and each write is a whole-file read, mutate and
+  /// write back over `wsl.exe`, which takes a second or more. Two edits made
+  /// inside that window both read the *pre-edit* file, and the second write
+  /// puts back a copy that never had the first key in it. Measured live
+  /// 2026-08-28 against a real distro: a `[network] hostname` typed 1.2s
+  /// before a `generateHosts` toggle never reached `/etc/wsl.conf`, and
+  /// neither did `[boot] protectBinfmt` set next to `[boot] command`. Both
+  /// writes reported success, because both of them succeeded.
+  ///
+  /// Static, because the callers build a fresh [WSLApi] per write.
+  static Future<T> _serialiseConfigWrite<T>(
+      String key, Future<T> Function() action) {
+    final Future<void> previous =
+        _configWriteQueue[key] ?? Future<void>.value();
+    final Future<T> result = previous.then((_) => action());
+    // The queue tail must not carry the failure forward, or one unreachable
+    // distro would poison every later write to it.
+    final Future<void> tail = result.then<void>((_) {}, onError: (_) {});
+    _configWriteQueue[key] = tail;
+    tail.whenComplete(() {
+      if (identical(_configWriteQueue[key], tail)) {
+        _configWriteQueue.remove(key);
+      }
+    });
+    return result;
+  }
+
   /// Read, [mutate] and write back `/etc/wsl.conf` in one pass.
   ///
   /// Every key-level change goes through here so that the sections the user
   /// did not touch come back out unchanged — the whole point of replacing the
   /// section-blind `sed` writer.
   Future<bool> updateWSLConf(
-      String distro, void Function(WslConfFile conf) mutate) async {
-    final WslConfFile? conf = await readWSLConf(distro);
-    if (conf == null) return false;
-    mutate(conf);
-    return writeWSLConf(distro, conf);
-  }
+          String distro, void Function(WslConfFile conf) mutate) =>
+      _serialiseConfigWrite('$distro|/etc/wsl.conf', () async {
+        final WslConfFile? conf = await readWSLConf(distro);
+        if (conf == null) return false;
+        mutate(conf);
+        return writeWSLConf(distro, conf);
+      });
 
   /// Change setting in wsl.conf with key and value
   Future<bool> setSetting(
@@ -2124,12 +2160,13 @@ try {
   }
 
   /// Remove a key from wsl.conf, letting the distro's own default apply again.
-  Future<bool> removeSetting(String distro, String parent, String key) async {
-    final WslConfFile? conf = await readWSLConf(distro);
-    if (conf == null) return false;
-    if (!conf.remove(parent, key)) return true;
-    return writeWSLConf(distro, conf);
-  }
+  Future<bool> removeSetting(String distro, String parent, String key) =>
+      _serialiseConfigWrite('$distro|/etc/wsl.conf', () async {
+        final WslConfFile? conf = await readWSLConf(distro);
+        if (conf == null) return false;
+        if (!conf.remove(parent, key)) return true;
+        return writeWSLConf(distro, conf);
+      });
 
   /// Read `/etc/wsl-distribution.conf` from [distro].
   ///
@@ -2153,13 +2190,15 @@ try {
 
   /// Read, [mutate] and write back `/etc/wsl-distribution.conf` in one pass,
   /// so the sections the user did not touch come back out unchanged.
-  Future<bool> updateDistributionConf(
-      String distro, void Function(WslDistributionConfFile conf) mutate) async {
-    final WslDistributionConfFile? conf = await readDistributionConf(distro);
-    if (conf == null) return false;
-    mutate(conf);
-    return writeDistributionConf(distro, conf);
-  }
+  Future<bool> updateDistributionConf(String distro,
+          void Function(WslDistributionConfFile conf) mutate) =>
+      _serialiseConfigWrite('$distro|$kWslDistributionConfPath', () async {
+        final WslDistributionConfFile? conf =
+            await readDistributionConf(distro);
+        if (conf == null) return false;
+        mutate(conf);
+        return writeDistributionConf(distro, conf);
+      });
 
   /// Set one `wsl-distribution.conf` key.
   Future<bool> setDistributionSetting(
@@ -2171,12 +2210,14 @@ try {
   /// documented default has to be reachable, which is only true if the line
   /// can go away (the tri-state rule of audit CC-11).
   Future<bool> removeDistributionSetting(
-      String distro, String section, String key) async {
-    final WslDistributionConfFile? conf = await readDistributionConf(distro);
-    if (conf == null) return false;
-    if (!conf.remove(section, key)) return true;
-    return writeDistributionConf(distro, conf);
-  }
+          String distro, String section, String key) =>
+      _serialiseConfigWrite('$distro|$kWslDistributionConfPath', () async {
+        final WslDistributionConfFile? conf =
+            await readDistributionConf(distro);
+        if (conf == null) return false;
+        if (!conf.remove(section, key)) return true;
+        return writeDistributionConf(distro, conf);
+      });
 
   /// Get wsl.conf settings
   Future<Map<String, Map<String, String>>> getWSLConf(String distro) async {

@@ -477,9 +477,62 @@ Every setting added must be gated on the minimum WSL version recorded in the aud
     device" failures as the pre-existing baseline — no `lib/` code changed, so it could not
     have moved.
 
-- [ ] Run `flutter test` and `flutter analyze`, fix all failures, then verify in the running app:
+- [x] Run `flutter test` and `flutter analyze`, fix all failures, then verify in the running app:
   - Open global settings, set and save each new `.wslconfig` key, and confirm the written `%USERPROFILE%\.wslconfig` matches exactly (read it back with PowerShell)
   - Open per-distro settings on a real distro, set each new `wsl.conf` key, save, and `wsl -d <distro> cat /etc/wsl.conf` to confirm
   - Capture screenshots of every new or changed settings section into `.maestro/screenshots/phase-05/`
+
+  **Done 2026-08-28.** Full write-up in `Working/phase-05-task07-runtime-pass.md`; 65
+  screenshots in `.maestro/screenshots/phase-05/`. Driven through `.maestro/tools/` against a
+  **Release** build of `beta` on **WSL 2.6.3.0**, with `%USERPROFILE%\.wslconfig` (0 bytes) and
+  `ai-workspace:/etc/wsl.conf` backed up first and restored byte-for-byte after.
+
+  - **`flutter test` and `flutter analyze` were already clean going in** — 692 passing, 108
+    issues / 0 errors, byte-identical to what the previous task recorded. The failures this
+    task had to fix were not in the suite; they were in the app.
+  - **All 27 `.wslconfig` keys were set through the UI and read back with PowerShell.** The
+    file came out **734 bytes, CRLF throughout, 0 bare LF**, 20 keys in `[wsl2]` and 7 in
+    `[experimental]`, each in the section WSL reads it from. The three documented path keys
+    are escaped **exactly once** — `C:\\Program Files\\wsl-kernel\\vmlinux`, space and all —
+    and nothing else is touched. `processors = 64` on a host with fewer cores is written as
+    typed rather than clamped (P05-01's fallback), and the seven documented-`true` booleans
+    render on with "Nicht gesetzt" while absent (P05-04).
+  - **The dependencies and the writer were exercised, not just the values.** Choosing
+    `mirrored` greyed `dnsProxy` on the spot with its documented reason and, on reload,
+    `localhostForwarding` with `ignoredinmirrored-text` — keeping the value it already had.
+    A **hand-edited** file (leading comment, `#memory = 4GB`, an unknown `handKey`) survived
+    load → change one key → Save with `Compare-Object` reporting **exactly one changed line**.
+    Undo on `safeMode` deleted the line and left the other 26 alone.
+  - **All 15 `wsl.conf` keys were set on a real distro** (`ai-workspace`) and confirmed with
+    `wsl -d … cat /etc/wsl.conf`, `stat` reporting `644 root:root`. The boot command carrying
+    `"`, `'`, `$(…)`, `#` and `>>` came back verbatim, `#` still a value rather than a comment.
+    The four keys P05-03/P05-05 added — `[user] default`, `[boot] protectBinfmt`,
+    `[gpu] enabled`, `[time] useWindowsTimezone` — are all editable and all round-trip.
+  - **The pass found a real defect, and it is fixed.** On the first attempt `[network]
+    hostname` and `[boot] protectBinfmt` were both set, both showed as set, both write calls
+    returned success — and **neither reached the file**. The dialog writes per key, and each
+    write is a whole-file read-modify-write over `wsl.exe` taking a second or more; a second
+    edit started inside that window read the *pre-edit* file and its write put back a copy the
+    first key was never in. Silent, because both writes genuinely succeeded. The same shape
+    was in `removeSetting`, `updateDistributionConf` and `removeDistributionSetting`, so the
+    package screen had it too. New `WSLApi._serialiseConfigWrite` (`wsl.dart:2107`) chains
+    every cycle behind the previous one per `'<distro>|<path>'`; **static**, because
+    `wslApiBuilder()` hands out a fresh `WSLApi` per write, and its tail swallows errors so
+    one unreachable distro cannot wedge later writes to it. Documented in `AGENTS.md`.
+  - **Re-verified live against the rebuilt binary**, not only in tests: `hostname` typed 0.9s
+    before a double `generateResolvConf` toggle kept all three values, and a three-toggle
+    burst 300ms apart in `[boot]` landed `systemd`, `command` and `protectBinfmt` together.
+  - **The other new surfaces were driven too.** The disk dialog (P05-16) reported 17 GB
+    allocated / 13 GB used / 942 GB free for a real distro with both controls live on 2.6.3;
+    the package screen (P05-24) read `Ubuntu`'s `/etc/wsl-distribution.conf`, rendered all
+    three section editors and raised a genuine readiness warning
+    (`/etc/resolv.conf ist vorhanden…`).
+  - **Verification:** `flutter test` **696 passing** (was 692) — 4 new in `test/wsl_test.dart`,
+    mutation-checked: short-circuiting the serialiser fails exactly three of them and nothing
+    else. `flutter analyze` **108 issues, 0 errors**, unchanged.
+    `dart run scripts/check_translations.dart` exit 0 — no user-facing string was touched.
+    `git diff` is `lib/api/wsl.dart`, `test/wsl_test.dart` and `AGENTS.md`; no `dart format`
+    was run, for the reason the previous three tasks record, and every added line is ≤ 80
+    columns.
 
 - [ ] Update `doc/audit/wsl-docs/index.md` to mark each finding as implemented (with the file and line where it landed) or explicitly deferred with a reason, so the audit stays an accurate map rather than a stale wish list. Format only the touched Dart files, confirm `git diff --stat` shows no unrelated churn, and commit on `beta`.

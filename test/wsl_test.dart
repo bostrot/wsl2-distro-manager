@@ -664,6 +664,80 @@ systemd = true
           await wslApi.setSetting('Ubuntu', 'user', 'default', 'tester'), true);
       expect(mockShell.wslConfContents, '[user]\ndefault = tester\n');
     });
+
+    /// The dialog writes per key, not on a Save button, so two edits made a
+    /// second apart overlap. Each one is a whole-file read, mutate and write
+    /// back; without serialisation the second read predates the first write
+    /// and the second write puts back a file the first key was never in.
+    ///
+    /// Found by running it: a `[network] hostname` typed 1.2s before a
+    /// `generateHosts` toggle never reached the real distro's `/etc/wsl.conf`,
+    /// and nor did `[boot] protectBinfmt` set next to `[boot] command`. Both
+    /// calls returned true — neither of them failed.
+    test('concurrent key writes do not overwrite each other', () async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\n';
+
+      final results = await Future.wait(<Future<bool>>[
+        wslApi.setSetting('Ubuntu', 'network', 'hostname', 'wdm-test-host'),
+        wslApi.setSetting('Ubuntu', 'network', 'generateHosts', 'false'),
+        wslApi.setSetting('Ubuntu', 'boot', 'protectBinfmt', 'false'),
+      ]);
+
+      expect(results, everyElement(true));
+      final config = await wslApi.getWSLConf('Ubuntu');
+      expect(config['network']!['hostname'], 'wdm-test-host');
+      expect(config['network']!['generateHosts'], 'false');
+      expect(config['boot']!['protectBinfmt'], 'false');
+      expect(config['boot']!['systemd'], 'true');
+    });
+
+    test('a removal racing a write keeps both outcomes', () async {
+      mockShell.wslConfContents =
+          '[boot]\nsystemd = true\nprotectBinfmt = false\n';
+
+      final results = await Future.wait(<Future<bool>>[
+        wslApi.removeSetting('Ubuntu', 'boot', 'protectBinfmt'),
+        wslApi.setSetting('Ubuntu', 'user', 'default', 'tester'),
+      ]);
+
+      expect(results, everyElement(true));
+      final config = await wslApi.getWSLConf('Ubuntu');
+      expect(config['boot']!.containsKey('protectBinfmt'), false);
+      expect(config['user']!['default'], 'tester');
+      expect(config['boot']!['systemd'], 'true');
+    });
+
+    /// One distro refusing its write must not wedge the queue for the next
+    /// one: the serialiser's tail swallows the error rather than chaining it.
+    test('a failed write does not poison later writes to the same distro',
+        () async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\n';
+      mockShell.simulateWslConfReadOnly = true;
+
+      expect(await wslApi.setSetting('Ubuntu', 'user', 'default', 'tester'),
+          false);
+
+      mockShell.simulateWslConfReadOnly = false;
+      expect(await wslApi.setSetting('Ubuntu', 'user', 'default', 'tester'),
+          true);
+      expect((await wslApi.getWSLConf('Ubuntu'))['user']!['default'], 'tester');
+    });
+
+    test('wsl-distribution.conf writes are serialised too', () async {
+      mockShell.distributionConfContents = '[oobe]\ndefaultName = Demo\n';
+
+      final results = await Future.wait(<Future<bool>>[
+        wslApi.setDistributionSetting('Ubuntu', 'oobe', 'defaultUid', '1000'),
+        wslApi.setDistributionSetting(
+            'Ubuntu', 'shortcut', 'icon', r'C:\icons\demo.ico'),
+      ]);
+
+      expect(results, everyElement(true));
+      final conf = await wslApi.readDistributionConf('Ubuntu');
+      expect(conf!.get('oobe', 'defaultName'), 'Demo');
+      expect(conf.get('oobe', 'defaultUid'), '1000');
+      expect(conf.get('shortcut', 'icon'), r'C:\icons\demo.ico');
+    });
   });
 
   test('Move distro fails if export is too small', () async {
