@@ -397,5 +397,7 @@
   "rate-text": "Microsoft Store でのレビューは、ほかの方がこのアプリを見つける助けになります。数秒で終わりますし、小さなプロジェクトには本当に大きな意味があります。",
   "rate-now": "ストアでレビューする",
   "rate-later": "あとで",
-  "rate-never": "今後表示しない"
+  "rate-never": "今後表示しない",
+  "startingup-text": "起動中...",
+  "ai-workspace-startingup-hint-text": "ツールはまだ起動中です。準備が完了するとダッシュボードを開けます。"
 }

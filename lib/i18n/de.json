@@ -398,5 +398,7 @@
   "rate-text": "Eine Bewertung im Microsoft Store hilft anderen, die App zu finden. Das dauert ein paar Sekunden und macht für ein kleines Projekt wirklich einen Unterschied.",
   "rate-now": "Im Store bewerten",
   "rate-later": "Später",
-  "rate-never": "Nicht mehr fragen"
+  "rate-never": "Nicht mehr fragen",
+  "startingup-text": "Startet...",
+  "ai-workspace-startingup-hint-text": "Das Tool startet noch. Das Dashboard lässt sich öffnen, sobald es bereit ist."
 }

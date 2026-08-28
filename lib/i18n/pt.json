@@ -399,5 +399,7 @@
   "rate-text": "Uma avaliação na Microsoft Store ajuda outras pessoas a encontrar o aplicativo. Leva alguns segundos e faz diferença real para um projeto pequeno.",
   "rate-now": "Avaliar na Store",
   "rate-later": "Mais tarde",
-  "rate-never": "Não perguntar novamente"
+  "rate-never": "Não perguntar novamente",
+  "startingup-text": "Iniciando...",
+  "ai-workspace-startingup-hint-text": "A ferramenta ainda está iniciando. O painel abre quando estiver pronta."
 }

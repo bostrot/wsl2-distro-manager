@@ -397,5 +397,7 @@
   "rate-text": "A rating on the Microsoft Store helps other people find the app. It takes a few seconds, and it genuinely makes a difference for a small project.",
   "rate-now": "Rate on the Store",
   "rate-later": "Maybe later",
-  "rate-never": "Don't ask again"
+  "rate-never": "Don't ask again",
+  "startingup-text": "Starting up...",
+  "ai-workspace-startingup-hint-text": "The tool is still starting up. Its dashboard opens once it is ready."
 }

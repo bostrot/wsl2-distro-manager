@@ -65,11 +65,73 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   `git diff --stat` is 2 files, no unrelated churn (`dart format` again not
   run, for the reason recorded above).
 
-- [ ] Add an Open WebUI health gate before the tool is reported as running:
+- [x] Add an Open WebUI health gate before the tool is reported as running:
   - The container needs ~2 minutes of alembic migrations before it becomes healthy, and probing or restarting it inside that window kills it (measured 2026-08-27)
   - Extend the Open WebUI `statusCheck` to consult `docker inspect --format {{.State.Health.Status}}` and only report `running` on `healthy`; surface `starting` as a distinct "starting up" state in the UI rather than as `running`
   - Keep the dashboard action disabled while the state is `starting`, and keep the existing "Dashboard URL not reachable from Windows" diagnostic as the fallback
   - Remember the shell-quoting rule: no double quotes in WSL command strings — `runInShell: false` means `"` reaches bash literally and breaks the filter
+
+  **Done (2026-08-28).** New `ToolStatus.starting`, and a new optional
+  `ToolConfig.healthCheck` — a second-stage probe that only runs once
+  `statusCheck` says the tool is up, and must echo `running`, `starting` or
+  `stopped`. Open WebUI's asks Docker: `docker inspect --format
+  '{{.State.Health.Status}}'`, single-quoted (a `"` would reach bash literally
+  under `runInShell: false`), compared with the `x$_h` idiom so an image with
+  no `HEALTHCHECK` — empty answer, not evidence of a problem — falls through
+  to `running` rather than stranding the card. `starting` → starting,
+  `unhealthy` → stopped, everything else → running. Tools without a
+  `healthCheck` are unchanged; the gate costs them nothing. `refreshStatus()`
+  parses `starting` *before* `running`, and now also accepts a literal
+  `stopped` (the unhealthy answer) so an up-but-unhealthy container cannot
+  fall through to `notInstalled` and lose its install path.
+
+  `start()` also had to be gated: `docker start` returns immediately, so the
+  card claimed `running` for the whole migration window no matter what the
+  probe said. A successful start on a tool with a `healthCheck` now re-probes
+  before returning.
+
+  UI: blue badge reading "Starting up…" (`startingup-text`, added to all nine
+  locales with real translations, appended not sorted, CRLF preserved). The
+  dashboard button is now *rendered but disabled* while starting, with a
+  tooltip explaining why (`ai-workspace-startingup-hint-text`) — hiding it
+  entirely reads as "this tool has no dashboard" rather than "not yet".
+  `getUrl`/`getDashboardUrl` already return null for anything but `running`,
+  so the "Dashboard URL not reachable from Windows" fallback is untouched.
+  Start and Stop are keyed off `stopped`/`running` and so are both disabled
+  while starting, which is what the "restarting inside the window kills it"
+  measurement wants.
+
+  **Blocker found and fixed: `wsl.exe` was flattening argv.** The gate could
+  not work as specified, because `wsl.exe <args>` does not exec its command —
+  it re-joins argv into one string and re-parses it through the distro's
+  default shell, losing a quoting level. `bash -c '<script>'` arrived as
+  `bash -c <first word>` with the rest running in the *outer* shell, so every
+  `VAR=$(…)` in these command strings was silently lost. Measured live through
+  Dart's `Process.run`: `bash -c 'X=hello; echo [$X]'` printed `[]`, and
+  `$BASH_EXECUTION_STRING` came back as `bash -c echo …`. Consequences beyond
+  this task: the probe's `_s=$(…)` was always empty, so `refreshStatus()`
+  **never once took the `running` branch for any tool**, and `set -o pipefail`
+  on installs never applied. `_wslArgs()` now passes `--exec`, which execs
+  argv intact — verified live: old form returned `exists` plus
+  `bash: line 1: [: =: unary operator expected`; new form returned `starting`
+  mid-migration and `running` once healthy, with clean stderr.
+
+  This is the root cause of the `bash: -c: line 2: syntax error near
+  unexpected token '2'` item further down. It is written up in
+  `Working/bash-line2-syntax-error.md` with two runnable reproductions
+  (`Working/probe_repro.dart`, `Working/probe_live.dart`), but that task is
+  **left unchecked**: the codebase-wide audit and the `AGENTS.md` constraint
+  are still owed, and only `AiWorkspaceService` is fixed here.
+
+  Nine tests added (`test/ai_workspace_service_test.dart`): starting while
+  migrating, running once healthy, the probe consults `docker inspect` health
+  with no double quotes, non-gated tools are untouched, unhealthy reads as
+  stopped and keeps its path, a started Open WebUI stays starting,
+  `getDashboardUrl` is null while starting, and `--exec` precedes `bash`.
+  `flutter analyze` clean on the touched files, `flutter test` 324/324,
+  `flutter test integration_test/ai_workspace_test.dart -d windows` 17/17,
+  `dart run scripts/check_translations.dart` clean. `dart format` again not
+  run, for the reason recorded above.
 
 - [ ] Make the OpenClaw and Hermes status checks reflect service health rather than process existence:
   - `pgrep -f '[o]openclaw'` / `pgrep -f '[h]ermes.*gateway'` only prove a process exists; the gateway was live while nothing listened on 18789
@@ -86,6 +148,18 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   - Write a focused reproduction under `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/` that sends escalating command strings through `ExecutionBroker` to a real distro and logs the exact argv that reaches `wsl.exe`
   - Identify the trigger (candidates: embedded newlines in the command string, Dart's Windows argument escaping, `runInShell` interaction) and record the finding in `Working/bash-line2-syntax-error.md`
   - Fix it if the cause is on our side; if it is a WSL/bash behaviour we must avoid, add the constraint to `AGENTS.md` and enforce it wherever long WSL command strings are built
+
+  **Root cause already found (2026-08-28), task still open.** Isolated while
+  doing the Open WebUI health gate above, because that gate could not work
+  until it was understood. `wsl.exe` re-joins argv and re-parses it through
+  the distro's default shell, so `bash -c '<script>'` loses a quoting level;
+  `--exec` fixes it. Full write-up and two runnable reproductions:
+  `Working/bash-line2-syntax-error.md`, `Working/probe_repro.dart`,
+  `Working/probe_live.dart`. **Still owed here:** the audit of every other
+  `wsl.exe` call site (`lib/api/wsl.dart`, `mount_service.dart`, `mcp/`,
+  `components/sync.dart`), the `AGENTS.md` constraint, and enforcement
+  wherever long WSL command strings are built. Only
+  `AiWorkspaceService._wslArgs()` is fixed so far.
 
 - [ ] Add or extend tests for the changed behaviour in `test/ai_workspace_service_test.dart`:
   - Failed install keeps `error` + `errorMessage` across a background refresh

@@ -397,5 +397,7 @@
   "rate-text": "Microsoft Store'da bırakacağınız bir değerlendirme, başkalarının uygulamayı bulmasına yardımcı olur. Birkaç saniye sürer ve küçük bir proje için gerçekten fark yaratır.",
   "rate-now": "Store'da değerlendir",
   "rate-later": "Daha sonra",
-  "rate-never": "Bir daha sorma"
+  "rate-never": "Bir daha sorma",
+  "startingup-text": "Başlatılıyor...",
+  "ai-workspace-startingup-hint-text": "Araç hâlâ başlatılıyor. Panel, hazır olduğunda açılabilir."
 }

@@ -397,5 +397,7 @@
   "rate-text": "A Microsoft Store-ban adott értékelés segít másoknak megtalálni az alkalmazást. Néhány másodperc, és egy kis projektnek tényleg sokat számít.",
   "rate-now": "Értékelés a Store-ban",
   "rate-later": "Talán később",
-  "rate-never": "Ne kérdezd többet"
+  "rate-never": "Ne kérdezd többet",
+  "startingup-text": "Indul...",
+  "ai-workspace-startingup-hint-text": "Az eszköz még indul. A vezérlőpult akkor nyitható meg, ha készen áll."
 }

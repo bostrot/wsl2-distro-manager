@@ -398,5 +398,7 @@
   "rate-text": "在 Microsoft Store 留下評分，能幫助更多人找到這個應用程式。只需幾秒鐘，對一個小專案來說意義很大。",
   "rate-now": "前往商店評分",
   "rate-later": "稍後再說",
-  "rate-never": "不再詢問"
+  "rate-never": "不再詢問",
+  "startingup-text": "正在啟動...",
+  "ai-workspace-startingup-hint-text": "工具仍在啟動中。就緒後即可開啟其儀表板。"
 }

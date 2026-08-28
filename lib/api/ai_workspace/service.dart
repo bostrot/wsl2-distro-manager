@@ -23,9 +23,12 @@ const String _kDockerDownMarker = 'dockerdown';
 /// Blocks until dockerd answers, up to ~20s. `service docker start` returns as
 /// soon as the init script forks, well before the socket exists, so anything
 /// that talks to Docker has to wait for this first.
-/// No `$(seq ...)` and no subshell parentheses: both get mangled on the way
+/// No `$(seq ...)` and no subshell parentheses: both got mangled on the way
 /// through the Windows command line into `wsl.exe`, surfacing as
-/// `bash: -c: line 2: syntax error near unexpected token '2'`.
+/// `bash: -c: line 2: syntax error near unexpected token '2'`. Root cause
+/// found 2026-08-28 — `wsl.exe` re-ran the flattened command through the
+/// distro's default shell; see the `--exec` note on [_wslArgs]. The explicit
+/// list is kept because it costs nothing and works under either form.
 const String _kDockerWaitLoop =
     'for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do '
     'docker info >/dev/null 2>&1 && break; sleep 1; done; ';
@@ -34,7 +37,12 @@ const String _kDockerWaitLoop =
 enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi }
 
 /// Status of a workspace tool instance.
-enum ToolStatus { notInstalled, stopped, running, error }
+///
+/// [starting] is deliberately distinct from [running]: Open WebUI's container
+/// reports `Up` about two minutes before it can answer, while alembic
+/// migrations run — and probing or restarting it inside that window kills it
+/// (measured 2026-08-27). Reporting it as [running] invites exactly that.
+enum ToolStatus { notInstalled, stopped, starting, running, error }
 
 /// Configuration for an AI workspace tool.
 class ToolConfig {
@@ -50,6 +58,14 @@ class ToolConfig {
   /// [port] alone is enough.
   final String? dashboardCommand;
 
+  /// Second-stage probe, run only once [statusCheck] has said the tool is up.
+  /// Must echo exactly one of `running`, `starting` or `stopped`. Null means
+  /// "[statusCheck] is the whole answer" and up counts as running.
+  ///
+  /// This exists because a container being up is not the same as it serving:
+  /// see [ToolStatus.starting].
+  final String? healthCheck;
+
   const ToolConfig({
     required this.name,
     required this.installCommand,
@@ -59,6 +75,7 @@ class ToolConfig {
     required this.port,
     required this.defaultInstallPath,
     this.dashboardCommand,
+    this.healthCheck,
   });
 }
 
@@ -117,6 +134,21 @@ const Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     stopCommand: 'docker stop open-webui || true',
     statusCheck:
         'docker ps --filter name=open-webui | grep -q Up && echo running || echo stopped',
+    // `Up` is not `serving`: the container runs its alembic migrations for
+    // ~2 minutes before the web server answers, and touching it in that
+    // window kills it. Docker's own healthcheck is the only thing that knows
+    // the difference.
+    // Single quotes around the Go template, never double: `runInShell: false`
+    // means a `"` reaches bash literally and breaks the filter. `x$_h` rather
+    // than a quoted comparison for the same reason — an image with no
+    // HEALTHCHECK makes `docker inspect` fail and leaves `_h` empty, and an
+    // empty answer is no evidence of a problem, so it falls through to
+    // running.
+    healthCheck:
+        '_h=\$(docker inspect --format \'{{.State.Health.Status}}\' open-webui 2>/dev/null); '
+        'if [ x\$_h = xstarting ]; then echo starting; '
+        'elif [ x\$_h = xunhealthy ]; then echo stopped; '
+        'else echo running; fi',
     port: 8083,
     defaultInstallPath: 'docker://open-webui',
   ),
@@ -336,8 +368,30 @@ class AiWorkspaceService {
   }
 
   /// Runs as root — this distro is automation-only.
+  ///
+  /// `--exec` is load-bearing, not decoration. Without it `wsl.exe` re-joins
+  /// the argv it was given into one string and hands that to the distro's
+  /// default shell, which strips a level of quoting: `bash -c '<script>'`
+  /// arrives as `bash -c <first word of script>` followed by the rest of the
+  /// script running in the *outer* shell. Measured against a live distro on
+  /// 2026-08-28 — `bash -c 'X=hello; echo [$X]'` prints `[]`, because the
+  /// assignment happened in a throwaway child, and `$BASH_EXECUTION_STRING`
+  /// comes back as `bash -c echo …` rather than the script itself. That is
+  /// what made the status probe's `_s=$(…)` permanently empty (so the
+  /// `running` branch could never be taken) and what silently defeated
+  /// `set -o pipefail` on installs. `--exec` skips the default shell and
+  /// passes argv through intact.
   List<String> _wslArgs(String shellCommand) {
-    return ['-d', kAiWorkspaceDistro, '-u', 'root', 'bash', '-c', shellCommand];
+    return [
+      '-d',
+      kAiWorkspaceDistro,
+      '-u',
+      'root',
+      '--exec',
+      'bash',
+      '-c',
+      shellCommand,
+    ];
   }
 
   /// Installs docker.io on first use — the base Ubuntu image has no Docker.
@@ -581,6 +635,13 @@ class AiWorkspaceService {
         state.hasKnownStatus = true;
         _persistConfirmedState(tool);
         Notify.message('ai-workspace-started-text'.i18n([config.name]));
+        // The start command returning is not the tool serving. A tool with a
+        // health gate has to be asked, or the card claims running for the
+        // whole ~2 minute migration window and "Open Dashboard" walks the
+        // user straight into the failure the gate exists to prevent.
+        if (config.healthCheck != null) {
+          await refreshStatus(tool);
+        }
         return true;
       } else {
         _recordActionFailure(tool, result.stderr);
@@ -734,11 +795,13 @@ class AiWorkspaceService {
             'docker info >/dev/null 2>&1 || { echo $_kDockerDownMarker; exit 0; }; '
         : '';
 
-    // Status and existence check in one shell invocation — each `wsl -d`
-    // call carries real spawn overhead.
+    // Status, health and existence check in one shell invocation — each
+    // `wsl -d` call carries real spawn overhead. The health gate only runs
+    // once the tool is up, so a tool without one costs nothing.
+    final healthGate = config.healthCheck ?? 'echo running';
     final combinedCommand = '$dockerPrefix'
         '_s=\$(${config.statusCheck}); '
-        'if [ \$_s = running ]; then echo running; '
+        'if [ \$_s = running ]; then $healthGate; '
         'else ${_existsCheck(config.defaultInstallPath)}; fi';
 
     final request = ExecutionRequest(
@@ -762,16 +825,23 @@ class AiWorkspaceService {
         _toolStates[tool]?.errorMessage = 'ai-workspace-docker-unavailable-text'.i18n();
       } else if (result.isSuccess) {
         final output = rawOutput;
-        if (output.contains('running')) {
+        // `starting` first: it is the health gate's answer for a container
+        // that is up but still migrating, and must not be read as running.
+        if (output.contains('starting')) {
+          _toolStates[tool]?.status = ToolStatus.starting;
+        } else if (output.contains('running')) {
           _toolStates[tool]?.status = ToolStatus.running;
-        } else if (output.contains('exists')) {
+        } else if (output.contains('exists') || output.contains('stopped')) {
+          // `stopped` comes from the health gate (up, but unhealthy) — the
+          // tool is installed either way, so it must not fall through to
+          // notInstalled and lose its install path.
           _toolStates[tool]?.status = ToolStatus.stopped;
         } else {
           // The setter drops installPath with it: "Not installed" and
           // "Installed: <path>" must never appear on the same card.
           _toolStates[tool]?.status = ToolStatus.notInstalled;
         }
-        // A confirmed running/exists answer is a confirmation of exactly the
+        // Any answer other than notInstalled is a confirmation of exactly the
         // path the check was built from, so re-assert it — the probe that
         // last said notInstalled cleared it.
         if (_toolStates[tool]?.status != ToolStatus.notInstalled) {

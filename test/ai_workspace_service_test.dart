@@ -645,6 +645,26 @@ void main() {
 
         expect(result, false);
       });
+
+      // `docker start` returning is not the container serving. Without the
+      // post-start health probe the card claims "running" for the whole
+      // migration window and Open Dashboard walks into a dead port.
+      test('a started Open WebUI stays "starting" until it is healthy',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openWebUi)!;
+        state.status = ToolStatus.stopped;
+
+        testShell.exitCode = 0;
+        testShell.stdoutData = 'starting';
+        final result = await service.start(AiWorkspaceTool.openWebUi);
+
+        expect(result, true);
+        expect(state.status, ToolStatus.starting);
+        expect(service.getUrl(AiWorkspaceTool.openWebUi), isNull);
+      });
     });
 
     group('uninstall', () {
@@ -830,6 +850,84 @@ void main() {
         );
       });
 
+      // Open WebUI's container reports `Up` for the ~2 minutes its alembic
+      // migrations take, during which nothing answers on the port and a
+      // restart kills it. Docker's healthcheck is the only source that knows
+      // the difference, so the probe has to consult it.
+      test('reports Open WebUI as starting while its container is migrating',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'starting';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        final state = service.getState(AiWorkspaceTool.openWebUi);
+        expect(state?.status, ToolStatus.starting);
+        expect(state?.installPath, 'docker://open-webui');
+      });
+
+      test('reports Open WebUI as running once its container is healthy',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        expect(
+          service.getState(AiWorkspaceTool.openWebUi)?.status,
+          ToolStatus.running,
+        );
+      });
+
+      test('gates the Open WebUI probe on docker inspect health', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        final command = testShell.lastCommand.last;
+        expect(command.contains('{{.State.Health.Status}}'), true);
+        // `runInShell: false` means a `"` reaches bash literally and breaks
+        // the --format filter; the Go template has to be single-quoted.
+        expect(command.contains('"'), false);
+      });
+
+      test('does not health-gate tools without a healthcheck', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+        expect(
+          testShell.lastCommand.last.contains('{{.State.Health.Status}}'),
+          false,
+        );
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.running,
+        );
+      });
+
+      // An unhealthy container is still an installed one: the health gate
+      // answers `stopped`, which must not fall through to notInstalled and
+      // wipe the install path with it.
+      test('an unhealthy container reads as stopped, not notInstalled',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'stopped';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        final state = service.getState(AiWorkspaceTool.openWebUi);
+        expect(state?.status, ToolStatus.stopped);
+        expect(state?.installPath, 'docker://open-webui');
+      });
+
       // Regression: the exists-check used to be `[ -d "~/.hermes-agent" ]`,
       // which never matches — `~` doesn't expand inside double quotes in
       // bash, so a genuinely-installed tool with no process currently
@@ -944,6 +1042,19 @@ void main() {
     });
 
     group('getDashboardUrl', () {
+      // The whole point of the starting state: the dashboard must stay shut
+      // until the container is actually serving.
+      test('returns null while the tool is still starting up', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openWebUi)!;
+        state.status = ToolStatus.starting;
+
+        expect(await service.getDashboardUrl(AiWorkspaceTool.openWebUi),
+            isNull);
+      });
+
       test('returns null for a tool that is not running', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
@@ -1064,6 +1175,29 @@ void main() {
     });
 
     group('wsl command routing', () {
+      // Without --exec, wsl.exe re-joins argv and runs it through the
+      // distro's default shell, which eats a level of quoting: the script
+      // handed to `bash -c` is split, only its first word reaches the child
+      // bash, and the remainder executes in the outer shell. That is why the
+      // probe's `_s=$(...)` was always empty and the health gate could never
+      // be reached. Measured live 2026-08-28.
+      test('shell commands are passed through --exec so argv survives',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.stdoutData = 'exists';
+        await service.refreshStatus(AiWorkspaceTool.openWebUi);
+
+        final command = testShell.lastCommand;
+        expect(command.contains('--exec'), true);
+        expect(
+          command.indexOf('--exec'),
+          lessThan(command.indexOf('bash')),
+          reason: '--exec must precede the command it protects',
+        );
+      });
+
       test('all commands use wsl with -d ai-workspace flag', () async {
         // Distro check + init
         testShell.stdoutData = 'ai-workspace';

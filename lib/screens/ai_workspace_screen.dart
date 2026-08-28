@@ -521,23 +521,35 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                   busy: isBusy && state?.status == ToolStatus.running,
                   onPressed: () => _handleStop(tool),
                 ),
-                if (state?.status == ToolStatus.running) ...[
+                // Shown but disabled while starting: the tool is on its way
+                // up, and hiding the button entirely reads as "this tool has
+                // no dashboard" rather than "not yet".
+                if (state?.status == ToolStatus.running ||
+                    state?.status == ToolStatus.starting) ...[
                   const SizedBox(width: 8),
-                  Button(
-                    key: ValueKey('test-ai-open-dashboard-${tool.name}'),
-                    onPressed: !isBusy ? () => _handleOpenDashboard(tool) : null,
-                    child: isBusy
-                        ? SizedBox.square(
-                            dimension: 16, child: ProgressRing())
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(FluentIcons.open_in_new_window,
-                                  size: 12),
-                              const SizedBox(width: 6),
-                              Text('ai-workspace-open-dashboard-text'.i18n()),
-                            ],
-                          ),
+                  Tooltip(
+                    message: state?.status == ToolStatus.starting
+                        ? 'ai-workspace-startingup-hint-text'.i18n()
+                        : 'ai-workspace-open-dashboard-text'.i18n(),
+                    child: Button(
+                      key: ValueKey('test-ai-open-dashboard-${tool.name}'),
+                      onPressed:
+                          (!isBusy && state?.status == ToolStatus.running)
+                              ? () => _handleOpenDashboard(tool)
+                              : null,
+                      child: isBusy
+                          ? SizedBox.square(
+                              dimension: 16, child: ProgressRing())
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(FluentIcons.open_in_new_window,
+                                    size: 12),
+                                const SizedBox(width: 6),
+                                Text('ai-workspace-open-dashboard-text'.i18n()),
+                              ],
+                            ),
+                    ),
                   ),
                 ],
                 const Spacer(),
@@ -596,6 +608,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   Color _statusToColor(ToolStatus? status) {
     if (status == ToolStatus.running) return Colors.green;
+    if (status == ToolStatus.starting) return Colors.blue;
     if (status == ToolStatus.stopped) return Colors.orange;
     if (status == ToolStatus.error) return Colors.red;
     return Colors.grey;
@@ -603,6 +616,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   String _statusLabel(ToolStatus? status) {
     if (status == ToolStatus.running) return 'running-text'.i18n();
+    if (status == ToolStatus.starting) return 'startingup-text'.i18n();
     if (status == ToolStatus.stopped) return 'stopped-text'.i18n();
     if (status == ToolStatus.error) return 'error-text'.i18n();
     return 'notinstalled-text'.i18n();
