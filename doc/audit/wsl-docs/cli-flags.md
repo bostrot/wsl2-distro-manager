@@ -8,6 +8,7 @@ tags:
   - cli
 related:
   - '[[index]]'
+  - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[wslconf-keys]]'
   - '[[features]]'
@@ -125,8 +126,16 @@ distro under that name. It has **no call site** — dead code — but it is a lo
 
 ### CC-1 — The app never asks WSL what version it is
 
-`--version` and `--status` have zero call sites. Consequences that reach well beyond this
-file:
+`--version` and `--status` have zero `wsl` call sites. Consequences that reach well beyond
+this file:
+
+> Re-grep footnote, from [[verification]]: `grep -rn -- "--version" lib/` returns **one**
+> hit and `--format` returns **two**, so a future reader will think this claim is refuted.
+> It is not. The `--version` hit is `cloudflared --version`
+> (`cloudflare_tunnel_service.dart:90`); the `--format` hits are
+> `docker image ls --format` (`docker_images.dart:744`) and a `docker inspect --format`
+> inside an AI-workspace script. None is a `wsl.exe` invocation. `--shell-type`'s single hit
+> is a comment in `wsl_args.dart:54`.
 
 - Every version floor recorded in [[wslconfig-keys]] and [[wslconf-keys]] (Win 11 ¹,
   Win 11 22H2 ¹², WSL 0.66.2+, 0.67.6+, 2.0.9+, 2.5+) is unenforceable. The app renders

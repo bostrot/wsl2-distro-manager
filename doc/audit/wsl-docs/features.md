@@ -8,6 +8,7 @@ tags:
   - features
 related:
   - '[[index]]'
+  - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[wslconf-keys]]'
   - '[[cli-flags]]'
@@ -119,7 +120,18 @@ callout:
 > `wsl-config.md:216` — "It is recommended to modify WSL configurations directly in WSL
 > Settings…"
 
-**App.** WSL Settings is not mentioned anywhere in `lib/` or in any locale file.
+**App — correction from [[verification]] V-8: the name is already taken, by this app, for
+something else.** `wslsettings-text` = `"WSL Settings"` (`en.json:134`) is the header of the
+**per-distro `wsl.conf` editor** (`settings_dialog.dart:291`). So the app ships a screen
+called "WSL Settings" that edits `/etc/wsl.conf`, while Windows now ships a Start-menu app
+called "WSL Settings" that edits `%UserProfile%\.wslconfig` — the file this app edits on a
+*different* screen (`settings_screen.dart`'s Global Configuration expander). Microsoft's
+product is not referenced anywhere; the collision is accidental.
+
+Any Phase 05 work here has to rename one of the two first, which cuts both ways: it makes
+F-5 cheaper than "integrate with a Microsoft app" implies, and more urgent than its
+placement in this table implies — a user told to "open WSL Settings" cannot tell which one
+is meant.
 
 **Verdict: missing**, but the *content* of the finding cannot be sourced from the docs
 clone. Microsoft now ships a first-party GUI that edits the same `.wslconfig` this app's

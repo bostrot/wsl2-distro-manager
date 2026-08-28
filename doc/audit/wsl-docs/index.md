@@ -11,6 +11,7 @@ related:
   - '[[wslconf-keys]]'
   - '[[cli-flags]]'
   - '[[features]]'
+  - '[[verification]]'
 ---
 
 # WSL documentation audit
@@ -22,12 +23,18 @@ when the docs move.
 
 ## The four areas
 
-| Area | Scope | Documented | Exposed | Missing |
-|:---|:---|---:|---:|---:|
-| [[wslconfig-keys]] | global `%UserProfile%\.wslconfig` | 27 reference-table keys | **27** | 0 |
-| [[wslconf-keys]] | per-distro `/etc/wsl.conf` | 15 keys / 7 sections | 11 | **4** |
-| [[cli-flags]] | `wsl.exe` commands and options | 30 top-level verbs (64 incl. options) | 13 | 17 |
-| [[features]] | whole capability surfaces | 11 assessed | 0 fully | **7** (+4 partial) |
+| Area | Scope | Documented | Exposed | Missing | Re-verified |
+|:---|:---|---:|---:|---:|:---|
+| [[wslconfig-keys]] | global `%UserProfile%\.wslconfig` | 27 reference-table keys | **27** | 0 | 3 verdicts corrected |
+| [[wslconf-keys]] | per-distro `/etc/wsl.conf` | 15 keys / 7 sections | 11 | **4** | confirmed as written |
+| [[cli-flags]] | `wsl.exe` commands and options | 30 top-level verbs (64 incl. options) | 13 | 17 | confirmed; one grep footnoted |
+| [[features]] | whole capability surfaces | 11 assessed | 0 fully | **7** (+4 partial) | F-5 amended |
+
+[[verification]] is the second pass over all four: every missing key re-grepped, every
+widget type checked against the documented value type, every tooltip diffed string-for-string
+against the doc sentence. No claim was withdrawn; 3 verdicts were corrected and 8 findings
+added, the largest of which is a slider that **throws on a documented-legal `.wslconfig`
+value** ([[wslconfig-keys]] CC-9).
 
 ## What the audit actually found
 
@@ -37,7 +44,11 @@ the camelCase and the all-lowercase spelling of each (`.wslconfig` matching is
 case-insensitive, and the docs' own example file uses lowercase). There is no
 missing-key finding in that area at all.
 
-The real gaps are elsewhere, and they fall into four groups:
+The real gaps are elsewhere, and they fall into four groups — plus one outright crash the
+[[verification]] pass found while checking widget types, which outranks all of them:
+`memory=8589934592` is the documented byte-form of 8 GB, and feeding it to the app's
+`memory` slider trips `fluent_ui`'s range assert and throws the Settings page
+([[wslconfig-keys]] CC-9).
 
 1. **Presentation.** Two enums, two size keys and two numeric keys rendered as untyped
    free text; two path keys with no file picker; seven `.wslconfig` toggles and six
@@ -67,6 +78,9 @@ The real gaps are elsewhere, and they fall into four groups:
   against every invocation in `lib/`.
 - **[[features]]** — eleven whole capabilities, including the ones that are "covered" at
   key level and still unusable.
+- **[[verification]]** — the second pass. Read this before quoting any verdict from the four
+  files above; it is where three of them changed, and it carries the full tooltip diff
+  (10 covered / 16 outdated / 1 wrong) that the per-key tables only summarise.
 
 Supporting material, outside the repo tree, under
 `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/`:
@@ -90,7 +104,7 @@ inventories these four files diff against).
 | Source material fetched and pinned | done — `Working/wsl-docs-source.md` |
 | Documented-side inventories extracted | done — three files in `Working/` |
 | **Per-area findings written (this set)** | **done** |
-| Claimed gaps re-verified against code (widget types, tooltips) | pending |
+| **Claimed gaps re-verified against code (widget types, tooltips)** | **done — [[verification]]** |
 | Runtime behaviour verified against local WSL | pending |
 | Findings sized (S/M/L), ranked, ordered for Phase 05 | pending |
 | False-negative sanity check | pending |

@@ -8,6 +8,7 @@ tags:
   - wslconf
 related:
   - '[[index]]'
+  - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[cli-flags]]'
   - '[[features]]'
@@ -163,6 +164,25 @@ works: `<distro> config --default-user` is documented as non-functional for impo
 distros (`basic-commands.md:152`). Verdict **missing**, high user impact. See also
 [[cli-flags]] on `wsl --manage --set-default-user`.
 
+### CC-7 — Free-text values reach a **root** shell unescaped
+
+Added by [[verification]] V-6. `setSetting` (`wsl.dart:1807-1820`) templates
+`assets/scripts/settings.bash` by plain string replacement — `replaceAll('VALUE', value)` —
+and `execCmds` spawns the result with `['-d', distribution, '-u', 'root']` (`wsl.dart:995`),
+feeding it line by line over stdin.
+
+CC-2 above records the benign half: a `/` in the value breaks the `sed` delimiter. The other
+half is that the same substitution also lands inside `echo -e "[PARENT]\nKEY = VALUE"` in the
+third branch, where a `"`, a `` ` `` or a `$(…)` is **arbitrary command execution as root**
+inside the distro — from a settings text box, with `showOutput: false` and `setSetting`
+returning `true` regardless of what happened.
+
+The four fields that reach it are `boot.command`, `automount.root`, `automount.options` and
+`network.hostname` (`settings_dialog.dart:302`, `:314`, `:315`, `:327`). Not remotely
+triggerable — the operator types the value — so this is a robustness finding, not a
+vulnerability report. It matters because it constrains the fix: Phase 05's rewrite of this
+writer must **escape** the value, not merely pick a different `sed` delimiter.
+
 ## Out of scope but recorded
 
 `/etc/wsl-distribution.conf` — sections `[oobe]`, `[shortcut]`, `[windowsterminal]`
@@ -183,3 +203,10 @@ area; it belongs to the custom-distro finding in [[features]].
   against a live WSL; they are inferred dead from documentation silence alone.
 - **Whether `boot.systemd` actually takes effect** through this writer on a distro that
   has no `[boot]` section was not verified.
+- **Whether `wsl.conf` key matching is case-insensitive** is stated nowhere in the docs
+  clone, and it decides whether an open risk is a real defect: `getWSLConf`
+  (`wsl.dart:1824-1846`) keys its map on the spelling **as written in the file**, and
+  `loadDistroSettings` stores prefs under `'$item-$section-$key'`, while the widgets read
+  `'$item-automount-mountFsTab'`. A distro whose `wsl.conf` says `mountfstab = true`
+  populates a pref no widget reads and the toggle renders off. [[verification]] V-7 records
+  this as an unverified precondition; one scratch distro settles it.

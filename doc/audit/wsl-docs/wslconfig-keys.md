@@ -8,6 +8,7 @@ tags:
   - wslconfig
 related:
   - '[[index]]'
+  - '[[verification]]'
   - '[[wslconf-keys]]'
   - '[[cli-flags]]'
   - '[[features]]'
@@ -50,6 +51,8 @@ What the diff does produce is:
   absent from the file (CC-1).
 - **4 defects in the `.wslconfig` parser/writer** that can corrupt a hand-edited file
   (CC-2 … CC-5).
+- **A slider that throws on a documented-legal value** (CC-9) — added by the
+  [[verification]] pass, and the most severe finding in this file.
 
 ## Per-key table — `[wsl2]`
 
@@ -58,13 +61,13 @@ What the diff does produce is:
 | `kernel` | path, escaped backslashes required (`wsl-config.md:248`) | `settings_screen.dart:1022` — plain `TextBox`, tooltip `absolutewindowspath-text` | **outdated** — no file picker (`kernelModules` has one), no escaping help |
 | `kernelModules` | path to modules VHD | `:1026` — `TextBox` + `.vhdx` `FilePicker` | **wrong** — picker writes a raw single-backslash path; docs require `C:\\…` |
 | `memory` | size, default 50% of host RAM | `:1042` — `Slider`, min 1, max host GB + 1, postfix `GB` | **wrong** — an existing `memory=8192MB` value fails `double.tryParse` after `replaceAll('GB','')` and silently snaps the slider to **1** |
-| `processors` | number, default = host logical CPUs | `:1051` — `Slider`, min 1, max `SysInfo.cores.length` | **covered** |
+| `processors` | number, default = host **logical** CPUs | `:1051` — `Slider`, min 1, max `SysInfo.cores.length` | **outdated** — the tooltip drops "logical", and the slider asserts on a value above the host core count (CC-9). Corrected from `covered` by [[verification]] |
 | `localhostForwarding` | boolean, default `true`; **ignored when `networkingMode=mirrored`** (`wsl-config.md:305`) | `:1058` — `ToggleSwitch` | **outdated** — default-`true` shown as off when unset; the mirrored-mode override is not surfaced |
 | `kernelCommandLine` | string, space-separated kernel args | `:1062` — `TextBox` | **wrong** — `readConfig` strips **all** spaces from values (`wsl.dart:623`), so `console=ttyS0 nokaslr` reloads as `console=ttyS0nokaslr` and is written back corrupted |
-| `safeMode` | boolean, Win 11 + WSL 0.66.2+ | `:1066` — `ToggleSwitch` | **covered** (version floor unsurfaced — see [[features]]) |
+| `safeMode` | boolean, Win 11 + WSL 0.66.2+ | `:1066` — `ToggleSwitch` | **outdated** — `safemodeinfo-text` is truncated mid-sentence and drops the only WSL-version floor stated anywhere in the `[wsl2]` table. Corrected from `covered` by [[verification]] V-4 |
 | `swap` | **size**, default 25% of RAM, `0` disables | `:1070` — plain `TextBox` | **outdated** — a size key with no size widget and no unit hint; tooltip does carry the `8GB`/`512MB` examples |
 | `swapFile` | path, default `%Temp%\swap.vhdx` | `:1072` — plain `TextBox` | **outdated** — path key with no file picker |
-| `guiApplications` | boolean, default `true`, **no Win 11 restriction in the table** | `:1074` — `ToggleSwitch`, tooltip says "Only available for Windows 11" | **outdated** — the Win 11 claim is not what `wsl-config.md:225-246` annotates; the ¹ footnote is on `debugConsole`/`nestedVirtualization`/`vmIdleTimeout`, not on this key |
+| `guiApplications` | boolean, default `true`, **no Win 11 restriction in the table** | `:1074` — `ToggleSwitch`, tooltip says "Only available for Windows 11" | **wrong** — the ¹ footnote is on `debugConsole`/`nestedVirtualization`/`vmIdleTimeout`/`autoProxy`, never on this key. The tooltip asserts a restriction the docs contradict, so a Windows 10 user skips a key that works. Corrected from `outdated` by [[verification]] V-3 |
 | `debugConsole` | boolean, default `false`, Win 11 ¹ | `:1078` — `ToggleSwitch` | **covered** (tooltip `consoleinfo-text` has a stray comma: "Only available ,for Windows 11") |
 | `maxCrashDumpCount` | number, default `10` | `:1090` — `TextBox` | **outdated** — numeric key with no numeric input or validation |
 | `nestedVirtualization` | boolean, default `true`, Win 11 ¹ | `:1082` — `ToggleSwitch` | **outdated** — default-`true` shown as off when unset |
@@ -147,6 +150,21 @@ The docs' own example file (`wsl-config.md:280-320`) writes `swapfile=` and
 falls into the "add key value" branch, and **appends a duplicate** under `[wsl2]`.
 Verdict **wrong**.
 
+[[verification]] V-5 traced the full path, and the user-visible symptom is worse than
+"the setting was ignored":
+
+1. `.wslconfig` contains `swapfile = C:\Temp\swap.vhdx`.
+2. `readData` (`settings_screen.dart:78-81`) creates `_settings['swapfile']` — a controller
+   with **no widget**, because the widget registers under `swapFile`. The `swapFile` box
+   renders **empty**: the screen shows no swap file configured.
+3. The user fills that empty box → `_settings['swapFile']`.
+4. `saveSettings` iterates both. The lowercase entry rewrites the existing line; the
+   camelCase entry matches nothing and takes the add branch.
+5. `[wsl2]` now carries **both** `swapfile =` and `swapFile =`.
+
+CC-2 compounds step 2: the value is space-stripped before the user ever sees it, so a path
+under `C:\Program Files\…` is already corrupt in the controller.
+
 ### CC-5 — Comment lines are parsed as keys
 
 `readConfig` accepts any line containing `=`. A commented-out `# memory = 8GB` yields the
@@ -185,6 +203,31 @@ than most. Two blemishes: the English string contains a stray comma
 `unusedmemoryinfo-text` (`en.json:125`) describes `pageReporting`, a key that no longer
 exists in the docs and is not rendered by the app (0 Dart references). Dead string in all
 nine locale files. Verdict **outdated**, trivial cleanup.
+
+### CC-9 — The size/number slider throws on a documented-legal value
+
+Added by [[verification]] V-1. `fluent_ui` 4.13.0's `Slider` asserts its range in the
+**constructor** (`lib/src/controls/inputs/slider.dart:41`,
+`assert(value >= min && value <= max)`), and `settings_screen.dart:1196` computes the value
+straight from the file with no clamp:
+
+```dart
+double size = double.tryParse(_settings[name]!.text.replaceAll(sizePostfix, '')) ?? sizeMin.toDouble();
+```
+
+`wsl-config.md:252` states that `size` entries **default to bytes** and the unit is
+omissible, so `memory=8589934592` is a valid way to write 8 GB. It parses cleanly to
+`8589934592.0` and is handed to a slider whose `max` is `hostGB + 1`. The assert fires and
+the whole Settings page throws on build. `processors=64` on a 16-thread host does the same
+against `sizeMax: SysInfo.cores.length`, as does any `.wslconfig` authored on a larger
+machine.
+
+Asserts are stripped from release builds, so the shipped app instead draws the thumb off the
+end of the track rather than crashing — the failure mode differs by build mode, which is how
+this stays hidden. Distinct from the `memory=8192MB` case in the table above, where
+`double.tryParse` *fails* and the slider silently snaps to `1`; both come from the same
+unguarded parse. Verdict **wrong**, and the most severe defect in this editor: it is a crash
+produced by a value the documentation instructs users to write.
 
 ## What was not examined
 
