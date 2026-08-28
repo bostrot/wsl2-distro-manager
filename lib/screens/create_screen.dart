@@ -27,6 +27,7 @@ class _CreatePageState extends State<CreatePage> {
   final ValueNotifier<CreateSourceType> _sourceType =
       ValueNotifier<CreateSourceType>(CreateSourceType.repo);
   final ValueNotifier<bool> _creating = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _createUser = ValueNotifier<bool>(false);
   final ValueNotifier<CreateFailure?> _createError =
       ValueNotifier<CreateFailure?>(null);
 
@@ -44,6 +45,7 @@ class _CreatePageState extends State<CreatePage> {
     _userController.dispose();
     _sourceType.dispose();
     _creating.dispose();
+    _createUser.dispose();
     _createError.dispose();
     super.dispose();
   }
@@ -69,6 +71,7 @@ class _CreatePageState extends State<CreatePage> {
       isDockerLocalImage:
           _sourceType.value == CreateSourceType.dockerLocalImage,
       isVhdx: _sourceType.value == CreateSourceType.vhdx,
+      requireUser: _createUser.value && supportsDefaultUser(_sourceType.value),
       onError: _createError,
     );
     if (!mounted) return;
@@ -106,6 +109,7 @@ class _CreatePageState extends State<CreatePage> {
                   sourceType: _sourceType,
                   creating: _creating,
                   createError: _createError,
+                  createUserEnabled: _createUser,
                 ),
               ),
               const SizedBox(height: 24),

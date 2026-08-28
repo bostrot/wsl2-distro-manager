@@ -514,7 +514,12 @@ class WSLApi {
   }
 
   /// Start a WSL distro by name
-  void start(String distribution,
+  /// Start a WSL distro in a terminal window.
+  ///
+  /// Returns a future rather than `void` so the caller can report the outcome:
+  /// as an `async void` the spawn failure never reached the call site's catch,
+  /// and the "started" toast fired before the process existed.
+  Future<void> start(String distribution,
       {String startPath = '',
       String startUser = '',
       String startCmd = ''}) async {

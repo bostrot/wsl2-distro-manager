@@ -29,6 +29,7 @@ void main() {
     Notify();
     Notify.message = (msg,
         {duration,
+         severity = InfoBarSeverity.info,
         loading = false,
         useWidget = false,
         leadingIcon = true,

@@ -39,6 +39,7 @@ class Templates {
     templates.add(templateName);
     prefs.setStringList('templates', templates);
     Notify.message('$templateName ${'savedastemplate-text'.i18n()}.',
+        severity: InfoBarSeverity.success,
         duration: const Duration(seconds: 3));
   }
 
@@ -47,7 +48,8 @@ class Templates {
     final targetName = newName.trim().isEmpty ? templateName : newName.trim();
 
     if (targetName.isEmpty) {
-      Notify.message('errorentername-text'.i18n());
+      Notify.message('errorentername-text'.i18n(),
+          severity: InfoBarSeverity.error);
       return;
     }
 
@@ -57,11 +59,12 @@ class Templates {
       final result = await wslApi.import(targetName,
           getInstancePath(targetName).path, getTemplateFilePath(templateName));
       final output = result.trim();
-      Notify.message(
-          output.isNotEmpty ? output : 'createdinstance-text'.i18n());
+      Notify.message(output.isNotEmpty ? output : 'createdinstance-text'.i18n(),
+          severity: InfoBarSeverity.success);
     } catch (e) {
       Notify.message(
-          e.toString().trim().isNotEmpty ? e.toString() : 'error-text'.i18n());
+          e.toString().trim().isNotEmpty ? e.toString() : 'error-text'.i18n(),
+          severity: InfoBarSeverity.error);
     }
   }
 
@@ -77,7 +80,8 @@ class Templates {
     prefs.remove('template_description_$name');
     // Delete template file
     await File(getTemplateFilePath(name)).delete();
-    Notify.message('deletedinstance-text'.i18n([name]));
+    Notify.message('deletedinstance-text'.i18n([name]),
+        severity: InfoBarSeverity.success);
   }
 
   /// Get a list of all templates.

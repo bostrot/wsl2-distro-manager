@@ -16,6 +16,16 @@ import 'package:wsl2distromanager/theme.dart';
 
 enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
 
+/// Whether a source type produces a distro we can add a default user to.
+///
+/// A turnkey appliance, a Docker image and an imported VHDX all bring their own
+/// account layout, so the toggle is hidden for them — and must not then be
+/// treated as "user requested" by the validation below.
+bool supportsDefaultUser(CreateSourceType type) =>
+    type != CreateSourceType.turnkey &&
+    type != CreateSourceType.docker &&
+    type != CreateSourceType.vhdx;
+
 /// Why a create attempt failed.
 ///
 /// [diagnosable] separates something going wrong during the install — worth
@@ -128,6 +138,27 @@ progressFn(current, total, currentStep, totalStep) {
   }
 }
 
+/// Reports a failed create and always returns false.
+///
+/// Every exit from [createInstance] has to take the "Creating instance..."
+/// spinner down with it. The status bar has no other owner, so a failure that
+/// only wrote to the inline banner left the spinner turning for the rest of
+/// the session.
+bool _failCreate(
+  String message,
+  ValueNotifier<CreateFailure?>? onError, {
+  bool diagnosable = true,
+}) {
+  if (onError == null) {
+    Notify.message(message, severity: InfoBarSeverity.error);
+  } else {
+    // The banner carries the text; the status bar only has to stop spinning.
+    Notify.message('');
+    onError.value = CreateFailure(message, diagnosable: diagnosable);
+  }
+  return false;
+}
+
 /// Returns true on success, false on any error so the caller can keep the dialog open.
 Future<bool> createInstance(
   TextEditingController nameController,
@@ -139,6 +170,7 @@ Future<bool> createInstance(
   bool isDocker = false,
   bool isDockerLocalImage = false,
   bool isVhdx = false,
+  bool requireUser = false,
   ValueNotifier<CreateFailure?>? onError,
 }) async {
   plausible.event(name: "wsl_create");
@@ -147,17 +179,19 @@ Future<bool> createInstance(
   String label = nameController.text;
   // Replace all special characters with _
   String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
+  // "Create default user" with an empty name used to import the distro, skip
+  // the account silently and still report success.
+  if (requireUser && userController.text.trim().isEmpty) {
+    return _failCreate('errorenterusername-text'.i18n(), onError,
+        diagnosable: false);
+  }
   if (name != '') {
     // Check if distro exists
     var instances = await api.list(true);
       if (instances.all
           .any((element) => element.toLowerCase() == name.toLowerCase())) {
         final msg = 'distroexists-text'.i18n();
-        if (onError == null) {
-          Notify.message(msg);
-        }
-        onError?.value = CreateFailure(msg, diagnosable: false);
-        return false;
+        return _failCreate(msg, onError, diagnosable: false);
       }
 
     String distroName = autoSuggestBox.text;
@@ -221,22 +255,15 @@ Future<bool> createInstance(
         } catch (e) {
           final msg = e.toString().replaceAll('Exception: ', '');
           final err = '${'errordownloading-text'.i18n()}: $msg';
-          if (onError == null) {
-            Notify.message(err);
-          }
-          onError?.value = CreateFailure(err);
-          return false;
+          return _failCreate(err, onError, diagnosable: true);
         }
-        Notify.message('downloaded-text'.i18n());
+        Notify.message('downloaded-text'.i18n(),
+            severity: InfoBarSeverity.success);
         // Set distropath with distroName
         distroName = docker.filename(image, tag);
       } else if (!isDownloaded) {
         final err = '${'distronotfound-text'.i18n()}: $image:$tag';
-        if (onError == null) {
-          Notify.message(err);
-        }
-        onError?.value = CreateFailure(err, diagnosable: false);
-        return false;
+        return _failCreate(err, onError, diagnosable: false);
       }
 
       if (isDownloaded) {
@@ -251,11 +278,7 @@ Future<bool> createInstance(
       String localImagePath = autoSuggestBox.text.trim();
       if (localImagePath.isEmpty) {
         final err = 'selectdockerimage-text'.i18n();
-        if (onError == null) {
-          Notify.message(err);
-        }
-        onError?.value = CreateFailure(err, diagnosable: false);
-        return false;
+        return _failCreate(err, onError, diagnosable: false);
       }
 
       try {
@@ -266,11 +289,7 @@ Future<bool> createInstance(
       } catch (e) {
         final msg = e.toString().replaceAll('Exception: ', '');
         final err = '${'errordownloading-text'.i18n()}: $msg';
-        if (onError == null) {
-          Notify.message(err);
-        }
-        onError?.value = CreateFailure(err);
-        return false;
+        return _failCreate(err, onError, diagnosable: true);
       }
     }
 
@@ -291,11 +310,7 @@ Future<bool> createInstance(
       final error = stderr.isNotEmpty
           ? stderr
           : (stdout.isNotEmpty ? stdout : 'error-text'.i18n());
-      if (onError == null) {
-        Notify.message(error);
-      }
-      onError?.value = CreateFailure(error);
-      return false;
+      return _failCreate(error, onError, diagnosable: true);
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');
       var groupCmds = prefs.getStringList('GroupCmds_$distroName');
@@ -327,12 +342,14 @@ Future<bool> createInstance(
           prefs.setString('StartPath_$name', '/home/$user');
           prefs.setString('StartUser_$name', user);
 
-          Notify.message('createdinstance-text'.i18n());
+          Notify.message('createdinstance-text'.i18n(),
+              severity: InfoBarSeverity.success);
         } else {
           // Deliberately no `default=<user>` in wsl.conf on this path: naming
           // a user that does not exist stops the distro from starting at all,
           // which is worse than the root-only shell the import already gives.
-          Notify.message('createdinstancenouser-text'.i18n());
+          Notify.message('createdinstancenouser-text'.i18n(),
+              severity: InfoBarSeverity.warning);
         }
       } else {
         // Turnkey images may still need first-start initialization,
@@ -340,9 +357,11 @@ Future<bool> createInstance(
         if (distroName.contains('Turnkey')) {
           // Set first start variable
           prefs.setBool('TurnkeyFirstStart_$name', true);
-          Notify.message('createdinstance-text'.i18n());
+          Notify.message('createdinstance-text'.i18n(),
+              severity: InfoBarSeverity.success);
         } else {
-          Notify.message('createdinstance-text'.i18n());
+          Notify.message('createdinstance-text'.i18n(),
+              severity: InfoBarSeverity.success);
         }
       }
       // Save distro label
@@ -355,11 +374,7 @@ Future<bool> createInstance(
     // Download distro check
   } else {
     final msg = 'entername-text'.i18n();
-    if (onError == null) {
-      Notify.message(msg);
-    }
-    onError?.value = CreateFailure(msg, diagnosable: false);
-    return false;
+    return _failCreate(msg, onError, diagnosable: false);
   }
 }
 
@@ -374,6 +389,7 @@ class CreateWidget extends StatefulWidget {
     required this.sourceType,
     this.creating,
     this.createError,
+    this.createUserEnabled,
   }) : super(key: key);
 
   final TextEditingController nameController;
@@ -384,6 +400,10 @@ class CreateWidget extends StatefulWidget {
   final ValueNotifier<CreateSourceType> sourceType;
   final ValueNotifier<bool>? creating;
   final ValueNotifier<CreateFailure?>? createError;
+
+  /// Mirrors the "create default user" toggle so the owning page can require a
+  /// username before it starts the install.
+  final ValueNotifier<bool>? createUserEnabled;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -723,9 +743,7 @@ class _CreateWidgetState extends State<CreateWidget> {
             ? Text('turnkeywarning-text'.i18n(),
                 style: const TextStyle(fontStyle: FontStyle.italic))
             : Container(),
-        sourceType != CreateSourceType.turnkey &&
-                sourceType != CreateSourceType.docker &&
-                sourceType != CreateSourceType.vhdx
+        supportsDefaultUser(sourceType)
             ? ToggleSwitch(
                 checked: createUser,
                 content: Text('createuser-text'.i18n()),
@@ -734,13 +752,11 @@ class _CreateWidgetState extends State<CreateWidget> {
                     createUser = v;
                     if (!v) widget.userController.clear();
                   });
+                  widget.createUserEnabled?.value = v;
                 },
               )
             : Container(),
-        sourceType != CreateSourceType.turnkey &&
-                sourceType != CreateSourceType.docker &&
-                sourceType != CreateSourceType.vhdx &&
-                createUser
+        supportsDefaultUser(sourceType) && createUser
             ? Column(
                 children: [
                   Container(

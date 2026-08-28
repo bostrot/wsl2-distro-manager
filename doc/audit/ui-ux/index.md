@@ -391,6 +391,17 @@ ID back to the master table above for the evidence and the screenshot.
 | FIX-20 | [Templates, snippets, mount and the per-distro dialog](#fix-20----templates-snippets-mount-and-the-per-distro-dialog) | 17 | 3 major, 14 nit | 17S | `template_screen.dart`, `actions_screen.dart`, `mount_dialog.dart`, `settings_dialog.dart` |
 | | **Total** | **214** | **14 blocker, 107 major, 93 nit** | **181S 32M 1L** | |
 
+### Progress
+
+Each work item's own table carries a `Fixed in` column once it has been worked;
+`--` means still open. Rolling total:
+
+| Work item | Fixed | Open | Landed |
+|:---|---:|---:|:---|
+| FIX-03 -- One honest notification surface | 9 | 0 | 2026-08-28 |
+| FIX-02 -- Report what actually happened | 5 | 5 | 2026-08-28 (partial) |
+| all others | 0 | 195 | -- |
+
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
 `Exception:`. FIX-06 and FIX-07 are the accessibility floor -- the app is currently not
@@ -439,35 +450,44 @@ An operation that failed must not say it succeeded, and one that succeeded must 
 leave a spinner running. `IA-13` is the root of the pattern: an `async void` API whose
 `catch` is unreachable.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| IA-13 | blocker | Change `WSLApi.start` to return `Future<void>`, await it at the call site, and post the toast *after* it resolves -- `Future.delayed(d, Notify.message(...))` calls the function immediately, so remove the delay too |
-| CI-12 | major | Validate the username when "Create default user" is ticked; never report success for a user that was not created |
-| CI-17 | major | Stop the "Creating instance..." spinner on the failure path |
-| CI-36 | major | Give the snippet download progress and a real failure state; a failed download may not close the dialog as if it worked |
-| ST-53 | major | Replace the `// Error` no-op branch with a field-level validation message on the snippet name |
-| ST-45 | major | A primary button may never silently no-op -- validate the required field and say what is missing |
-| IA-12 | major | Show in-flight state for start / stop / delete, and only report DONE once the row is actually gone |
-| PS-19 | major | Move the card into an explicit "Installing" state for the duration of the install |
-| PS-17 | major | Clear the status line when the operation it describes finishes -- it still read "Starting Open WebUI..." 105s after the tool was running |
-| PS-32 | nit | A failed stop must leave the badge showing the state the tool is really in, not "running" in green |
+**Status: 5 of 10 fixed.** The five that remain are per-screen work in
+`qa_dialog.dart`, `settings_screen.dart` and `ai_workspace_screen.dart`; the
+`Notify` layer they all report through is now in place.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| IA-13 | blocker | Change `WSLApi.start` to return `Future<void>`, await it at the call site, and post the toast *after* it resolves -- `Future.delayed(d, Notify.message(...))` calls the function immediately, so remove the delay too | `wsl.dart:522`, `list_item.dart:187` |
+| CI-12 | major | Validate the username when "Create default user" is ticked; never report success for a user that was not created | `create_dialog.dart:184`, `create_screen.dart:74` |
+| CI-17 | major | Stop the "Creating instance..." spinner on the failure path | `create_dialog.dart:147` |
+| CI-36 | major | Give the snippet download progress and a real failure state; a failed download may not close the dialog as if it worked | -- |
+| ST-53 | major | Replace the `// Error` no-op branch with a field-level validation message on the snippet name | -- |
+| ST-45 | major | A primary button may never silently no-op -- validate the required field and say what is missing | -- |
+| IA-12 | major | Show in-flight state for start / stop / delete, and only report DONE once the row is actually gone | `list_item.dart:41`, `list_item.dart:146`, `list_item.dart:473` |
+| PS-19 | major | Move the card into an explicit "Installing" state for the duration of the install | -- |
+| PS-17 | major | Clear the status line when the operation it describes finishes -- it still read "Starting Open WebUI..." 105s after the tool was running | `root_screen.dart:82`, `service.dart:1090` |
+| PS-32 | nit | A failed stop must leave the badge showing the state the tool is really in, not "running" in green | -- |
 
 ### FIX-03 -- One honest notification surface
 
 `Notify` is the single most-reused UI component in the app and it cannot express
 failure. Everything downstream inherits that.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| CI-19 | major | Derive `InfoBarSeverity` from the message kind; "ERROR:" must not render with a blue info icon |
-| PS-46 | major | Same at the toast layer -- one decoration for every outcome means install-failed looks like install-succeeded |
-| CI-18 | major | Give status messages a lifetime and clear them on navigation |
-| CI-24 | major | Lay the status bar out so it cannot cover the Create / Cancel row on a short window |
-| IA-02 | major | An empty status bar must take no space, no tab stop and no clicks (currently an invisible 126x62 hit target on every screen) |
-| IA-14 | major | The X on a running operation must cancel it, or not be offered -- hiding the progress while the work continues is worse than no control |
-| CI-20 | nit | Drop the shouting `DONE:` / `ERROR:` / `WARNING:` prefixes now that severity is carried by the InfoBar |
-| TL-14 | nit | Remove the eight divergent translations of `DONE:` along with it (Turkish renders it `TAMAM`) |
-| IA-15 | nit | Delete `statusMsg`'s unreachable `severity` parameter, or wire it to the new severity |
+**Status: all 9 fixed.** `Notify.message` now takes an `InfoBarSeverity`
+(re-exported from `notify.dart` so an `api/` file can name one without pulling
+in fluent_ui), and `statusBuilder` stopped overriding fluent's per-severity
+decoration with one flat colour. Regression tests: `test/notify_test.dart`.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| CI-19 | major | Derive `InfoBarSeverity` from the message kind; "ERROR:" must not render with a blue info icon | `notify.dart:63`, `root_screen.dart:75` |
+| PS-46 | major | Same at the toast layer -- one decoration for every outcome means install-failed looks like install-succeeded | `service.dart:849`, `service.dart:858` |
+| CI-18 | major | Give status messages a lifetime and clear them on navigation | `notify.dart:26`, `root_screen.dart:82`, `root_screen.dart:111` |
+| CI-24 | major | Lay the status bar out so it cannot cover the Create / Cancel row on a short window | `root_screen.dart:251` |
+| IA-02 | major | An empty status bar must take no space, no tab stop and no clicks (currently an invisible 126x62 hit target on every screen) | `notify.dart:51` |
+| IA-14 | major | The X on a running operation must cancel it, or not be offered -- hiding the progress while the work continues is worse than no control | `notify.dart:67` |
+| CI-20 | nit | Drop the shouting `DONE:` / `ERROR:` / `WARNING:` prefixes now that severity is carried by the InfoBar | `en.json:30`-`79` |
+| TL-14 | nit | Remove the eight divergent translations of `DONE:` along with it (Turkish renders it `TAMAM`) | `lib/i18n/*.json` |
+| IA-15 | nit | Delete `statusMsg`'s unreachable `severity` parameter, or wire it to the new severity | `notify.dart:14`, `root_screen.dart:75` |
 
 ### FIX-04 -- Long operations: moving progress and a way out
 

@@ -637,7 +637,8 @@ class DockerImage {
         retry++;
         if (retry == 2) {
           logDebug(e, stackTrace, null);
-          Notify.message('${'error-text'.i18n()}: $e');
+          Notify.message('${'error-text'.i18n()}: $e',
+              severity: InfoBarSeverity.error);
           return false;
         }
         await Future.delayed(const Duration(seconds: 1));
@@ -799,7 +800,8 @@ class DockerImage {
         retry++;
         if (retry == 2) {
           logDebug(e, stackTrace, null);
-          Notify.message('${'error-text'.i18n()}: $e');
+          Notify.message('${'error-text'.i18n()}: $e',
+              severity: InfoBarSeverity.error);
           return false;
         }
         await Future.delayed(const Duration(seconds: 1));

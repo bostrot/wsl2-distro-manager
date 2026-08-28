@@ -36,6 +36,10 @@ class _ListItemState extends State<ListItem> {
   bool showBar = false;
   bool hovered = false;
 
+  /// Start and stop are slow enough to be tapped twice. While one is in flight
+  /// both controls report it instead of silently queueing a second `wsl.exe`.
+  bool isBusy = false;
+
   void syncing(var item) {
     setState(() {
       isSyncing = item;
@@ -59,30 +63,42 @@ class _ListItemState extends State<ListItem> {
                   cursor: SystemMouseCursors.click,
                   child: IconButton(
                     key: const ValueKey('test-listitem-start'),
-                    icon: const Icon(FluentIcons.play),
-                    onPressed: () {
-                      startInstance();
-                    },
+                    icon: isBusy
+                        ? const SizedBox.square(
+                            dimension: 16.0,
+                            child: ProgressRing(strokeWidth: 2.0))
+                        : const Icon(FluentIcons.play),
+                    onPressed: isBusy
+                        ? null
+                        : () {
+                            startInstance();
+                          },
                   ),
                 ),
               ),
             ),
             isRunning(widget.item, widget.running)
                 ? MergeSemantics(
-                  child: Tooltip(
+                    child: Tooltip(
                       message: 'stop-text'.i18n(),
                       child: MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: IconButton(
                           key: const ValueKey('test-listitem-stop'),
-                          icon: const Icon(FluentIcons.stop),
-                          onPressed: () {
-                            stopInstance();
-                          },
+                          icon: isBusy
+                              ? const SizedBox.square(
+                                  dimension: 16.0,
+                                  child: ProgressRing(strokeWidth: 2.0))
+                              : const Icon(FluentIcons.stop),
+                          onPressed: isBusy
+                              ? null
+                              : () {
+                                  stopInstance();
+                                },
                         ),
                       ),
                     ),
-                )
+                  )
                 : const Text(''),
           ]),
           header: Row(
@@ -123,16 +139,27 @@ class _ListItemState extends State<ListItem> {
     );
   }
 
-  void stopInstance() async {
+  void _setBusy(bool value) {
+    if (mounted) setState(() => isBusy = value);
+  }
+
+  Future<void> stopInstance() async {
     plausible.event(name: "wsl_stopped");
+    _setBusy(true);
     try {
+      Notify.message('stoppinginstance-text'.i18n([distroLabel(widget.item)]),
+          loading: true);
       await WSLApi().stop(widget.item);
       Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
-          loading: false, duration: const Duration(seconds: 3));
+          severity: InfoBarSeverity.success,
+          loading: false,
+          duration: const Duration(seconds: 3));
     } catch (e) {
       final errorMsg = 'Failed to stop ${widget.item}: $e';
-      Notify.message(errorMsg);
+      Notify.message(errorMsg, severity: InfoBarSeverity.error);
       diagnoseWithAi(errorMsg);
+    } finally {
+      _setBusy(false);
     }
   }
 
@@ -149,17 +176,25 @@ class _ListItemState extends State<ListItem> {
       // Replace faulty semicolons (e.g. "; ;" or ";;")
       startCmd = startCmd.replaceAll(RegExp(r';[ ]*;'), ';');
     }
+    _setBusy(true);
     try {
-      WSLApi().start(widget.item,
+      Notify.message('startinginstance-text'.i18n([distroLabel(widget.item)]),
+          loading: true);
+      // Awaited, and the toast posted afterwards. `Future.delayed(d, f(...))`
+      // evaluates `f(...)` immediately and hands its result to the timer, so
+      // the "started" toast used to appear before the process had spawned —
+      // and the catch below could never run against a fire-and-forget call.
+      await WSLApi().start(widget.item,
           startPath: startPath, startUser: startName, startCmd: startCmd);
-      Future.delayed(
-          const Duration(milliseconds: 500),
-          Notify.message('${widget.item} ${'started-text'.i18n()}.',
-              duration: const Duration(seconds: 3)));
+      Notify.message('${widget.item} ${'started-text'.i18n()}.',
+          severity: InfoBarSeverity.success,
+          duration: const Duration(seconds: 3));
     } catch (e) {
       final errorMsg = 'Failed to start ${widget.item}: $e';
-      Notify.message(errorMsg);
+      Notify.message(errorMsg, severity: InfoBarSeverity.error);
       diagnoseWithAi(errorMsg);
+    } finally {
+      _setBusy(false);
     }
   }
 }
@@ -327,8 +362,10 @@ class Bar extends StatelessWidget {
                                   loading: true);
                               prefs.setString(
                                   'DistroName_${widget.item}', inputText);
-                              Notify.message('renamedinstance-text'
-                                  .i18n([distroLabel(widget.item), inputText]));
+                              Notify.message(
+                                  'renamedinstance-text'.i18n(
+                                      [distroLabel(widget.item), inputText]),
+                                  severity: InfoBarSeverity.success);
                             });
                       },
                     ),
@@ -385,7 +422,7 @@ class Bar extends StatelessWidget {
                                       Notify.message(
                                           'Cleaning up ${widget.item}. Exporting, removing and importing back...',
                                           loading: true);
-  
+
                                       try {
                                         await WSLApi().cleanup(widget.item,
                                             onProgress: (status) {
@@ -395,13 +432,15 @@ class Bar extends StatelessWidget {
                                         });
                                         // Show success notification
                                         Notify.message(
-                                            'Successfully cleaned up ${widget.item}');
-                                       } catch (error) {
-                                         final errorMsg =
-                                             'Failed to clean up ${widget.item}: ${error.toString()}';
-                                         Notify.message(errorMsg);
-                                         diagnoseWithAi(errorMsg);
-                                       } finally {
+                                            'Successfully cleaned up ${widget.item}',
+                                            severity: InfoBarSeverity.success);
+                                      } catch (error) {
+                                        final errorMsg =
+                                            'Failed to clean up ${widget.item}: ${error.toString()}';
+                                        Notify.message(errorMsg,
+                                            severity: InfoBarSeverity.error);
+                                        diagnoseWithAi(errorMsg);
+                                      } finally {
                                         onCleaningChanged(false);
                                       }
                                     });
@@ -429,17 +468,24 @@ class Bar extends StatelessWidget {
                                 foregroundColor: ButtonState.all(Colors.white),
                               ),
                               onSubmit: (inputText) async {
-                                 try {
-                                   await WSLApi().remove(widget.item);
-                                   Notify.message(
-                                       'deletedinstance-text'.i18n([widget.item]));
-                                 } catch (e) {
-                                   final errorMsg =
-                                       'Failed to delete ${widget.item}: $e';
-                                   Notify.message(errorMsg);
-                                   diagnoseWithAi(errorMsg);
-                                 }
-                               });
+                                try {
+                                  Notify.message(
+                                      'deletinginstance-text'
+                                          .i18n([distroLabel(widget.item)]),
+                                      loading: true);
+                                  await WSLApi().remove(widget.item);
+                                  Notify.message(
+                                      'deletedinstance-text'
+                                          .i18n([widget.item]),
+                                      severity: InfoBarSeverity.success);
+                                } catch (e) {
+                                  final errorMsg =
+                                      'Failed to delete ${widget.item}: $e';
+                                  Notify.message(errorMsg,
+                                      severity: InfoBarSeverity.error);
+                                  diagnoseWithAi(errorMsg);
+                                }
+                              });
                         }),
                   ),
                 ),

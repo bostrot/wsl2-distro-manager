@@ -407,6 +407,7 @@ class ToolState {
   DateTime? lastStarted;
   DateTime? lastStopped;
   String? errorMessage;
+
   /// A live WSL check completed this session — decides whether a background
   /// refresh is still owed.
   bool checked;
@@ -509,11 +510,11 @@ class AiWorkspaceService {
     DashboardReachabilityChecker? reachabilityChecker,
     Duration? installSilenceTimeout,
     Duration? installMaxDuration,
-  }) : _broker = broker,
-       _isReachable = reachabilityChecker ?? _defaultReachabilityCheck,
-       _installSilenceTimeout =
-           installSilenceTimeout ?? _kInstallSilenceTimeout,
-       _installMaxDuration = installMaxDuration ?? _kInstallMaxDuration;
+  })  : _broker = broker,
+        _isReachable = reachabilityChecker ?? _defaultReachabilityCheck,
+        _installSilenceTimeout =
+            installSilenceTimeout ?? _kInstallSilenceTimeout,
+        _installMaxDuration = installMaxDuration ?? _kInstallMaxDuration;
 
   Map<AiWorkspaceTool, ToolState> get toolStates =>
       Map.unmodifiable(_toolStates);
@@ -536,7 +537,14 @@ class AiWorkspaceService {
     try {
       _keepAlive = await _broker.startPersistent(ExecutionRequest(
         command: 'wsl',
-        arguments: ['-d', kAiWorkspaceDistro, '-u', 'root', 'sleep', 'infinity'],
+        arguments: [
+          '-d',
+          kAiWorkspaceDistro,
+          '-u',
+          'root',
+          'sleep',
+          'infinity'
+        ],
       ));
       // If WSL drops the session, forget the handle so the next call retries.
       unawaited(_keepAlive!.exitCode.then((_) => _keepAlive = null));
@@ -802,6 +810,9 @@ class AiWorkspaceService {
         await _ensureDockerReady();
       } catch (e) {
         _recordActionFailure(tool, e.toString());
+        // The card carries the reason; the status bar only has to stop
+        // spinning on the setup step that just failed.
+        Notify.message('');
         return false;
       }
     }
@@ -834,8 +845,8 @@ class AiWorkspaceService {
         state?.checked = true;
         state?.hasKnownStatus = true;
         _persistConfirmedState(tool);
-        Notify.message(
-            'ai-workspace-install-success-text'.i18n([config.name]));
+        Notify.message('ai-workspace-install-success-text'.i18n([config.name]),
+            severity: InfoBarSeverity.success);
         return true;
       } else {
         _recordActionFailure(
@@ -843,12 +854,14 @@ class AiWorkspaceService {
           _failureDetail(result.stderr,
               'ai-workspace-install-failed-text'.i18n([config.name])),
         );
-        Notify.message('ai-workspace-install-failed-text'.i18n([config.name]));
+        Notify.message('ai-workspace-install-failed-text'.i18n([config.name]),
+            severity: InfoBarSeverity.error);
         return false;
       }
     } catch (e) {
       _recordActionFailure(tool, e.toString());
-      Notify.message('ai-workspace-install-failed-text'.i18n([config.name]));
+      Notify.message('ai-workspace-install-failed-text'.i18n([config.name]),
+          severity: InfoBarSeverity.error);
       return false;
     }
   }
@@ -1028,6 +1041,9 @@ class AiWorkspaceService {
         await _ensureDockerReady();
       } catch (e) {
         _recordActionFailure(tool, e.toString());
+        // The card carries the reason; the status bar only has to stop
+        // spinning on the setup step that just failed.
+        Notify.message('');
         return false;
       }
     }
@@ -1061,10 +1077,14 @@ class AiWorkspaceService {
         // Announce what the gate found, not what was asked for. Notifying
         // before the re-probe put "Open WebUI is running" on screen next to a
         // card correctly reading "Starting up...".
-        Notify.message((state.status == ToolStatus.starting
-                ? 'ai-workspace-starting-text'
-                : 'ai-workspace-started-text')
-            .i18n([config.name]));
+        Notify.message(
+            (state.status == ToolStatus.starting
+                    ? 'ai-workspace-starting-text'
+                    : 'ai-workspace-started-text')
+                .i18n([config.name]),
+            severity: state.status == ToolStatus.starting
+                ? InfoBarSeverity.info
+                : InfoBarSeverity.success);
         return true;
       } else {
         _recordActionFailure(
@@ -1072,12 +1092,14 @@ class AiWorkspaceService {
           _failureDetail(result.stderr,
               'ai-workspace-start-failed-text'.i18n([config.name])),
         );
-        Notify.message('ai-workspace-start-failed-text'.i18n([config.name]));
+        Notify.message('ai-workspace-start-failed-text'.i18n([config.name]),
+            severity: InfoBarSeverity.error);
         return false;
       }
     } catch (e) {
       _recordActionFailure(tool, e.toString());
-      Notify.message('ai-workspace-start-failed-text'.i18n([config.name]));
+      Notify.message('ai-workspace-start-failed-text'.i18n([config.name]),
+          severity: InfoBarSeverity.error);
       return false;
     }
   }
@@ -1270,7 +1292,8 @@ class AiWorkspaceService {
         // Docker never came up. That says nothing about whether the tool is
         // installed, so keep whatever was last confirmed and report the real
         // problem instead of silently downgrading to notInstalled.
-        _toolStates[tool]?.errorMessage = 'ai-workspace-docker-unavailable-text'.i18n();
+        _toolStates[tool]?.errorMessage =
+            'ai-workspace-docker-unavailable-text'.i18n();
       } else if (result.isSuccess) {
         final output = rawOutput;
         // `starting` first: it is the health gate's answer for a container

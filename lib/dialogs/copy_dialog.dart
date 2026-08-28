@@ -40,7 +40,8 @@ copyDialog(item) {
 
           // Error catching
           if (results.contains('Error')) {
-            Notify.message(results, loading: false);
+            Notify.message(results,
+                severity: InfoBarSeverity.error, loading: false);
             return;
           }
           // Copy settings
@@ -50,16 +51,18 @@ copyDialog(item) {
           prefs.setString('StartPath_$inputText', startPath);
           prefs.setString('StartUser_$inputText', startName);
           // Save distro path
-            prefs.setString(
+          prefs.setString(
               'Path_$inputText',
               useRemoteWsl
-                ? api.remoteInstallPath(inputText)
-                : getInstancePath(inputText).path);
+                  ? api.remoteInstallPath(inputText)
+                  : getInstancePath(inputText).path);
           Notify.message(
               'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
+              severity: InfoBarSeverity.success,
               loading: false);
         } else {
-          Notify.message('errorentername-text'.i18n(), loading: false);
+          Notify.message('errorentername-text'.i18n(),
+              severity: InfoBarSeverity.error, loading: false);
         }
       });
 }

@@ -52,7 +52,8 @@ class QaListState extends State<QaList> {
       if (kDebugMode) {
         print(err);
       }
-      Notify.message('errordownloading-text'.i18n());
+      Notify.message('errordownloading-text'.i18n(),
+          severity: InfoBarSeverity.error);
     }
   }
 

@@ -27,14 +27,14 @@
   "errordownloading-text": "下載錯誤",
   "copyinstance-text": "將 WSL 安裝實體「%s」複製為相同名稱的新安裝實體",
   "copyinginstance-text": "正在複製 %s，請稍候...",
-  "donecopyinginstance-text": "完成：已將 %s0 複製到 %s1。",
-  "errorentername-text": "錯誤：請輸入新安裝實體的名稱。",
+  "donecopyinginstance-text": "已將 %s0 複製到 %s1。",
+  "errorentername-text": "請輸入新安裝實體的名稱。",
   "createnewinstance-text": "建立一個新安裝實體",
   "cancel-text": "取消",
   "create-text": "建立",
   "creatinginstance-text": "建立安裝實體，請稍候...",
   "createdinstance-text": "已完成建立安裝實體",
-  "createdinstancenouser-text": "警告：已建立安裝實體但未能建立使用者帳戶",
+  "createdinstancenouser-text": "已建立安裝實體但未能建立使用者帳戶",
   "installingfakesystemd-text": "安裝 fake systemd",
   "entername-text": "請輸入新安裝實體的名稱",
   "name-text": "名稱",
@@ -541,5 +541,9 @@
   "installpackage-text": "安裝套件",
   "installingpackage-text": "正在安裝套件…",
   "installedpackage-text": "套件已安裝。%s",
-  "installpackagefailed-text": "安裝失敗：%s"
+  "installpackagefailed-text": "安裝失敗：%s",
+  "startinginstance-text": "正在啟動 %s...",
+  "stoppinginstance-text": "正在停止 %s...",
+  "deletinginstance-text": "正在刪除 %s...",
+  "errorenterusername-text": "請輸入預設使用者的使用者名稱，或關閉此選項。"
 }

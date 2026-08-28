@@ -67,9 +67,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
       if (msg.contains('pro-required')) {
         router.pushNamed('license');
       } else if (msg.contains('byok-required')) {
-        Notify.message('byok-required-text'.i18n());
+        Notify.message('byok-required-text'.i18n(),
+            severity: InfoBarSeverity.warning);
       } else {
-        Notify.message('ai-error-text'.i18n());
+        Notify.message('ai-error-text'.i18n(), severity: InfoBarSeverity.error);
       }
     }
   }
@@ -105,7 +106,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
           ),
           child: Row(
             children: [
-              Icon(FluentIcons.chat, size: 16, color: FluentTheme.of(context).accentColor),
+              Icon(FluentIcons.chat,
+                  size: 16, color: FluentTheme.of(context).accentColor),
               const SizedBox(width: 8),
               Text(
                 'ai-assistant-title'.i18n(),
@@ -214,9 +216,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
               ),
               const SizedBox(width: 8),
               Button(
-                onPressed: (_inputController.text.trim().isNotEmpty && !_isLoading)
-                    ? _sendMessage
-                    : null,
+                onPressed:
+                    (_inputController.text.trim().isNotEmpty && !_isLoading)
+                        ? _sendMessage
+                        : null,
                 child: Text('ai-send-text'.i18n()),
               ),
             ],
@@ -239,7 +242,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: FluentTheme.of(context).accentColor.withValues(alpha: 0.2),
+                color:
+                    FluentTheme.of(context).accentColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,
@@ -256,7 +260,9 @@ class _AiChatPanelState extends State<AiChatPanel> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isUser
-                    ? FluentTheme.of(context).accentColor.withValues(alpha: 0.15)
+                    ? FluentTheme.of(context)
+                        .accentColor
+                        .withValues(alpha: 0.15)
                     : Colors.grey.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -291,11 +297,11 @@ class _AiChatPanelState extends State<AiChatPanel> {
                 borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,
-                child: Icon(
-                  FluentIcons.add,
-                  size: 14,
-                  color: secondaryTextColor(context),
-                ),
+              child: Icon(
+                FluentIcons.add,
+                size: 14,
+                color: secondaryTextColor(context),
+              ),
             ),
           ],
         ],

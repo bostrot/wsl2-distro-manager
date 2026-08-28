@@ -87,7 +87,8 @@ class Sync {
   Future<void> download() async {
     String? syncIP = prefs.getString('SyncIP');
     if (syncIP == null) {
-      Notify.message('syncipnotset-text'.i18n(), loading: false);
+      Notify.message('syncipnotset-text'.i18n(),
+          severity: InfoBarSeverity.error, loading: false);
       return;
     }
     Notify.message('${'shuttingdownwsl-text'.i18n()}...', loading: true);
@@ -117,6 +118,7 @@ class Sync {
         onError: (error) {
           Notify.message(
               '${'errordownloading-text'.i18n()} $distroName: $error',
+              severity: InfoBarSeverity.error,
               loading: false);
         });
 
@@ -126,7 +128,8 @@ class Sync {
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
-    Notify.message('${'downloaded-text'.i18n()} $distroName');
+    Notify.message('${'downloaded-text'.i18n()} $distroName',
+        severity: InfoBarSeverity.success);
     File oldFile = File(vhdxPath);
     if (await oldFile.exists()) {
       await oldFile.rename(vhdxPathOld);

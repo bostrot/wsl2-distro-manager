@@ -14,7 +14,7 @@ import 'package:wsl2distromanager/dialogs/firststart_dialog.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
 
-initRoot(statusMsg) async {
+initRoot(NotifyMessage statusMsg) async {
   // Call constructor to initialize
   Notify();
   Notify.message = statusMsg;
@@ -99,6 +99,7 @@ initRoot(statusMsg) async {
     if (updateUrl != '') {
       statusMsg('',
           useWidget: true,
+          duration: const Duration(minutes: 1),
           widget: RichText(
               textAlign: TextAlign.center,
               maxLines: 2,

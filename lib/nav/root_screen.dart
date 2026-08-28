@@ -49,8 +49,10 @@ class RootPageState extends State<RootPage> with WindowListener {
   String status = '';
   bool loading = false;
   bool statusLeading = true;
+  InfoBarSeverity statusSeverity = InfoBarSeverity.info;
   Widget statusWidget = const Text('');
   Timer? _messageTimer;
+  DateTime? _statusPostedAt;
 
   void statusMsg(
     String msg, {
@@ -64,32 +66,35 @@ class RootPageState extends State<RootPage> with WindowListener {
     if (!mounted) return;
 
     _messageTimer?.cancel();
+    _statusPostedAt = DateTime.now();
 
-    if (useWidget) {
-      setState(() {
-        status = 'WIDGET';
-        this.loading = loading;
-        statusWidget = widget;
-        statusLeading = leadingIcon;
-      });
-    } else {
-      setState(() {
-        status = msg;
-        this.loading = loading;
-        statusLeading = leadingIcon;
-      });
-    }
+    setState(() {
+      status = useWidget ? 'WIDGET' : msg;
+      this.loading = loading;
+      statusLeading = leadingIcon;
+      statusSeverity = severity;
+      if (useWidget) statusWidget = widget;
+    });
 
-    if (duration != null) {
-      _messageTimer = Timer(duration, () {
-        if (mounted) {
-          setState(() {
-            status = '';
-            this.loading = false;
-          });
-        }
-      });
+    // A message with a spinner lives until the operation that owns it replaces
+    // it. Everything else expires, so a "Created instance" toast does not
+    // follow the user to another screen for the rest of the session.
+    final lifetime = duration ?? (loading ? null : notifyDefaultDuration);
+    if (lifetime != null) {
+      _messageTimer = Timer(lifetime, clearStatus);
     }
+  }
+
+  void clearStatus() {
+    _messageTimer?.cancel();
+    _statusPostedAt = null;
+    if (!mounted) return;
+    if (status.isEmpty && !loading) return;
+    setState(() {
+      status = '';
+      loading = false;
+      statusSeverity = InfoBarSeverity.info;
+    });
   }
 
   @override
@@ -102,12 +107,29 @@ class RootPageState extends State<RootPage> with WindowListener {
     super.initState();
   }
 
+  @override
+  void didUpdateWidget(covariant RootPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.uri.path == widget.state.uri.path) return;
+    // Leaving a screen drops the message that screen put up. The grace window
+    // is what keeps a message posted *by* the navigation itself — "Created
+    // instance", posted just before the create page returns home — on screen.
+    final posted = _statusPostedAt;
+    if (posted != null &&
+        DateTime.now().difference(posted) < const Duration(seconds: 2)) {
+      return;
+    }
+    if (loading) return;
+    clearStatus();
+  }
+
   void _onLicenseChanged() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _messageTimer?.cancel();
     windowManager.removeListener(this);
     LicenseManager().removeListener(_onLicenseChanged);
     searchController.dispose();
@@ -205,7 +227,6 @@ class RootPageState extends State<RootPage> with WindowListener {
                   ),
                 ),
               )),
-
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8.0),
             child: ToggleSwitch(
@@ -222,14 +243,22 @@ class RootPageState extends State<RootPage> with WindowListener {
       paneBodyBuilder: (item, child) {
         final name =
             item?.key is ValueKey ? (item!.key as ValueKey).value : null;
+        // A column rather than a stack: overlaid at the bottom, the status bar
+        // covered the Create / Cancel row outright on a short window, and the
+        // user had no way to move it.
         return FocusTraversalGroup(
           key: ValueKey('body$name'),
-          child: Stack(
+          child: Column(
             children: [
-              widget.child,
-              statusBuilder(status, statusWidget, loading, () {
-                setState(() => status = '');
-              }),
+              Expanded(child: widget.child),
+              statusBuilder(
+                status,
+                statusWidget,
+                loading,
+                statusLeading,
+                statusSeverity,
+                clearStatus,
+              ),
             ],
           ),
         );

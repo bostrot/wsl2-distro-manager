@@ -17,7 +17,8 @@ Future<void> diagnoseWithAi(String errorMessage) async {
   }
 
   if (!AiService().hasByokConfigured) {
-    Notify.message('byok-required-text'.i18n());
+    Notify.message('byok-required-text'.i18n(),
+        severity: InfoBarSeverity.warning);
     return;
   }
 
@@ -27,10 +28,10 @@ Future<void> diagnoseWithAi(String errorMessage) async {
     if (diagnosis.isNotEmpty) {
       Notify.message(diagnosis, duration: const Duration(seconds: 30));
     } else {
-      Notify.message('ai-error-text'.i18n());
+      Notify.message('ai-error-text'.i18n(), severity: InfoBarSeverity.error);
     }
   } catch (_) {
-    Notify.message('ai-error-text'.i18n());
+    Notify.message('ai-error-text'.i18n(), severity: InfoBarSeverity.error);
   }
 }
 

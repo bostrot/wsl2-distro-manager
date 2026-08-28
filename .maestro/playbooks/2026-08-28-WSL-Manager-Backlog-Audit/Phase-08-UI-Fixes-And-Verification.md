@@ -8,6 +8,31 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
+  **In progress — 14 of 214 findings closed (3 blockers, 8 majors, 3 nits).** Running
+  tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
+  audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
+  Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
+  so it went first), not by work-item number.
+
+  - **FIX-03 — one honest notification surface: complete (9/9).** `Notify.message` takes
+    an `InfoBarSeverity`; `statusBuilder` no longer overrides fluent's per-severity
+    decoration with one flat colour; an empty bar renders `SizedBox.shrink` instead of an
+    invisible 126x62 hit target; the close X is withheld while an operation runs; the bar
+    is a `Column` child rather than an overlay, so it can no longer cover Create/Cancel;
+    messages expire after 8s and are dropped on navigation. `DONE:`/`ERROR:`/`WARNING:`
+    prefixes removed from six keys across all nine locales.
+  - **FIX-02 — report what actually happened: 5/10.** Closed: IA-13 (`WSLApi.start` is
+    now `Future<void>` and awaited — the `Future.delayed(d, Notify.message(...))` at the
+    call site was calling the function immediately, so the toast fired before the spawn
+    and the catch was unreachable), CI-12, CI-17, IA-12, PS-17. Still open: CI-36, ST-53,
+    ST-45, PS-19, PS-32 — all per-screen work in `qa_dialog.dart`,
+    `settings_screen.dart` and `ai_workspace_screen.dart`.
+
+  **Next up:** FIX-01 (settings dirty-flag / discarded input, 2 blockers), then FIX-05
+  (error text), then FIX-06/FIX-07 (keyboard and accessible names). Verification for this
+  slice: `flutter analyze` clean (two warnings, both pre-existing and untouched),
+  `flutter test` 721 passing (was 708), `dart run scripts/check_translations.dart` exit 0.
+
 - [ ] Fix the text-quality findings across the app:
   - Replace every user-facing message containing a raw exception, a bare colon, a stack trace or an unactionable shell command with a sentence explaining what failed and what to do next, keeping the technical detail available in an expandable/secondary position
   - Apply consistent capitalisation and button-label style across screens and dialogs
