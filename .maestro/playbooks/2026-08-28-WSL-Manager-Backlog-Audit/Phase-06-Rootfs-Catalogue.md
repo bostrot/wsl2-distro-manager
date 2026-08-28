@@ -173,11 +173,72 @@
   > uploads this payload manually.** No attempt was made to write to the endpoint
   > from here — publishing to third-party infrastructure is the maintainer's call.
 
-- [ ] Install-test the catalogue by clicking through the running app, not by reasoning about it:
+- [x] Install-test the catalogue by clicking through the running app, not by reasoning about it:
   - Launch with `.maestro/tools/launch.ps1`, open the create-instance screen, and install one entry per distro family (at minimum: newest Ubuntu LTS, Debian stable, Alpine, Fedora, Rocky or Alma, openSUSE, Kali)
   - For each: confirm the download starts, the import completes, the distro appears in the list, and `wsl -d <name> cat /etc/os-release` reports the expected release
   - Capture a screenshot of each successful install into `.maestro/screenshots/phase-06/`, and delete each test distro afterwards so the machine is left clean
   - Record every result — including failures and their exact error text — in `Working/catalogue-install-tests.md`
+
+  **Done 2026-08-28** → `Working/catalogue-install-tests.md`; 22 screenshots in
+  `.maestro/screenshots/phase-06/`, 86 more plus the four driver scripts in
+  `Working/phase-06/install/`. **All 19 catalogue entries were installed, not the
+  7 the brief asks for as a minimum — 19 offered, 19 installed, 0 failures.** The
+  extra 12 cost ~40 s each and close the "untested entries" gap the next task
+  would otherwise inherit. Every one was selected from the app's own suggestion
+  dropdown, imported, verified from *inside* the distro, screenshotted and deleted.
+
+  - **`-Mode exe` would have tested the wrong file.** The built binary's bundled
+    asset (`build\windows\x64\runner\{Release,Debug}\data\flutter_assets\images.json`)
+    is still the 2 732-byte, 2026-04-14, 22-entry catalogue. Launched with
+    `-Mode run` so the debug bundle carries the payload this phase actually wrote.
+  - **The list the app rendered is the new one** (screenshot `00-catalogue-list.png`:
+    Ubuntu 26.04 first, EOL wall gone) — and it arrived through the *bundled-asset
+    fallback*, re-confirming [[cdn-upload]]: the CDN still answers 200 with a
+    zero-byte body. What was install-tested is exactly the payload still waiting
+    to be pushed.
+  - **Release identity was read from inside each distro, not inferred.** This
+    settles three earlier claims: Rocky's `.latest` aliases really do serve
+    **10.2 (Red Quartz)** and **9.8 (Blue Onyx)** — the builds
+    [[catalogue-verification]] §7.3 read out of gzip headers, so the re-keying done
+    in the rewrite task matches reality; AlmaLinux serves 10.2 / 9.8; and Ubuntu's
+    `/current/` paths lag their keys exactly as predicted (24.04.**4**, 22.04.**5**).
+  - **Content-sniffing is now proven on the real catalogue, not on synthetic
+    payloads.** 5 `.tar.xz` + 4 `.tar.gz` + 7 gzip `.wsl` + 3 xz `.wsl`, every one
+    saved as `<key>.tar.gz` (`wsl.dart:1355`) and every one imported. The extension
+    the app writes is wrong for **15 of 19** entries and never mattered — so the
+    next task must **not** "fix" this by inferring format from the URL suffix.
+  - **The Arch substitution is verified.** `archlinux.wsl` (the purpose-built WSL
+    image, not the `root.x86_64/`-prefixed bootstrap tarball
+    [[catalogue-constraints]] §1.3 rejected) imports in 47.9 s with `pacman` present.
+  - **Both risks the earlier tasks flagged failed to materialise.** Fedora's
+    per-request mirror redirector — "the weakest link" — was clean across three
+    installs. And "no repos on an unregistered SLE" is **false for this artifact**:
+    `SLES 15 SP7` ships `SLE_BCI` enabled and `zypper --non-interactive refresh`
+    exits 0. Fedora 44's `dnf makecache` exits 0 against three repos. Both were
+    re-installed specifically to probe this, then deleted.
+  - **Every distro imports root-only with no default user and no `/etc/wsl.conf`** —
+    normal `wsl --import` behaviour, and *Standardbenutzer erstellen* was left off
+    on purpose so the raw import was what got tested. This is the direct input to
+    the next task's "imports but has no working init/user setup" bullet: the answer
+    is all 19, by design, so the question there is whether the app's own
+    user-creation path still works — not whether the catalogue is broken.
+  - **Two defects confirmed live**, both already logged for the fix task: the temp
+    file really is written as `Ubuntu 26.04.tar.gz.tmp.tmp`, and the un-awaited
+    `file.rename()` at `wsl.dart:1377` **did not bite in 21 downloads** — which is
+    luck on a warm NTFS volume, not safety. Still a one-word fix.
+  - Noticed while measuring, out of scope, recorded so it is not lost: with no
+    `DistroPath` set, instances land **directly in the Roaming profile root**
+    (`%APPDATA%\<Name>`, proven from the `Lxss` registry) while downloads go one
+    level deeper into `%APPDATA%\distros\`.
+  - Machine left clean: back to the two pre-existing distros, no `Test*`
+    registration, no `Test*` directory, download cache untouched apart from the
+    entries this run added and removed.
+  - Explicitly **not** covered (so the next task does not over-read the result):
+    the user-creation toggle, the app's own delete UI, the other five source types,
+    warm-cache reuse, and the forever-spinning-dialog failure path
+    ([[catalogue-constraints]] §1.5) — nothing failed, so it was never reproduced.
+    Cleanup used `wsl --unregister` directly, so this run says nothing about the
+    app's delete flow.
 
 - [ ] Fix what the install tests break. Expect at least one of:
   - An archive format the importer mishandles (fix `archive.dart`/`layer_processor.dart` or drop the entry, and say which you chose and why)
