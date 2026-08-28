@@ -240,10 +240,84 @@
     Cleanup used `wsl --unregister` directly, so this run says nothing about the
     app's delete flow.
 
-- [ ] Fix what the install tests break. Expect at least one of:
+- [x] Fix what the install tests break. Expect at least one of:
   - An archive format the importer mishandles (fix `archive.dart`/`layer_processor.dart` or drop the entry, and say which you chose and why)
   - A rootfs that imports but has no working init/user setup — verify the distro is actually usable, not merely present
   - Download-progress or error reporting that misreports a failed fetch as success
   - Remove from `images.json` any entry that cannot be made to work, rather than shipping a catalogue entry that fails on click
+
+  **Done 2026-08-28** → `Working/catalogue-fixes.md`; screenshots 22–28 in
+  `.maestro/screenshots/phase-06/`. **Nothing was removed from `images.json`** —
+  all nineteen entries were made to work instead, and the file is byte-identical
+  to what the rewrite task committed. Two of the brief's four classes were real:
+
+  - **The install-test result was narrower than it looked.** The previous task
+    deliberately left *Standardbenutzer erstellen* **off**, so it proved all
+    nineteen entries *import*, not that they are *usable* — the brief's second
+    bullet. Turning that toggle on **fails on 13 of the 19 entries**, measured
+    against four freshly imported distros: Alpine has **no `bash`**, so every
+    command the app sends (`wsl --exec bash -c`) exits 1 with
+    `execvpe(bash) failed`; Fedora/Arch/Leap exit 127 on `apt-get` and — the
+    one that actually decides the outcome — exit **6** on
+    `useradd -G sudo` with *group 'sudo' does not exist*, so **no user was
+    created at all**. The app still wrote `default=<user>` into `/etc/wsl.conf`,
+    naming an account that does not exist.
+  - **Fixed by replacing five hard-coded apt commands with one POSIX script**
+    (`WSLApi.createUser` / `buildUserSetupScript`) that detects the package
+    manager (`apt-get`/`dnf`/`microdnf`/`yum`/`zypper`/`apk`/`pacman`), picks
+    `sudo` or `wheel` out of `/etc/group`, falls back to busybox `adduser`, and
+    only uses `/bin/bash` when it exists. Arch needed `pacman-key --init` — not a
+    defensive branch, it is the failure the first Arch attempt actually hit
+    (`required key missing from keyring`).
+  - **A second bash dependency surfaced only after the first fix**:
+    `readDistroFile`/`writeDistroFile`/`readDistroFileList` also went through
+    `bash -c`, so the first repaired Alpine run created the account correctly and
+    still had **no `/etc/wsl.conf`** — it kept opening as root. All three scripts
+    are plain POSIX; they now run through `sh`. `WSLApi.exec` deliberately keeps
+    `bash`, because those are the user's own template/snippet commands.
+  - **The forever-spinning dialog is fixed and reproduced.** The previous task
+    could not reproduce it because nothing failed; a `ZZ Dead Link Probe` 404
+    entry was temporarily added to `images.json` and installed through the
+    running app. It now errors in under 8 s with the HTTP status, registers
+    nothing and leaves no file (screenshot 22). Cause was as
+    [[catalogue-constraints]] §1.5 predicted: `..start()` is a cascade, the
+    exception went with the discarded future, `done` was only set on success.
+    Also fixed on that path: truncated downloads are now checked against
+    `Content-Length` and deleted rather than cached forever, the stale `.tmp` is
+    cleared before a retry (the package *appends* to it), the temp path is no
+    longer `.tar.gz.tmp.tmp`, the rename is the package's own (so the un-awaited
+    one is gone), a failed download no longer falls through to `wsl --import`,
+    and progress with no `Content-Length` prints MB instead of a percentage
+    counting *down* through negatives.
+  - **Verified live through the running app, one per package manager** —
+    Alpine (`apk`), Arch (`pacman`), Debian 13 (`apt`), Fedora 43 (`dnf`),
+    openSUSE Leap 16.0 (`zypper`) — each created with the toggle on, then probed
+    from inside: `wsl.conf` written (**merged under Arch's and Fedora's own
+    `[boot] systemd=true`, not over it**), plain `wsl -d <name>` opens as
+    `uid=1000(tester)`, `sudo -n` returns root, and Alpine's user got `/bin/sh`
+    while the rest got `/bin/bash`. All five deleted; machine back to its two
+    pre-existing distros and its pre-existing download cache.
+  - **No archive-format defect** — [[catalogue-install-tests]] §3.1 stands, and
+    its warning was honoured: nothing infers the format from the URL suffix.
+    `archive.dart` and `layer_processor.dart` were not touched; they are not on
+    this path.
+  - Side effects worth noting: the *Create default user* label dropped its now
+    false "(only on Debian/Ubuntu)" caveat in **9 locales**
+    (`check_translations` exit 0), and the two divergent local copies of
+    `ChunkedDownloaderFactory` in `sync.dart` and `docker_images.dart` were
+    replaced by one shared `lib/api/downloader.dart` rather than adding a third.
+  - `flutter test` **708 pass / 0 fail** (stashed-tree baseline 696, so the 12
+    new tests in `test/rootfs_catalogue_test.dart` are additive);
+    `flutter analyze` no new warnings against a stashed baseline;
+    `flutter test integration_test/` **+17 −4**, the same `+17 −4` recorded in
+    `phase-02-task05-integration.txt` and `phase-05-task06-integration.txt` —
+    four files that fail to *load* with `Unable to start the app on the device`,
+    a machine limitation, not this change.
+
+  > [!IMPORTANT]
+  > None of this changes the CDN situation. `images.json` is untouched by this
+  > task and `https://n8n.aachen.dev/webhook/cdn/images.json` still answers 200
+  > with a zero-byte body — see [[cdn-upload]]. The payload still needs pushing
+  > by hand.
 
 - [ ] Run `flutter test` and `flutter analyze`, fix any fallout from importer changes, then commit the updated `images.json` plus any code fixes on `beta`. In the commit message, state explicitly that the CDN payload still needs to be pushed manually.

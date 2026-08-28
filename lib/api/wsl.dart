@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert' show Encoding, Utf8Decoder, base64, utf8;
-import 'package:chunked_downloader/chunked_downloader.dart';
+import 'package:wsl2distromanager/api/downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -73,14 +73,20 @@ class WSLApi {
 
   ExecutionBroker? _lazyBroker;
 
+  /// How [create] fetches a rootfs. Only tests replace it.
+  final ChunkedDownloaderFactory _downloaderFactory;
+
   WSLApi(
       {Shell? shell,
       ExecutionBroker? broker,
-      WslCapabilityService? capabilities})
+      WslCapabilityService? capabilities,
+      ChunkedDownloaderFactory? downloaderFactory})
       : shell = shell ?? ProcessShell(),
         _broker = broker,
         _hasInjectedShell = shell != null,
-        _capabilities = capabilities {
+        _capabilities = capabilities,
+        _downloaderFactory =
+            downloaderFactory ?? defaultChunkedDownloaderFactory {
     if (!inited) {
       inited = true;
       App().getDistroLinks();
@@ -1354,29 +1360,26 @@ class WSLApi {
     // Download
     var dataPath = getDataPath()..cd('distros');
     String downloadPath = dataPath.file('$filename.tar.gz');
-    String downloadPathTmp = dataPath.file('$filename.tar.gz.tmp');
     bool fileExists = await File(downloadPath).exists();
     if (!image && distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
-      // Download file
       try {
-        var downloader = ChunkedDownloader(
-            url: url,
-            saveFilePath: downloadPathTmp,
-            onProgress: (int count, int total, double speed) {
-              status('${'downloading-text'.i18n()}'
-                  ' ${(count / total * 100).toStringAsFixed(0)}%');
-            })
-          ..start();
-        // Await download
-        while (!downloader.done) {
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-        File file = File(downloadPathTmp);
-        file.rename(downloadPath);
-        status('${'downloaded-text'.i18n()} $filename');
+        await _downloadRootfs(url, downloadPath, status);
       } catch (error) {
+        // Strip the leading exception class only. A blanket
+        // `replaceAll('Exception: ', '')` turns `HttpException: HTTP 404`
+        // into `HttpHTTP 404`, which is what the create screen showed.
+        final message = error
+            .toString()
+            .replaceFirst(RegExp(r'^[A-Za-z]*Exception: '), '');
         status('${'errordownloading-text'.i18n()} $filename');
+        // Do not fall through to `wsl --import`: the file is missing or
+        // partial, and importing it would either fail with an unrelated WSL
+        // error or register a broken distro. Report the download failure with
+        // the same shape a failed `wsl.exe` has, so the caller's existing
+        // error path shows it.
+        return ProcessResult(0, 1, '',
+            '${'errordownloading-text'.i18n()} $filename: $message');
       }
     }
 
@@ -1401,6 +1404,153 @@ class WSLApi {
     ProcessResult results = await _runWsl(args, stdoutEncoding: null);
 
     return results;
+  }
+
+  /// Fetches [url] to [savePath], or throws with a reason the UI can show.
+  ///
+  /// Everything here is a guard against a download that *looks* like it
+  /// worked, which is what the old code shipped:
+  ///
+  /// * [ChunkedDownloader.start] is **awaited**. It used to be a `..start()`
+  ///   cascade, which threw the returned future away — so the `HttpException`
+  ///   a 404 raises never reached a `catch`, `done` was only ever set on the
+  ///   success path, and the poll loop that waited on it spun forever. A dead
+  ///   catalogue URL hung the create dialog instead of reporting an error.
+  /// * [savePath] is handed over as-is. The package downloads to
+  ///   `'$savePath.tmp'` and renames that onto [savePath] itself; passing it a
+  ///   path that already ended in `.tmp` and renaming again here is what left
+  ///   `<name>.tar.gz.tmp.tmp` behind, and that second rename was not awaited.
+  /// * A stale `.tmp` is removed first. The package *appends* to it, so a
+  ///   leftover from a killed run would be glued in front of the new download.
+  /// * The finished file is checked against the `Content-Length` the server
+  ///   announced. The package's read loop ends on any short chunk, so a
+  ///   connection cut mid-transfer renames a partial file into place and
+  ///   reports success; `wsl --import` then fails on a truncated archive with
+  ///   no hint that the download was the problem.
+  Future<void> _downloadRootfs(
+      String url, String savePath, Function(String) status) async {
+    final tmpFile = File('$savePath.tmp');
+    if (await tmpFile.exists()) {
+      await tmpFile.delete();
+    }
+
+    // -1 until the first progress callback. Stays -1 for a server that sends
+    // no Content-Length, which is not an error — it only means the size check
+    // below has nothing to compare against.
+    int expectedBytes = -1;
+    final downloader = _downloaderFactory(
+      url: url,
+      saveFilePath: savePath,
+      onProgress: (int count, int total, double speed) {
+        expectedBytes = total;
+        // Without a Content-Length `total` is -1, and the percentage the old
+        // code printed counted *downwards* through negative numbers. Show
+        // megabytes instead.
+        status(total > 0
+            ? '${'downloading-text'.i18n()} '
+                '${(count / total * 100).toStringAsFixed(0)}%'
+            : '${'downloading-text'.i18n()} '
+                '${(count / 1024 / 1024).toStringAsFixed(0)} MB');
+      },
+    );
+    await downloader.start();
+
+    final file = File(savePath);
+    final actualBytes = await file.exists() ? await file.length() : -1;
+    if (actualBytes <= 0) {
+      throw Exception('the server returned an empty file');
+    }
+    if (expectedBytes > 0 && actualBytes != expectedBytes) {
+      // Leaving it on disk would poison every later create: the cache is keyed
+      // on the file existing, not on it being complete.
+      await file.delete();
+      throw Exception(
+          'incomplete download, got $actualBytes of $expectedBytes bytes');
+    }
+  }
+
+  /// A POSIX user name this app is willing to interpolate into a shell script.
+  ///
+  /// Same reasoning as [isPlainDistroPath]: [createUser] hands its script to
+  /// `sh -c`, so an unchecked name is code, not data. Refuse rather than quote
+  /// — there is no legitimate user name with a space or a `;` in it.
+  static bool isPlainUserName(String user) =>
+      RegExp(r'^[a-z_][a-z0-9_-]{0,31}$').hasMatch(user);
+
+  /// The script [createUser] runs. Exposed for tests.
+  ///
+  /// Written for `/bin/sh`, not bash, and it detects the package manager
+  /// rather than assuming `apt-get`. The version this replaced ran
+  /// `apt-get update`, `apt-get install -y sudo`,
+  /// `useradd -m -s /bin/bash -G sudo <user>` through `bash -c`, which failed
+  /// on thirteen of the nineteen catalogue entries: Alpine has no `bash` at
+  /// all (every command exited 1), and Fedora, Rocky, AlmaLinux, openSUSE,
+  /// SLES and Arch have no `apt-get` (127) and no `sudo` *group* — `useradd
+  /// -G sudo` exits 6 with `group 'sudo' does not exist`, so no user was
+  /// created there either.
+  static String buildUserSetupScript(String user) {
+    // Installing sudo needs the network and is allowed to fail: a user with a
+    // home directory and a login shell is still worth having, and the sudoers
+    // drop-in below costs nothing if sudo shows up later.
+    const installSudo = '''
+if ! command -v sudo >/dev/null 2>&1; then
+if command -v apt-get >/dev/null 2>&1; then DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo >/dev/null 2>&1;
+elif command -v dnf >/dev/null 2>&1; then dnf install -y -q sudo >/dev/null 2>&1;
+elif command -v microdnf >/dev/null 2>&1; then microdnf install -y sudo >/dev/null 2>&1;
+elif command -v yum >/dev/null 2>&1; then yum install -y -q sudo >/dev/null 2>&1;
+elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive --quiet install sudo >/dev/null 2>&1;
+elif command -v apk >/dev/null 2>&1; then apk add --no-cache sudo >/dev/null 2>&1;
+elif command -v pacman >/dev/null 2>&1; then pacman-key --init >/dev/null 2>&1; pacman-key --populate archlinux >/dev/null 2>&1; pacman -Sy --noconfirm --needed sudo >/dev/null 2>&1;
+fi
+fi''';
+
+    // Alpine's minirootfs has no bash, so `-s /bin/bash` would hand the new
+    // user a login shell that does not exist. `sudo` and `wheel` are split by
+    // family — Debian/Ubuntu/Kali use `sudo`, everyone else uses `wheel` —
+    // and `getent` is absent on a busybox userland, hence /etc/group.
+    return '''
+set -u
+u=$user
+$installSudo
+sh=/bin/sh
+[ -x /bin/bash ] && sh=/bin/bash
+grp=
+for g in sudo wheel; do if cut -d: -f1 /etc/group | grep -qx \$g; then grp=\$g; break; fi; done
+if [ -z "\$grp" ]; then
+if command -v groupadd >/dev/null 2>&1; then groupadd wheel >/dev/null 2>&1 && grp=wheel;
+elif command -v addgroup >/dev/null 2>&1; then addgroup wheel >/dev/null 2>&1 && grp=wheel; fi
+fi
+if ! id -u \$u >/dev/null 2>&1; then
+if command -v useradd >/dev/null 2>&1; then
+if [ -n "\$grp" ]; then useradd -m -s \$sh -G \$grp \$u; else useradd -m -s \$sh \$u; fi
+elif command -v adduser >/dev/null 2>&1; then
+adduser -D -s \$sh \$u && { [ -z "\$grp" ] || addgroup \$u \$grp; }
+else
+echo 'no useradd or adduser in this distro' >&2; exit 1
+fi
+fi
+id -u \$u >/dev/null 2>&1 || { echo 'user was not created' >&2; exit 1; }
+mkdir -p /etc/sudoers.d
+printf '%s ALL=(ALL) NOPASSWD:ALL\\n' \$u > /etc/sudoers.d/wslsudo
+chmod 0440 /etc/sudoers.d/wslsudo
+if [ -f /etc/sudoers ] && ! grep -qE '^[#@]includedir[[:space:]]+/etc/sudoers.d' /etc/sudoers; then printf '#includedir /etc/sudoers.d\\n' >> /etc/sudoers; fi
+exit 0''';
+  }
+
+  /// Creates [user] inside [distribution] with a home, a login shell that
+  /// exists there, and passwordless sudo. Returns the process result so the
+  /// caller can show stderr when it fails.
+  ///
+  /// Runs through `sh`, not `bash` — see [buildUserSetupScript].
+  Future<ProcessResult> createUser(String distribution, String user) async {
+    if (!isPlainUserName(user)) {
+      return ProcessResult(0, 1, '', 'Invalid user name: $user');
+    }
+    return _runWsl(
+      wslShellArgs(distribution, buildUserSetupScript(user),
+          user: 'root', shell: 'sh'),
+      runInShell: false,
+    );
   }
 
   var lastDistroList = Instances([], []);
@@ -1992,7 +2142,8 @@ try {
     }
 
     final WslOutput result = await _brokeredWsl(
-        wslShellArgs(distro, 'cat $path 2>/dev/null; exit 0', user: 'root'),
+        wslShellArgs(distro, 'cat $path 2>/dev/null; exit 0',
+            user: 'root', shell: 'sh'),
         timeout: _distroFileTimeout);
 
     if (!result.ok) {
@@ -2022,6 +2173,12 @@ try {
   /// The base64 encoding covers the *payload*; the redirection target is the
   /// half it cannot cover, because `> $path` has to be shell syntax for the
   /// redirection to happen at all. [isPlainDistroPath] closes that half.
+  ///
+  /// Runs through `sh`, not bash. The script is plain POSIX, and Alpine's
+  /// minirootfs — a catalogue entry — has no bash at all, so this and
+  /// [readDistroFile] failed there with `execvpe(bash) failed`. That is what
+  /// left a freshly created Alpine instance with no `/etc/wsl.conf` and hence
+  /// no default user, even after the account itself was created.
   Future<bool> writeDistroFile(String distro, String path, String content,
       {String? mode}) async {
     if (!isPlainDistroPath(path)) {
@@ -2033,7 +2190,7 @@ try {
     final String payload = base64.encode(utf8.encode(content));
     final WslOutput result = await _brokeredWsl(
         wslShellArgs(distro, "printf %s '$payload' | base64 -d > $path",
-            user: 'root'),
+            user: 'root', shell: 'sh'),
         timeout: _distroFileTimeout);
 
     if (!result.ok) {
@@ -2070,7 +2227,7 @@ try {
     final script =
         'for f in ${safe.join(' ')}; do [ -e \$f ] && echo \$f; done; exit 0';
     final WslOutput result = await _brokeredWsl(
-        wslShellArgs(distro, script, user: 'root'),
+        wslShellArgs(distro, script, user: 'root', shell: 'sh'),
         timeout: _distroFileTimeout);
     if (!result.ok) return <String>{};
 

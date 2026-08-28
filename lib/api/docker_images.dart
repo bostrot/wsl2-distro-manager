@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
-import 'package:chunked_downloader/chunked_downloader.dart';
+import 'package:wsl2distromanager/api/downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:localization/localization.dart';
@@ -129,16 +129,6 @@ typedef ProgressCallback = void Function(int count, int total);
 typedef TotalProgressCallback = void Function(
     int count, int total, int countStep, int totalStep);
 
-typedef ChunkedDownloaderFactory = ChunkedDownloader Function({
-  required String url,
-  required String saveFilePath,
-  Map<String, String>? headers,
-  int? chunkSize,
-  Function(int, int, double)? onProgress,
-  Function(File)? onDone,
-  Function(dynamic)? onError,
-});
-
 class DockerImage {
   String registryUrl;
   String authUrl;
@@ -157,23 +147,8 @@ class DockerImage {
         registryUrl = registryUrl ??
             prefs.getString('DockerRepoLink') ??
             'https://registry-1.docker.io',
-        chunkedDownloaderFactory = chunkedDownloaderFactory ??
-            ((
-                    {required url,
-                    required saveFilePath,
-                    headers,
-                    chunkSize,
-                    onProgress,
-                    onDone,
-                    onError}) =>
-                ChunkedDownloader(
-                    url: url,
-                    saveFilePath: saveFilePath,
-                    headers: headers,
-                    chunkSize: chunkSize ?? 1024 * 1024,
-                    onProgress: onProgress,
-                    onDone: onDone,
-                    onError: onError)) {
+        chunkedDownloaderFactory =
+            chunkedDownloaderFactory ?? defaultChunkedDownloaderFactory {
     String? mirror = prefs.getString('DockerMirror');
     if (mirror != null && mirror.isNotEmpty) {
       this.registryUrl = mirror;

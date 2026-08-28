@@ -86,6 +86,12 @@ List<String> wslExecArgs(String distro, List<String> argv, {String? user}) {
 /// Shell-quoting note that keeps biting: because this ends up in
 /// `Process.run(..., runInShell: false)`, a double quote inside [script]
 /// reaches bash literally. Prefer single quotes in the scripts you build.
+///
+/// Pass `shell: 'sh'` for anything the app runs against a distro it did not
+/// choose. `bash` is not in the base image of every catalogue entry — Alpine's
+/// minirootfs has none, and `--exec bash -c …` there fails outright with
+/// `execvpe(bash) failed: No such file or directory`. Only scripts aimed at a
+/// distro this app installed itself (the AI workspace) may assume bash.
 List<String> wslShellArgs(
   String distro,
   String script, {

@@ -46,7 +46,7 @@
   "savelocationhint-text": "(Opcional) Ruta donde guardar la nueva instancia",
   "savelocationplaceholder-text": "Ubicación de guardado (opcional)",
   "turnkeywarning-text": "Advertencia: Seleccionaste un contenedor Turnkey. [Experimental]\nLas versiones modernas de WSL ya soportan systemd. Esta aplicación ya no instala fake_systemd automáticamente. Si la imagen o el servicio seleccionado aún requiere configuración adicional, revisa la documentación de esa imagen y asegúrate de que systemd esté habilitado para esa distribución en la configuración de WSL.\nPara acceder al servicio, usa \"ip a | grep inet\" para encontrar la IP y luego abre WSL-IP:PUERTO en tu navegador.",
-  "createuser-text": "Crear usuario predeterminado (solo en Debian/Ubuntu)",
+  "createuser-text": "Crear usuario predeterminado",
   "optionalusername-text": "(Opcional) nombre de usuario",
   "optionaluser-text": "(Opcional) usuario",
   "error-text": "Error",

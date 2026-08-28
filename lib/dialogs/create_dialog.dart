@@ -312,30 +312,26 @@ Future<bool> createInstance(
           await api.exec(name, [cmd]);
         }
       }
-      String user = userController.text;
+      String user = userController.text.trim();
       if (user != '') {
-        List<int> processes = await api.exec(name, [
-          'apt-get update',
-          'apt-get install -y sudo',
-          'useradd -m -s /bin/bash -G sudo $user',
-          'passwd $user',
-          'echo \'$user ALL=(ALL) NOPASSWD:ALL\' >> /etc/sudoers.d/wslsudo',
-        ]);
-        // Use setSetting so existing wsl.conf sections (e.g. [boot] systemd=true) are preserved
-        await api.setSetting(name, 'user', 'default', user);
-        bool success = true;
-        for (dynamic process in processes) {
-          if (process != 0) {
-            success = false;
-            break;
-          }
-        }
-        if (success) {
+        // One script that detects the distro's package manager and userland
+        // instead of five hard-coded apt-get/useradd lines. Those worked on
+        // Ubuntu, Debian and Kali and silently created no user at all on the
+        // other thirteen catalogue entries — see WSLApi.buildUserSetupScript.
+        final setup = await api.createUser(name, user);
+        if (setup.exitCode == 0) {
+          // Only worth prompting for a password once the account exists.
+          await api.exec(name, ['passwd $user']);
+          // Use setSetting so existing wsl.conf sections (e.g. [boot] systemd=true) are preserved
+          await api.setSetting(name, 'user', 'default', user);
           prefs.setString('StartPath_$name', '/home/$user');
           prefs.setString('StartUser_$name', user);
 
           Notify.message('createdinstance-text'.i18n());
         } else {
+          // Deliberately no `default=<user>` in wsl.conf on this path: naming
+          // a user that does not exist stops the distro from starting at all,
+          // which is worse than the root-only shell the import already gives.
           Notify.message('createdinstancenouser-text'.i18n());
         }
       } else {

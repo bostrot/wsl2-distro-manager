@@ -46,7 +46,7 @@
   "savelocationhint-text": "(Opcionális) Új példány mentési helye",
   "savelocationplaceholder-text": "Mentés helye (opcionális)",
   "turnkeywarning-text": "Figyelem: Turnkey konténert választottál. [Kísérleti]\nA modern WSL már támogatja a systemd-t. Ez az alkalmazás már nem telepít automatikusan fake_systemd-t. Ha a kiválasztott image vagy szolgáltatás további beállítást igényel, nézd meg az image dokumentációját, és győződj meg róla, hogy a systemd engedélyezve van ennél a disztrónál a WSL-beállításokban.\nA szolgáltatás eléréséhez használd az \"ip a | grep inet\" parancsot az IP cím megkereséséhez, majd nyisd meg a WSL-IP:PORT címet a böngészőben.",
-  "createuser-text": "Alapértelmezett felhasználó létrehozása (csak Debian/Ubuntu esetén)",
+  "createuser-text": "Alapértelmezett felhasználó létrehozása",
   "optionalusername-text": "(Opcionális) felhasználónév",
   "optionaluser-text": "(Opcionális) felhasználó",
   "error-text": "Hiba",

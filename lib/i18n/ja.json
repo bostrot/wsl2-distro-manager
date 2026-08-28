@@ -46,7 +46,7 @@
   "savelocationhint-text": "(オプション) 新しいインスタンスを保存するパス",
   "savelocationplaceholder-text": "保存場所 (オプション)",
   "turnkeywarning-text": "警告: Turnkey コンテナを選択しました。[実験的]\n最新の WSL は systemd をサポートしています。このアプリは fake_systemd を自動インストールしなくなりました。選択したイメージやサービスで追加設定が必要な場合は、そのイメージのドキュメントを確認し、WSL 設定で当該ディストリビューションの systemd が有効になっていることを確認してください。\nサービスにアクセスするには、\"ip a | grep inet\" で IP を確認し、ブラウザで WSL-IP:PORT を開いてください。",
-  "createuser-text": "デフォルトユーザーを作成 (Debian/Ubuntu のみ)",
+  "createuser-text": "デフォルトユーザーを作成",
   "optionalusername-text": "(オプション) ユーザー名",
   "optionaluser-text": "(オプション) ユーザー",
   "error-text": "エラー",

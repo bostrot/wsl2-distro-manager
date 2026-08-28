@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:chunked_downloader/chunked_downloader.dart';
+import 'package:wsl2distromanager/api/downloader.dart';
 import 'package:localization/localization.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -9,32 +9,8 @@ import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'helpers.dart';
 
-typedef ChunkedDownloaderFactory = ChunkedDownloader Function({
-  required String url,
-  required String saveFilePath,
-  Map<String, String>? headers,
-  Function(int, int, double)? onProgress,
-  Function(dynamic)? onError,
-});
-
 typedef ServerFactory = Future<HttpServer> Function(
     Handler handler, Object address, int port);
-
-ChunkedDownloader _defaultChunkedDownloaderFactory({
-  required String url,
-  required String saveFilePath,
-  Map<String, String>? headers,
-  Function(int, int, double)? onProgress,
-  Function(dynamic)? onError,
-}) {
-  return ChunkedDownloader(
-    url: url,
-    saveFilePath: saveFilePath,
-    headers: headers,
-    onProgress: onProgress,
-    onError: onError,
-  );
-}
 
 Future<HttpServer> _defaultServerFactory(
     Handler handler, Object address, int port) {
@@ -56,7 +32,7 @@ class Sync {
     ServerFactory? serverFactory,
   })  : wslApi = wslApi ?? WSLApi(),
         chunkedDownloaderFactory =
-            chunkedDownloaderFactory ?? _defaultChunkedDownloaderFactory,
+            chunkedDownloaderFactory ?? defaultChunkedDownloaderFactory,
         serverFactory = serverFactory ?? _defaultServerFactory;
 
   /// Constructor
@@ -67,7 +43,7 @@ class Sync {
     ServerFactory? serverFactory,
   })  : wslApi = wslApi ?? WSLApi(),
         chunkedDownloaderFactory =
-            chunkedDownloaderFactory ?? _defaultChunkedDownloaderFactory,
+            chunkedDownloaderFactory ?? defaultChunkedDownloaderFactory,
         serverFactory = serverFactory ?? _defaultServerFactory;
 
   /// Check if distro has path in settings

@@ -46,7 +46,7 @@
   "savelocationhint-text": "(İsteğe bağlı) Yeni örneği kaydetmek için yol",
   "savelocationplaceholder-text": "Kaydetme konumu (isteğe bağlı)",
   "turnkeywarning-text": "Uyarı: Bir Turnkey konteyner seçtiniz. [Deneysel]\nModern WSL sürümleri systemd'yi destekler. Bu uygulama artık fake_systemd'yi otomatik olarak kurmaz. Seçilen imaj veya servis hala ek yapılandırma gerektiriyorsa, imaj dokümantasyonunu kontrol edin ve WSL ayarlarında bu dağıtım için systemd'nin etkin olduğundan emin olun.\nHizmete erişmek için \"ip a | grep inet\" ile IP adresini bulun ve ardından tarayıcıda WSL-IP:PORT adresini açın.",
-  "createuser-text": "Varsayılan kullanıcı oluştur (sadece Debian/Ubuntu'da)",
+  "createuser-text": "Varsayılan kullanıcı oluştur",
   "optionaluser-text": "(İsteğe bağlı) kullanıcı",
   "optionalusername-text": "(İsteğe bağlı) kullanıcı adı",
   "error-text": "Hata",

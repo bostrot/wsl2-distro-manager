@@ -46,7 +46,7 @@
   "savelocationhint-text": "(Optional) Path where to save the new instance",
   "savelocationplaceholder-text": "Save location (optional)",
   "turnkeywarning-text": "Warning: You selected a turnkey container. [Experimental]\nModern WSL supports systemd. This app no longer installs fake_systemd automatically. If a selected image/service still needs extra setup, check the image documentation and ensure systemd is enabled for that distro in WSL settings.\nTo access the service, use \"ip a | grep inet\" to find the IP and then open WSL-IP:PORT in your browser.",
-  "createuser-text": "Create default user (only on Debian/Ubuntu)",
+  "createuser-text": "Create default user",
   "optionalusername-text": "(Optional) username",
   "optionaluser-text": "(Optional) user",
   "size-text": "Size",
