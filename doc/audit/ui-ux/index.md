@@ -175,6 +175,68 @@ Populated by the per-area passes below; empty until they run. Severity is
 | CI-38 | `wsl --install` is a hyperlink that runs an elevated system change, described as text to copy | [[create-and-install]] | `install_dialog.dart:26` | major | S | _source-derived_ |
 | CI-39 | "install it with following command" -- missing article, in all nine locales | [[create-and-install]] | `en.json:74` | nit | S | _source-derived_ |
 | CI-40 | Hardcoded 20%-black chip invisible in dark theme; `InstallDialog` is an inline panel, not a dialog | [[create-and-install]] | `install_dialog.dart:22` | nit | S | _source-derived_ |
+| ST-01 | Leaving Settings by any route other than Save silently discards every edit; no unsaved-changes prompt | [[settings-and-tools]] | `settings_screen.dart:88` | blocker | M | `104`/`105`/`107-settings-save-noop.png` |
+| ST-02 | Language is the one setting that persists without Save, and needs a restart to show | [[settings-and-tools]] | `settings_screen.dart:607` | major | S | `110-settings-language-de-selected.png` |
+| ST-03 | Save navigates away to Home and never confirms that anything was written | [[settings-and-tools]] | `settings_screen.dart:341` | major | S | `100-settings-after-save.png` |
+| ST-04 | "Stop WSL" shuts down every distro, sits beside Save, no confirmation, tooltip repeats the label | [[settings-and-tools]] | `settings_screen.dart:208` | major | S | `102b-stopwsl-tooltip-zoom.png` |
+| ST-05 | An invalid `.wslconfig` value saves unchallenged; WSL then rejects it on stderr with exit code 0 | [[settings-and-tools]] | `settings_screen.dart:355` | blocker | M | `98`/`100-settings-after-save.png` |
+| ST-06 | The invalid-value warning never appears while typing -- only after an unrelated rebuild | [[settings-and-tools]] | `settings_screen.dart:1595` | major | S | `98` vs `99-settings-warning-after-rebuild.png` |
+| ST-07 | The "WSL reported:" panel reads the stderr of two commands that never mention `.wslconfig` | [[settings-and-tools]] | `wsl_capabilities.dart:157` | major | M | `101-settings-wslwarnings.png` |
+| ST-08 | Memory/Processors/Swap sliders never render: `SysInfo` reports 0 bytes and 1 core (measured) | [[settings-and-tools]] | `settings_screen.dart:1269` | major | S | `91b-memory-processors-zoom.png` |
+| ST-09 | Twenty-six settings are labelled with the raw camelCase `.wslconfig` key, untranslated | [[settings-and-tools]] | `settings_screen.dart:1389` | major | M | `93-settings-globalconfig-4.png` |
+| ST-10 | The disabled-control explanation renders at 2.51:1 contrast (measured); the line above it is 6.00:1 | [[settings-and-tools]] | `settings_screen.dart:1412` | major | S | `97-settings-localhostforwarding-disabled.png` |
+| ST-11 | The disabled reason repeats the description verbatim, 20px below it | [[settings-and-tools]] | `en.json:414` | nit | S | `97-settings-localhostforwarding-disabled.png` |
+| ST-12 | The disabled reason names the raw key rather than the label it points at | [[settings-and-tools]] | `settings_screen.dart:1147` | nit | S | `95-settings-mirrored-disables.png` |
+| ST-13 | Global-config note tells a GUI user to run `wsl --shutdown`; the button for it is 400px below | [[settings-and-tools]] | `en.json:117` | nit | S | `90-settings-globalconfig-1.png` |
+| ST-14 | Every footer button's tooltip is a copy of its own visible label | [[settings-and-tools]] | `settings_screen.dart:192` | nit | S | `102b-stopwsl-tooltip-zoom.png` |
+| ST-15 | "true (Default)" and "Not set — using the default" state one fact twice, on one row, x12 | [[settings-and-tools]] | `settings_screen.dart:1491` | nit | S | `93-settings-globalconfig-4.png` |
+| ST-16 | An enumeration can never be returned to unset -- no "not set" item and no undo, unlike the booleans | [[settings-and-tools]] | `settings_screen.dart:1527` | major | S | `95-settings-mirrored-disables.png` |
+| ST-17 | The enumeration flyout covers its own field and the two settings below, and marks no current value | [[settings-and-tools]] | `settings_screen.dart:1544` | nit | S | `94-settings-networkingmode-open.png` |
+| ST-18 | Four unlabelled MCP icon buttons: no tooltip, no `MergeSemantics`, two identical copy glyphs | [[settings-and-tools]] | `settings_screen.dart:809` | major | S | `86-settings-mcp-on.png` |
+| ST-19 | One click regenerates the MCP token -- no confirm, no toast, no notice that clients break (measured) | [[settings-and-tools]] | `settings_screen.dart:823` | major | S | `87`/`88-settings-mcp-token-*-crop.png` |
+| ST-20 | The public-internet warning shows whenever MCP is on, contradicting the hint two lines above it | [[settings-and-tools]] | `settings_screen.dart:834` | major | S | `86-settings-mcp-on.png` |
+| ST-21 | Copy buttons give no feedback at all | [[settings-and-tools]] | `settings_screen.dart:783` | nit | S | `86-settings-mcp-on.png` |
+| ST-22 | Tunnel error is a raw `e.toString()` in hardcoded `Colors.red` | [[settings-and-tools]] | `settings_screen.dart:889` | nit | S | _source-derived_ |
+| ST-23 | Sync group: no explanation, a plaintext example password in a masked field, and a non-sync setting | [[settings-and-tools]] | `settings_screen.dart:1004` | nit | S | `89-settings-sync.png` |
+| ST-24 | "Remote SSH target" stays enabled while the toggle that uses it is off | [[settings-and-tools]] | `settings_screen.dart:556` | nit | S | `82-settings-general.png` |
+| ST-25 | Path settings show their effective value as a grey placeholder, so set and unset look identical | [[settings-and-tools]] | `settings_screen.dart:436` | nit | S | `82-settings-general.png` |
+| ST-26 | Save materialises a Docker repository default the user never chose | [[settings-and-tools]] | `settings_screen.dart:282` | nit | S | `83-settings-docker.png` |
+| ST-27 | Opening the per-distro settings dialog boots the distro (measured: stopped then running) | [[settings-and-tools]] | `settings_dialog.dart:666` | major | S | `113` then `114-distro-settings-loaded.png` |
+| ST-28 | Cancel does not cancel: every `wsl.conf` key writes to the distro on change, not on Save | [[settings-and-tools]] | `settings_dialog.dart:69` | major | S | `117-distro-settings-time-expanded.png` |
+| ST-29 | Four irreversible actions styled identically to the Expander headers directly above them | [[settings-and-tools]] | `settings_dialog.dart:466` | major | S | `116-distro-settings-bottom.png` |
+| ST-30 | The sync buttons' tooltips ("Upload"/"Download") do not match their labels | [[settings-and-tools]] | `settings_dialog.dart:175` | nit | S | `116-distro-settings-bottom.png` |
+| ST-31 | "Start/Stop serving on network" never shows which state it is in; `isSyncing` is never persisted | [[settings-and-tools]] | `settings_dialog.dart:108` | nit | S | `116-distro-settings-bottom.png` |
+| ST-32 | A twenty-control form capped at 500x500, three fields visible at a time | [[settings-and-tools]] | `settings_dialog.dart:60` | nit | S | `114-distro-settings-loaded.png` |
+| ST-33 | The dialog is titled "Settings" with no distro name -- same word as the app-wide screen | [[settings-and-tools]] | `settings_dialog.dart:48` | nit | S | `114-distro-settings-loaded.png` |
+| ST-34 | The same "unset" concept has two visual languages; the dialog's looks like a hyperlink | [[settings-and-tools]] | `settings_dialog.dart:528` | nit | S | `117-distro-settings-time-expanded.png` |
+| ST-35 | The user section labels itself twice and hosts an orphaned parenthetical between two groups | [[settings-and-tools]] | `settings_dialog.dart:157` | nit | S | `118-distro-settings-userfield.png` |
+| ST-36 | Loading is an unlabelled spinner for 4s+ with Cancel and Save both enabled | [[settings-and-tools]] | `settings_dialog.dart:722` | nit | S | `113-distro-settings-dialog.png` |
+| ST-37 | A template under ~5MB formats to "0 GB" and is silently removed from the list | [[settings-and-tools]] | `template_screen.dart:126` | major | S | _source-derived_ |
+| ST-38 | Deleting a template asks "Delete instance ... permanently? / If you delete this Distro..." | [[settings-and-tools]] | `template_screen.dart:185` | major | S | `121-templates-delete-confirm.png` |
+| ST-39 | "Create a new instance" opens a dialog titled "Copy", about "the WSL instance" | [[settings-and-tools]] | `template_screen.dart:158` | major | S | `122-templates-create-dialog.png` |
+| ST-40 | Template delete is a bare icon 900px from the labelled buttons, no tooltip, no destructive styling | [[settings-and-tools]] | `template_screen.dart:182` | nit | S | `120-templates-expanded.png` |
+| ST-41 | No title, no explanation of what a template is, and no way to create one from this screen | [[settings-and-tools]] | `template_screen.dart:86` | nit | S | `119-templates-empty.png` |
+| ST-42 | Template sizes render as "0.01 GB" | [[settings-and-tools]] | `templates.dart` | nit | S | `119-templates-empty.png` |
+| ST-43 | The new-instance name box looks pre-filled -- the placeholder is the template's own name | [[settings-and-tools]] | `base_dialog.dart:64` | nit | S | `122-templates-create-dialog.png` |
+| ST-44 | The disk about to be mounted is identified by a truncated, tooltip-less string | [[settings-and-tools]] | `mount_dialog.dart:334` | major | S | `123-mount-dialog-physical.png` |
+| ST-45 | The primary button silently no-ops on an empty required field (measured on Unmount) | [[settings-and-tools]] | `mount_dialog.dart:82` | major | S | `125-mount-unmount-empty-noop.png` |
+| ST-46 | Nothing says a physical mount needs elevation and detaches the disk from Windows until it fails | [[settings-and-tools]] | `mount_dialog.dart:232` | major | S | `123-mount-dialog-physical.png` |
+| ST-47 | Three radio buttons used as a tab strip; the title stays "Mount Disk" in unmount mode | [[settings-and-tools]] | `mount_dialog.dart:266` | nit | S | `124-mount-dialog-unmount.png` |
+| ST-48 | With nothing mounted the picker vanishes instead of saying the list is empty | [[settings-and-tools]] | `mount_dialog.dart:512` | nit | S | `124-mount-dialog-unmount.png` |
+| ST-49 | The mount-options placeholder is cut off mid-clause with no tooltip | [[settings-and-tools]] | `en.json` | nit | S | `123-mount-dialog-physical.png` |
+| ST-50 | Partition / Filesystem Type labels sit 18px apart vertically | [[settings-and-tools]] | `mount_dialog.dart:374` | nit | S | `126-mount-dialog-vhd.png` |
+| ST-51 | The VHD browse button uses a different folder glyph from every other picker, and no tooltip | [[settings-and-tools]] | `mount_dialog.dart:428` | nit | S | `126-mount-dialog-vhd.png` |
+| ST-52 | The dialog never says which distro the disk lands in or where it appears | [[settings-and-tools]] | `mount_dialog.dart:315` | nit | S | `123-mount-dialog-physical.png` |
+| ST-53 | Snippet Save with an empty name silently does nothing -- the error branch is `// Error` | [[settings-and-tools]] | `actions_screen.dart:234` | major | S | `129-actions-save-empty-noop.png` |
+| ST-54 | Deleting a snippet asks "Delete instance ... permanently? / If you delete this Distro..." | [[settings-and-tools]] | `actions_screen.dart:330` | major | S | `133b-actions-delete-confirm-zoom.png` |
+| ST-55 | Expanding a one-line snippet opens a 430px panel that is 97% empty | [[settings-and-tools]] | `actions_screen.dart:354` | major | S | `132-actions-expanded.png` |
+| ST-56 | One object, four names: Snippets / snippet / "Name of setting" / quick action | [[settings-and-tools]] | `actions_screen.dart:76` | nit | S | `128-actions-editor.png` |
+| ST-57 | "(by you)" is hardcoded English and "[v0.0.0]" invented; measured 4.41:1 and 3.96:1, both sub-AA | [[settings-and-tools]] | `actions_screen.dart:270` | nit | S | `132-actions-expanded.png` |
+| ST-58 | The code editor has no frame, background or label -- 580px of invisible click target | [[settings-and-tools]] | `actions_screen.dart:415` | nit | S | `128-actions-editor.png` |
+| ST-59 | The editor hardcodes `atomOneLightTheme`, so syntax colours ignore the app theme | [[settings-and-tools]] | `actions_screen.dart:451` | nit | S | _source-derived_ |
+| ST-60 | Nothing says a snippet is a root bash script in a distro, and it cannot be run from this screen | [[settings-and-tools]] | `actions_screen.dart:373` | nit | S | `127-actions-empty.png` |
+| ST-61 | Two "add" affordances in opposite corners; "Add Community snippets" capitalises its middle word | [[settings-and-tools]] | `actions_screen.dart:109` | nit | S | `127-actions-empty.png` |
+| ST-62 | "Cancel" is the left button in three dialogs and the right button in the one that deletes things | [[settings-and-tools]] | `base_dialog.dart` | major | S | `121` vs `113`/`123`/`135` |
 
 ## Per-area files
 
@@ -182,7 +244,7 @@ Populated by the per-area passes below; empty until they run. Severity is
 |:---|:---|:---|
 | [[list-and-navigation]] | distro list, list rows, nav pane, title bar, narrow width | **done** -- 26 findings (LN-01..LN-26) |
 | [[create-and-install]] | create screen, install/copy/QA dialogs | **done** -- 40 findings (CI-01..CI-40) |
-| [[settings-and-tools]] | app settings, per-distro settings, templates, mount, actions | not started |
+| [[settings-and-tools]] | app settings, per-distro settings, templates, mount, actions | **done** -- 62 findings (ST-01..ST-62) |
 | [[pro-surfaces]] | AI Workspace, license, badges, AI chat, recommendations, MCP | not started |
 | [[theme-and-locales]] | dark/light diff, all nine locales, text quality | not started |
 | [[interaction-and-a11y]] | tab order, tooltips, long operations, error text | not started |
@@ -217,3 +279,19 @@ Recorded as the audit runs, so it never implies coverage it does not have.
 - **Store-packaged build** -- the audit runs an unpackaged debug build with the Pro gate
   forced. Anything whose appearance depends on real MSIX package identity (the genuine
   free-tier experience, Store purchase flow) is out of scope for the click-through.
+- **The Cloudflare tunnel path in MCP settings** -- enabling it downloads `cloudflared`
+  and publishes this machine's MCP server, which can run arbitrary commands in every
+  distro, to a public URL. Deliberately not triggered; ST-22 is read from source and
+  labelled as such in [[settings-and-tools]].
+- **A real disk mount** -- no spare physical disk or `.vhdx`, and `wsl --mount` of a disk
+  Windows is using is not something to try on the audit machine. The mount forms, the
+  empty-unmount state and the empty-field guard were exercised (ST-44..ST-52); no disk was
+  attached, and the four mount/unmount error-recovery dialogs
+  (`mount_dialog.dart:110-251`) were never reached.
+- **Sync over the network** (`Sync().startServer()`, `download()`) -- needs a second
+  machine. ST-23, ST-30 and ST-31 are about the controls, not the transport.
+- **`Move`, and `Templates().useTemplate()`** -- the confirmations were opened and
+  cancelled (ST-29, ST-39, `122`); neither operation was run, so no distro was
+  export/unregister/imported and no instance was created from a template.
+- **The zero-template state and the sub-5MB template disappearance** -- one real template
+  (`test-4`) exists here; ST-37 is read from source and `notemplates-text` was not reached.

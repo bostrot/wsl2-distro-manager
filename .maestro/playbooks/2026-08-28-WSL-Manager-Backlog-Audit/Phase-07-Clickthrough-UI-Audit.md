@@ -118,10 +118,75 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
     182 issues, **0 errors and 2 warnings**, the rest `info` lints, i.e. the tree's
     pre-existing baseline. (Not "clean" -- the earlier phases' notes overstate that.)
 
-- [ ] Audit settings, templates, mount and actions:
+- [x] Audit settings, templates, mount and actions:
   - `lib/screens/settings_screen.dart` including everything Phase 05 added: grouping, scroll length, tooltip legibility, which controls need `wsl --shutdown` to take effect and whether the UI says so, save/discard affordances, and whether an invalid value can be saved
   - `lib/dialogs/settings_dialog.dart` per-distro settings; `lib/screens/template_screen.dart`; `lib/dialogs/mount_dialog.dart`; `lib/screens/actions_screen.dart`; `lib/components/qa_list.dart`
   - Write `doc/audit/ui-ux/settings-and-tools.md`
+
+  **Done 2026-08-28.** 62 findings (ST-01..ST-62) in `doc/audit/ui-ux/settings-and-tools.md`,
+  all copied into the master table in `doc/audit/ui-ux/index.md`. 43 screenshots in
+  `.maestro/screenshots/phase-07/` (gitignored, `80`..`135`), including six
+  nearest-neighbour zoom crops -- the MCP token, the Stop WSL tooltip, the memory/processor
+  controls and the snippet delete text are not legible at 1:1.
+
+  - **The two blockers are ST-01 and ST-05, and both were driven end to end against the
+    files on disk rather than reasoned about.** ST-01: toggling `SafeMode` on and leaving
+    Settings via the nav pane left `%USERPROFILE%\.wslconfig` untouched and the toggle unset
+    on re-entry; the identical change with **Save** wrote `safeMode = true`. Typing into
+    *Default VS Code Command* and leaving the same way lost the value out of
+    `shared_preferences.json` too. `dispose()` (`settings_screen.dart:89-98`) calls
+    `saveSettings(..., dispose: true)`, so the code intends auto-save and observably does
+    not do it -- and there is no Cancel, no dirty marker and no exit prompt either way.
+    ST-05: `memory = eight gigabytes` and `processors = 999` saved verbatim, then fed to a
+    real distro start, which answered `wsl: Ungültige Speicherzeichenfolge "eight
+    gigabytes" für .wslconfig Eintrag "wsl2.memory"` and `wsl2.processors darf die Anzahl
+    logischer Prozessoren nicht überschreiten (999 > 10)` **with exit code 0**.
+  - **ST-07 came out of that same experiment and is the more interesting half.** The
+    "WSL reported:" panel exists precisely to carry those stderr lines to the user, but it
+    reads the stderr of `wsl --version` / `wsl --status`, and measured on the broken config
+    `wsl --version` exits 0 with *empty* stderr. The panel was blank while WSL was refusing
+    three keys. The probe is also cached for the app's lifetime, so even the right command
+    would return the pre-edit answer.
+  - **ST-08 needed a probe rather than a screenshot.** Memory, Processors and Swap render
+    as text boxes where the code declares sliders. A one-off test in this tree printed
+    `totalPhysicalMemory=0 cores=1` from `system_info2`, which makes `sizeMax <= sizeMin`
+    for all three, so `hasSlider` is false. wsl.exe independently reports 10 logical
+    processors on the same machine (from the ST-05 error text), so this is the package
+    failing, not an odd host. The probe test was deleted; `git status` lists only the two
+    Markdown files.
+  - **Three contrast numbers were sampled per pixel, not eyeballed:** the disabled-control
+    explanation -- the one sentence saying why a switch will not move -- is **2.51:1**
+    (`#9D9D9D` on `#F6F6F6`) against 6.00:1 for the description directly above it (ST-10);
+    a snippet's `(by you)` is 4.41:1 and its `[v0.0.0]` 3.96:1, both under AA (ST-57).
+  - **ST-06 is a two-screenshot proof.** The invalid-size warning does not appear while
+    typing (`98`); toggling an unrelated switch 270px away makes it appear over the
+    unchanged input (`99`). The `TextBox` has no `onChanged` and the message is computed in
+    `build()`.
+  - **The same delete confirmation is reused for three different kinds of object.**
+    Deleting a *template* and deleting a *snippet* both ask "Delete instance X
+    permanently? / If you delete this Distro you won't be able to recover it"
+    (ST-38, ST-54, captured at 2x in `121` and `133b`).
+  - **Two dangerous one-click actions with no confirmation:** *Stop WSL*, styled like Save
+    and 10px from it, which `wsl --shutdown`s every distro (ST-04); and MCP *regenerate
+    token*, measured changing `dWc9-Axyonz9d1ffo4QcEqvTFGM_8Lsn` to
+    `1oj80i0T3TVSxvQ0Ek0HGwpdI3sshZQN` in one click with no toast and no notice that
+    configured clients break (ST-19).
+  - **Nine verified passes are recorded too**, so a later regression is visible: the
+    seven-group accordion, the live conditional-dependency graph reading pending edits, the
+    documented-default rendering for twelve booleans, a clean 900px narrow pass, the
+    `.wslconfig` writer really being a diff, the enumeration preserving unknown values, the
+    nine-language list, and `actions_screen`'s correct `MergeSemantics(Tooltip(IconButton))`
+    -- which is what makes ST-18 and ST-40 findings rather than a house style.
+  - **Host state restored and re-verified:** `.wslconfig` back to 0 bytes from
+    `%TEMP%\wslconfig-p07-backup`, prefs restored from
+    `%TEMP%\wslm-prefs-p07-settings.json` (`language=en`, `themeMode=light`,
+    `quickSettingsTitles` empty, MCP off), and the `audit-demo` snippet deleted through the
+    UI. The Cloudflare tunnel and any real disk mount were deliberately not triggered and
+    are listed in the index's "not examined" section.
+  - No Dart code changed -- this task produced two Markdown files and screenshots -- so
+    there is nothing new to unit-test. `flutter analyze` was run anyway: **109 issues, 0
+    errors and 2 warnings**, both warnings pre-existing (`wsl.dart:1744`,
+    `test/mocks.dart:597`).
 
 - [ ] Audit the Pro surfaces:
   - `lib/screens/ai_workspace_screen.dart`: card layout, the four lifecycle states, error text legibility, progress visibility, dashboard buttons
