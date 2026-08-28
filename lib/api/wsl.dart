@@ -15,7 +15,9 @@ import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/wsl_args.dart';
+import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 import 'package:wsl2distromanager/api/wsl_conf.dart';
+import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -50,13 +52,38 @@ class WSLApi {
   final ExecutionBroker? _broker;
   static const Duration _remoteListTimeout = Duration(seconds: 12);
 
-  WSLApi({Shell? shell, ExecutionBroker? broker})
+  /// Whether a [Shell] was handed in. Only tests do that, and it decides which
+  /// capability cache this instance reads — see [capabilities].
+  final bool _hasInjectedShell;
+
+  WslCapabilityService? _capabilities;
+
+  WSLApi(
+      {Shell? shell,
+      ExecutionBroker? broker,
+      WslCapabilityService? capabilities})
       : shell = shell ?? ProcessShell(),
-        _broker = broker {
+        _broker = broker,
+        _hasInjectedShell = shell != null,
+        _capabilities = capabilities {
     if (!inited) {
       inited = true;
       App().getDistroLinks();
     }
+  }
+
+  /// Where `--version` / `--status` answers come from.
+  ///
+  /// The app-wide singleton in production, so the probe runs once for the whole
+  /// process however many `WSLApi()` instances get constructed. An instance
+  /// built around an **injected** shell gets its own service instead: otherwise
+  /// a test's fake `wsl.exe` would be overruled by the real one on the
+  /// developer's machine, and the code path under test would be chosen by the
+  /// host rather than by the fixture.
+  WslCapabilityService get capabilities {
+    if (_capabilities != null) return _capabilities!;
+    if (!_hasInjectedShell) return WslCapabilityService.instance;
+    return _capabilities = WslCapabilityService(apiBuilder: () => this);
   }
 
   bool get _useRemoteWsl {
@@ -122,7 +149,15 @@ class WSLApi {
     return input.replaceAll("'", "''");
   }
 
-  Future<String> _readRemoteWslConfigText() async {
+  /// The remote `.wslconfig`, or null when the host could not be reached.
+  ///
+  /// The difference matters as much as it does for `/etc/wsl.conf`: an
+  /// *unreadable* config must never come back as an *empty* one, or the next
+  /// Save writes a file containing nothing but the key the user happened to
+  /// touch and the rest of the remote host's configuration is gone. The
+  /// PowerShell prints nothing when the file merely does not exist, which is
+  /// still exit 0 — a genuinely empty config.
+  Future<String?> _readRemoteWslConfigText() async {
     final script =
         r"$p = Join-Path $env:USERPROFILE '.wslconfig'; if (Test-Path -LiteralPath $p) { Get-Content -LiteralPath $p -Raw }";
     final result = (_broker != null)
@@ -139,7 +174,12 @@ class WSLApi {
           ));
 
     if (result.exitCode != 0) {
-      return '';
+      logDebug(
+          'Could not read the remote .wslconfig on $remoteTargetLabel: '
+          '${result.stderr}',
+          null,
+          null);
+      return null;
     }
 
     return result.stdout;
@@ -526,112 +566,89 @@ class WSLApi {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
-  /// Write wslconfig file
-  void writeConfig(String text) async {
+
+  /// Read `%UserProfile%\.wslconfig` as a mutable, section-aware model, or null
+  /// when the file could not be read at all.
+  ///
+  /// A machine with no `.wslconfig` reads as an **empty** config, not an error,
+  /// and the file is *not* created as a side effect of reading it — the old
+  /// [readConfig] called `createSync()` on the read path, so merely opening
+  /// Settings left an empty `.wslconfig` behind on a machine that never had
+  /// one.
+  ///
+  /// Null is reserved for "could not read": an unreachable remote host, or a
+  /// local file that exists and will not open. Handing an empty config back for
+  /// those would let the next Save replace the whole file with the one key the
+  /// user touched — the same distinction [readWSLConf] draws for `wsl.conf`.
+  Future<WslConfigFile?> readWslConfig() async {
     if (_useRemoteWsl) {
-      await _writeRemoteWslConfigText('[wsl2]\n\n$text');
-      return;
+      final String? text = await _readRemoteWslConfigText();
+      return text == null ? null : WslConfigFile.parse(text);
     }
 
-    File file = File(getWslConfigPath());
+    final File file = File(getWslConfigPath());
     if (!file.existsSync()) {
-      file.createSync();
+      return WslConfigFile.empty();
     }
-    file.writeAsStringSync('[wsl2]\n\n$text');
+    try {
+      return WslConfigFile.parse(file.readAsStringSync());
+    } on FileSystemException catch (error, stack) {
+      logError(error, stack, null);
+      return null;
+    }
   }
 
-  /// Set wslconfig setting
-  void setConfig(String parent, String key, String value) async {
-    final escapedKey = RegExp.escape(key);
-    if (_useRemoteWsl) {
-      String text = await _readRemoteWslConfigText();
-
-      // Check if parent exists
-      if (text.contains('[$parent]')) {
-        // Check if key exists with regex
-        RegExp regex = RegExp('$escapedKey[ ]*=', multiLine: true);
-        if (regex.hasMatch(text)) {
-          // Replace key value
-          text = text.replaceAll(RegExp('$escapedKey[ ]*=(.*)', multiLine: true), '$key = $value');
-        } else {
-          // Add key value
-          text = text.replaceAll('[$parent]', '[$parent]\n$key = $value');
-        }
-      } else {
-        // Add parent and key value
-        text += '\n[$parent]\n$key = $value';
+  /// Write [config] back, whole file at once.
+  ///
+  /// Whole-file is the point: the old [setConfig] ran one unanchored
+  /// `replaceAll` per key across the entire text, which is where the
+  /// section-blindness (CC-3), the case-sensitivity (CC-4) and the
+  /// comment-absorbing write (CC-5) all came from. Returns whether the write
+  /// succeeded so a Save can say so instead of assuming.
+  Future<bool> writeWslConfig(WslConfigFile config) async {
+    try {
+      if (_useRemoteWsl) {
+        await _writeRemoteWslConfigText(config.serialize());
+        return true;
       }
 
-      await _writeRemoteWslConfigText(text);
-      return;
-    }
-
-    File file = File(getWslConfigPath());
-    if (!file.existsSync()) {
-      file.createSync();
-    }
-    String text = file.readAsStringSync();
-
-    // Check if parent exists
-    if (text.contains('[$parent]')) {
-      // Check if key exists with regex
-      RegExp regex = RegExp('$escapedKey[ ]*=', multiLine: true);
-      if (regex.hasMatch(text)) {
-        // Replace key value
-        text = text.replaceAll(RegExp('$escapedKey[ ]*=(.*)', multiLine: true), '$key = $value');
-      } else {
-        // Add key value
-        text = text.replaceAll('[$parent]', '[$parent]\n$key = $value');
+      final File file = File(getWslConfigPath());
+      if (!file.parent.existsSync()) {
+        file.parent.createSync(recursive: true);
       }
-    } else {
-      // Add parent and key value
-      text += '\n[$parent]\n$key = $value';
+      file.writeAsStringSync(config.serialize());
+      return true;
+    } catch (error, stack) {
+      logError(error, stack, null);
+      return false;
     }
-
-    // Write to file
-    file.writeAsStringSync(text);
   }
 
-  /// Read wslconfig file
-  Future<Map<String, String>> readConfig() async {
-    if (_useRemoteWsl) {
-      Map<String, String> config = {};
-      String key = '', value = '';
-      String text = await _readRemoteWslConfigText();
-      List<String> lines = text.split('\n');
-
-      for (var line in lines) {
-        if (line.isNotEmpty && line.contains('=')) {
-          key = line.substring(0, line.indexOf('='));
-          key = key.replaceAll(' ', '');
-          value = line.substring(line.indexOf('=') + 1, line.length);
-          value = value.replaceAll(' ', '');
-          config[key] = value;
-        }
-      }
-      return config;
-    }
-
-    File file = File(getWslConfigPath());
-    if (!file.existsSync()) {
-      file.createSync();
-    }
-
-    Map<String, String> config = {};
-    String key = '', value = '';
-    List<String> lines = await file.readAsLines();
-
-    for (var line in lines) {
-      if (line.isNotEmpty && line.contains('=')) {
-        key = line.substring(0, line.indexOf('='));
-        key = key.replaceAll(' ', '');
-        value = line.substring(line.indexOf('=') + 1, line.length);
-        value = value.replaceAll(' ', '');
-        config[key] = value;
-      }
-    }
-    return config;
+  /// Read, [mutate] and write back `.wslconfig` in one pass.
+  ///
+  /// A config that could not be read is not written: the rest of the file is
+  /// not ours to replace with the one key we were asked to change.
+  Future<bool> updateWslConfig(
+      void Function(WslConfigFile config) mutate) async {
+    final WslConfigFile? config = await readWslConfig();
+    if (config == null) return false;
+    mutate(config);
+    return writeWslConfig(config);
   }
+
+  /// Set one `.wslconfig` key, in the section WSL will actually read it from.
+  Future<bool> setConfig(String key, String value) => updateWslConfig(
+      (config) => config.set(config.sectionFor(key), key, value));
+
+  /// Remove one `.wslconfig` key so its documented default applies again.
+  Future<bool> removeConfig(String key) =>
+      updateWslConfig((config) => config.remove(config.sectionFor(key), key));
+
+  /// Every documented key currently in `.wslconfig`, by key name. Empty when
+  /// the file could not be read.
+  Future<Map<String, String>> readConfig() async =>
+      (await readWslConfig())?.flatten() ?? <String, String>{};
+
 
   /// Open wslconfig file
   void editConfig() async {
@@ -1644,9 +1661,74 @@ try {
     return list;
   }
 
+  /// Whether two paths name the same directory.
+  ///
+  /// Case-insensitive on Windows, where the remote branch always is: the remote
+  /// host is a Windows machine even when this app is not running on one.
+  bool _isSamePath(String a, String b) {
+    final canonicalA = p.canonicalize(a);
+    final canonicalB = p.canonicalize(b);
+    if (Platform.isWindows || _useRemoteWsl) {
+      return canonicalA.toLowerCase() == canonicalB.toLowerCase();
+    }
+    return canonicalA == canonicalB;
+  }
+
+  /// Where a move of [distro] would currently go: the supported one-liner, or
+  /// the export → unregister → import fallback.
+  ///
+  /// Public so the confirmation dialog can say which one it is about to run.
+  /// #280 is a user who clicked **Move**, came back to a closed app and a
+  /// missing distro; naming the destructive path before starting it is exactly
+  /// what that report asked for.
+  Future<bool> supportsNativeMove() async =>
+      (await capabilities.load()).supportsManage;
+
   /// Move WSL distro to another location by [distro] and [newPath].
-  /// Returns [ProcessResult] of the command.
+  ///
+  /// Prefers `wsl --manage <distro> --move <path>` (WSL 2.5+), which is one
+  /// supported operation that never unregisters anything. The export →
+  /// unregister → import path below is kept only for older builds: it is
+  /// careful — size floor, recovery marker, startup recovery dialog — but it
+  /// has a window in which the distro exists **only** as a tar file, and that
+  /// window is what #280 fell into (audit cli-flags CC-2, P05-15).
+  ///
+  /// The fallback is never used as a *recovery* from a failed native move: if
+  /// wsl.exe has the verb and the verb failed, the reason is reported and the
+  /// distro is left alone. Retrying a failure with the destructive path is how
+  /// a recoverable error becomes an unrecoverable one.
   Future<String> move(String distro, String newPath) async {
+    if (await supportsNativeMove()) {
+      // Only the remote branch has a documented default location to fall back
+      // to. Locally, an empty target would canonicalize to the process's
+      // working directory, which is not where anyone means to put a distro.
+      final targetPath = newPath.trim().isEmpty
+          ? (_useRemoteWsl ? _remoteDefaultInstallPath(distro) : '')
+          : newPath;
+      if (targetPath.isEmpty) {
+        throw Exception("Cannot move '$distro': no target path was given.");
+      }
+      final currentPath = _useRemoteWsl
+          ? _remoteInstallPathFor(distro)
+          : getInstancePath(distro).path;
+      if (_isSamePath(currentPath, targetPath)) {
+        throw Exception(
+            "Cannot move '$distro': new path must be different from current path ($currentPath).");
+      }
+
+      // A running distro holds its VHD open. `--manage` reports that as a
+      // failure rather than working around it, so terminate first — this is a
+      // per-distro stop, not a global shutdown.
+      await stop(distro);
+
+      final result = await manageMove(distro, targetPath);
+      if (result.ok) {
+        await prefs.setString('Path_$distro', targetPath);
+        return result.text;
+      }
+      throw Exception('WSL move failed: ${result.text}');
+    }
+
     if (_useRemoteWsl) {
       final targetPath = newPath.trim().isEmpty
           ? _remoteDefaultInstallPath(distro)
@@ -1655,8 +1737,7 @@ try {
       // Same safety net as the local branch below: refuse a no-op move
       // instead of exporting/removing/reimporting for nothing.
       final currentPath = _remoteInstallPathFor(distro);
-      if (p.canonicalize(currentPath).toLowerCase() ==
-          p.canonicalize(targetPath).toLowerCase()) {
+      if (_isSamePath(currentPath, targetPath)) {
         throw Exception(
             "Cannot move '$distro': new path must be different from current path ($currentPath).");
       }
@@ -1720,17 +1801,9 @@ try {
 
     // Check if new path is same as old path (normalize + absolute paths, compare case-insensitive on Windows)
     String currentPath = getInstancePath(distro).path;
-    String canonicalCurrent = p.canonicalize(currentPath);
-    String canonicalNew = p.canonicalize(path.path);
-    bool samePath;
-    if (Platform.isWindows) {
-      samePath = canonicalCurrent.toLowerCase() == canonicalNew.toLowerCase();
-    } else {
-      samePath = canonicalCurrent == canonicalNew;
-    }
-    if (samePath) {
+    if (_isSamePath(currentPath, path.path)) {
       throw Exception(
-          "Cannot move '$distro': new path must be different from current path ($canonicalCurrent).");
+          "Cannot move '$distro': new path must be different from current path (${p.canonicalize(currentPath)}).");
     }
 
     // Export
@@ -1909,5 +1982,133 @@ try {
       return 'root';
     }
     return utf8Convert(result.stdout).trim();
+  }
+
+  // ===========================================================================
+  // wsl.exe verbs added by Phase 05 (P05-08, P05-15, P05-16, P05-23).
+  //
+  // Every one of them routes through [runVerb] rather than assembling its own
+  // process call, so the argument list stays a `List<String>` — no quoting, no
+  // shell — and stderr comes back to the caller instead of being discarded.
+  // That last part is the point of P05-08: wsl.exe reports a refused
+  // `.wslconfig` key, an unsupported host CPU and a clamped `processors` value
+  // on stderr with exit code 0, so a caller that reads only the exit code
+  // cannot tell a working command from a silently ignored one (runtime R-1,
+  // R-4, R-9).
+  // ===========================================================================
+
+  /// Run [args] and hand back **both** channels and the exit code.
+  ///
+  /// Raw bytes on both channels, decoded through [utf8Convert]: wsl.exe answers
+  /// `--version`, `--status` and its own failures in UTF-16, and a strict utf8
+  /// decoder throws a `FormatException` on that instead of returning the text.
+  Future<WslOutput> runVerb(List<String> args, {Duration? timeout}) async {
+    try {
+      var future = _runWsl(args, stdoutEncoding: null, stderrEncoding: null);
+      if (timeout != null) {
+        future = future.timeout(timeout);
+      }
+      final ProcessResult result = await future;
+      return WslOutput(
+        result.exitCode,
+        utf8Convert(result.stdout is List<int>
+            ? result.stdout as List<int>
+            : utf8.encode(result.stdout?.toString() ?? '')),
+        utf8Convert(result.stderr is List<int>
+            ? result.stderr as List<int>
+            : utf8.encode(result.stderr?.toString() ?? '')),
+      );
+    } on TimeoutException {
+      return WslOutput(-1, '', 'wsl ${args.join(' ')} timed out');
+    } catch (error, stack) {
+      logDebug('wsl ${args.join(' ')} failed: $error', stack, null);
+      return WslOutput(-1, '', error.toString());
+    }
+  }
+
+  /// `wsl --version`. Inbox WSL rejects the flag outright, which is the
+  /// documented probe for "is this the Store build" (`systemd.md:30`).
+  Future<WslOutput> versionInfo() =>
+      runVerb(['--version'], timeout: const Duration(seconds: 20));
+
+  /// `wsl --status`: default distro, default version, and on some builds the
+  /// kernel version.
+  Future<WslOutput> statusInfo() =>
+      runVerb(['--status'], timeout: const Duration(seconds: 20));
+
+  /// `wsl --manage <distro> <option> [value]`, the WSL 2.5+ verb.
+  ///
+  /// Callers must check [WslCapabilities.supportsManage] first — an older
+  /// wsl.exe answers with `Invalid command line option` and no side effect,
+  /// which is recoverable but not a message to show a user.
+  Future<WslOutput> manage(String distribution, String option,
+          [String? value]) =>
+      runVerb([
+        '--manage',
+        distribution,
+        option,
+        if (value != null) value,
+      ], timeout: const Duration(minutes: 30));
+
+  /// Move [distribution]'s storage to [newPath] in one supported operation.
+  ///
+  /// This is the whole reason P05-15 exists: [move] does the same job as
+  /// export → **unregister** → import, and issue #280 is a user who lost a
+  /// distro inside that window. `--manage --move` never unregisters anything.
+  Future<WslOutput> manageMove(String distribution, String newPath) =>
+      manage(distribution, '--move', newPath);
+
+  /// Grow [distribution]'s VHD to [size].
+  ///
+  /// `disk-space.md:52-58`: the format is `<Value>B|MB|GB|TB` and **decimals
+  /// are rejected** — `2.5TB` is not a size. Requires `wsl --shutdown` first,
+  /// which is the caller's job.
+  Future<WslOutput> manageResize(String distribution, String size) =>
+      manage(distribution, '--resize', size);
+
+  /// Make [distribution]'s **existing** VHD sparse, so freed space is returned
+  /// to Windows.
+  ///
+  /// Distinct from `[experimental] sparseVhd`, which only affects VHDs created
+  /// *after* it is set — the confusion the audit records as F-3.
+  Future<WslOutput> manageSetSparse(String distribution, bool sparse) =>
+      manage(distribution, '--set-sparse', sparse ? 'true' : 'false');
+
+  /// Set [distribution]'s default user without editing `wsl.conf`.
+  ///
+  /// The modern replacement for `<distro> config --default-user`, which
+  /// `basic-commands.md:152` documents as not working for imported distros —
+  /// and this app imports everything it creates.
+  Future<WslOutput> manageSetDefaultUser(String distribution, String user) =>
+      manage(distribution, '--set-default-user', user);
+
+  /// `wsl --update`, optionally through the documented Store-free path.
+  ///
+  /// `--web-download` is `compare-versions.md:102`'s answer for machines where
+  /// the Microsoft Store is blocked by policy, which is most managed fleets.
+  Future<WslOutput> updateWsl({bool webDownload = false}) => runVerb([
+        '--update',
+        if (webDownload) '--web-download',
+      ], timeout: const Duration(minutes: 20));
+
+  /// Disk usage of [distribution] as the system distro sees it.
+  ///
+  /// `disk-space.md:30`'s documented incantation. It reports what the distro
+  /// *uses*, which is the number [getSize]'s `ext4.vhdx` length cannot give —
+  /// a VHD never shrinks on its own, so the two together are what makes
+  /// "80 GB allocated, 12 GB used, reclaim it" sayable.
+  Future<WslDiskUsage?> diskUsage(String distribution) async {
+    final result = await runVerb(
+        ['--system', '-d', distribution, 'df', '-k', '/mnt/wslg/distro'],
+        timeout: const Duration(seconds: 30));
+    if (!result.ok) {
+      logDebug(
+          'df in the system distro failed for $distribution: '
+          '${result.stderr}',
+          null,
+          null);
+      return null;
+    }
+    return WslDiskUsage.parseDf(result.stdout);
   }
 }

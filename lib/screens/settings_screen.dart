@@ -10,6 +10,8 @@ import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_capabilities.dart';
+import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -34,6 +36,21 @@ class SettingsPage extends StatefulWidget {
 class SettingsPageState extends State<SettingsPage> {
   Map<String, TextEditingController> _settings =
       <String, TextEditingController>{};
+
+  /// The `.wslconfig` file as it was read, mutated in place by Save.
+  WslConfigFile? _config;
+
+  /// Every documented key's value at load time.
+  ///
+  /// Save compares against this and writes **only** what changed. That is what
+  /// makes "load → Save leaves the file byte-identical apart from the key the
+  /// user edited" true: the old loop re-emitted every non-empty key into
+  /// `[wsl2]` on every Save, which is how a hand-added `[experimental]` key was
+  /// silently relocated into a section WSL ignores it in (audit CC-3, R-4).
+  Map<String, String> _loadedConfig = <String, String>{};
+
+  /// What the installed wsl.exe can do, once the probe answers.
+  WslCapabilities? _capabilities;
 
   final TextEditingController _syncIpTextController = TextEditingController();
   final TextEditingController _syncPasswordController = TextEditingController();
@@ -81,9 +98,26 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   void readData() async {
-    final Map<String, String> settings = await WSLApi().readConfig();
+    // The whole file, not a flat key→value map: Save writes back into this
+    // model so comments, blank lines, key order, unknown keys and the sections
+    // they sit in all survive a round trip (doc/audit/wsl-docs/ P05-02).
+    _config = await WSLApi().readWslConfig();
+    if (_config == null) {
+      // Unreadable, not empty. Every control still renders, but Save is a
+      // no-op — replacing a file we could not read with the one key the user
+      // touched is worse than not saving.
+      Notify.message('wslconfigwritefailed-text'.i18n());
+    }
+    final Map<String, String> settings =
+        _config?.flatten() ?? <String, String>{};
+    _loadedConfig = Map<String, String>.from(settings);
     settings.forEach((key, value) {
       _settings[key] = TextEditingController(text: value);
+    });
+    // The version the `--manage` affordances gate on, and the answer to
+    // "which WSL do I have" the app never used to give (P05-08).
+    WSLApi().capabilities.load().then((capabilities) {
+      if (mounted) setState(() => _capabilities = capabilities);
     });
     String? syncIP = prefs.getString('SyncIP');
     if (syncIP != null && syncIP != '') {
@@ -214,7 +248,8 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void saveSettings(BuildContext context, {bool dispose = false}) {
+  Future<void> saveSettings(BuildContext context,
+      {bool dispose = false}) async {
     final remoteTarget = _remoteWslTargetController.text.trim();
     if (_useRemoteWsl && !_isRemoteWslTargetValid(remoteTarget)) {
       if (!dispose) {
@@ -300,31 +335,36 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("DataPath", _settings['General Data Location']!.text);
     }
 
-    final experimentalKeys = [
-      'autoMemoryReclaim',
-      'sparseVhd',
-      'bestEffortDnsParsing',
-      'dnsTunnelingIpAddress',
-      'initialAutoProxyTimeout',
-      'ignoredPorts',
-      'hostAddressLoopback'
-    ];
-
-    _settings.forEach((key, value) {
-      if (key != 'Default Distro Location' &&
-          key != 'General Data Location' &&
-          value.text.isNotEmpty) {
-        String section = 'wsl2';
-        if (experimentalKeys.contains(key)) {
-          section = 'experimental';
-        }
-        WSLApi().setConfig(section, key, value.text);
-      }
-    });
+    await _saveWslConfig();
     hasPushed = false;
 
     if (!dispose) {
       router.pushNamed('home');
+    }
+  }
+
+  /// The two `settingsWidget` names that are app preferences rather than
+  /// `.wslconfig` keys, and must never reach the file.
+  static const Set<String> _appPreferenceSettings = <String>{
+    'Default Distro Location',
+    'General Data Location',
+  };
+
+  /// Write back only what the user actually changed — see
+  /// [applyWslConfigEdits], which is where the diff and its reasoning live.
+  Future<void> _saveWslConfig() async {
+    final config = _config;
+    if (config == null) return;
+
+    final edits = <String, String>{};
+    _settings.forEach((key, controller) {
+      if (_appPreferenceSettings.contains(key)) return;
+      edits[key] = controller.text;
+    });
+
+    if (applyWslConfigEdits(config, _loadedConfig, edits) == 0) return;
+    if (!await WSLApi().writeWslConfig(config)) {
+      Notify.message('wslconfigwritefailed-text'.i18n());
     }
   }
 
@@ -1023,6 +1063,7 @@ class SettingsPageState extends State<SettingsPage> {
             style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
           ),
         ),
+        _wslVersionPanel(context),
         settingsWidget(context,
             title: 'kernel',
             tooltip: 'absolutewindowspath-text'.i18n(),
@@ -1140,6 +1181,91 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  /// Which WSL is installed, what it said while being asked, and the one-click
+  /// update (P05-08, P05-23).
+  ///
+  /// The version is not decoration: everything from `--manage` on is gated on
+  /// it, and until now the app could not answer "which WSL do I have" anywhere.
+  /// The warnings underneath are the half a version number cannot supply —
+  /// wsl.exe refuses a `.wslconfig` key, or an unsupported host CPU, on stderr
+  /// **with exit code 0** (runtime R-1, R-4), and the app used to discard every
+  /// one of those lines.
+  Widget _wslVersionPanel(BuildContext context) {
+    final capabilities = _capabilities;
+    final label = capabilities == null
+        ? '…'
+        : (capabilities.version ??
+            (capabilities.wslMissing
+                ? 'wslnotfound-text'.i18n()
+                : 'wslinbox-text'.i18n()));
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: InfoLabel(
+        label: 'wslversion-text'.i18n(),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(label),
+                const SizedBox(width: 12.0),
+                Button(
+                  onPressed: _updatingWsl
+                      ? null
+                      : () => _runWslUpdate(webDownload: false),
+                  child: Text('updatewsl-text'.i18n()),
+                ),
+                const SizedBox(width: 8.0),
+                Tooltip(
+                  message: 'updatewslwebdownloadinfo-text'.i18n(),
+                  child: Button(
+                    onPressed: _updatingWsl
+                        ? null
+                        : () => _runWslUpdate(webDownload: true),
+                    child: Text('updatewslwebdownload-text'.i18n()),
+                  ),
+                ),
+              ],
+            ),
+            if (capabilities != null && capabilities.warnings.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '${'wslreported-text'.i18n()}\n'
+                  '${capabilities.warnings.join('\n')}',
+                  style: TextStyle(
+                      color: Colors.warningPrimaryColor, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _updatingWsl = false;
+
+  Future<void> _runWslUpdate({required bool webDownload}) async {
+    setState(() => _updatingWsl = true);
+    Notify.message('updatingwsl-text'.i18n(), loading: true);
+    final result = await WSLApi().updateWsl(webDownload: webDownload);
+    // `--update` prints its progress and its "already up to date" answer on
+    // stdout, so the text is worth showing either way rather than a bare
+    // success/failure.
+    Notify.message(result.ok
+        ? '${'wslupdated-text'.i18n()} ${result.text}'.trim()
+        : 'wslupdatefailed-text'.i18n([result.text]));
+    WSLApi().capabilities.reset();
+    final capabilities = await WSLApi().capabilities.load();
+    if (!mounted) return;
+    setState(() {
+      _updatingWsl = false;
+      _capabilities = capabilities;
+    });
+  }
+
   /// Host memory in whole GB, the ceiling the `memory` and `swap` sliders are
   /// scaled against.
   int get _hostMemoryGb =>
@@ -1149,9 +1275,13 @@ class SettingsPageState extends State<SettingsPage> {
   /// key's documented default, not `false`. Used for the conditional
   /// dependencies below, so an untouched `dnsTunneling` does not grey out the
   /// two keys it gates (doc/audit/wsl-docs/ CC-6).
-  bool _configBool(String name, {required bool fallback}) {
+  ///
+  /// The default comes from [kWslConfigBoolDefaults], the same table
+  /// [_tristateToggle] renders from — one place for the twelve documented
+  /// defaults rather than a literal at each call site.
+  bool _configBool(String name) {
     final value = _settings[name]?.text.trim().toLowerCase() ?? '';
-    if (value.isEmpty) return fallback;
+    if (value.isEmpty) return kWslConfigBoolDefaults[name] ?? false;
     return value == 'true';
   }
 
@@ -1197,14 +1327,14 @@ class SettingsPageState extends State<SettingsPage> {
             title: 'bestEffortDnsParsing',
             tooltip: 'besteffortdnsparsinginfo-text'.i18n(),
             type: SettingsType.bool,
-            enabled: _configBool('dnsTunneling', fallback: true),
+            enabled: _configBool('dnsTunneling'),
             disabledReason:
                 'onlyapplieswhen-text'.i18n(['dnsTunneling = true'])),
         settingsWidget(context,
             title: 'dnsTunnelingIpAddress',
             tooltip: 'dnstunnelingipaddressinfo-text'.i18n(),
             placeholder: '10.255.255.254',
-            enabled: _configBool('dnsTunneling', fallback: true),
+            enabled: _configBool('dnsTunneling'),
             disabledReason:
                 'onlyapplieswhen-text'.i18n(['dnsTunneling = true'])),
         settingsWidget(context,
@@ -1213,7 +1343,7 @@ class SettingsPageState extends State<SettingsPage> {
             type: SettingsType.number,
             unitLabel: 'milliseconds-text'.i18n(),
             placeholder: '1000',
-            enabled: _configBool('autoProxy', fallback: true),
+            enabled: _configBool('autoProxy'),
             disabledReason: 'onlyapplieswhen-text'.i18n(['autoProxy = true'])),
         settingsWidget(context,
             title: 'ignoredPorts',
@@ -1294,18 +1424,7 @@ class SettingsPageState extends State<SettingsPage> {
                 builder: (context) {
                   switch (type) {
                     case SettingsType.bool:
-                      return ToggleSwitch(
-                          checked: _settings[name]!.text == 'true',
-                          onChanged: enabled
-                              ? (value) {
-                                  _settings[name]!.text =
-                                      value ? 'true' : 'false';
-                                  setState(() {
-                                    _settings = _settings;
-                                  });
-                                }
-                              : null,
-                          content: Text(_settings[name]!.text));
+                      return _tristateToggle(context, name, enabled: enabled);
                     case SettingsType.enumeration:
                       return _enumerationBox(name,
                           options: options,
@@ -1335,6 +1454,69 @@ class SettingsPageState extends State<SettingsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// A boolean `.wslconfig` key with the third state the format actually has.
+  ///
+  /// An absent key means the key's **documented default**, and seven of the
+  /// twelve booleans on this screen default to `true` — every one of which used
+  /// to render off, with an empty label, on the ordinary case of a machine with
+  /// no `.wslconfig` at all. A user reading the screen concluded the opposite
+  /// of the truth for all seven (audit CC-1).
+  ///
+  /// The undo button empties the controller, which [_saveWslConfig] turns into
+  /// a line *removed* from the file. That third state had nowhere to be written
+  /// until P05-02 gave the engine a delete branch (CC-11), which is why this
+  /// ships with the engine rather than before it.
+  Widget _tristateToggle(BuildContext context, String name,
+      {required bool enabled}) {
+    final raw = _settings[name]!.text.trim();
+    final isSet = raw.isNotEmpty;
+    final documented = kWslConfigBoolDefaults[name];
+    final checked = isSet ? raw.toLowerCase() == 'true' : (documented ?? false);
+
+    return Row(
+      children: [
+        ToggleSwitch(
+          checked: checked,
+          onChanged: enabled
+              ? (value) {
+                  _settings[name]!.text = value ? 'true' : 'false';
+                  setState(() {
+                    _settings = _settings;
+                  });
+                }
+              : null,
+          content: Text(isSet
+              ? raw
+              : '${checked ? 'true' : 'false'} '
+                  '(${'settingdefault-text'.i18n()})'),
+        ),
+        if (isSet && enabled)
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: Tooltip(
+              message: 'settingunset-text'.i18n(),
+              child: IconButton(
+                icon: const Icon(FluentIcons.undo, size: 14.0),
+                onPressed: () {
+                  _settings[name]!.text = '';
+                  setState(() {
+                    _settings = _settings;
+                  });
+                },
+              ),
+            ),
+          ),
+        if (!isSet)
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: Text('settingunset-text'.i18n(),
+                style: TextStyle(
+                    color: secondaryTextColor(context), fontSize: 12)),
+          ),
+      ],
     );
   }
 

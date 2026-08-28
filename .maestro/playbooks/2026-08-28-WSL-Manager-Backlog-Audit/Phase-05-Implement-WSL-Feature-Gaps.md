@@ -143,10 +143,87 @@ Every setting added must be gated on the minimum WSL version recorded in the aud
     the audit explicitly deferred (*Not scheduled*: "no reported demand") — P05-13 supplies
     the description, which is what the #224-class confusion needs.
 
-- [ ] Implement the **M**-sized surfaces from the audit list, most impactful first. Typical candidates, to be confirmed against `doc/audit/wsl-docs/features.md`:
+- [x] Implement the **M**-sized surfaces from the audit list, most impactful first. Typical candidates, to be confirmed against `doc/audit/wsl-docs/features.md`:
   - Networking mode surface: `networkingMode` mirrored plus its dependants (`firewall`, `dnsTunneling`, `autoProxy`, `hostAddressLoopback`), grouped so mutually exclusive options cannot be set together
   - Disk surface: `sparseVhd` global plus per-distro `wsl --manage <distro> --set-sparse`, wired next to the existing compact/VHD actions
   - Any documented `wsl.exe` flag the app should be using instead of a hand-rolled equivalent (e.g. `--manage --move`, `--import --vhd`, `--export --vhd`)
+
+  **Done 2026-08-28.** Closes ordered-list items **P05-02, P05-08, P05-15, P05-16, P05-23** —
+  every remaining **M** in the list — plus the `.wslconfig` half of **P05-04**, which P05-02
+  unblocked.
+
+  - **The ordered list, not the bullets above, set the scope.** Of the three bullets, the
+    networking-mode surface was already shipped by P05-09/P05-10 in this document's first
+    task, and `--import --vhd` is already what `copyVhd` uses. `--export --format` and
+    `--import-in-place` are **S** items (P05-17, P05-18) scheduled below the M block, so
+    they stay for a later pass; `--export --vhd` is marked **n/a** by [[cli-flags]] — the
+    shipping binary offers only `--format`. What was left in the M column was P05-02, P05-08,
+    P05-15, P05-16 and P05-23, done in that order.
+  - **P05-02 — the `.wslconfig` engine.** New `lib/api/ini_config.dart` holds the model, and
+    both config files are now dialects of it: `wsl_conf.dart` shrank to a schema over it
+    (its 40 tests pass unchanged) and new `lib/api/wslconfig.dart` is the `.wslconfig` one —
+    `#` comments only (R-7), escaped backslashes on the three documented `path` keys
+    (CC-10/R-6), the file's own line endings preserved, and the section each documented key
+    belongs in. `WSLApi.readConfig`/`setConfig`/`writeConfig` (`wsl.dart:529-635`) are
+    replaced by `readWslConfig` / `writeWslConfig` / `updateWslConfig`. `saveSettings` now
+    diffs against the values it loaded (`applyWslConfigEdits`) and writes **only what
+    changed**, so a hand-edited file survives load → Save byte-identical apart from the
+    edited key, and the hardcoded `experimentalKeys` list is gone — the section comes from
+    the file first, then the documented table. One key becomes seven fixes: CC-2, CC-3, CC-4,
+    CC-5, CC-10, CC-11 and S-3.
+  - **P05-04's `.wslconfig` half, now that it can ship.** `_tristateToggle`
+    (`settings_screen.dart`) renders an absent boolean as its documented default with an
+    "unset" caption and an undo button that **removes** the line. The seven documented-`true`
+    keys stop displaying the opposite of the truth (CC-1), and `_configBool` reads its
+    fallback from the same `kWslConfigBoolDefaults` table rather than a literal per call site.
+  - **P05-08 — the capability service.** New `lib/api/wsl_capabilities.dart`: one
+    `wsl --version` + `wsl --status`, cached, exposing `version`, `isStoreWsl`, `atLeast()`
+    and `supportsManage`. It parses by **shape, not by the English label**, because the
+    output is localised — [[runtime]]'s own machine answers in German. It also carries WSL's
+    **stderr** through to the UI, which is the half a version number cannot supply: R-1's
+    "nested virtualization is not supported on this computer" and R-4's unknown-key
+    diagnostics both arrive with **exit code 0**. The version, the warnings and the update
+    buttons render at the top of Global Settings.
+  - **P05-15 — `wsl --manage --move`.** `WSLApi.move` now prefers the native verb on
+    WSL 2.5+: terminate, one `--manage --move`, update `Path_<distro>`. The export →
+    **unregister** → import path stays only as the pre-2.5 fallback. A failed native move is
+    **never** retried down the destructive path — turning a recoverable error into an
+    unrecoverable one is exactly #280. The Move confirmation now names which of the two is
+    about to run (`movenative-text` / `movelegacy-text`), which is what #280 itself asked for.
+  - **P05-16 — the disk surface.** New `lib/dialogs/disk_dialog.dart`, on the distro action
+    bar next to Compact: allocated (`ext4.vhdx` via `findVhdxPath`, not the stale `Path_`
+    pref) against used/free from the documented `wsl --system -d <d> df -k /mnt/wslg/distro`,
+    then `--manage --resize` (whole numbers only — `2.5TB` is refused where the reason can be
+    shown) and `--manage --set-sparse`, whose description says in so many words that it is
+    **not** `[experimental] sparseVhd`. Below WSL 2.5 the controls are disabled with
+    `requireswsl-text` rather than failing on wsl.exe's own "Invalid command line option".
+    #303's free-space pre-check on Compact already exists (`wsl.dart:1457`) and was left as is.
+  - **P05-23 — `wsl --update`**, with `--web-download` for machines where the Store is
+    blocked, next to the version display.
+  - **Two data-safety holes found while reviewing this change, and closed.** `readWslConfig`
+    returns **null** when the file could not be read — an unreachable remote host used to
+    read as `''`, so the next Save would have replaced the host's whole `.wslconfig` with the
+    one key the user touched. And a native move with an empty target used to canonicalize to
+    the process's working directory; it now refuses. Both have tests.
+  - **Test isolation the move tests caught.** The first version read
+    `WslCapabilityService.instance`, so the **real** `wsl.exe` on the build machine decided
+    which branch the tests took. `WSLApi` now resolves its capability service through the
+    injected shell, and the app-wide singleton only when there isn't one.
+  - **34 new i18n keys with real translations in all nine locales**
+    (`Working/phase-05-task03-i18n.json`, applied by `Working/update_i18n_keys.dart`), all
+    pinned in `test/locales_test.dart`.
+  - **Verification:** `flutter test` **568 passing** (was 480) — 42 in the new
+    `test/wslconfig_test.dart`, 17 in `test/wsl_capabilities_test.dart`, 12 in
+    `test/disk_dialog_test.dart`, 17 added to `test/wsl_test.dart`.
+    `flutter analyze` 105 issues, **0 errors**, byte-identical to the count this document's
+    previous task recorded. `dart run scripts/check_translations.dart` exit 0.
+    `flutter test integration_test/` is `+17 -4`, the same four debug-connection failures as
+    the pre-existing baseline (`Working/phase-05-task03-integration.txt`).
+    `git diff --stat` carries **no formatting churn**: `dart format` reflows ~82 unrelated
+    lines of `wsl.dart` and ~21 of `list_item.dart`, so each touched file was rebuilt as
+    HEAD + this task's hunks only.
+  - **Not done here.** The running-app pass and the screenshots are a later task in this
+    document, as is updating `doc/audit/wsl-docs/index.md`.
 
 - [ ] Implement the **L**-sized surfaces from the audit list. Build each behind the existing screen/route pattern (`lib/nav/router.dart`, `lib/nav/panelist.dart`, `lib/screens/`), following the precedent set by the recently added `create_screen.dart` — a dedicated screen, not a dialog, for anything with long-running progress. Split this task across multiple passes if the audit lists more than one L item, finishing each end to end before starting the next.
 

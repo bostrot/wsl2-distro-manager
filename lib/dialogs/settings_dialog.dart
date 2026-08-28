@@ -264,12 +264,19 @@ Column settingsColumn(
                 return;
               }
 
+              // Say which of the two moves is about to run. On WSL 2.5+ this
+              // is one supported `--manage --move`; below that it is export →
+              // **unregister** → import, and #280 is a user who lost a distro
+              // inside that window without ever being told it existed.
+              final native = await wslApiBuilder().supportsNativeMove();
+
               dialog(
                   item: item,
                   title: '${'move-text'.i18n()} \'${distroLabel(item)}\'',
                   body: '${'movebody-text'.i18n([
                         distroLabel(item)
-                      ])}\n\nTarget: $selectedDirectory',
+                      ])}\n\nTarget: $selectedDirectory'
+                      '\n\n${native ? 'movenative-text'.i18n() : 'movelegacy-text'.i18n()}',
                   submitText: 'move-text'.i18n(),
                   submitStyle: ButtonStyle(
                     backgroundColor: ButtonState.all(Colors.red),
@@ -282,7 +289,7 @@ Column settingsColumn(
                             .i18n([distroLabel(item), selectedDirectory]),
                         loading: true);
                     try {
-                      await WSLApi().move(item, selectedDirectory);
+                      await wslApiBuilder().move(item, selectedDirectory);
                       Notify.message('moved-text'
                           .i18n([distroLabel(item), selectedDirectory]));
                     } catch (e) {

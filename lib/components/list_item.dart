@@ -335,6 +335,26 @@ class Bar extends StatelessWidget {
                   ),
                 ),
               ),
+              // Next to Compact deliberately: "80 GB allocated, 12 GB used"
+              // is the question a user asks *before* reaching for the broom,
+              // and #303 is someone whose compact filled the drive because
+              // nothing showed them the numbers first (audit F-11).
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'diskusage-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon:
+                          const Icon(FluentIcons.hard_drive_group, size: 16.0),
+                      onPressed: () {
+                        plausible.event(name: "wsl_disk");
+                        diskDialog(widget.item);
+                      },
+                    ),
+                  ),
+                ),
+              ),
               MergeSemantics(
                 child: Tooltip(
                   message: 'cleanup-text'.i18n(),

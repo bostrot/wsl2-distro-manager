@@ -82,6 +82,38 @@ class MockShell implements Shell {
   /// them is how the settings dialog's debounce is measured.
   final List<String> runCommands = [];
 
+  /// What `wsl --version` prints. Empty is the *inbox* build, which answers
+  /// nothing useful — and is the default here so a test that does not opt in
+  /// keeps taking the pre-WSL-2.5 code paths (`--manage` unavailable).
+  String wslVersionOutput = '';
+
+  /// Exit code of `wsl --version`. Non-zero is the documented inbox-build
+  /// signature (`systemd.md:30`).
+  int wslVersionExitCode = 0;
+
+  /// What `wsl --status` prints.
+  String wslStatusOutput = '';
+
+  /// Every `ssh` invocation fails — the remote host is unreachable.
+  bool sshFails = false;
+
+  /// Every argument list [run] has been handed, in order. `lastRunArguments`
+  /// only remembers one, which is not enough to assert that a *sequence*
+  /// happened — "terminate, then move" — or that a step did **not**.
+  final List<List<String>> runCalls = <List<String>>[];
+
+  /// Every `wsl --manage` argument list this shell has been handed.
+  final List<List<String>> manageCalls = <List<String>>[];
+
+  /// Every `wsl --update` argument list.
+  final List<List<String>> updateCalls = <List<String>>[];
+
+  /// `wsl --manage` fails with this message instead of succeeding.
+  String? manageFailure;
+
+  /// What `wsl --system … df -k …` prints.
+  String dfOutput = '';
+
   bool simulateExportFailure = false;
   bool simulatePermissionDenied = false;
   bool simulateInvalidPath = false;
@@ -106,10 +138,21 @@ class MockShell implements Shell {
     lastRunExecutable = executable;
     lastRunArguments = arguments;
     lastRunInShell = runInShell;
+    runCalls.add(List<String>.from(arguments));
 
     String stdout = '';
     String stderr = '';
     int exitCode = 0;
+
+    if (sshFails && executable == 'ssh') {
+      return ProcessResult(
+          0,
+          255,
+          stdoutEncoding == null ? <int>[] : '',
+          stderrEncoding == null
+              ? utf8.encode('ssh: connect to host: Connection refused')
+              : 'ssh: connect to host: Connection refused');
+    }
 
     // Every in-distro invocation now arrives as `--exec <shell> -c <script>`
     // (see lib/api/wsl_args.dart), so the command is the last argument
@@ -157,6 +200,40 @@ class MockShell implements Shell {
 
     if (arguments.contains('--list')) {
       stdout = distros.join('\n');
+    }
+
+    if (arguments.length == 1 && arguments.first == '--version') {
+      stdout = wslVersionOutput;
+      exitCode = wslVersionExitCode;
+      if (wslVersionExitCode != 0) {
+        stderr = 'Invalid command line option: --version';
+      }
+    }
+
+    if (arguments.length == 1 && arguments.first == '--status') {
+      stdout = wslStatusOutput;
+    }
+
+    if (arguments.isNotEmpty && arguments.first == '--manage') {
+      manageCalls.add(List<String>.from(arguments));
+      if (manageFailure != null) {
+        stderr = manageFailure!;
+        exitCode = 1;
+      } else if (arguments.contains('--move')) {
+        // The native move relocates the disk without unregistering anything,
+        // which is the whole point of preferring it (audit cli-flags CC-2).
+        final target = arguments[arguments.indexOf('--move') + 1];
+        File('$target/ext4.vhdx').createSync(recursive: true);
+      }
+    }
+
+    if (arguments.isNotEmpty && arguments.first == '--update') {
+      updateCalls.add(List<String>.from(arguments));
+      stdout = 'The most recent version of WSL is already installed.';
+    }
+
+    if (arguments.contains('--system') && arguments.contains('df')) {
+      stdout = dfOutput;
     }
 
     if (arguments.contains('-Command') &&

@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_conf.dart';
+import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -825,6 +826,233 @@ systemd = true
 
       expect(mockShell.lastStartArguments, contains(';/bin/sh'));
       expect(mockShell.lastStartArguments, isNot(contains('--exec')));
+    });
+  });
+
+  /// P05-08, P05-16, P05-23 — wsl.exe verbs the audit found missing entirely
+  /// (doc/audit/wsl-docs/cli-flags.md CC-1, CC-2).
+  ///
+  /// Every assertion here is about the **argument list**, because that is what
+  /// those findings are about: `--manage` takes the distro before the option,
+  /// and nothing may be assembled as a pre-quoted string — `runInShell: false`
+  /// passes a `"` straight through to bash (AGENTS.md).
+  group('wsl.exe verbs', () {
+    test('--version and --status are asked, and answered', () async {
+      mockShell.wslVersionOutput =
+          'WSL version: 2.6.3.0\nKernel version: 6.6.87.2-1\n';
+      mockShell.wslStatusOutput =
+          'Default Distribution: Ubuntu\nDefault Version: 2\n';
+
+      final capabilities = await wslApi.capabilities.load();
+      expect(capabilities.version, '2.6.3.0');
+      expect(capabilities.supportsManage, true);
+      expect(capabilities.defaultDistro, 'Ubuntu');
+      expect(mockShell.runCalls, contains(equals(['--version'])));
+      expect(mockShell.runCalls, contains(equals(['--status'])));
+    });
+
+    test('--manage puts the distro before the option', () async {
+      await wslApi.manageResize('Ubuntu', '256GB');
+      expect(mockShell.manageCalls.single,
+          ['--manage', 'Ubuntu', '--resize', '256GB']);
+    });
+
+    test('--set-sparse writes a bare true/false, never a quoted one', () async {
+      await wslApi.manageSetSparse('Ubuntu', true);
+      expect(mockShell.manageCalls.single,
+          ['--manage', 'Ubuntu', '--set-sparse', 'true']);
+
+      await wslApi.manageSetSparse('Ubuntu', false);
+      expect(mockShell.manageCalls.last,
+          ['--manage', 'Ubuntu', '--set-sparse', 'false']);
+
+      for (final call in mockShell.manageCalls) {
+        expect(call.any((arg) => arg.contains('"')), false);
+      }
+    });
+
+    test('--set-default-user passes the name as one argument', () async {
+      await wslApi.manageSetDefaultUser('Ubuntu', 'ada lovelace');
+      expect(mockShell.manageCalls.single,
+          ['--manage', 'Ubuntu', '--set-default-user', 'ada lovelace']);
+    });
+
+    test('--update takes --web-download only when asked', () async {
+      await wslApi.updateWsl();
+      expect(mockShell.updateCalls.single, ['--update']);
+
+      await wslApi.updateWsl(webDownload: true);
+      expect(mockShell.updateCalls.last, ['--update', '--web-download']);
+    });
+
+    test('--update hands back what wsl.exe said', () async {
+      final result = await wslApi.updateWsl();
+      expect(result.ok, true);
+      expect(result.text, contains('already installed'));
+    });
+
+    test('diskUsage asks the system distro the documented question', () async {
+      mockShell.dfOutput =
+          'Filesystem     1K-blocks     Used Available Use% Mounted on\n'
+          '/dev/sdd        104857600  1048576 103809024   1% /mnt/wslg/distro\n';
+
+      final usage = await wslApi.diskUsage('Ubuntu');
+      expect(mockShell.lastRunArguments,
+          ['--system', '-d', 'Ubuntu', 'df', '-k', '/mnt/wslg/distro']);
+      expect(usage!.usedBytes, 1048576 * 1024);
+      expect(usage.totalBytes, 104857600 * 1024);
+    });
+
+    test('a distro that cannot answer df yields null, not zeroes', () async {
+      mockShell.dfOutput = '';
+      expect(await wslApi.diskUsage('Ubuntu'), isNull);
+    });
+  });
+
+  /// P05-15. #280 is the one finding in this audit with a report of real data
+  /// loss behind it: the old move exports to a tar, **unregisters** the distro
+  /// and imports it back, and the reporter's distro vanished inside that
+  /// window. `--manage --move` has no such window.
+  group('move prefers the native verb (P05-15)', () {
+    setUp(() {
+      mockShell.wslVersionOutput = 'WSL version: 2.6.3.0\n';
+    });
+
+    test('on WSL 2.5+ it issues one --manage --move and never unregisters',
+        () async {
+      mockShell.distros.add('nativemove');
+      File('C:/WSL2-Distros/nativemove/ext4.vhdx').createSync(recursive: true);
+
+      await wslApi.move('nativemove', 'C:/WSL2-Distros/nativemove-target');
+
+      expect(mockShell.manageCalls.single, [
+        '--manage',
+        'nativemove',
+        '--move',
+        'C:/WSL2-Distros/nativemove-target',
+      ]);
+      // The destructive path's three steps, none of which ran.
+      expect(
+          mockShell.runCalls.any((call) => call.contains('--export')), false);
+      expect(mockShell.runCalls.any((call) => call.contains('--unregister')),
+          false);
+      expect(
+          mockShell.runCalls.any((call) => call.contains('--import')), false);
+      expect(mockShell.distros, contains('nativemove'));
+      expect(prefs.getString('Path_nativemove'),
+          'C:/WSL2-Distros/nativemove-target');
+
+      await Directory('C:/WSL2-Distros/nativemove-target')
+          .delete(recursive: true);
+    });
+
+    test('the distro is terminated first, because a running one holds the VHD',
+        () async {
+      mockShell.distros.add('nativemove2');
+      await wslApi.move('nativemove2', 'C:/WSL2-Distros/nativemove2-target');
+
+      final terminate =
+          mockShell.runCalls.indexWhere((c) => c.contains('--terminate'));
+      final move = mockShell.runCalls.indexWhere((c) => c.contains('--move'));
+      expect(terminate, greaterThanOrEqualTo(0));
+      expect(move, greaterThan(terminate));
+
+      await Directory('C:/WSL2-Distros/nativemove2-target')
+          .delete(recursive: true);
+    });
+
+    test('supportsNativeMove reflects the installed build', () async {
+      expect(await wslApi.supportsNativeMove(), true);
+
+      final inbox = WSLApi(shell: MockShell()..wslVersionExitCode = 1);
+      expect(await inbox.supportsNativeMove(), false);
+    });
+
+    test('a failed native move never falls back to the destructive path',
+        () async {
+      // Retrying a recoverable failure with export → unregister → import is
+      // how a recoverable error becomes an unrecoverable one.
+      mockShell.distros.add('failmove');
+      mockShell.manageFailure = 'The system cannot find the path specified.';
+
+      await expectLater(
+          () => wslApi.move('failmove', 'C:/WSL2-Distros/failmove-target'),
+          throwsA(
+              predicate((e) => e.toString().contains('cannot find the path'))));
+
+      expect(mockShell.distros, contains('failmove'));
+      expect(mockShell.runCalls.any((call) => call.contains('--unregister')),
+          false);
+      expect(prefs.getString('MoveOp_Distro'), isNull);
+    });
+
+    test('a no-op move is refused before anything runs', () async {
+      mockShell.distros.add('samepath');
+      await expectLater(
+          () => wslApi.move('samepath', getInstancePath('samepath').path),
+          throwsA(
+              predicate((e) => e.toString().contains('must be different'))));
+      expect(mockShell.manageCalls, isEmpty);
+    });
+
+    test('an empty target is refused rather than resolved to the cwd',
+        () async {
+      // p.canonicalize('') is the process's working directory, which is not
+      // where anyone means to put a distro.
+      mockShell.distros.add('notarget');
+      await expectLater(() => wslApi.move('notarget', '   '),
+          throwsA(predicate((e) => e.toString().contains('no target path'))));
+      expect(mockShell.manageCalls, isEmpty);
+    });
+  });
+
+  /// P05-02 at the API boundary. The model is covered end to end in
+  /// test/wslconfig_test.dart; these two pin the routing decisions `saveSettings`
+  /// depends on. Nothing here touches the real `%UserProfile%\.wslconfig`.
+  group('.wslconfig section routing (P05-02)', () {
+    test('an experimental key is written to [experimental], never [wsl2]',
+        () async {
+      // Runtime R-4: all seven are *rejected* under [wsl2] and the setting is
+      // silently off, with only a stderr line to say so.
+      final config = WslConfigFile.parse('[wsl2]\nmemory = 8GB\n');
+      config.set(config.sectionFor('sparseVhd'), 'sparseVhd', 'true');
+
+      expect(config.get('experimental', 'sparseVhd'), 'true');
+      expect(config.get('wsl2', 'sparseVhd'), isNull);
+      expect(config.serialize(), startsWith('[wsl2]\nmemory = 8GB\n'));
+    });
+
+    test('an unreachable remote host reads as null, never as an empty file',
+        () async {
+      // The difference readWSLConf already draws for wsl.conf: an *unreadable*
+      // config must not come back as an *empty* one, or the next Save replaces
+      // the remote host's whole configuration with the one key the user
+      // touched.
+      SharedPreferences.setMockInitialValues({
+        'DistroPath': defaultPath,
+        'UseRemoteWSL': true,
+        'RemoteWSLTarget': 'user@host',
+      });
+      prefs = await SharedPreferences.getInstance();
+      addTearDown(() async {
+        SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
+        prefs = await SharedPreferences.getInstance();
+      });
+
+      final unreachable = WSLApi(shell: MockShell()..sshFails = true);
+      expect(await unreachable.readWslConfig(), isNull);
+      expect(await unreachable.readConfig(), isEmpty);
+      expect(
+          await unreachable
+              .updateWslConfig((c) => c.set('wsl2', 'memory', '1GB')),
+          false);
+    });
+
+    test('readConfig flattens only the sections the app knows', () async {
+      final config = WslConfigFile.parse(
+          '[wsl2]\nmemory = 8GB\n\n[experimental]\nsparseVhd = true\n'
+          '\n[future]\nsomething = 1\n');
+      expect(config.flatten(), {'memory': '8GB', 'sparseVhd': 'true'});
     });
   });
 }
