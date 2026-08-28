@@ -392,3 +392,68 @@ class MockHttpServer extends Stream<HttpRequest> implements HttpServer {
         onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 }
+
+/// A minimal mock shell that returns configurable results.
+///
+/// Shared: the AI Workspace service tests and the screen tests both drive
+/// an [ExecutionBroker] over this rather than each rolling their own.
+class TestShell implements Shell {
+  String stdoutData = '';
+  String stderrData = '';
+  int exitCode = 0;
+  Duration? artificialDelay;
+  bool throwOnRun = false;
+
+  List<String> lastCommand = [];
+  List<List<String>> allCommands = [];
+
+  @override
+  Future<ProcessResult> run(String executable, List<String> arguments,
+      {String? workingDirectory,
+      Map<String, String>? environment,
+      bool includeParentEnvironment = true,
+      bool runInShell = false,
+      Encoding? stdoutEncoding,
+      Encoding? stderrEncoding}) async {
+    if (throwOnRun) throw Exception('shell error');
+    lastCommand = [executable, ...arguments];
+    allCommands.add([executable, ...arguments]);
+    if (artificialDelay != null) await Future.delayed(artificialDelay!);
+    return ProcessResult(
+      -1, // pid placeholder
+      exitCode,
+      utf8.encode(stdoutData),
+      utf8.encode(stderrData),
+    );
+  }
+
+  @override
+  Future<Process> start(String executable, List<String> arguments,
+      {String? workingDirectory,
+      Map<String, String>? environment,
+      bool includeParentEnvironment = true,
+      ProcessStartMode mode = ProcessStartMode.inheritStdio,
+      bool runInShell = false}) async {
+    if (throwOnRun) throw Exception('shell error');
+    lastCommand = [executable, ...arguments];
+    allCommands.add([executable, ...arguments]);
+    // ExecutionBroker.run() goes through start() so it owns a killable handle;
+    // startPersistent() uses the same entry point for keep-alive sessions.
+    return MockProcess(
+      exitCode: exitCode,
+      stdout: stdoutData,
+      stderr: stderrData,
+      delay: artificialDelay,
+    );
+  }
+
+  void reset() {
+    stdoutData = '';
+    stderrData = '';
+    exitCode = 0;
+    lastCommand.clear();
+    allCommands.clear();
+    artificialDelay = null;
+    throwOnRun = false;
+  }
+}

@@ -652,7 +652,6 @@ class AiWorkspaceService {
         state.checked = true;
         state.hasKnownStatus = true;
         _persistConfirmedState(tool);
-        Notify.message('ai-workspace-started-text'.i18n([config.name]));
         // The start command returning is not the tool serving. A tool with a
         // health gate has to be asked, or the card claims running for the
         // whole ~2 minute migration window and "Open Dashboard" walks the
@@ -660,6 +659,13 @@ class AiWorkspaceService {
         if (config.healthCheck != null) {
           await refreshStatus(tool);
         }
+        // Announce what the gate found, not what was asked for. Notifying
+        // before the re-probe put "Open WebUI is running" on screen next to a
+        // card correctly reading "Starting up...".
+        Notify.message((state.status == ToolStatus.starting
+                ? 'ai-workspace-starting-text'
+                : 'ai-workspace-started-text')
+            .i18n([config.name]));
         return true;
       } else {
         _recordActionFailure(tool, result.stderr);

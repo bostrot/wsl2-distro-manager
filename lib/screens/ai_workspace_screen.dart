@@ -11,6 +11,11 @@ import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
+/// How often a tool still reporting [ToolStatus.starting] is re-probed.
+/// Open WebUI's migrations take ~2 minutes, so this runs a good few times;
+/// each tick is one cheap `docker inspect`.
+const Duration _kStartingPoll = Duration(seconds: 10);
+
 class AiWorkspacePage extends StatefulWidget {
   const AiWorkspacePage({super.key});
 
@@ -28,6 +33,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   final Set<AiWorkspaceTool> _checkingTools = {...AiWorkspaceTool.values};
   // Re-attaches this page to an install that a previous instance started.
   Timer? _installWatch;
+  Timer? _startingWatch;
 
   bool get _isPro {
     try {
@@ -60,8 +66,40 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   @override
   void dispose() {
     _installWatch?.cancel();
+    _startingWatch?.cancel();
     super.dispose();
   }
+
+  /// A tool in [ToolStatus.starting] settles on its own once its container
+  /// finishes migrating — the health gate only has to be asked again. Nothing
+  /// else on this page re-probes a tool that has already been checked, so
+  /// without this poll the card sits on "Starting up..." with Start, Stop and
+  /// the dashboard all disabled until the user happens to click something.
+  /// Observed against a real Open WebUI container: `docker inspect` reported
+  /// `healthy` while the card still read "Startet...".
+  void _syncStartingWatch() {
+    if (_startingTools().isEmpty) {
+      _startingWatch?.cancel();
+      _startingWatch = null;
+      return;
+    }
+    // Already polling — a second timer would just double the probe rate.
+    if (_startingWatch != null) return;
+    _startingWatch = Timer.periodic(_kStartingPoll, (timer) async {
+      final pending = _startingTools();
+      if (!mounted || pending.isEmpty) {
+        timer.cancel();
+        _startingWatch = null;
+        return;
+      }
+      await Future.wait(pending.map(_service.refreshStatus));
+      if (mounted) setState(() {});
+    });
+  }
+
+  List<AiWorkspaceTool> _startingTools() => AiWorkspaceTool.values
+      .where((tool) => _service.getState(tool)?.status == ToolStatus.starting)
+      .toList();
 
   /// An install started before this page was rebuilt is still running in the
   /// service. Poll until it finishes so the card stops showing progress and
@@ -81,7 +119,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       for (final tool in finished) {
         await _service.refreshStatus(tool);
       }
-      if (mounted) setState(() {});
+      if (mounted) setState(_syncStartingWatch);
     });
   }
 
@@ -114,10 +152,19 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       if (_service.getState(tool)?.checked == true) continue;
       unawaited(_service.refreshStatus(tool).then((_) {
         if (mounted) {
-          setState(() => _checkingTools.remove(tool));
+          setState(() {
+            _checkingTools.remove(tool);
+            // A tool seeded or probed as `starting` has to keep being asked.
+            _syncStartingWatch();
+          });
         }
       }));
     }
+
+    // Re-entering the page finds every tool already `checked`, so the loop
+    // above probes nothing — but one of them may still be mid-migration from a
+    // start issued before the user navigated away.
+    _syncStartingWatch();
   }
 
   Future<void> _retryInit() async {
@@ -163,7 +210,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       await _service.start(tool);
     } finally {
       if (context.mounted) {
-        setState(() => _busyTools.remove(tool));
+        setState(() {
+          _busyTools.remove(tool);
+          // start() leaves a health-gated tool on `starting`; poll it out.
+          _syncStartingWatch();
+        });
       }
     }
   }
@@ -178,7 +229,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     });
     await _service.refreshStatus(tool);
     if (mounted) {
-      setState(() => _checkingTools.remove(tool));
+      setState(() {
+        _checkingTools.remove(tool);
+        _syncStartingWatch();
+      });
     }
   }
 

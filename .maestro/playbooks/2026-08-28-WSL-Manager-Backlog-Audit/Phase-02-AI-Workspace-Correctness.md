@@ -415,6 +415,90 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   `dart:io` import gained `Socket`) — no unrelated churn. `dart format` again
   not run, for the reason recorded above.
 
-- [ ] Run `flutter test` and `flutter analyze`, fix every failure, then launch the app with `.maestro/tools/launch.ps1 --dart-define=WSLM_FORCE_PRO=true` and click through the AI Workspace screen: capture `.maestro/screenshots/phase-02/` shots of the not-installed, installing, error-with-message and running states, and confirm no card shows a stale `Installed:` path.
+- [x] Run `flutter test` and `flutter analyze`, fix every failure, then launch the app with `.maestro/tools/launch.ps1 --dart-define=WSLM_FORCE_PRO=true` and click through the AI Workspace screen: capture `.maestro/screenshots/phase-02/` shots of the not-installed, installing, error-with-message and running states, and confirm no card shows a stale `Installed:` path.
+
+  **Done (2026-08-28).** `flutter analyze` 105 issues, unchanged from the
+  baseline every earlier task in this phase recorded — all `info`, plus the one
+  pre-existing `test/mocks.dart:342` warning; none in the AI Workspace files.
+  `flutter test` was 356/356 green before any change and is **360/360** after,
+  with zero skips. (The three `probe script semantics` port tests skip
+  themselves while something real holds 18789 — they did skip mid-session,
+  because the click-through had the OpenClaw gateway listening. The final run
+  was made with the port free so they actually executed.) No failure needed
+  fixing; the two code changes below came out of the click-through, not the
+  test run.
+
+  **Click-through.** `launch.ps1 -Mode run -ForcePro -Width 1280 -Height 900`
+  (the task text spells the raw `--dart-define`; the script's switch for it is
+  `-ForcePro`, and `-Mode run` is required because the gate sits behind
+  `kDebugMode`). Ten shots in `.maestro/screenshots/phase-02/`, every state
+  reached by a real action against the real `ai-workspace` distro — nothing
+  staged:
+  - `01-not-installed.png` — Hermes "Nicht installiert", **no `Installed:`
+    line**, beside OpenClaw and Open WebUI both showing theirs.
+  - `02-installing.png` — spinner in the Install button, siblings disabled.
+  - `03-error-with-message.png` — the real Hermes installer downloads Playwright
+    chromium under its own 600s timeout and so overran the broker's 5-minute
+    one. Card shows the full `TimeoutException` text, a red badge, an **enabled
+    "Wiederholen"**, and the dismiss `×`. No `Installed:` line.
+  - `04-error-persists-across-navigation.png` — the same error after leaving the
+    page and coming back. Named for what it actually proves: `_initService`
+    skips any tool already `checked`, so this is a page rebuild, not a probe.
+    The sticky-through-a-probe path stays covered by the unit tests.
+  - `05-running.png` — OpenClaw green/"läuft" after Start, dashboard action
+    appearing.
+  - `06-starting.png` — Open WebUI blue "Startet...", dashboard rendered but
+    disabled. `docker inspect` confirmed `starting` at that moment.
+  - `07-error-dismissed.png` — `×` releases Hermes back to "Nicht installiert",
+    still with no path (the timed-out install left `/usr/local/lib/hermes-agent`
+    behind but no `hermes` on PATH, so `notInstalled` is the correct answer).
+  - `08-running-open-webui.png`, `09-final-all-stopped.png`.
+
+  **Stale `Installed:` path: confirmed clean.** Across all ten shots no card
+  ever showed "Nicht installiert" together with a path, including the two cases
+  that used to produce it — a card that had just failed an install, and one
+  dismissed back to not-installed. Both tools that *are* installed kept their
+  path through stopped, starting, running and error.
+
+  **Two defects found by the click-through, and fixed here.**
+  1. *The toast contradicted the card.* `start()` raised
+     `ai-workspace-started-text` ("Open WebUI läuft") **before** the health
+     re-probe, so it announced "running" over a card correctly reading
+     "Startet...". The notification now runs after the re-probe and picks its
+     key from the resulting status. No new i18n key — the existing
+     `ai-workspace-starting-text` reads correctly here.
+  2. *`starting` was a terminal state in the UI.* Nothing on this page re-probes
+     a tool once it is `checked`, and the only timer watches installs — so once
+     the health gate answered `starting` the card sat there with Start, Stop and
+     the dashboard all disabled until the user clicked something. Observed live:
+     `docker inspect` reported `healthy` while the card still read "Startet...".
+     Added `_syncStartingWatch()`, a 10s poll that runs only while some tool is
+     `starting` and cancels itself as soon as none is — wired into
+     `_initService` (including the re-entry case, where every tool is already
+     `checked` and the probe loop does nothing), `_handleStart`, the dismiss
+     handler and the install watch. Verified in the rebuilt app: Open WebUI went
+     "Startet..." -> "läuft" on its own, with no interaction.
+
+  Four tests added — two in `test/ai_workspace_service_test.dart` (the toast is
+  now recorded into a list instead of swallowed) and three in a new
+  `test/ai_workspace_screen_test.dart` (settles, stops polling, never starts a
+  poll when nothing is starting). Both fixes were mutation-checked: breaking the
+  key choice and stretching the poll interval each failed exactly the intended
+  test and nothing else. `TestShell` moved from the service test into the shared
+  `test/mocks.dart` rather than being duplicated for the screen test.
+  `git diff --stat` is 5 files + 1 new, no unrelated churn; `dart format` again
+  not run, for the reason recorded above.
+
+  **A third defect was found and deliberately left unfixed** — see the new task
+  below and `Working/pkill-self-kill.md`. It is a different bug class from the
+  four card states this task was asked to verify, and it earns its own task
+  rather than being smuggled into this one.
+
+- [ ] Stop `pkill -f` from killing the shell that runs it, in `lib/api/ai_workspace/service.dart`:
+  - Found by the Phase 02 click-through, not by a test: OpenClaw's **Stop** reported failure with a bare, empty `Error:` line while the gateway had in fact stopped
+  - `pkill -f` matches the command line of its own `bash -c` parent. The `[o]penclaw`/`[h]ermes` bracket idiom shields the *pattern*, but not a second unbracketed mention of the tool elsewhere in the same command string
+  - `hermesAgent.startCommand` (`setsid hermes gateway` after the `pkill`) and `openClaw.stopCommand` (`openclaw gateway stop` before it) both self-kill; Hermes therefore cannot start at all. Reproductions and a suggested `_killByPattern()` helper are in `Working/pkill-self-kill.md`
+  - Verify against the real distro, not only the mock — a canned stdout cannot show a shell that killed itself
+  - Also make `stop()`'s failure branch fall back to a real message when `result.stderr` is empty, instead of rendering `Error:` with nothing after it
 
 - [ ] Format only the touched files, confirm `git diff --stat` shows no unrelated churn, and commit the AI Workspace correctness fixes and the `navbar.dart` removal on `beta`.

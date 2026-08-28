@@ -1,77 +1,14 @@
-import 'dart:convert';
-import 'dart:io' show ProcessResult, Process, ProcessStartMode, Socket;
+import 'dart:io' show Process, Socket;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:localization/localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
-import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
 import 'mocks.dart';
-
-/// A minimal mock shell that returns configurable results.
-class TestShell implements Shell {
-  String stdoutData = '';
-  String stderrData = '';
-  int exitCode = 0;
-  Duration? artificialDelay;
-  bool throwOnRun = false;
-
-  List<String> lastCommand = [];
-  List<List<String>> allCommands = [];
-
-  @override
-  Future<ProcessResult> run(String executable, List<String> arguments,
-      {String? workingDirectory,
-      Map<String, String>? environment,
-      bool includeParentEnvironment = true,
-      bool runInShell = false,
-      Encoding? stdoutEncoding,
-      Encoding? stderrEncoding}) async {
-    if (throwOnRun) throw Exception('shell error');
-    lastCommand = [executable, ...arguments];
-    allCommands.add([executable, ...arguments]);
-    if (artificialDelay != null) await Future.delayed(artificialDelay!);
-    return ProcessResult(
-      -1, // pid placeholder
-      exitCode,
-      utf8.encode(stdoutData),
-      utf8.encode(stderrData),
-    );
-  }
-
-  @override
-  Future<Process> start(String executable, List<String> arguments,
-      {String? workingDirectory,
-      Map<String, String>? environment,
-      bool includeParentEnvironment = true,
-      ProcessStartMode mode = ProcessStartMode.inheritStdio,
-      bool runInShell = false}) async {
-    if (throwOnRun) throw Exception('shell error');
-    lastCommand = [executable, ...arguments];
-    allCommands.add([executable, ...arguments]);
-    // ExecutionBroker.run() goes through start() so it owns a killable handle;
-    // startPersistent() uses the same entry point for keep-alive sessions.
-    return MockProcess(
-      exitCode: exitCode,
-      stdout: stdoutData,
-      stderr: stderrData,
-      delay: artificialDelay,
-    );
-  }
-
-  void reset() {
-    stdoutData = '';
-    stderrData = '';
-    exitCode = 0;
-    lastCommand.clear();
-    allCommands.clear();
-    artificialDelay = null;
-    throwOnRun = false;
-  }
-}
 
 /// A real bash for the probe-script tests below, or null when none is
 /// installed on this machine.
@@ -133,11 +70,16 @@ void main() {
     late TestShell testShell;
     late ExecutionBroker broker;
     late AiWorkspaceService service;
+    // Recorded rather than swallowed: the toast is the loudest thing on the
+    // screen, so which one a lifecycle call raises is behaviour worth testing.
+    final notifications = <String>[];
 
     setUpAll(() {
       Notify();
       Notify.message = (msg,
-          {duration, loading = false, useWidget = false, leadingIcon = true, dynamic widget}) {};
+          {duration, loading = false, useWidget = false, leadingIcon = true, dynamic widget}) {
+        notifications.add(msg);
+      };
     });
 
     setUp(() async {
@@ -156,6 +98,7 @@ void main() {
 
     tearDown(() {
       testShell.reset();
+      notifications.clear();
     });
 
     group('ensureDistro', () {
@@ -719,6 +662,33 @@ void main() {
         expect(result, true);
         expect(state.status, ToolStatus.starting);
         expect(service.getUrl(AiWorkspaceTool.openWebUi), isNull);
+        // Observed on the real app: the card read "Starting up..." while the
+        // toast underneath it announced "Open WebUI is running", because the
+        // notification was raised before the health re-probe.
+        expect(notifications.last,
+            'ai-workspace-starting-text'.i18n(['Open WebUI']));
+        expect(
+          notifications,
+          isNot(contains('ai-workspace-started-text'.i18n(['Open WebUI']))),
+        );
+      });
+
+      // The complement: once the gate says healthy the toast has to go back to
+      // announcing the tool as running, or a successful start reads as though
+      // it never finished.
+      test('a healthy Open WebUI is announced as running', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        service.getState(AiWorkspaceTool.openWebUi)!.status =
+            ToolStatus.stopped;
+
+        testShell.exitCode = 0;
+        testShell.stdoutData = 'running';
+        await service.start(AiWorkspaceTool.openWebUi);
+
+        expect(notifications.last,
+            'ai-workspace-started-text'.i18n(['Open WebUI']));
       });
 
       // The launcher exits 0 even when the gateway dies immediately, so the
