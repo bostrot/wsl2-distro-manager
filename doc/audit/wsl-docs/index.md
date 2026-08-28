@@ -13,6 +13,7 @@ related:
   - '[[features]]'
   - '[[verification]]'
   - '[[runtime]]'
+  - '[[coverage-sweep]]'
 ---
 
 # WSL documentation audit
@@ -31,12 +32,24 @@ when the docs move.
 | [[cli-flags]] | `wsl.exe` commands and options | 30 top-level verbs (64 incl. options) | 13 | 17 | confirmed; one grep footnoted |
 | [[features]] | whole capability surfaces | 11 assessed | 0 fully | **7** (+4 partial) | F-5 amended |
 
+Sweep totals from [[coverage-sweep]], which enumerated the app side rather than the docs
+side: **27 / 27** `.wslconfig` keys, **11 / 11** `wsl.conf` keys and **27 / 27** `wsl.exe`
+invocation sites in `lib/api/wsl.dart` resolve to a row above. Nothing the app renders or
+invokes is missing a verdict.
+
 [[runtime]] is the third pass: it executes WSL **2.6.3.0** and measures what the installed
 build actually does, so the version floors, the section-placement arguments and the
 "changes need a restart" claims stop being inferences. It withdraws one claim, escalates
 three findings to data-affecting, and adds four new ones — the largest being that the app
 writes Windows paths into `.wslconfig` with single backslashes, which WSL discards as a
 parse error ([[runtime]] R-6).
+
+[[coverage-sweep]] is the fourth and last pass, and it runs in the opposite direction to
+the other three: it enumerates the app — every key the two editors render, every `wsl.exe`
+invocation in `lib/api/wsl.dart` — and looks each one up in the tables, so the audit's
+*silences* are checked rather than its claims. **The key and flag inventories held**: 27 / 27
+`.wslconfig` keys, 11 / 11 `wsl.conf` keys and 27 / 27 invocation sites already had a
+verdict. It adds four findings at the edges of those tables and **withdraws one**.
 
 [[verification]] is the second pass over all four: every missing key re-grepped, every
 widget type checked against the documented value type, every tooltip diffed string-for-string
@@ -78,8 +91,8 @@ The real gaps are elsewhere, and they fall into four groups — plus one outrigh
 
 ## Reading order
 
-- **[[wslconfig-keys]]** — per-key table for `[wsl2]` and `[experimental]`, plus ten
-  cross-cutting findings about the editor and the `.wslconfig` parser/writer.
+- **[[wslconfig-keys]]** — per-key table for `[wsl2]` and `[experimental]`, plus eleven
+  cross-cutting findings (CC-1 … CC-11) about the editor and the `.wslconfig` parser/writer.
 - **[[wslconf-keys]]** — per-key table for all seven `wsl.conf` sections, plus seven
   cross-cutting findings, two of them data-affecting.
 - **[[cli-flags]]** — every documented (**D**) and `--help`-only (**H**) `wsl.exe` command
@@ -92,6 +105,9 @@ The real gaps are elsewhere, and they fall into four groups — plus one outrigh
 - **[[runtime]]** — the third pass, against WSL 2.6.3.0 on this machine. Read this before
   citing any version floor, any "WSL ignores that" claim, or any restart requirement; its
   *Corrections* table lists every earlier finding it changed.
+- **[[coverage-sweep]]** — the false-negative pass. Read this if you are about to claim
+  the audit is complete, or if you are implementing P05-02, P05-04 or P05-05, whose scope
+  it changed.
 - **This file, from *Sizing rubric* on** — the classification pass. Every finding above,
   sized and ranked, mapped to the issues that report it, and flattened into the
   *Ordered implementation list for Phase 05*. If you are implementing rather than reading,
@@ -165,7 +181,7 @@ area, different mechanism — recorded so Phase 05 does not overclaim.
 | [#87](https://github.com/bostrot/wsl2-distro-manager/issues/87) | closed | Save overrides hand-written `.wslconfig` settings | [[wslconfig-keys]] CC-3 | **direct** — the re-emit-everything-into-`[wsl2]` path |
 | [#224](https://github.com/bostrot/wsl2-distro-manager/issues/224) | closed | "I have no idea what format to define the amount of swap space in" | the `swap` row (size key, no size widget) + the tooltip diff | **direct** — closed by adding the `(e.g. 8GB, 512MB)` examples; the widget was never fixed |
 | [#268](https://github.com/bostrot/wsl2-distro-manager/issues/268) | **open** | typing `wsl` lands in root at `/mnt/c/Users/…` after creating a distro with this app | [[wslconf-keys]] CC-6 (`[user] default` not editable) + `--set-default` | **direct** |
-| [#313](https://github.com/bostrot/wsl2-distro-manager/issues/313) | **open** | delete a distro, recreate it under the same name, it still starts as the deleted user | [[wslconf-keys]] CC-6 — the `[user] default` / `StartUser_` prefs lifecycle | **direct** |
+| [#313](https://github.com/bostrot/wsl2-distro-manager/issues/313) | **open** | delete a distro, recreate it under the same name, it still starts as the deleted user | [[wslconf-keys]] CC-6 — the `[user] default` / `StartUser_` prefs lifecycle | **direct**, but **the mechanism is already fixed** — [[coverage-sweep]] Sweep 4: `clearDistroPrefs` (`helpers.dart:388`) runs from `WSLApi.remove` (`wsl.dart:951`). The issue is open against a version that predates it; verify before rebuilding |
 | [#192](https://github.com/bostrot/wsl2-distro-manager/issues/192) | closed | default user lost after shrink/cleanup | same | **direct** |
 | [#303](https://github.com/bostrot/wsl2-distro-manager/issues/303) | **open** | Compact fills the drive; no free-space pre-check | [[features]] F-11 | **direct** |
 | [#133](https://github.com/bostrot/wsl2-distro-manager/issues/133) | closed | "Disk shrinking" | F-3 (reclaim half) + F-11 | **direct** |
@@ -184,7 +200,7 @@ in their "what was not examined" sections.
 
 ## Finding registry — every finding, sized
 
-Every finding in the six files, with its size and the item that closes it. Nothing is left
+Every finding in the seven files, with its size and the item that closes it. Nothing is left
 without a destination: items are **P05-01 … P05-24**, and findings with no item appear in
 *Not scheduled* below with a reason.
 
@@ -200,6 +216,8 @@ without a destination: items are **P05-01 … P05-24**, and findings with no ite
 | CC-5 comment lines parsed as keys; `#` only, never `;` (R-7) | wrong | M | **P05-02** |
 | CC-10 path values written with single backslashes; WSL discards the line (R-6) | wrong | M | **P05-02** |
 | `kernelCommandLine` mangled by CC-2 | wrong | M | **P05-02** |
+| CC-11 a key can be added and changed but never removed; blocks the tri-state (S-2) | wrong | M | **P05-02** |
+| CC-5 write half — unanchored regex, a commented-out key absorbs the write (S-3) | wrong | M | **P05-02** |
 | CC-1 seven documented-`true` toggles render off when unset | wrong | S | **P05-04** |
 | CC-7 restart requirement stated but hedged; Save never offers it (R-11) | covered | S | **P05-07** |
 | `networkingMode`, `autoMemoryReclaim` rendered as free text | wrong | S | **P05-09** |
@@ -213,6 +231,7 @@ without a destination: items are **P05-01 … P05-24**, and findings with no ite
 | CC-8 orphaned `unusedmemoryinfo-text` (`pageReporting`) in nine locales | outdated | S | **P05-12** |
 | R-1 `nestedVirtualization` is refused by the host CPU, and WSL says so on stderr | new | M | **P05-08** |
 | `systemDistro`, `kernelDebugPort` (Intune-only) absent | missing | — | not scheduled |
+| S-4 `Default Distro Location` / `General Data Location` share the `_settings` namespace | n/a | — | not scheduled |
 
 ### [[wslconf-keys]] — `wsl.conf`
 
@@ -224,7 +243,7 @@ without a destination: items are **P05-01 … P05-24**, and findings with no ite
 | V-7 prefs keyed on the file's spelling, not the widget's | risk | M | **P05-03** |
 | `boot.command`, `automount.root` unusable in practice | wrong | M | **P05-03** |
 | CC-3 six documented-`true` toggles render off | wrong | S | **P05-04** |
-| CC-6 `[user] default` written at creation, never editable | missing | S | **P05-05** |
+| CC-6 `[user] default` written at creation, never editable — and shadowed by the dialog's **Start user** box (S-1) | missing | S | **P05-05** |
 | CC-5 every keystroke writes; no restart signal; `--terminate` suffices (R-12) | missing | S | **P05-06** |
 | CC-4 no labels, no descriptions, no `.i18n()` anywhere in the dialog | missing | S | **P05-13** |
 | `automount.options` — a 7-token composite in a raw text box; the `metadata` precondition unstated | outdated | S | **P05-13** |
@@ -285,7 +304,7 @@ and are not:
 | # | Item | Size | Tier | Closes | Evidence |
 |---:|:---|:---:|:---:|:---|:---|
 | 1 | Clamp and unit-parse the size / number sliders | S | 0 | `.wslconfig` CC-9, R-9, R-10 | #300 (plausible), #224 |
-| 2 | Replace the `.wslconfig` read/write engine | M | 0 | `.wslconfig` CC-2, CC-3, CC-4, CC-5, CC-10, V-5, R-4, R-6, R-7, R-8 | #87, #225, #234 |
+| 2 | Replace the `.wslconfig` read/write engine | M | 0 | `.wslconfig` CC-2, CC-3, CC-4, CC-5, CC-10, **CC-11**, V-5, R-4, R-6, R-7, R-8, S-2, S-3 | #87, #225, #234 |
 | 3 | Replace the `wsl.conf` writer | M | 0 | `wsl.conf` CC-1, CC-2, CC-7, V-7 | #185, #309, #261 |
 | 4 | Tri-state booleans: show the documented default | S | 1 | `.wslconfig` CC-1, `wsl.conf` CC-3 | #261 |
 | 5 | `[user] default` editor and the default-user lifecycle | S | 1 | `wsl.conf` CC-6, `--manage --set-default-user` | #268, #313, #192 |
@@ -355,21 +374,34 @@ and widgets agree (V-7).
 containing a `"` all persist verbatim; a write to a read-only `/etc/wsl.conf` reports
 failure rather than returning `true`; #185's and #309's repro steps pass.
 
-**P05-04 — Tri-state booleans · S · tier 1**
+**P05-04 — Tri-state booleans · S · tier 1 · hard-depends on P05-02**
 `settings_screen.dart:1206-1215` and `settings_dialog.dart:346-370`. Unset must render as
 the documented default with an "unset — default: on" affordance, not as off. Thirteen keys
 across the two editors.
-*Done when:* a distro with no `wsl.conf` shows `automount.enabled` as on, and Save does not
-write keys the user never touched.
+*This is not independently shippable.* [[coverage-sweep]] CC-11 established that the app
+has **no way to remove a key from `.wslconfig`** — `saveSettings` skips empty values and
+`setConfig` has no delete branch — so the third state has nowhere to be written until
+P05-02 lands. Do not start P05-04 first.
+*Done when:* a distro with no `wsl.conf` shows `automount.enabled` as on, Save does not
+write keys the user never touched, and returning a key to *unset* physically removes its
+line from `.wslconfig`.
 
-**P05-05 — `[user] default` editor and the default-user lifecycle · S · tier 1**
+**P05-05 — `[user] default` editor · S · tier 1**
 Add a `[user]` section to `wslSettings` (`settings_dialog.dart:288-343`); the value already
-reaches prefs through `loadDistroSettings` (`:413`) and is then dropped. Clear
-`StartUser_` / `StartPath_` prefs on distro deletion (#313). Where WSL ≥ 2.5 is present
-(P05-08), prefer `--manage --set-default-user` and fall back to writing the key —
+reaches prefs through `loadDistroSettings` (`:413`) and is then dropped. Where WSL ≥ 2.5 is
+present (P05-08), prefer `--manage --set-default-user` and fall back to writing the key —
 `<distro> config --default-user` remains documented as broken for imported distros.
-*Done when:* changing the default user in the dialog survives a `--terminate`, and a
-delete → recreate cycle under the same name no longer starts as the deleted user.
+**Place it next to the existing *Start user* box and label both.** [[coverage-sweep]] S-1:
+that box is tooltipped `wsldefaultuser-text` and only sets `--user` on terminals this app
+launches, so it is what a user hunting for this setting finds instead — shipping a second
+user field without distinguishing them makes the dialog worse, not better.
+**Scope reduced.** The lifecycle half this item carried — "clear `StartUser_` / `StartPath_`
+on deletion (#313)" — is **already implemented**: `clearDistroPrefs` (`helpers.dart:388`)
+is called from `WSLApi.remove` (`wsl.dart:951`) and wipes all eleven per-distro prefixes on
+unregister, and `loadDistroSettings` clears its twelve `wsl.conf` `knownKeys` on every
+dialog open. Verify against #313 rather than reimplementing.
+*Done when:* changing the default user in the dialog survives a `--terminate` and applies
+to `wsl` typed in an external terminal, not just to launches from the app.
 
 **P05-06 — `wsl.conf` dialog: restart scope, and stop writing per keystroke · S · tier 1**
 Debounce or commit-on-blur instead of one in-distro script execution per character
@@ -513,6 +545,7 @@ decisions — but not a blocker, since P05-11 already has the docs' value types.
 | Finding | Why not |
 |:---|:---|
 | `systemDistro`, `kernelDebugPort` | `intune.md`-only, no reference-table row; enterprise and kernel-debug plumbing, not settings-screen keys |
+| S-4 `Default Distro Location` / `General Data Location` sharing the `_settings` map with `.wslconfig` keys | app preferences, not WSL config keys, and the name-match exclusion (`settings_screen.dart:309-310`) is correct today. Recorded in [[wslconfig-keys]] with verdict `n/a` so the coverage claim is complete; nothing to implement |
 | F-7 WSL plugins | a developer-extension surface; no demand in 183 issues |
 | `--shutdown --force` | documented as data-losing; the app already has a safe `--shutdown` |
 | `--uninstall` | removes WSL itself; keeping it out of a distro manager's UI is deliberate |
@@ -560,21 +593,34 @@ must be re-checked in **all** locales, not just `en.json`: only English was ever
 | Claimed gaps re-verified against code (widget types, tooltips) | done — [[verification]] |
 | Runtime behaviour verified against local WSL | done — [[runtime]] |
 | **Findings sized (S/M/L), ranked, ordered for Phase 05** | **done — this file, *Ordered implementation list*** |
-| False-negative sanity check | pending |
+| False-negative sanity check | done — [[coverage-sweep]] |
 | i18n keys added for the S-sized findings | pending |
 
 **The ordered implementation list above is the Phase 05 input.** It covers every finding
-in the six files: 24 items (17 S · 6 M · 1 L), one research item, and eleven findings
-explicitly not scheduled with a reason each. Two limits on it, stated here so it is not
-read as more settled than it is: the two remaining Phase 04 tasks may still add findings
-(the sanity check re-reads both editors end to end for false negatives), and the issue
-mapping is a match against reported symptoms, not a confirmed root-cause diagnosis for
-each issue — #300 in particular is marked *plausible*, not proven.
+in the seven files: 24 items (17 S · 6 M · 1 L), one research item, and twelve findings
+explicitly not scheduled with a reason each.
+
+The sanity check has since run ([[coverage-sweep]]) and **the item count did not change** —
+its four additions folded into P05-02 and P05-05, its one withdrawal shrank P05-05, and it
+added one hard dependency (**P05-04 cannot ship before P05-02**). What it did change is how
+much weight the list can carry: "every key and every flag has a verdict" is now enumerated
+rather than asserted.
+
+One limit remains, stated here so the list is not read as more settled than it is: the
+issue mapping is a match against reported symptoms, not a confirmed root-cause diagnosis
+for each issue — #300 is marked *plausible*, not proven, and #313's mapping now needs
+re-testing rather than implementing.
 
 ## Coverage limits
 
 Each area file ends with its own "what was not examined" section; read it before quoting
-a finding. Two limits apply to all four:
+a finding. [[coverage-sweep]]'s own section is the one to read before calling the audit
+complete: it swept the two editors and `wsl.dart` end to end, but **not** `create_dialog.dart`,
+`list_item.dart`, `docker_images.dart` or `copy_dialog.dart` (grepped for specific keys
+only), and it re-checked the *app* side against the existing inventories without re-reading
+the docs clone — so a documented key the first pass missed would still be invisible.
+
+Two further limits apply to all four area files:
 
 - **The four area files and [[verification]] were written without executing anything.**
   Every app-side claim in them is read from source at the cited line. [[runtime]] is the

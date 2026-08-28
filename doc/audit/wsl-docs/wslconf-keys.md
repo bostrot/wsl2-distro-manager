@@ -9,6 +9,7 @@ tags:
 related:
   - '[[index]]'
   - '[[runtime]]'
+  - '[[coverage-sweep]]'
   - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[cli-flags]]'
@@ -76,6 +77,37 @@ matches that shape, so there is no per-key gap — only the missing guidance rec
 > description ("Prevents WSL from generating systemd units when systemd is enabled") is
 > **inverted** — it describes the `false` behaviour, not the `true` default. Do not
 > paraphrase it. Recorded as an upstream defect in the working inventory.
+
+## Per-distro launch preferences rendered by the same dialog
+
+Added by [[coverage-sweep]] S-1. Above the four `wsl.conf` Expanders, the dialog renders
+three `SharedPreferences` values (`settings_dialog.dart:112-140`, saved at `:69-71`). They
+are not `wsl.conf` keys and have no documented counterpart, so they take no docs verdict —
+but one of them is the reason CC-6 below is worse than "a missing widget".
+
+| Control | Pref | What it actually does | Note |
+|:---|:---|:---|:---|
+| Start command | `StartCmd_<distro>` | appended to `wsl -d <distro> …` when the app launches a terminal (`list_item.dart:148` → `wsl.dart:395-406`) | **n/a** — and it is the one call site that deliberately keeps `wsl.exe`'s default-shell re-parse |
+| Start directory | `StartPath_<distro>` | becomes `--cd <path>` on that same launch (`wsl.dart:390`) | **n/a** |
+| Start user | `StartUser_<distro>` | becomes `--user <name>` on that same launch (`wsl.dart:393`) | **n/a** — but see below |
+
+**Start user is a lookalike for `[user] default`, and it is labelled like one.** Its
+tooltip is `wsldefaultuser-text` (`settings_dialog.dart:137`) — the app's *own* "default
+user" string — it sits directly above the `wsl.conf` section it is not part of, and a user
+hunting for the setting CC-6 says is missing will find this box first and stop looking.
+What it does is narrower in three ways that the dialog never states:
+
+1. It only applies to launches **from this app**. Typing `wsl` in a terminal, or any other
+   WSL client, still lands as the distro's real default user — which is exactly the
+   symptom reported in [#268](https://github.com/bostrot/wsl2-distro-manager/issues/268).
+2. It is per-machine `SharedPreferences`, so it does not travel with an exported distro.
+3. It cannot be discovered by anything except this dialog; nothing writes it into the
+   distro.
+
+So CC-6's verdict is unchanged (`[user] default` is **missing**), but its user impact is
+higher than a plain absence: the gap is *covered over* by a control that looks like the
+answer. P05-05 should place the real `[user] default` editor next to this box and say what
+each one does, not merely add a widget somewhere in the dialog.
 
 ## Cross-cutting findings
 
@@ -181,7 +213,10 @@ then dropped on the floor, because `wslSettings` has no `[user]` Expander. For a
 whose distros are created by `wsl --import`, this is the *only* documented mechanism that
 works: `<distro> config --default-user` is documented as non-functional for imported
 distros (`basic-commands.md:152`). Verdict **missing**, high user impact. See also
-[[cli-flags]] on `wsl --manage --set-default-user`.
+[[cli-flags]] on `wsl --manage --set-default-user`, and the **Start user** row in
+*Per-distro launch preferences* above — [[coverage-sweep]] S-1 found that the dialog
+already shows a box tooltipped `wsldefaultuser-text` that only sets `--user` on app-launched
+terminals, which is what a user looking for this setting will find instead.
 
 The classification pass found three reports of this one finding, which makes it the
 best-evidenced gap in the audit after the move:
@@ -220,6 +255,10 @@ area; it belongs to the custom-distro finding in [[features]].
 
 ## What was not examined
 
+- **The three launch preferences were traced, not exercised.** `StartUser_` /
+  `StartPath_` / `StartCmd_` were followed from the dialog to `list_item.dart:141-149` and
+  into `WSLApi.start`, by reading; no distro was launched from the app to confirm the
+  `--user` it ends up passing.
 - **No `/etc/wsl.conf` was read from a real distro**, and no setting was toggled and
   observed. CC-1 and CC-2 are derived from the shell script and the call sites; they are
   strong but not executed. The Phase 04 runtime-verification task should confirm both

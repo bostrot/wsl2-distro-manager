@@ -9,6 +9,7 @@ tags:
 related:
   - '[[index]]'
   - '[[runtime]]'
+  - '[[coverage-sweep]]'
   - '[[wslconfig-keys]]'
   - '[[wslconf-keys]]'
   - '[[cli-flags]]'

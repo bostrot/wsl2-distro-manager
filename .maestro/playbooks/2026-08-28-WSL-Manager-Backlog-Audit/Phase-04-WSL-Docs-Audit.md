@@ -415,9 +415,73 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
   editors end to end, and it may still add findings — the ordered list says so rather than
   presenting itself as final), and no i18n key was actually written.
 
-- [ ] Sanity-check the audit for false negatives before declaring it done:
+- [x] Sanity-check the audit for false negatives before declaring it done:
   - Re-read `lib/screens/settings_screen.dart` and `lib/dialogs/settings_dialog.dart` end to end and confirm every key they render appears in the audit tables with a verdict
   - Confirm every `wsl.exe` invocation in `lib/api/wsl.dart` appears in `cli-flags.md`
   - Add a short "what was not examined" section rather than implying full coverage where none was checked
+
+  **Result (2026-08-28):** New seventh audit file, `doc/audit/wsl-docs/coverage-sweep.md`.
+  All three source files were read in full (1253 + 492 + 1857 lines) and enumerated from
+  the *source* first, then looked up in the audit — the sweep checks the audit's silences,
+  not its claims, which is the one direction `verification` and `runtime` could not run.
+
+  **The inventories held. 27/27 `.wslconfig` keys, 11/11 `wsl.conf` keys and 27/27
+  `wsl.exe` invocation sites already had a verdict**, and every per-key line reference in
+  both key tables re-checked exact. No documented key and no `wsl.exe` flag was found
+  missing from a table. The audit's headline counts are a floor as well as a ceiling now.
+
+  Four findings were added, all at the *edges* of those tables — which is where a per-key
+  diff structurally cannot look:
+
+  1. **S-1 — the missing `[user] default` is shadowed, not merely absent.** The distro
+     dialog renders a **Start user** box (`settings_dialog.dart:134-140`) tooltipped
+     `wsldefaultuser-text` — the app's own "default user" string — directly above the
+     `wsl.conf` expanders. It only sets `--user` on terminals *this app* launches
+     (`wsl.dart:393`), so it does not change the distro's default user, does not apply to
+     `wsl` typed anywhere else, and does not travel with an export. That is exactly the
+     symptom #268 reports. `wsl.conf` CC-6's verdict is unchanged; its impact is higher,
+     and P05-05 now has to place the real editor *next to* this box and label both, rather
+     than adding a second user field to the same dialog.
+  2. **S-2 — no `.wslconfig` key can ever be removed from the app** (new `wslconfig-keys`
+     CC-11). `saveSettings` writes only non-empty controllers (`:311`) and `setConfig` has
+     three branches and no delete. Clearing a box does nothing. The documented default
+     system is "absent key = default", so the app cannot express the most ordinary request
+     a settings screen gets. **This blocks P05-04**: the prescribed tri-state has nowhere
+     to write "unset" until P05-02 lands, so the ordered list now carries that dependency
+     explicitly.
+  3. **S-3 — `setConfig`'s regexes are unanchored** (`RegExp('$key[ ]*=')`, `multiLine`,
+     no `^`). Against `#memory=8GB` a write to `memory` substitutes *inside the comment*:
+     the line stays commented, WSL still ignores it, the app reports the save as done.
+     `wslconfig-keys` CC-5 had only the read half of the comment problem.
+  4. **S-4** — `Default Distro Location` / `General Data Location` share the `_settings`
+     map with the config keys and had no row anywhere; recorded with verdict `n/a` so the
+     coverage claim is complete rather than silent.
+
+  **And one finding was withdrawn**, which is the same sweep run backwards and the reason
+  it is not just an additive pass: the "prefs outlive the distro" mechanism the
+  classification pass attached to #313 is **already fixed in this tree** —
+  `clearDistroPrefs` (`helpers.dart:388`) is called from `WSLApi.remove` (`wsl.dart:951`)
+  and wipes all eleven per-distro prefixes on unregister, and `loadDistroSettings` clears
+  its twelve `wsl.conf` `knownKeys` on every dialog open. **P05-05 is smaller than it was
+  scheduled**: the missing editor and nothing else. Phase 05 should re-test #313, not
+  reimplement it.
+
+  Three stale citations fixed, no verdict affected: `settings_screen.dart:1196` → `:1197`
+  (CC-9's parse), and `--user` in `execCmds` is `wsl.dart:994`, not `:1017` — its two
+  sibling spawns (`runCmds:1051`, `startShell:1118`) were uncited and now are.
+
+  Every item count in `index.md` is unchanged — the additions fold into P05-02 and P05-05
+  — so the ordered list stays 24 items, and what changed is how much weight it can carry.
+
+  `coverage-sweep.md` ends with its own *What was not examined*, and it is the honest
+  limit on this whole phase: the app was still never launched; only the two editors and
+  `wsl.dart` were read end to end (`create_dialog.dart`, `list_item.dart`,
+  `docker_images.dart`, `copy_dialog.dart` were grepped for specific keys, not swept); the
+  sweep re-checks the *app* side against the existing inventories and does **not** re-read
+  the docs clone, so a documented key the first pass missed would still be invisible; and
+  S-2 and S-3 are read from source, not reproduced. `index.md`'s *Coverage limits* now
+  points at that section before its own.
+
+  No source file was touched — this task is documentation only.
 
 - [ ] Add the new i18n keys required by the S-sized findings to every file in `lib/i18n/` by appending (never sorting), with real translations for de, en, es, hu, ja, pt, tr, zh_CN and zh_TW, so Phase 05 can wire up UI without a translation detour. Run `dart scripts/check_translations.dart` (or the equivalent script in `scripts/`) and `flutter test test/locales_test.dart` to confirm the locale set stays consistent.

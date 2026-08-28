@@ -9,6 +9,7 @@ tags:
 related:
   - '[[index]]'
   - '[[runtime]]'
+  - '[[coverage-sweep]]'
   - '[[verification]]'
   - '[[wslconf-keys]]'
   - '[[cli-flags]]'
@@ -52,6 +53,8 @@ What the diff does produce is:
   absent from the file (CC-1).
 - **4 defects in the `.wslconfig` parser/writer** that can corrupt a hand-edited file
   (CC-2 … CC-5).
+- **No way to remove a key once it is written** (CC-11) — which is also what blocks the
+  tri-state fix CC-1 asks for.
 - **A slider that throws on a documented-legal value** (CC-9) — added by the
   [[verification]] pass, and the most severe finding in this file.
 
@@ -98,6 +101,20 @@ What the diff does produce is:
 |:---|:---|:---|:---|
 | `systemDistro` | `[wsl2]`, `intune.md:25/56` only — no reference-table row | absent (`grep -rni "systemdistro" lib/` → 0 hits) | **missing, no action** — enterprise/system-distro plumbing, not a settings-screen key |
 | `kernelDebugPort` | `[wsl2]`, `intune.md:29/60` only | absent (0 hits) | **missing, no action** — kernel debugging, same reasoning |
+
+## Non-`.wslconfig` controls rendered by the same screen
+
+Added by [[coverage-sweep]]. `settingsWidget` is not used only for config keys: two
+`SharedPreferences` settings share the `_settings` map that `readConfig()` populates, and
+are kept out of the `.wslconfig` write loop by an exact string match on their names
+(`settings_screen.dart:309-310`). They have no documented counterpart, so they carry no
+verdict — they are listed here so that "every key this screen renders" is a complete
+statement rather than a silence.
+
+| Control | Backing store | App state | Verdict |
+|:---|:---|:---|:---|
+| `Default Distro Location` | `prefs['DistroPath']` | `settings_screen.dart:372` — `TextBox` + directory picker; the saved value is shown as the *placeholder*, never loaded into the controller | **n/a** — not a WSL config key |
+| `General Data Location` | `prefs['DataPath']` | `:393` — same shape | **n/a** — not a WSL config key |
 
 ## Cross-cutting findings
 
@@ -187,6 +204,15 @@ under `C:\Program Files\…` is already corrupt in the controller.
 key `#memory`, which then round-trips through `saveSettings` → `setConfig`. Verdict
 **wrong** (low impact, same fix as CC-3).
 
+[[coverage-sweep]] S-3 adds the **write** side, which is the worse half. Both regexes in
+`setConfig` are built as `RegExp('$escapedKey[ ]*=')` with `multiLine: true` and **no line
+anchor**, so they match anywhere on a line — including inside a comment. Against a file
+containing `#memory=8GB`, writing `memory` finds that "existing key" and substitutes
+*inside the comment*: the line stays commented out, WSL still ignores it, and the app
+reports the save as done. A user who commented a key out to get the default back and then
+set it again from the screen gets a silent no-op with nothing to see. The fix has to anchor
+to line start, after stripping `#` lines.
+
 [[runtime]] R-7 establishes what the fix has to accept: WSL 2.6.3.0 treats `#` as the
 comment character (`# a hash comment` and `# memory=1GB` both parse clean) and rejects
 `;` outright (`wsl: Ungültiger Schlüsselname`). `.wslconfig` is INI-*like*, not INI — strip
@@ -235,7 +261,7 @@ nine locale files. Verdict **outdated**, trivial cleanup.
 
 Added by [[verification]] V-1. `fluent_ui` 4.13.0's `Slider` asserts its range in the
 **constructor** (`lib/src/controls/inputs/slider.dart:41`,
-`assert(value >= min && value <= max)`), and `settings_screen.dart:1196` computes the value
+`assert(value >= min && value <= max)`), and `settings_screen.dart:1197` computes the value
 straight from the file with no clamp:
 
 ```dart
@@ -292,8 +318,30 @@ Compounds CC-2: a path under `C:\Program Files\…` is space-stripped *and* unes
 Verdict **wrong**. The fix is one escape on write and one unescape on read, in the same
 place CC-2 and CC-4 are fixed.
 
+### CC-11 — A key can be added and changed, but never removed
+
+Added by [[coverage-sweep]] S-2. `saveSettings` writes a key only when its controller is
+non-empty (`settings_screen.dart:311`), and `setConfig` (`wsl.dart:544-592`) has exactly
+three branches — replace the value, insert the key under an existing section, append the
+section — and no fourth. Clearing a text box therefore does nothing: the key stays in
+`.wslconfig` at its previous value, and the screen redraws that value on the next open.
+
+The whole documented default system is *"absent key = documented default"*
+(`wsl-config.md:225-246`), so this is the app declining to express the most ordinary thing
+a user wants from a settings screen — put it back the way it was. The only escape is the
+**Edit .wslconfig directly** button, i.e. a text editor.
+
+It also **blocks P05-04**. CC-1's prescribed fix is a tri-state toggle (unset / on / off),
+and "unset" has nowhere to be written for as long as `setConfig` cannot remove a line.
+Verdict **wrong**; the fix belongs with the engine rewrite (P05-02), not with the toggle
+work that depends on it.
+
 ## What was not examined
 
+- **CC-11 and CC-5's write half were not executed.** Both are read from the `setConfig`
+  source and the `saveSettings` loop at the cited lines — the delete path is *absent*
+  rather than broken, and the missing anchor is visible in the regex literal — but neither
+  was reproduced against a real `.wslconfig`. P05-02's tests should cover both.
 - **Runtime behaviour** was not examined *when this file was written*. It has since been
   measured — see [[runtime]], which supersedes this file wherever the two disagree, and
   whose *Corrections* table lists every finding here that it changed. The version floors

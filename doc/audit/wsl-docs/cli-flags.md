@@ -9,6 +9,7 @@ tags:
 related:
   - '[[index]]'
   - '[[runtime]]'
+  - '[[coverage-sweep]]'
   - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[wslconf-keys]]'
@@ -59,7 +60,7 @@ distro under that name. It has **no call site** — dead code — but it is a lo
 |:---|:---|:---|:---|
 | `--exec` / `-e` | H | `wsl_args.dart:57` (`kWslExecFlag`), used by `wslExecArgs` / `wslShellArgs` and every in-distro call site | **covered** — and the app is ahead of the docs here; `--exec` is absent from `basic-commands.md` |
 | `--distribution` / `-d` | D | `wsl_args.dart:60-64` (`_distroPrefix`), plus `wsl.dart:416/459/512/767/1136` | **covered** |
-| `--user` / `-u` | D | `_distroPrefix`; `wsl.dart:393` (`start`), `:1017` (`execCmds`) | **covered** |
+| `--user` / `-u` | D | `_distroPrefix`; `wsl.dart:393` (`start`, long spelling), and the three stdin-driven shells `:994` (`execCmds`), `:1051` (`runCmds`), `:1118` (`startShell`) | **covered** |
 | `--cd` | H (announced in `release-notes.md:34`) | `wsl.dart:390`, `:767-768` | **covered** |
 | `--shell-type` | H | not used (mentioned only in a `wsl_args.dart:54` comment) | **missing, low value** — `--exec` already solves the same problem |
 | `--` (passthrough) | H | not used for `wsl`; `mount_service.dart:107` and `shell.dart` use it as an **ssh** separator | **n/a** |
@@ -217,6 +218,24 @@ Neither is a docs discrepancy, so neither carries a verdict here — recorded be
 `AGENTS.md` and the `--install` option table, `-d` does not register a distro under that
 name. It is unreachable today (no caller anywhere), so the correct action is deletion
 rather than a fix. Verdict **wrong**.
+
+## Completeness of the app side
+
+[[coverage-sweep]] enumerated `lib/api/wsl.dart` end to end — **27 `wsl.exe` invocation
+sites, 15 distinct flags and verbs** — and matched every one against a row above. **No flag
+reaches `wsl.exe` from that file that this file does not list**, so the "13 of 30 verbs"
+headline is a floor as well as a ceiling. The site-by-site table is in [[coverage-sweep]]
+*Sweep 3*.
+
+Two things the sweep changed here, both citations rather than verdicts: `--user` in
+`execCmds` is `wsl.dart:994`, not `:1017`, and its two sibling spawns (`runCmds`,
+`startShell`) were uncited. `move()` (`:1649-1790`) issues no `wsl.exe` call of its own —
+it composes `export()`, `remove()` and `import()`, which is precisely what makes it the
+destructive sequence CC-2 and #280 describe.
+
+`mount_service.dart`'s and `ai_workspace/service.dart`'s cited lines were spot-checked and
+are exact. One uncited invocation there — `service.dart:538-539`, a
+`-d <distro> -u root sleep infinity` keepalive — uses no flag not already covered.
 
 ## What was not examined
 
