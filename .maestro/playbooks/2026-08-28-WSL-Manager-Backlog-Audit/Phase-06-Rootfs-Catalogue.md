@@ -61,11 +61,66 @@
   - **Rocky's `.latest` alias is real** — proven from the gzip headers of the bytes actually served (`Rocky-WSL-Base.x86_64-10.2.0.wsl`, `…-9.8.0.wsl`), not from the directory listing.
   - Caveat carried forward: reachability ≠ usability. Nothing here says a distro boots to something usable (no init, no default user, no repos on unregistered SLE) — that stays the install-test task's call.
 
-- [ ] Rewrite the repo copy of `images.json`:
+- [x] Rewrite the repo copy of `images.json`:
   - Keep the existing flat `"Name": "url"` schema and the app's expectations exactly — this file is a fallback for a live CDN payload, so a schema change would break older clients
   - Drop every EOL entry (Ubuntu 16.04/18.04 if past ESM-free support, 19.04, 21.04, Fedora 36/37, Debian 10, SLES 12) and every entry still served from this project's 2022 GitHub release once an official replacement exists
   - Order entries so the most useful appear first (current LTS/stable at the top of each family)
   - Preserve the file's existing formatting style (4-space indent, no trailing newline change) so the diff stays readable
+
+  **Done 2026-08-28** → `images.json`. **22 entries → 19**, 17 old keys dropped, 5 carried
+  unchanged (Ubuntu 26.04/24.04/22.04, Debian 13/12 — same URL as before, so no re-key),
+  14 new. Every URL is the one [[catalogue-verification]] §2 cleared, and each was
+  re-`curl`ed after writing: **19/19 → 200, and all 19 `Content-Length` values match the
+  verification table byte-for-byte**, which is what proves the transcription rather than
+  the vendor. Schema, formatting and file ending are unchanged: flat `"Name": "url"`
+  strings, 4-space indent, CRLF, closing `}` with no trailing newline (`tail -c 16 | xxd`
+  before and after). `flutter test test/app_test.dart` passes, including
+  `getDistroLinks returns distros`.
+
+  Decisions worth recording:
+  - **`Rocky Linux 9` had to be re-keyed — [[catalogue-candidates]] §12 missed it.** That
+    doc asserts every proposed key obeys rule 10, but `Rocky Linux 9` is an existing key
+    in the old file pointing at the 2023 `sig-cloud-instance-images` layer, and the
+    proposal reused it verbatim for the new `dl.rockylinux.org` alias. Per
+    [[catalogue-constraints]] rule 3/10 that leaves anyone who already installed Rocky 9
+    importing the 9.1.20230215 rootfs out of the on-disk cache forever, with no
+    invalidation. Shipped as **`Rocky Linux 10.2`** / **`Rocky Linux 9.8`** — the builds
+    verification §7.3 read out of the gzip headers of the bytes actually served. Symmetric,
+    collision-free against both `Rocky Linux 9` and `Rocky Linux 9.6`, and it matches the
+    file's own precedent (`Rocky Linux 9.6` was already a point-release key). Cost: the
+    label can lag the `.latest` alias by a point release. That is acceptable and arguably
+    right — bumping the key on each catalogue refresh is precisely what invalidates the
+    stale download cache, and Ubuntu's `24.04` key over a `/current/` path that serves
+    24.04.4 already carries the same lag.
+  - The other three re-keys the constraints doc demanded are in: `OpenSUSE` →
+    `OpenSUSE Tumbleweed` + `OpenSUSE Leap 16.0`, `Kali Linux` → `Kali Linux 2026.2`,
+    `SLES 15` → `SLES 15 SP7` (+ `SLES 16.0`). Verified mechanically, not by eye: zero
+    keys in the new file collide with an old key under a changed URL, and zero keys
+    contain `:` or a Windows filename metacharacter.
+  - **Order is the §12 order, unchanged** — Ubuntu, Debian, Alpine, Fedora, Rocky,
+    AlmaLinux, openSUSE, SLES, Kali, Arch, newest first within each family. Per
+    [[catalogue-constraints]] §2.3 file order *is* display order, so this is the real UX
+    change: the create box now opens on Ubuntu 26.04 instead of an EOL wall.
+  - **Every 2022 `v0.6.1` release asset is gone** (Debian 10, Kali, OpenSUSE, SLES 15,
+    SLES 12) and so are both `v1.4.0` Fedora tarballs — the catalogue no longer serves a
+    single byte from this project's own GitHub releases. Both remaining
+    `raw.githubusercontent.com` URLs (Debian 13/12) are the *debuerreotype* `dist-amd64`
+    branch tips, not build-pinned tags, and §7.2 proved they are plain single-layer
+    rootfs blobs.
+  - **SLES 12 is dropped with no replacement** and none should be sought —
+    [[catalogue-candidates]] §11 established SUSE publishes nothing official for it.
+    Ubuntu 20.04 and 18.04 are likewise dropped rather than re-sourced (ESM-only /
+    long EOL), which goes one step past the brief's "18.04 if past ESM-free support".
+  - Untouched on purpose: `Ubuntu 25.10` was dropped even though it is not EOL until
+    Jul 2026, per §11 — it will rot inside this catalogue's refresh cycle.
+
+  > [!WARNING]
+  > **This changes the bundled fallback only.** The app fetches
+  > `https://n8n.aachen.dev/webhook/cdn/images.json` first (`constants.dart:22`) and only
+  > falls back to this asset when that request fails or returns a non-map
+  > (`app.dart:82-99`). Until the maintainer uploads this payload to the CDN, **no user
+  > sees any of it** — every online client keeps getting the old 22-entry list with the
+  > dead 2022 assets. The handoff note is the next task.
 
 - [ ] Write the CDN handoff note at `Working/cdn-upload.md`:
   - State plainly that the runtime source is `https://n8n.aachen.dev/webhook/cdn/images.json` and that the repo copy is only the bundled fallback
