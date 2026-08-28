@@ -6,11 +6,35 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
 
 ## Tasks
 
-- [ ] Diagnose the hanging installer before changing any app code:
+- [x] Diagnose the hanging installer before changing any app code:
   - In the `ai-workspace` distro, run `curl -fsSL https://hermes-agent.nousresearch.com/install.sh -o /tmp/hermes-install.sh` and read the script rather than piping it
   - Determine what it blocks on: a TTY prompt despite `--non-interactive`, a package manager waiting on a lock, an interactive `sudo`, or a long unbuffered download
   - Run it with `bash -x /tmp/hermes-install.sh --non-interactive` under `timeout 900` and capture the trace to `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/hermes-install-trace.log`
   - Write the conclusion to `Working/hermes-install-findings.md` including the exact line it stalls on
+
+  **Result (2026-08-28, live against the real `ai-workspace` distro — Ubuntu 26.04, root):**
+  The installer does not block at all. It completes unattended, exit 0, in **482 s cold**
+  and **92 s warm**. The app allows **5 minutes** total wall clock
+  (`lib/api/ai_workspace/service.dart:614`), so it kills a healthy install ~200 s early,
+  always mid-`npm install` — which matches the debris found in the distro (repo cloned,
+  467 MB uv cache, 656 MB Playwright cache, 357 MB npm cache, but no `hermes` binary).
+  None of the four suspects applies: `prompt_yes_no()` short-circuits on `--non-interactive`
+  before touching `read`/`/dev/tty`; the only raw `read` is `[ -t 0 ]`-guarded; the distro is
+  root so no `sudo` path is reachable; apt is a single 5 s `update` with no lock wait.
+  The stall is `hermes-install.sh:2428`,
+  `run_with_timeout "$NODE_DEPS_TIMEOUT" npm install --silent >"$npm_log" 2>&1`
+  (`NODE_DEPS_TIMEOUT` defaults to 600) — **306 s of complete silence** on the cold run,
+  because `--silent` plus the unconditional redirect to a `mktemp` file means nothing is
+  emitted unless the command fails. Second-largest is Playwright Chromium at 108 s
+  (184.3 + 114.7 MiB behind `\r` progress bars). Ubuntu 26.04 also trips
+  `playwright_host_unrecognized()`, so the 600 s Playwright step can retry once → 1200 s.
+  **Any silence-based timeout must therefore exceed 600 s.** `hermes` v0.20.6 is now
+  installed and on PATH. Gating the tool is not warranted.
+  Written up in `Working/hermes-install-findings.md`; traces in
+  `Working/hermes-install-trace.log` (the verbatim `timeout 900 bash -x` run, warm) and
+  `Working/hermes-install-trace-cold.log` (same command with every cache wiped, timestamped
+  per line — `bash` ignores an inherited `PS4` for non-interactive scripts, so a
+  `stdbuf -oL awk` reader stamps them instead).
 
 - [ ] Make the Hermes install path survive a genuinely slow installer, in `lib/api/ai_workspace/service.dart`:
   - Switch the install from the one-shot capture path to `ExecutionBroker.startPersistent`/streaming so output arrives live (the Phase 01 broker rework guarantees the child is killed if it really does need to be abandoned)
