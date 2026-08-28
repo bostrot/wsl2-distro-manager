@@ -193,10 +193,71 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   `git diff --stat` is 2 files, no unrelated churn. `dart format` again not
   run, for the reason recorded above.
 
-- [ ] Delete `lib/components/navbar.dart` after confirming nothing imports it:
+- [x] Delete `lib/components/navbar.dart` after confirming nothing imports it:
   - Verify with `grep -rn "navbar" lib/ test/ integration_test/`
   - Delete the file, and delete any now-dead i18n keys or assets it alone referenced only if nothing else uses them
   - If any import does exist, instead fix its `supportedLocales` list to match `supportedLocalesList` exactly (drop `zh_HK` and bare `zh`) and record why the file was kept
+
+  **Done (2026-08-28), deleted — no import exists.** `grep -rn "navbar" lib/
+  test/ integration_test/` returns exactly 4 hits, all of them
+  `lib/components/navbar.dart` naming its own `Navbar`/`_NavbarState`. Nothing
+  imports it. Git confirms why: `29d9249` ("#256 Remove Navbar component and
+  adjust NavigationPane size in RootPage") unwired it; the file was left behind
+  and has been edited by drive-by refactors ever since — most recently
+  `1b96bd2`, today — which is how it kept accumulating a stale locale list
+  nobody could see. So the conditional branch does not apply and the file is
+  gone rather than repaired.
+
+  Audit of everything it declared, before deleting:
+  - `Navbar`, `_NavbarState`, `navWidget`, `lockFor500Ms` — referenced only
+    from inside the file. Its live replacement is `lib/nav/panelist.dart`,
+    which builds the same eight pane items against the real router.
+  - `WindowButtons` — a **duplicate**. `lib/nav/root_screen.dart:290` declares
+    an identical class and is the one actually mounted (`root_screen.dart:219`).
+    Deleting the navbar copy removes a same-named class from `lib/`, it does
+    not remove the widget.
+  - `hasPushed` — also a duplicate. The live one is
+    `lib/components/helpers.dart:14`, which is what `settings_screen.dart`
+    reads and writes; navbar's top-level copy was shadow state nothing could
+    reach.
+  - i18n: all eight keys it used (`homepage-text`, `about-text`,
+    `settings-text`, `managequickactions-text`, `addinstance-text`,
+    `mountdisk-text`, `documentation-text`, `sponsor-text`) are still used by
+    `lib/nav/panelist.dart` and others, so **no key was orphaned** and no
+    `lib/i18n/*.json` was touched. It referenced no assets.
+
+  The dead `supportedLocales` list is therefore gone with the file rather than
+  corrected: it listed `Locale('zh','HK')` and bare `Locale('zh','')`, and
+  neither `zh_HK.json` nor `zh.json` exists in `lib/i18n/`. `main.dart:268`
+  already uses `supportedLocalesList` from `lib/components/constants.dart`,
+  which is the correct nine-entry list with a file for every entry, so the app
+  never actually read the bad one — but it was the copy a future edit would
+  have copied from.
+
+  Two follow-ons: `AGENTS.md`'s `_solid`/`_fill` icon warning cited
+  `heart_fill` in this file as its "dead code" example — reworded so the rule
+  survives the file it pointed at. `TODO.md`'s Housekeeping entry is struck
+  through with the outcome.
+
+  Deliberately **not** touched: `doc/api/components_navbar/` (10 generated
+  dartdoc pages). `doc/api` is a committed dartdoc snapshot; hand-deleting a
+  subtree would leave `index.json` and the sidebar linking to removed pages,
+  which is worse than a uniformly stale snapshot. It corrects itself on the
+  next docs regeneration.
+
+  Verification: `flutter analyze` 105 issues before **and** after — identical,
+  no new issues, and the file contributed none. `flutter test` 330/330.
+  Integration tests pass **per file** — `ai_workspace` 17/17, `app_test`
+  21/21 (including "Complete navigation flow through all pages" and "App
+  launches and renders home page"), `license_screen` 4/4, `byok_settings` 2/2,
+  `mcp_settings` 2/2, 46 total. Running the whole `integration_test/` directory
+  in one invocation still fails the 2nd–5th files with "Unable to start the app
+  on the device" / "The log reader stopped unexpectedly"; that is the known
+  launch-contention behaviour of back-to-back real-window runs, not a
+  regression — every one of those files passes on its own, and there are no
+  assertion failures anywhere in the batch log
+  (`Working/phase-02-task05-integration.txt`). `git diff --stat` is 3 files,
+  9 insertions / 334 deletions, no unrelated churn.
 
 - [ ] Isolate the `bash: -c: line 2: syntax error near unexpected token '2'` error:
   - It appeared when a start command containing `$(seq 1 20)` and subshell parentheses was added, and vanished when both were removed — yet identical constructs elsewhere in the same file work, and the error was reported by a user before those constructs existed, so "parentheses are mangled" is not sufficient

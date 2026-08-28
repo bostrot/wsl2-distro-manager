@@ -258,10 +258,14 @@ are in place. Never submitted.
 
 ## Housekeeping
 
-### `lib/components/navbar.dart` is dead code
-Nothing imports it. It also carries a stale `supportedLocales` list including
-`zh_HK`, which has no translation file — exactly the pattern that blanks the
-whole app. Delete it or fix the list.
+### ~~`lib/components/navbar.dart` is dead code~~ — done 2026-08-28
+Deleted. It had been unimported since `29d9249` ("Remove Navbar component and
+adjust NavigationPane size in RootPage") and carried a stale `supportedLocales`
+list including `zh_HK` and bare `zh`, neither of which has a translation file —
+exactly the pattern that blanks the whole app. Its live replacements are
+`lib/nav/panelist.dart` (pane items) and `lib/nav/root_screen.dart`
+(`WindowButtons`); `main.dart` uses `supportedLocalesList` from
+`lib/components/constants.dart`. No i18n keys or assets were orphaned.
 
 ### Screenshot capture is misaligned
 The scratchpad helpers capture ~8px outside the window on every side. The Store
