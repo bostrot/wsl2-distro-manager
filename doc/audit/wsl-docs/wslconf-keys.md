@@ -103,6 +103,15 @@ reopened.
 The correct parser is already in the codebase — `WSLApi.getWSLConf` (`wsl.dart:1824-1846`)
 tracks `[section]` headers properly on the *read* path. Only the write path is broken.
 
+**Reported twice.** [#185](https://github.com/bostrot/wsl2-distro-manager/issues/185)
+(closed): a hostname set from the app never reaches `/etc/wsl.conf`, and the reporter's own
+workaround — `echo -e "[network]\nhostname=guitest" >> /etc/wsl.conf` — is this script's
+third branch, the only one that is not `sed`.
+[#309](https://github.com/bostrot/wsl2-distro-manager/issues/309) (**open**): setting a
+default user at creation lost `[boot] systemd=true`. That call site was since routed through
+`setSetting` (`create_dialog.dart:324`, commit `4913741`, 2026-06-16) — the issue is still
+open, and the section-blind writer beneath it is unchanged.
+
 ### CC-2 — `sed` delimiter collision on any value containing `/`
 
 `VALUE` is substituted verbatim into `s/KEY[ ]*=[ ]*.*/KEY = VALUE/g`. A value with a
@@ -173,6 +182,15 @@ whose distros are created by `wsl --import`, this is the *only* documented mecha
 works: `<distro> config --default-user` is documented as non-functional for imported
 distros (`basic-commands.md:152`). Verdict **missing**, high user impact. See also
 [[cli-flags]] on `wsl --manage --set-default-user`.
+
+The classification pass found three reports of this one finding, which makes it the
+best-evidenced gap in the audit after the move:
+[#268](https://github.com/bostrot/wsl2-distro-manager/issues/268) (**open**) — typing `wsl`
+lands in root at `/mnt/c/Users/…` after creating a distro here;
+[#313](https://github.com/bostrot/wsl2-distro-manager/issues/313) (**open**) — a deleted
+distro's user is still applied to a new distro of the same name, because the prefs outlive
+it; [#192](https://github.com/bostrot/wsl2-distro-manager/issues/192) — default user lost
+after shrink/cleanup. Sized as P05-05 in [[index]].
 
 ### CC-7 — Free-text values reach a **root** shell unescaped
 

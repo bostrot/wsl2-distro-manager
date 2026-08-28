@@ -178,6 +178,14 @@ must be gated on a real `wsl --version` check, which the app cannot currently pe
 Verdict **missing**, high impact — `--move` in particular converts the app's riskiest
 operation into a supported one-liner.
 
+**And it is the one finding in this audit with a report of real data loss behind it.**
+[#280](https://github.com/bostrot/wsl2-distro-manager/issues/280): "I clicked **move**
+expecting to choose a new path… when I came back after 30 min I found the app closed,
+opening my usual work instance I found it deleted." The export → unregister → import
+sequence is exactly the window that report fell into, and the reporter's own request — warn
+before actions that can lose data — is the cheap interim fix if the native verb has to wait.
+Sized as P05-15 in [[index]].
+
 ### CC-3 — Every export is an uncompressed tar
 
 `WSLApi.export` (`wsl.dart:903-916`) passes no format flag. The binary supports

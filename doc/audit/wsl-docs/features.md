@@ -276,10 +276,12 @@ distro uses 12 GB, reclaim it" is one feature, not two.
 - **`microsoft/WSL` release notes** were not read, so the introduction version of every
   **H** flag (`--set-sparse`, `--move`, `--set-default-user`) is unknown beyond
   `--manage`'s documented 2.5+ floor.
-- **User complaints and open GitHub issues were not consulted.** The Phase 04 brief asks
-  for findings to be mapped to known complaints during prioritisation; that mapping
-  belongs to the classification task and is not attempted here. The impact language above
-  is this audit's judgement, not evidence from users.
+- **User complaints and open GitHub issues were not consulted** *when this file was
+  written*. The mapping has since been done by the classification task — see [[index]],
+  *Evidence — findings mapped to reported issues*, which matches 183 issues against these
+  findings and confirms every tier-0 and tier-1 item has at least one report behind it.
+  The impact language in this file is still this audit's judgement; the evidence table is
+  where the users' own words are.
 - **WSL 1 behaviour.** The app targets WSL 2 throughout; documented WSL 1-only behaviour
   (`automount.options case=force`, `--set-version 1`) was noted but not pursued.
 - **Feature surfaces outside the brief's list** — GPU compute, USB/IPP passthrough

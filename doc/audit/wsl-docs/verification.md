@@ -329,6 +329,9 @@ list — produced by the classification task, not this one — remains the only 
   collision is derived from the script text, not observed. Unchanged from the previous pass.
 - **`--mount` option coverage, the remote/SSH branches, and the AI-workspace call sites** were
   not re-verified; [[cli-flags]]' claims about them stand on the first pass alone.
-- **No GitHub issue or user report was consulted.** Severity language here ("highest single
-  defect") is this pass's judgement from the code, not evidence of user impact. Mapping
-  findings to real complaints belongs to the classification task.
+- **No GitHub issue or user report was consulted** *by this pass*. Severity language here
+  ("highest single defect") is this pass's judgement from the code. The classification task
+  has since done the mapping — [[index]], *Evidence — findings mapped to reported issues* —
+  and it supports V-1: [#300](https://github.com/bostrot/wsl2-distro-manager/issues/300)
+  reports the app exiting the moment Settings is clicked, with no repro attached. That is a
+  *plausible* match for V-1, not a confirmed one.

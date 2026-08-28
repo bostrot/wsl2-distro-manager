@@ -342,10 +342,78 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
   measured here is one machine, one build, de-DE locale; `runtime.md`'s “what was not
   examined” section states the limits.
 
-- [ ] Classify and prioritise every finding in `doc/audit/wsl-docs/index.md`:
+- [x] Classify and prioritise every finding in `doc/audit/wsl-docs/index.md`:
   - Size each as **S** (a key added to an existing editor: label, tooltip, widget, i18n keys), **M** (a new section or dialog), or **L** (a new screen or subsystem)
   - Rank by user impact, noting which findings map to known user complaints or open issues
   - Produce an explicit ordered implementation list — this list is the input to Phase 05, so it must be complete and unambiguous
+
+  **Result (2026-08-28):** `index.md` grew six sections — sizing rubric, ranking rubric,
+  issue-evidence table, finding registry, the ordered list, "not scheduled", and the i18n
+  key inventory. **24 items, P05-01 … P05-24: 17 S · 6 M · 1 L**, plus one research item
+  (`R-A`) and **eleven findings explicitly not scheduled, each with a reason**, so the list
+  is closed rather than merely long. Every finding in all six audit files has a destination;
+  the registry is per-file so a Phase 05 reader can go finding → item or item → finding.
+
+  **The ranking is no longer this audit's opinion.** The brief asked for a mapping to known
+  complaints, and every prior task recorded that it had not been done. I read all **183**
+  `bostrot/wsl2-distro-manager` issues (open and closed) and matched them against the
+  findings — **20 issues map, nine of them still open, and every tier-0 and tier-1 item now
+  has at least one report behind it.** The severity judgements the code-only passes made
+  survive contact with the tracker. Marked **direct** / **plausible** / **adjacent** so
+  Phase 05 cannot overclaim:
+
+  1. **#280 (`move` deleted my distro) is the only finding in this audit with a user report
+     of real data loss.** It maps exactly to `cli-flags` CC-2 — `move()` is export →
+     unregister → import, and the reporter fell into the window between steps 2 and 3. That
+     reorders the list: P05-15 is **tier 0 by impact** but depends on P05-08, so it is
+     scheduled after it with an explicit escape hatch — if Phase 05 runs short, ship the
+     S-sized confirmation dialog #280 itself asked for, which needs nothing from P05-08.
+  2. **#185's reporter published the fix for `wsl.conf` CC-1/CC-2 in their own bug report.**
+     Their workaround, `echo -e "[network]\nhostname=…" >> /etc/wsl.conf`, is the writer's
+     third branch — the only one of the three that is not `sed`. Two independent reports of
+     that writer (#185, #309 — still open), and #309 shows the *call site* was fixed in
+     June 2026 while the writer under it was not.
+  3. **#225/#234 are a user reading WSL's stderr for us.** They reported
+     `Unknown key 'wsl2.pageReporting'` on every WSL start, caused by the app offering a key
+     Microsoft had removed. That is the same diagnostic channel `runtime` R-4 found silently
+     rejecting relocated `[experimental]` keys today — so the app has already shipped this
+     exact failure once, and the orphaned `unusedmemoryinfo-text` string is what remains of it.
+  4. **`[user] default` (`wsl.conf` CC-6) is the best-evidenced gap after the move** — three
+     reports (#268, #313 both open, #192), and #313 adds a mechanism the audit did not have:
+     the prefs outlive the distro, so a recreated distro of the same name inherits a deleted
+     user. P05-05 now owns that lifecycle, not just the missing widget.
+  5. **#300 is a candidate for CC-9, not proof.** "点击设置闪退" — the app exits the moment
+     Settings is clicked — is exactly CC-9's symptom, but the report carries no `.wslconfig`,
+     no environment and no repro. Recorded as **plausible**, and P05-01's first step is the
+     reproduction that would settle it. That reproduction is also the one thing `verification`
+     and `runtime` both left undone, so it is now the top of the list.
+
+  Two sizing decisions Phase 05 should not re-litigate:
+
+  - **The brief's rubric has no bucket for the two worst findings.** S/M/L is written around
+    UI surfaces ("a key", "a dialog", "a screen"), and the `.wslconfig` engine and the
+    `wsl.conf` writer are neither — they are rewrites of existing read/write paths. I
+    extended **M** to cover "a rewrite that needs its own tests" and stated the extension in
+    the rubric, so nobody reads their **M** as "go build a dialog".
+  - **P05-02 and P05-03 are scheduled above almost every key-level item**, which looks like
+    an impact inversion and is not: adding a combo box or a missing key to an editor whose
+    writer corrupts what it writes just ships a nicer way to lose data. Conversely **P05-08,
+    the "enabling" item, sits at position 8, not 1** — nothing in tiers 0–1 needs a version
+    check; everything from P05-15 on does.
+
+  Also produced, because the phase's last task needs it as input: a per-item i18n inventory
+  — roughly **45 new keys and 18 rewrites** across nine locales, with names checked against
+  the 284 keys already in `en.json` so `wsldefaultuser-text`, `stopwsl-text`,
+  `selectfile-text`, `move-text` and `size-text` get reused rather than duplicated.
+
+  Corrections applied back into the area files (no source file touched): `features.md` and
+  `verification.md`'s "no issue was consulted" caveats now point at the evidence table;
+  `wslconfig-keys.md` CC-9, `wslconf-keys.md` CC-1/CC-6 and `cli-flags.md` CC-2 carry their
+  reports inline. **Nothing was withdrawn or downgraded.**
+
+  Not done here, deliberately: the false-negative sweep (the next task owns re-reading both
+  editors end to end, and it may still add findings — the ordered list says so rather than
+  presenting itself as final), and no i18n key was actually written.
 
 - [ ] Sanity-check the audit for false negatives before declaring it done:
   - Re-read `lib/screens/settings_screen.dart` and `lib/dialogs/settings_dialog.dart` end to end and confirm every key they render appears in the audit tables with a verdict

@@ -264,6 +264,12 @@ warning. The app reads the file, never WSL's effective value, so the clamp does 
 R-10 confirms the `MB` half too: `memory=6144MB` really is honoured (`MemTotal` 6 067 928 kB)
 — the 5 GB the slider throws away is 5 GB the user actually had.
 
+One candidate report, from the classification pass ([[index]], *Evidence*):
+[#300](https://github.com/bostrot/wsl2-distro-manager/issues/300) — "点击设置闪退", the app
+exits the moment Settings is clicked, on v1.10.0. No `.wslconfig`, no environment, no repro
+was attached, so this is a **plausible** match for CC-9 and not a confirmed one. Sized as
+P05-01, whose first step is the reproduction that would settle it.
+
 ### CC-10 — Path values are written with single backslashes, and WSL discards the line
 
 Added by [[runtime]] R-6. `wsl-config.md:248` requires `path` values to use **escaped**
