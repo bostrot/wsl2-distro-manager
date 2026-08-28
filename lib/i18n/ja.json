@@ -368,6 +368,7 @@
   "ai-workspace-starting-text": "%sを起動しています...",
   "ai-workspace-started-text": "%sが実行中です",
   "ai-workspace-start-failed-text": "%sの起動に失敗しました",
+  "ai-workspace-stop-failed-text": "%sの停止に失敗しました",
   "ai-workspace-checking-env-text": "AI Workspace環境を確認しています...",
   "ai-workspace-checking-status-text": "状態を確認しています...",
   "ai-workspace-uninstall-title": "ツールのアンインストール",

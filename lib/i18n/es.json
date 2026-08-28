@@ -368,6 +368,7 @@
   "ai-workspace-starting-text": "Iniciando %s...",
   "ai-workspace-started-text": "%s está en ejecución",
   "ai-workspace-start-failed-text": "Error al iniciar %s",
+  "ai-workspace-stop-failed-text": "Error al detener %s",
   "ai-workspace-checking-env-text": "Comprobando el entorno de AI Workspace...",
   "ai-workspace-checking-status-text": "Comprobando estado...",
   "ai-workspace-uninstall-title": "Desinstalar Herramienta",

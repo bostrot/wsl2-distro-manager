@@ -72,6 +72,40 @@ String _waitForPort(int port) =>
     'for _i in $_kWaitIterations; do ${_listeningTest(port)} && break; '
     'sleep 1; done; ';
 
+/// `pgrep -f` patterns for the two gateways. The leading bracket is the
+/// classic self-match guard — `[h]ermes` is eight literal characters that do
+/// not contain the substring `hermes`, so the pattern cannot match the
+/// process carrying it. See [_killByPattern] for why that is not enough.
+const String _kHermesPattern = '[h]ermes.*gateway';
+const String _kOpenClawPattern = '[o]penclaw';
+
+/// Kills every process whose command line matches [pattern], without killing
+/// the shell that is running the kill.
+///
+/// This replaced `pkill -f`, which matches the *full command line* — and the
+/// `bash -c '<script>'` doing the killing carries the entire script as its own
+/// argv. The bracket idiom shields the pattern itself but nothing else in the
+/// string, and three commands here mention their tool a second time,
+/// unbracketed: `setsid hermes gateway` in Hermes' start, `openclaw gateway
+/// stop` in OpenClaw's stop, and the `rm`/`npm uninstall` lines in OpenClaw's
+/// uninstall. Measured against the real distro on 2026-08-28, `pkill`
+/// signalled its own shell in all three: Hermes never reached its `setsid`
+/// line at all, OpenClaw's Stop always returned non-zero — with empty stderr,
+/// because a signalled shell writes nothing — and its uninstall died before
+/// removing anything.
+///
+/// `pkill` has no "skip my own process tree" flag, so the filtering happens in
+/// the shell: `pgrep` lists the candidates and `$$`/`$PPID` are dropped. Keep
+/// it a single `pgrep` with no pipeline — a pipeline forks a subshell that
+/// inherits the matching command line and becomes a target itself. The
+/// trailing `true` preserves the `|| true` exit status the callers relied on.
+///
+/// Single quotes only: `runInShell: false` means a `"` reaches bash literally.
+String _killByPattern(String pattern) =>
+    'for _p in \$(pgrep -f \'$pattern\'); do '
+    '[ \$_p = \$\$ ] || [ \$_p = \$PPID ] || kill \$_p; '
+    'done 2>/dev/null; true';
+
 /// Supported AI workspace tools.
 enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi }
 
@@ -128,11 +162,11 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     // The trailing port wait is the real success check — the launcher exits 0
     // even if the gateway dies immediately, and a `pgrep` gate here reported
     // success for a gateway that never bound 9119.
-    startCommand: 'pkill -f \'[h]ermes.*gateway\' >/dev/null 2>&1; '
+    startCommand: '${_killByPattern(_kHermesPattern)}; '
         'mkdir -p \$HOME/.hermes; '
         'setsid hermes gateway </dev/null >>\$HOME/.hermes/gateway.log 2>&1 & '
         'disown; ${_waitForPort(_kHermesPort)}${_listeningTest(_kHermesPort)}',
-    stopCommand: 'pkill -f \'[h]ermes.*gateway\' || true',
+    stopCommand: _killByPattern(_kHermesPattern),
     // A live process proves nothing — see [_listeningTest].
     statusCheck: _listeningStatusCheck(_kHermesPort),
     port: _kHermesPort,
@@ -150,7 +184,7 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     startCommand: 'openclaw gateway restart >/dev/null 2>&1; '
         '${_waitForPort(_kOpenClawPort)}${_listeningTest(_kOpenClawPort)}',
     stopCommand: 'openclaw gateway stop >/dev/null 2>&1; '
-        'pkill -f \'[o]penclaw\' || true',
+        '${_killByPattern(_kOpenClawPattern)}',
     // A live process proves nothing — it routinely runs without ever binding.
     statusCheck: _listeningStatusCheck(_kOpenClawPort),
     port: _kOpenClawPort,
@@ -702,7 +736,13 @@ class AiWorkspaceService {
         _persistConfirmedState(tool);
         return true;
       } else {
-        _toolStates[tool]?.errorMessage = result.stderr;
+        // Stop has no toast of its own — the card's `Error:` line is the only
+        // feedback — and a stop that dies on a signal writes nothing to
+        // stderr, which rendered a bare `Error:` with nothing after it.
+        final detail = result.stderr.trim();
+        _toolStates[tool]?.errorMessage = detail.isEmpty
+            ? 'ai-workspace-stop-failed-text'.i18n([config.name])
+            : detail;
         return false;
       }
     } catch (e) {
@@ -736,11 +776,14 @@ class AiWorkspaceService {
           'docker rm -f $imageName && docker rmi ghcr.io/open-webui/$imageName:latest';
     } else if (tool == AiWorkspaceTool.hermesAgent) {
       // No documented uninstall command — remove every known install root.
-      uninstallCmd = 'pkill -f \'[h]ermes.*gateway\' >/dev/null 2>&1; '
+      uninstallCmd = '${_killByPattern(_kHermesPattern)}; '
           'rm -rf \$HOME/.hermes /usr/local/lib/hermes-agent; hash -r';
     } else if (tool == AiWorkspaceTool.openClaw) {
-      // Covers both install methods: git wrapper and global npm.
-      uninstallCmd = 'pkill -f \'[o]penclaw\' >/dev/null 2>&1; '
+      // Covers both install methods: git wrapper and global npm. The kill has
+      // to survive its own command line here too — the `rm`/`npm` lines below
+      // both name `openclaw` unbracketed, so a plain `pkill` took the shell
+      // down before anything was removed.
+      uninstallCmd = '${_killByPattern(_kOpenClawPattern)}; '
           'rm -f \$HOME/.local/bin/openclaw; '
           'npm uninstall -g openclaw >/dev/null 2>&1 || true; hash -r';
     } else {

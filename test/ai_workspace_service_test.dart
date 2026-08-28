@@ -708,7 +708,13 @@ void main() {
         expect(command.contains('setsid hermes gateway'), true);
         expect(command.contains('for _i in'), true);
         expect(command.contains('/dev/tcp/127.0.0.1/9119'), true);
-        expect(command.contains('pgrep'), false);
+        // The gate is the port, never a live process. `pgrep` is allowed
+        // exactly once — in the kill that clears the old gateway first — so
+        // this pins it there rather than banning the word outright.
+        expect('pgrep'.allMatches(command).length, 1);
+        expect(command.contains('pgrep -f \'[h]ermes.*gateway\''), true);
+        expect(command.trimRight().endsWith('2>/dev/null; }'), true,
+            reason: 'the listening test has to be the last thing that runs');
       });
 
       test('starting openclaw waits for its port', () async {
@@ -725,6 +731,78 @@ void main() {
         expect(command.contains('for _i in'), true);
         expect(command.contains(r':18789([^0-9]|$)'), true);
         expect(command.contains('"'), false);
+      });
+
+      // `pkill -f` matches the *command line* of the `bash -c` running it, and
+      // the `[h]ermes` bracket only shields the pattern itself. Every command
+      // here that mentions its tool a second time, unbracketed, therefore
+      // signalled its own shell: Hermes never reached `setsid hermes gateway`,
+      // OpenClaw's Stop always returned non-zero, and both uninstalls died
+      // before removing anything. Measured against the real distro 2026-08-28.
+      test('no lifecycle command reaches for pkill', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        for (final tool in AiWorkspaceTool.values) {
+          service.getState(tool)!.status = ToolStatus.stopped;
+          await service.start(tool);
+          await service.stop(tool);
+          await service.uninstall(tool);
+        }
+
+        final args = testShell.allCommands.expand((cmd) => cmd);
+        expect(
+          args.where((arg) => arg.contains('pkill')),
+          isEmpty,
+          reason: 'pkill -f cannot tell the tool from the shell killing it',
+        );
+
+        final killLoops =
+            args.where((arg) => arg.contains('pgrep -f')).toList();
+        expect(killLoops, isNotEmpty,
+            reason: 'the gateways still have to be killable');
+        for (final loop in killLoops) {
+          expect(loop.contains(r'[ $_p = $$ ]'), true,
+              reason: 'the kill loop must skip the shell running it');
+          expect(loop.contains(r'[ $_p = $PPID ]'), true,
+              reason: 'and its parent, which carries the same command line');
+        }
+      });
+
+      // Stop is the only lifecycle call with no toast of its own, so the
+      // card's `Error:` line is the entire feedback — and a shell taken down
+      // by a signal writes nothing to stderr, which put a literal `Error:`
+      // with nothing after it on the OpenClaw card.
+      test('a failed stop with no stderr still says something readable',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openClaw)!;
+        state.status = ToolStatus.running;
+
+        testShell.exitCode = 143; // SIGTERM, the shape of the self-kill
+        testShell.stderrData = '   ';
+        final result = await service.stop(AiWorkspaceTool.openClaw);
+
+        expect(result, false);
+        expect(state.errorMessage,
+            'ai-workspace-stop-failed-text'.i18n(['OpenClaw']));
+      });
+
+      test('a failed stop keeps real stderr when there is any', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openClaw)!;
+        state.status = ToolStatus.running;
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'openclaw: permission denied\n';
+        final result = await service.stop(AiWorkspaceTool.openClaw);
+
+        expect(result, false);
+        expect(state.errorMessage, 'openclaw: permission denied');
       });
     });
 
@@ -1360,6 +1438,37 @@ void main() {
         return testShell.lastCommand.last;
       }
 
+      /// The bash program `start` (or `stop`, when [start] is false) sends for
+      /// [tool].
+      Future<String> lifecycleScriptFor(AiWorkspaceTool tool,
+          {required bool start}) async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        service.getState(tool)!.status = ToolStatus.stopped;
+        testShell.stdoutData = '';
+        if (start) {
+          await service.start(tool);
+        } else {
+          await service.stop(tool);
+        }
+        return testShell.lastCommand.last;
+      }
+
+      /// Stubs for the kill loop, with `pgrep` handing back the *running*
+      /// shell's own pid and its parent's alongside a decoy. Nothing else can
+      /// prove the filter looks at real pids rather than an invented number.
+      /// `kill` reports instead of signalling, so a script that would have
+      /// killed itself still runs to the end and can be inspected.
+      const killStubs = 'pgrep() { echo \$\$; echo \$PPID; echo 4242; }; '
+          'kill() { echo "killed:\$1"; }; ';
+
+      /// The pids the script asked to kill, in order.
+      List<String> killedBy(String answer) => answer
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.startsWith('killed:'))
+          .toList();
+
       /// Fast-forwards the daemon wait loop; nothing here needs real seconds.
       const noSleep = 'sleep() { :; }; ';
 
@@ -1529,6 +1638,81 @@ void main() {
         );
 
         expect(answer, 'dockerdown');
+      });
+
+      // Found by clicking through the app, not by a test: a canned stdout
+      // cannot show a shell that killed itself. `pkill -f '[h]ermes.*gateway'`
+      // matched the very `bash -c` carrying it, because the same string goes
+      // on to say `setsid hermes gateway` — so the script died on its first
+      // statement and the launcher never ran at all. The sentinel at the end
+      // is the whole point of the test.
+      test('the hermes start command survives its own kill pattern', () async {
+        final script =
+            await lifecycleScriptFor(AiWorkspaceTool.hermesAgent, start: true);
+
+        final answer = await _runProbeScript(
+          // A throwaway HOME: the command creates `$HOME/.hermes` and appends
+          // to a log there, and a test has no business writing to the real one.
+          // `ss` answers so the port wait breaks on its first iteration —
+          // twenty real `/dev/tcp` connect attempts take longer than the test
+          // timeout on Windows, and the wait is not what this test is about.
+          'HOME=\$(mktemp -d); $killStubs$noSleep'
+          'setsid() { :; }; '
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:9119 0.0.0.0:*'; }; ",
+          '$script; echo SURVIVED',
+        );
+
+        expect(answer.contains('SURVIVED'), true,
+            reason: 'the kill must not signal the shell running it');
+        expect(killedBy(answer), ['killed:4242'],
+            reason: 'only the gateway, never this shell or its parent');
+      });
+
+      // The mirror image on the other tool: here the unbracketed second
+      // mention comes *before* the kill (`openclaw gateway stop`), so the
+      // gateway really did stop — and then the shell died, so Stop reported
+      // failure with an empty message over a tool that was genuinely down.
+      test('the openclaw stop command survives its own kill pattern',
+          () async {
+        final script =
+            await lifecycleScriptFor(AiWorkspaceTool.openClaw, start: false);
+
+        final answer = await _runProbeScript(
+          '${killStubs}openclaw() { :; }; ',
+          '$script; echo SURVIVED',
+        );
+
+        expect(answer.contains('SURVIVED'), true);
+        expect(killedBy(answer), ['killed:4242']);
+      });
+
+      test('the hermes stop command survives its own kill pattern', () async {
+        final script =
+            await lifecycleScriptFor(AiWorkspaceTool.hermesAgent, start: false);
+
+        final answer = await _runProbeScript(
+          killStubs,
+          '$script; echo SURVIVED',
+        );
+
+        expect(answer.contains('SURVIVED'), true);
+        expect(killedBy(answer), ['killed:4242']);
+      });
+
+      // The same property without the safety net: `kill` is the real one here,
+      // and `pgrep` hands the loop nothing but this shell's own pid and its
+      // parent's. A filter that misses either really does take the script
+      // down, which is precisely what the distro showed.
+      test('the kill loop survives being handed its own pid', () async {
+        final script =
+            await lifecycleScriptFor(AiWorkspaceTool.hermesAgent, start: false);
+
+        final answer = await _runProbeScript(
+          'pgrep() { echo \$\$; echo \$PPID; }; ',
+          '$script; echo SURVIVED',
+        );
+
+        expect(answer, 'SURVIVED');
       });
     }, skip: _bash == null ? 'no bash available to run the probe scripts' : null);
   });

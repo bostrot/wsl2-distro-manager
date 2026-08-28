@@ -368,6 +368,7 @@
   "ai-workspace-starting-text": "%s indítása...",
   "ai-workspace-started-text": "%s fut",
   "ai-workspace-start-failed-text": "%s indítása sikertelen",
+  "ai-workspace-stop-failed-text": "%s leállítása sikertelen",
   "ai-workspace-checking-env-text": "AI workspace környezet ellenőrzése...",
   "ai-workspace-checking-status-text": "Állapot ellenőrzése...",
   "ai-workspace-uninstall-title": "Eszköz eltávolítása",

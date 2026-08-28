@@ -369,6 +369,7 @@
   "ai-workspace-starting-text": "正在啟動 %s...",
   "ai-workspace-started-text": "%s 正在執行",
   "ai-workspace-start-failed-text": "%s 啟動失敗",
+  "ai-workspace-stop-failed-text": "%s 停止失敗",
   "ai-workspace-checking-env-text": "正在檢查 AI workspace 環境...",
   "ai-workspace-checking-status-text": "正在檢查狀態...",
   "ai-workspace-uninstall-title": "解除安裝工具",

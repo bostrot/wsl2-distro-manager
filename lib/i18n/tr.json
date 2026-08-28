@@ -368,6 +368,7 @@
   "ai-workspace-starting-text": "%s başlatılıyor...",
   "ai-workspace-started-text": "%s çalışıyor",
   "ai-workspace-start-failed-text": "%s başlatılamadı",
+  "ai-workspace-stop-failed-text": "%s durdurulamadı",
   "ai-workspace-checking-env-text": "AI workspace ortamı kontrol ediliyor...",
   "ai-workspace-checking-status-text": "Durum kontrol ediliyor...",
   "ai-workspace-uninstall-title": "Aracı Kaldır",

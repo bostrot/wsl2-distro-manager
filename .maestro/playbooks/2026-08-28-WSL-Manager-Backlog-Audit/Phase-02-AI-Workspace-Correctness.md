@@ -494,11 +494,63 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   four card states this task was asked to verify, and it earns its own task
   rather than being smuggled into this one.
 
-- [ ] Stop `pkill -f` from killing the shell that runs it, in `lib/api/ai_workspace/service.dart`:
+- [x] Stop `pkill -f` from killing the shell that runs it, in `lib/api/ai_workspace/service.dart`:
   - Found by the Phase 02 click-through, not by a test: OpenClaw's **Stop** reported failure with a bare, empty `Error:` line while the gateway had in fact stopped
   - `pkill -f` matches the command line of its own `bash -c` parent. The `[o]penclaw`/`[h]ermes` bracket idiom shields the *pattern*, but not a second unbracketed mention of the tool elsewhere in the same command string
   - `hermesAgent.startCommand` (`setsid hermes gateway` after the `pkill`) and `openClaw.stopCommand` (`openclaw gateway stop` before it) both self-kill; Hermes therefore cannot start at all. Reproductions and a suggested `_killByPattern()` helper are in `Working/pkill-self-kill.md`
   - Verify against the real distro, not only the mock — a canned stdout cannot show a shell that killed itself
   - Also make `stop()`'s failure branch fall back to a real message when `result.stderr` is empty, instead of rendering `Error:` with nothing after it
+
+  **Done (2026-08-28).** `_killByPattern(pattern)` landed next to `_waitForPort`,
+  with the two patterns pulled out as `_kHermesPattern` / `_kOpenClawPattern` so
+  every site shares one spelling. It emits
+  `for _p in $(pgrep -f '<pattern>'); do [ $_p = $$ ] || [ $_p = $PPID ] || kill
+  $_p; done 2>/dev/null; true` — `pkill` has no "skip my own process tree" flag,
+  so the filtering has to happen in the shell. The trailing `true` preserves the
+  exit status the old `|| true` callers relied on. Two deviations from the
+  suggestion in `Working/pkill-self-kill.md`: the double quotes are gone (pids
+  are numeric, and this file's rule is single quotes only), and the `pgrep` must
+  stay a *single* command — `$(pgrep …)` forks and execs `pgrep` directly, but
+  `$(pgrep … | anything)` forks a real subshell that inherits the matching
+  command line and becomes a target of the loop that spawned it.
+
+  **A third self-killing site was found**, beyond the two in the note's table:
+  the openclaw branch of `uninstall()`, whose `rm -f …/openclaw` and
+  `npm uninstall -g openclaw` both sit after the `pkill`. It died before removing
+  anything. The hermes uninstall branch is safe by luck — its `$HOME/.hermes`
+  comes *after* the `gateway` in the pattern text, so `hermes.*gateway` cannot
+  match — but it now uses the helper too rather than depending on word order.
+  The note's table has been corrected.
+
+  `stop()`'s failure branch now falls back to a new `ai-workspace-stop-failed-text`
+  key (added to all nine locales; `check_translations` clean) when `result.stderr`
+  is blank. Stop is the only lifecycle call with no toast of its own, so that
+  card line is the entire feedback.
+
+  **Verified against the real `ai-workspace` distro, not only the mock.** All
+  five fixed commands print `REACHED_END` and exit 0; the `pkill` forms of both
+  the OpenClaw stop and the OpenClaw uninstall still exit 15 (SIGTERM) with no
+  output at all, which is what a canned stdout can never show.
+
+  Five tests added to `test/ai_workspace_service_test.dart`: one static guard
+  (no emitted command reaches for `pkill`, and every kill loop carries both
+  guards), two for the stop message (empty stderr falls back, real stderr is
+  kept), and four that run the *actual* emitted bash — three with a recording
+  `kill` stub asserting only the decoy pid is targeted, and one with an
+  unstubbed `kill` and a `pgrep` that hands the loop nothing but `$$`/`$PPID`,
+  so a regressed filter genuinely takes the test shell down. Mutation-checked
+  both ways: dropping the guards fails 5 tests, reverting to plain `pkill` fails
+  5. One pre-existing assertion had to move with the code —
+  `starting hermes waits for its port` banned the word `pgrep` outright; it now
+  pins `pgrep` to exactly one occurrence, in the kill, and asserts the listening
+  test is still the last thing the command runs.
+
+  `flutter analyze` 105 issues before and after (unchanged baseline, none in the
+  touched files), `flutter test` 367/367, `flutter test
+  integration_test/ai_workspace_test.dart -d windows` 17/17. `git diff --stat` is
+  12 files, no unrelated churn. `dart format` again not run, for the reason
+  recorded at the top of this document. Added the gotcha to `AGENTS.md` under
+  the WSL/subprocess section, since it is a shell trap rather than a WSL one and
+  will otherwise be rediscovered.
 
 - [ ] Format only the touched files, confirm `git diff --stat` shows no unrelated churn, and commit the AI Workspace correctness fixes and the `navbar.dart` removal on `beta`.
