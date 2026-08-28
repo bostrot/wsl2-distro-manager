@@ -8,6 +8,7 @@ tags:
   - cli
 related:
   - '[[index]]'
+  - '[[runtime]]'
   - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[wslconf-keys]]'
@@ -125,6 +126,15 @@ distro under that name. It has **no call site** — dead code — but it is a lo
 ## Cross-cutting findings
 
 ### CC-1 — The app never asks WSL what version it is
+
+> [[runtime]] R-1 and R-2 add two things. R-2: every flag this file marks **H** is present
+> in WSL 2.6.3.0's `--help`, so the **H** mark is about incomplete documentation, not about
+> preview-gated flags. R-1: version is not always the right gate anyway —
+> `nestedVirtualization` is refused by the *host CPU* on the test machine
+> (`wsl: Geschachtelte Virtualisierung wird auf diesem Computer nicht unterstützt`), a
+> condition `wsl-config.md` never mentions and no version check can detect. WSL emits that
+> on stderr; the app discards it.
+
 
 `--version` and `--status` have zero `wsl` call sites. Consequences that reach well beyond
 this file:

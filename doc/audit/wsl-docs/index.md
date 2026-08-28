@@ -12,6 +12,7 @@ related:
   - '[[cli-flags]]'
   - '[[features]]'
   - '[[verification]]'
+  - '[[runtime]]'
 ---
 
 # WSL documentation audit
@@ -29,6 +30,13 @@ when the docs move.
 | [[wslconf-keys]] | per-distro `/etc/wsl.conf` | 15 keys / 7 sections | 11 | **4** | confirmed as written |
 | [[cli-flags]] | `wsl.exe` commands and options | 30 top-level verbs (64 incl. options) | 13 | 17 | confirmed; one grep footnoted |
 | [[features]] | whole capability surfaces | 11 assessed | 0 fully | **7** (+4 partial) | F-5 amended |
+
+[[runtime]] is the third pass: it executes WSL **2.6.3.0** and measures what the installed
+build actually does, so the version floors, the section-placement arguments and the
+"changes need a restart" claims stop being inferences. It withdraws one claim, escalates
+three findings to data-affecting, and adds four new ones — the largest being that the app
+writes Windows paths into `.wslconfig` with single backslashes, which WSL discards as a
+parse error ([[runtime]] R-6).
 
 [[verification]] is the second pass over all four: every missing key re-grepped, every
 widget type checked against the documented value type, every tooltip diffed string-for-string
@@ -70,9 +78,9 @@ The real gaps are elsewhere, and they fall into four groups — plus one outrigh
 
 ## Reading order
 
-- **[[wslconfig-keys]]** — per-key table for `[wsl2]` and `[experimental]`, plus eight
+- **[[wslconfig-keys]]** — per-key table for `[wsl2]` and `[experimental]`, plus ten
   cross-cutting findings about the editor and the `.wslconfig` parser/writer.
-- **[[wslconf-keys]]** — per-key table for all seven `wsl.conf` sections, plus six
+- **[[wslconf-keys]]** — per-key table for all seven `wsl.conf` sections, plus seven
   cross-cutting findings, two of them data-affecting.
 - **[[cli-flags]]** — every documented (**D**) and `--help`-only (**H**) `wsl.exe` command
   against every invocation in `lib/`.
@@ -81,12 +89,17 @@ The real gaps are elsewhere, and they fall into four groups — plus one outrigh
 - **[[verification]]** — the second pass. Read this before quoting any verdict from the four
   files above; it is where three of them changed, and it carries the full tooltip diff
   (10 covered / 16 outdated / 1 wrong) that the per-key tables only summarise.
+- **[[runtime]]** — the third pass, against WSL 2.6.3.0 on this machine. Read this before
+  citing any version floor, any "WSL ignores that" claim, or any restart requirement; its
+  *Corrections* table lists every earlier finding it changed.
 
 Supporting material, outside the repo tree, under
 `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/`:
 `wsl-docs-source.md` (provenance, page inventory, `ms.date` stamps),
 `wslconfig-keys.md`, `wslconf-keys.md`, `wsl-exe-flags.md` (the documented-side
-inventories these four files diff against).
+inventories these four files diff against), and `runtime/` (the ten probe `.wslconfig`
+files behind [[runtime]], the backup of this machine's original file, and the scripts that
+applied [[runtime]]'s corrections back into the four area files).
 
 ## Verdict vocabulary
 
@@ -105,7 +118,7 @@ inventories these four files diff against).
 | Documented-side inventories extracted | done — three files in `Working/` |
 | **Per-area findings written (this set)** | **done** |
 | **Claimed gaps re-verified against code (widget types, tooltips)** | **done — [[verification]]** |
-| Runtime behaviour verified against local WSL | pending |
+| **Runtime behaviour verified against local WSL** | **done — [[runtime]]** |
 | Findings sized (S/M/L), ranked, ordered for Phase 05 | pending |
 | False-negative sanity check | pending |
 | i18n keys added for the S-sized findings | pending |
@@ -119,10 +132,13 @@ prioritised backlog.
 Each area file ends with its own "what was not examined" section; read it before quoting
 a finding. Two limits apply to all four:
 
-- **No claim here was verified at runtime.** No WSL command was executed for this diff, no
-  config key was written and observed taking effect, and no screen was exercised. Every
-  app-side claim is read from source at the cited line.
+- **The four area files and [[verification]] were written without executing anything.**
+  Every app-side claim in them is read from source at the cited line. [[runtime]] is the
+  exception and supersedes them where they conflict: it executed WSL 2.6.3.0, wrote config
+  keys and observed them taking effect. The app itself has still never been launched for
+  this audit — see [[runtime]]'s *What was not examined*.
 - **The docs are the yardstick, not the WSL implementation.** The inventories are
   exhaustive against `microsoftdocs/wsl@8842def` plus one local `wsl.exe --help` run. WSL
   has no "dump all config keys" verb, so a key that exists in the binary and in neither
-  source is invisible to this audit.
+  source is invisible to this audit — though [[runtime]]'s unknown-key probe can *test* any
+  candidate name cheaply, which is how the two Intune-only keys were confirmed real.

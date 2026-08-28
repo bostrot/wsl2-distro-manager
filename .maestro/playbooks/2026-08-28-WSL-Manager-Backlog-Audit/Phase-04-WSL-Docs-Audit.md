@@ -87,8 +87,11 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
   4. **`troubleshooting.md` still calls `networkingMode`, `autoProxy` and `dnsTunneling`
      `[experimental]`** (lines 305/315/335) while `wsl-config.md` has them in `[wsl2]`.
      Same commit, contradicting itself. Any app tooltip that says "experimental" about
-     these three is **outdated**, not merely stale wording — a user following it writes a
-     section header current WSL ignores.
+     these three is **outdated**, not merely stale wording.
+     *(Corrected by the runtime task: this point originally ended "— a user following it
+     writes a section header current WSL ignores." WSL 2.6.3.0 accepts those keys under
+     **either** section, proven behaviourally. See `runtime.md` R-5. The contradiction is
+     real; the consequence is a file that disagrees with the docs, not a dead setting.)*
   5. **Five documented conditional dependencies** must drive UI enablement in Phase 05:
      `dnsTunneling` → {`bestEffortDnsParsing`, `dnsTunnelingIpAddress`}; `autoProxy` →
      `initialAutoProxyTimeout`; `networkingMode=mirrored` → {`ignoredPorts`,
@@ -246,10 +249,98 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
   different errors, which the i18n task at the end of this phase should check for the three
   corrected strings.
 
-- [ ] Verify the runtime behaviour claims the app makes, against the local WSL version:
+- [x] Verify the runtime behaviour claims the app makes, against the local WSL version:
   - Run `wsl --version` and record kernel/WSLg/MSRDC versions in the audit
   - Confirm which documented keys the installed WSL actually honours (some are gated by version); annotate each finding with its minimum WSL version so Phase 05 can gate the UI correctly
   - Note where the docs require `wsl --shutdown` for a key to take effect, and whether the app tells the user that
+
+  **Result (2026-08-28):** Third pass written to `doc/audit/wsl-docs/runtime.md` (findings
+  R-1—R-13) and its corrections applied in place to `index.md` and all four area files.
+  Measured against **WSL 2.6.3.0** / kernel 6.6.87.2-1 / WSLg 1.0.71 / MSRDC 1.2.6353 /
+  Windows 10.0.26200.9168; host 10 logical CPUs, 7.98 GiB RAM. No `lib/` file was touched.
+
+  **The technique is the reusable part.** WSL 2.6.3 reports `.wslconfig` problems on
+  **stderr with file and line number**, before the VM boots, and `WSL_UTF8=1` makes that
+  output UTF-8 instead of UTF-16LE. Four diagnostics turned out to be usable oracles
+  (unknown key / invalid key name / duplicate key / invalid size string), so "does this
+  build honour key X in section Y" is a one-shutdown question rather than a guess. Ten
+  probe `.wslconfig` files are kept in `Working/runtime/`. `%UserProfile%\.wslconfig` was
+  empty (`md5 d41d8cd9…`), was backed up, and was restored byte-identical — hash
+  re-verified. `ai-workspace`'s `/etc/wsl.conf` was backed up in-distro and moved back;
+  both distros are `Stopped`, as they were at the start.
+
+  Answers to the three bullets, in order:
+
+  1. **Versions recorded** in `runtime.md` “The machine under test”. Every documented floor
+     (Build 19041, Win 11 ¹, Win 11 22H2 ², WSL 0.66.2 / 0.67.6 / 2.0.9 / 2.3.25 / 2.4.5)
+     is met here, so **no key is version-gated out on this machine** — which is what makes
+     every “unrecognised key” result below about *section placement*, never about age.
+  2. **All 27 reference-table keys are recognised**, plus both Intune-only keys
+     (`systemDistro`, `kernelDebugPort`), confirming the inventory's “29 known keys”. And
+     **all 12 flags `cli-flags.md` marks H are present in 2.6.3's `--help`** — the H mark
+     is about incomplete docs, not preview gating, so Phase 05 needs one coarse “is this
+     2.x” check, not per-flag guards.
+  3. **The restart rule is real, silent, and scoped differently per file.** With the VM
+     running, a rewritten `.wslconfig` had no effect and printed no warning until
+     `wsl --shutdown`; a `wsl.conf` change likewise did nothing until
+     `wsl --terminate <distro>` — **no global shutdown needed**, so the dialog's fix is
+     cheaper than the settings screen's. The app *does* tell the user for `.wslconfig`
+     (`globalconfigurationinfo-text`, present in all nine locales, rendered at
+     `settings_screen.dart:1017`) and says **nothing** for `wsl.conf`.
+
+  **One earlier claim is withdrawn, and it is the most important thing here.**
+  `Working/wslconfig-keys.md:132` said a user following `troubleshooting.md` writes
+  `[experimental] networkingMode=mirrored` “which the current WSL ignores.” **False.**
+  WSL 2.6.3 accepts `networkingMode`, `firewall`, `dnsTunneling` and `autoProxy` under
+  *either* section — proven behaviourally, not just by silence: `[wsl2]` and
+  `[experimental]` spellings both moved `eth0` from `172.26.21.255/20` (NAT) to the host's
+  LAN address `192.168.3.82/24`. Those four are the **only** keys with dual-section
+  acceptance; every other misplaced key in the same probe was rejected. The docs
+  contradiction stands, but Phase 05 must not size an item on the ignored-setting claim.
+  Corrected in `Working/wslconfig-keys.md` and at `features.md` F-1/F-2.
+
+  **Three findings escalate from “untidy” to “data-affecting”:**
+
+  - **CC-3 (section-blind writer).** All seven `[experimental]` keys are *rejected* under
+    `[wsl2]`, and `memory` is rejected under `[experimental]`; `wsl.exe` still exits 0 and
+    boots with the key **unset**. So `saveSettings` relocating a user's hand-added
+    `[experimental]` key doesn't tidy the file — it turns the setting off.
+  - **CC-4 / V-5 (case-sensitivity).** WSL detects the duplicate the app creates and
+    resolves it to the **first** occurrence (measured with two `memory` lines; the earlier
+    won). The line the app appends is the loser — the user's edit is a silent no-op, not a
+    messy file.
+  - **CC-9 (slider crash).** Precondition verified: `memory=8589934592` is accepted by WSL
+    *silently* (`MemTotal` 8 111 836 kB), so the app crashes on a value WSL is happy with.
+    `processors=64` is the mirror image — WSL rejects it with a clear message and clamps to
+    10; the app, reading the file rather than WSL's effective value, still asserts. The app
+    is less robust than the tool it configures, in both directions.
+
+  **Two genuinely new findings**, neither of which the code-only passes could have reached:
+
+  - **CC-10 (new) — the app writes unescaped Windows paths and WSL discards the line.**
+    `swapFile=C:\Temp\x.vhdx` is a hard parse error (`Ungültiges Escapezeichen: „T“`);
+    `C:\\Temp\\x.vhdx` parses. The app escapes nothing anywhere, and the worst offender is
+    the surface with the nicest UI: `kernelModules`' file picker
+    (`settings_screen.dart:1025-1038`) assigns `result.files.single.path!` verbatim, so
+    **every value that picker can produce** is a line WSL throws away. `kernel` and
+    `swapFile` invite the same by hand.
+  - **R-1 — one gate is hardware, not version.** `nestedVirtualization` defaults to `true`
+    and this host's CPU refuses it, printing a warning on *every* VM start that
+    `wsl-config.md` never mentions and no version check can predict. Consequence for F-9:
+    reading WSL's **stderr** is worth as much as reading its version, and costs the same
+    plumbing.
+
+  Two smaller runtime facts Phase 05 needs: `#` is the only comment character `.wslconfig`
+  accepts (`;` is `Ungültiger Schlüsselname`), which bounds the CC-5 fix; and `memory=6144MB`
+  really is honoured (`MemTotal` 6 067 928 kB), so the 5 GB the slider's `replaceAll('GB','')`
+  silently discards is memory the user actually had.
+
+  **Still not run: the app itself.** CC-9's crash remains derived from `fluent_ui`'s
+  constructor assert plus the parse expression — this pass confirms WSL accepts the
+  triggering value but never opened the Settings page. `assets/scripts/settings.bash` was
+  also not executed, so `wslconf-keys.md` CC-1/CC-2 are still code-read only. Everything
+  measured here is one machine, one build, de-DE locale; `runtime.md`'s “what was not
+  examined” section states the limits.
 
 - [ ] Classify and prioritise every finding in `doc/audit/wsl-docs/index.md`:
   - Size each as **S** (a key added to an existing editor: label, tooltip, widget, i18n keys), **M** (a new section or dialog), or **L** (a new screen or subsystem)

@@ -8,6 +8,7 @@ tags:
   - wslconfig
 related:
   - '[[index]]'
+  - '[[runtime]]'
   - '[[verification]]'
   - '[[wslconf-keys]]'
   - '[[cli-flags]]'
@@ -142,6 +143,14 @@ consequences:
 Verdict **wrong**. Contrast `getWSLConf` (`wsl.dart:1824`), which *does* track sections
 correctly for `wsl.conf` — the correct parser already exists in the codebase.
 
+> **Escalated by [[runtime]] R-4.** Measured against WSL 2.6.3.0: all seven
+> `[experimental]` keys are **rejected** under `[wsl2]` (`wsl: Unbekannter Schlüssel
+> „wsl2.autoMemoryReclaim“…`), and `memory` is rejected under `[experimental]`. `wsl.exe`
+> still exits `0` and boots with the key **unset**. So consequence 3 above is not a tidiness
+> problem: relocating a user's `[experimental]` key into `[wsl2]` silently **turns the
+> setting off**, and the only notice is a stderr line the app never reads. Read CC-3 as
+> data-affecting.
+
 ### CC-4 — Key matching is case-sensitive; `.wslconfig` is not
 
 `setConfig`'s regex is built from the camelCase spelling with no `caseSensitive: false`.
@@ -165,11 +174,23 @@ Verdict **wrong**.
 CC-2 compounds step 2: the value is space-stripped before the user ever sees it, so a path
 under `C:\Program Files\…` is already corrupt in the controller.
 
+> **Escalated by [[runtime]] R-8.** WSL 2.6.3.0 detects the duplicate
+> (`wsl: Doppelter Konfigurationsschlüssel 'wsl2.SWAPFILE' … widersprüchlicher Schlüssel:
+> 'wsl2.swapfile'`) and resolves it to the **first** occurrence — measured with two
+> `memory` lines, where the earlier one won. The line the app appends is therefore the
+> loser. The user's edit does nothing, on this boot or any later one, and the box keeps
+> rendering empty. Not a messy file: a silent no-op edit.
+
 ### CC-5 — Comment lines are parsed as keys
 
 `readConfig` accepts any line containing `=`. A commented-out `# memory = 8GB` yields the
 key `#memory`, which then round-trips through `saveSettings` → `setConfig`. Verdict
 **wrong** (low impact, same fix as CC-3).
+
+[[runtime]] R-7 establishes what the fix has to accept: WSL 2.6.3.0 treats `#` as the
+comment character (`# a hash comment` and `# memory=1GB` both parse clean) and rejects
+`;` outright (`wsl: Ungültiger Schlüsselname`). `.wslconfig` is INI-*like*, not INI — strip
+`#` lines only, and do not "helpfully" add `;` support.
 
 ### CC-6 — Documented dependency graph is not honoured anywhere
 
@@ -197,6 +218,12 @@ There is also an **Edit .wslconfig directly** button (`:152-163`). So the app is
 than most. Two blemishes: the English string contains a stray comma
 ("Build 19041 and ,later"), and pressing **Save** does not offer to restart even though
 *no* `.wslconfig` key takes effect without one. See [[features]].
+
+[[runtime]] R-11 measured it: with the VM running, a rewritten `.wslconfig` had **no**
+effect on the next `wsl` invocation and produced **no** warning; only `wsl --shutdown`
+applied it. The app's string is a faithful paraphrase of `wsl-config.md:213`, hedge
+included — but the hedge is the doc's, and it is wrong. Phase 05 should say "changes take
+effect after WSL restarts", not "you may need to".
 
 ### CC-8 — Orphaned i18n key
 
@@ -229,13 +256,46 @@ this stays hidden. Distinct from the `memory=8192MB` case in the table above, wh
 unguarded parse. Verdict **wrong**, and the most severe defect in this editor: it is a crash
 produced by a value the documentation instructs users to write.
 
+[[runtime]] R-9 verifies the precondition against WSL 2.6.3.0 and sharpens both halves:
+`memory=8589934592` is **accepted silently** (`MemTotal` 8 111 836 kB), so the app crashes on
+a value WSL is entirely happy with; `processors=64` on this 10-thread host is **rejected by
+WSL with a clear message and clamped**, so the app crashes on a value WSL survives by
+warning. The app reads the file, never WSL's effective value, so the clamp does not save it.
+R-10 confirms the `MB` half too: `memory=6144MB` really is honoured (`MemTotal` 6 067 928 kB)
+— the 5 GB the slider throws away is 5 GB the user actually had.
+
+### CC-10 — Path values are written with single backslashes, and WSL discards the line
+
+Added by [[runtime]] R-6. `wsl-config.md:248` requires `path` values to use **escaped**
+backslashes. That is enforced, not stylistic — measured on WSL 2.6.3.0:
+
+| Written | Result |
+|:---|:---|
+| `swapFile=C:\Temp\wslswap.vhdx` | `wsl: Ungültiges Escapezeichen: „T“` — **line discarded**, key unset |
+| `swapFile=C:\\Temp\\wslswap.vhdx` | parsed as `C:\Temp\wslswap.vhdx` |
+
+The app escapes nothing anywhere (`grep` across `settings_screen.dart` and `wsl.dart`
+returns no escaping), and `setConfig` (`wsl.dart:544-592`) writes controller text verbatim.
+Three keys are affected, and the worst is the one with the nicest UI: `kernelModules`'
+file picker (`settings_screen.dart:1025-1038`) assigns `result.files.single.path!` straight
+into the controller, so **every value that picker can produce** is a line WSL throws away.
+`kernel` (`:1021`) and `swapFile` (`:1072`) are free-text boxes whose tooltip asks for an
+absolute Windows path, inviting the same input.
+
+Compounds CC-2: a path under `C:\Program Files\…` is space-stripped *and* unescaped.
+Verdict **wrong**. The fix is one escape on write and one unescape on read, in the same
+place CC-2 and CC-4 are fixed.
+
 ## What was not examined
 
-- **Runtime behaviour.** `wsl --version` was not run, no key was written to a real
-  `.wslconfig` and observed taking effect, and no claim here is backed by execution. The
-  Phase 04 runtime-verification task owns that; the version floors quoted above are the
-  docs' annotations only.
-- **`%UserProfile%\.wslconfig` on this machine** — not read.
+- **Runtime behaviour** was not examined *when this file was written*. It has since been
+  measured — see [[runtime]], which supersedes this file wherever the two disagree, and
+  whose *Corrections* table lists every finding here that it changed. The version floors
+  quoted above are still the docs' annotations, not measurements; [[runtime]] Part 1 only
+  establishes that this machine meets all of them.
+- **The app was still never launched.** CC-9's crash is derived from `fluent_ui`'s
+  constructor assert and the parse expression; [[runtime]] R-9 confirms WSL accepts the
+  triggering value but did not open the Settings page.
 - **The remote-WSL branches** of `setConfig`/`readConfig` (`wsl.dart:546-566`, `:597-614`)
   were read and carry the *same* CC-2/CC-3/CC-4 defects, but the SSH round-trip
   (`_readRemoteWslConfigText` / `_writeRemoteWslConfigText`) was not itself audited.

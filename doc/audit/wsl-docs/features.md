@@ -8,6 +8,7 @@ tags:
   - features
 related:
   - '[[index]]'
+  - '[[runtime]]'
   - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[wslconf-keys]]'
@@ -62,6 +63,12 @@ editable in mirrored mode.
 **Verdict: outdated.** The key is covered; the feature is not. Wiring is a combo box plus
 four enable/disable rules already enumerated in [[wslconfig-keys]] CC-6.
 
+[[runtime]] R-5 confirms mirrored mode works on the test machine and is worth knowing when
+sizing this: `networkingMode=mirrored` moved `eth0` from `172.26.21.255/20` (NAT) to the
+host's own LAN address `192.168.3.82/24`. The feature is real, available on a 2.6.x
+baseline, and immediately visible to a user — which is what makes the un-wired dependants
+above misleading rather than merely incomplete.
+
 ## F-2 — DNS tunnelling
 
 **Documented.** `dnsTunneling` (default `true`, `[wsl2]`) plus two dependants:
@@ -81,8 +88,15 @@ documented default `10.255.255.254`.
 > still tells users to put `networkingMode`, `autoProxy` and `dnsTunneling` under
 > `[experimental]`, while `wsl-config.md` has them under `[wsl2]`. The app writes them to
 > `[wsl2]` (`settings_screen.dart:271-286` — the hardcoded `experimentalKeys` list
-> correctly excludes all three), so the app is **right** and that doc page is wrong. Worth
-> a tooltip line, because users arriving from `troubleshooting.md` will expect otherwise.
+> correctly excludes all three), so the app agrees with the reference page.
+>
+> **Corrected by [[runtime]] R-5.** This note originally justified a tooltip line on the
+> grounds that a `[experimental]` spelling would be ignored. It is not: WSL 2.6.3.0 accepts
+> those four keys under **either** section, confirmed both by the absence of an unknown-key
+> diagnostic and behaviourally. They are the only keys with dual-section acceptance — every
+> other misplaced key in the same probe was rejected outright ([[runtime]] R-4). The tooltip
+> is still defensible as "your file will not match the docs", but that is a much weaker
+> reason. **Do not size a Phase 05 item on the ignored-setting claim.**
 
 ## F-3 — Sparse VHD
 
@@ -198,6 +212,13 @@ enforced, and the inbox-vs-Store distinction (`systemd.md:30`) is invisible to t
 **Verdict: missing, and enabling** — F-1, F-3, F-4 and every version-gated key in
 [[wslconfig-keys]] depend on this existing first.
 
+[[runtime]] adds a caveat that changes the shape of this item. R-2: on WSL 2.6.3.0 every
+flag [[cli-flags]] marks **H** is present, so a single "is this 2.x?" check unlocks the
+whole surface — the gating is coarse, not per-flag. R-1: version is not always the right
+question. `nestedVirtualization` is refused by the host CPU regardless of version, and the
+only signal is a stderr line WSL prints on every VM start. Reading WSL's **output** is
+therefore worth as much as reading its version, and costs the same plumbing.
+
 ## F-10 — "Changes need a restart" (the 8-second rule)
 
 **Documented.** `wsl-config.md:20-26`: a distro must be fully stopped for at least 8
@@ -214,6 +235,18 @@ seconds before config changes apply. Restated for `.wslconfig` (`:213`), for
 
 **Verdict: outdated** overall — the requirement is documented for both files and surfaced
 for only one.
+
+**Measured** ([[runtime]] R-11, R-12). Both halves reproduce, and both are silent:
+
+| File | Change applied without a restart? | Any warning? | Restart needed |
+|:---|:---|:---|:---|
+| `.wslconfig` (`networkingMode`) | no — the running VM kept the old value | none | `wsl --shutdown` |
+| `wsl.conf` (`network.hostname`) | no — the running distro kept the old hostname | none | `wsl --terminate <distro>` only |
+
+The scope difference is the actionable part: the per-distro dialog needs only
+`--terminate`, so its fix is cheaper than the global screen's. R-11 also finds that the
+docs' own hedge is wrong — `wsl-config.md:213` says you "may need to" restart, and the app
+faithfully copies that, but on this build no `.wslconfig` key applies without one.
 
 ## F-11 — Disk space management
 

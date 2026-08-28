@@ -8,6 +8,7 @@ tags:
   - wslconf
 related:
   - '[[index]]'
+  - '[[runtime]]'
   - '[[verification]]'
   - '[[wslconfig-keys]]'
   - '[[cli-flags]]'
@@ -152,6 +153,15 @@ effect until the distro fully stops — the docs' "8 second rule" (`wsl-config.m
 restated for `automount.options` (`case-sensitivity.md:112`) and for `boot.systemd`
 (`wsl-config.md:57`). The dialog never says so and offers no `wsl --terminate` button,
 unlike the global screen's **Stop WSL**. Verdict **missing**.
+
+[[runtime]] R-12 measured it on `ai-workspace` using `network.hostname` — a key this dialog
+writes (`settings_dialog.dart:327`). With the distro running the appended value had no
+effect and produced no warning; `wsl --terminate ai-workspace` applied it. Two useful
+refinements for Phase 05: a **per-distro `--terminate` is sufficient** (no global
+`--shutdown`, so this fix is cheaper than the one the global screen needs), and the dialog
+already knows which distro it is editing. `boot.systemd` — the dialog's most prominent
+toggle — is the one key the docs name explicitly for this (`wsl-config.md:57`,
+`systemd.md:46`).
 
 ### CC-6 — `[user] default` is written but not editable
 
