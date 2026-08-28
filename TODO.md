@@ -105,21 +105,60 @@ own** in this environment. Its dashboard therefore could not be verified — it
 uses the static port rather than a command, so it should work once the
 container stays up. Worth trying a pinned older image tag.
 
-### Hermes Agent installer hangs — app handles it correctly
-Verified through the UI 2026-08-27: after the 5-minute timeout the card shows
-"Fehler", the full `TimeoutException … Command timed out after 300s` detail,
-and an enabled **Wiederholen** button. So the failure path is right; the
-installer itself is the problem.
+### ~~Hermes Agent~~ — WORKS, verified end to end 2026-08-28
+Install, start, stop and dashboard all verified against the real `ai-workspace`
+distro using the app's own command strings, dumped straight out of
+`AiWorkspaceService` and run verbatim. Install exits **0 in 244 s** unattended,
+`hermes serve` binds 9119, `http://localhost:9119` answers **HTTP 200** from
+Windows, stop frees the port, and `(Get-Process wsl).Count` is 0 afterwards.
+Hermes ships **ungated**.
 
+Three causes, all fixed:
 
-`curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive`
-runs past 10 minutes and never returns — reproduced manually in the distro, so
-it is not our timeout. The endpoint is live (HTTP 200). Either the installer
-wants a TTY despite `--non-interactive`, or it waits on something. Decide
-whether to raise the 5-minute timeout, stream progress, or drop Hermes from the
-tool list until upstream is fixed.
+1. **Wrong command.** `hermes gateway` is the *messaging* gateway
+   (Telegram/Discord/WhatsApp) and binds no TCP port at all; `hermes serve` is
+   what listens on 9119. Port 9119 in `ToolConfig` was always right — the
+   command aimed at it was not. Start is now `setsid hermes serve --skip-build`,
+   the status pattern `[h]ermes.*serve`, and stop asks `hermes serve --stop`
+   before it signals.
+2. **The installer never hung — the timeout was too short.** Measured
+   unattended: **482 s cold**, 92 s warm, against a 5-minute wall-clock cap, so
+   a healthy install was killed ~200 s early, always mid-`npm install`
+   (`--silent` into a temp file is 306 s of complete silence). Installs now
+   stream through `ExecutionBroker.startPersistent` and are budgeted by
+   **silence** — 12 min with nothing on either pipe, above the 600 s the
+   upstream script allows its own steps — with a 45-min absolute ceiling.
+3. **A TTY prompt `--non-interactive` does not cover.** `main()` calls
+   `run_setup_wizard` unconditionally; the wizard's own escape is a failed
+   `(: </dev/tty)` probe, which under `wsl.exe` *succeeds*, and it reopens
+   `/dev/tty` rather than reading stdin, so a redirect cannot reach it. Fixed
+   with the installer's own `--skip-setup`.
 
-**WSL may still be wedged from the hung install — `wsl --shutdown` clears it.**
+Fixed on the way, all found by clicking through the app:
+
+- `stop()` claimed success on any exit 0. Every tool's stop now ends on a
+  port-closed wait — proven with the port held by a dummy server: exit **1**
+  where it used to be 0 with the card reading "angehalten" over a live service.
+- `uninstall()` left the `/usr/local/bin/hermes` wrapper *script* behind (not a
+  symlink), so the card read "Installed" over a tool that could not run.
+- `dashboardCommand` dropped: `hermes dashboard` starts a server and blocks
+  without printing a URL. `getUrl()` answers `http://localhost:9119` with no
+  WSL call at all.
+- ANSI escapes are stripped with their parameters instead of leaving `[0;36m`
+  residue, and a `\r`-redrawn progress frame is shown live but never retained
+  as the "last output" line.
+- `start()` got the empty-stderr fallback `stop()` already had, so a failed
+  start no longer shows a bare `Error:`.
+
+Evidence in
+`.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/`:
+`hermes-install-findings.md`, `hermes-clickthrough.md` (24 screenshots in
+`.maestro/screenshots/phase-03/`) and `hermes-lifecycle-fixes.md`.
+
+Still open, upstream or cosmetic: `uv sync --locked` errors on a stale
+`uv.lock` — non-fatal, but it dominates any failure tail; and on the first
+launch of a session a cached status renders with no "checking" indicator, so an
+installed tool reads "Nicht installiert" for ~14 s.
 
 ### ~~Dashboard~~ — FIXED and verified 2026-08-27
 Install, start, stop and **open dashboard** all work end to end with OpenClaw.
@@ -168,8 +207,9 @@ Fixing this needs one of:
   that test was inconclusive (no log file was created); it is worth retrying
   from a script file rather than an inline command.
 
-Hermes already uses the `setsid` shape, so it may not have this problem — it
-could not be tested because its installer hangs.
+Hermes uses the `setsid` shape and was verified end to end on 2026-08-28.
+Either way it is covered: `start()` awaits `ensureKeepAlive()` before the
+tool-specific branch, so the held session is per-service, not per-tool.
 
 ### Unexplained: `bash: -c: line 2: syntax error near unexpected token '2'`
 Hit when a start command containing `$(seq 1 20)` and subshell parentheses was
@@ -196,8 +236,8 @@ the gateway is genuinely healthy, so the app's grep is fine — the status is th
 problem.
 
 Fix: make `statusCheck` reflect service health, not process existence — probe
-the port or use `openclaw gateway status`. Same reasoning applies to Hermes
-(`pgrep -f '[h]ermes.*gateway'`).
+the port or use `openclaw gateway status`. Done for Hermes too on 2026-08-28:
+the pattern is now `[h]ermes.*serve` and the status is the port test on 9119.
 
 Worth noting the gateway is a systemd **user** service; that is fragile inside
 WSL, which may be why it never binds.

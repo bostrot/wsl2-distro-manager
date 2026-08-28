@@ -345,4 +345,50 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
   would otherwise apply are pre-existing churn elsewhere in the file, left
   alone.
 
-- [ ] Run `flutter test` and `flutter analyze`, fix all failures, format only the touched files, and commit the Hermes lifecycle work on `beta`. Update the Hermes sections of `TODO.md` to reflect the verified state.
+- [x] Run `flutter test` and `flutter analyze`, fix all failures, format only the touched files, and commit the Hermes lifecycle work on `beta`. Update the Hermes sections of `TODO.md` to reflect the verified state.
+
+  **Result (2026-08-28): nothing to fix — the phase was already green, so this
+  task verified it from scratch and closed the documentation gap.**
+  `flutter test` **390 passed, exit 0**, no skips and no failures;
+  `flutter analyze` **105 issues**, byte-for-byte identical to
+  `phase-03-task07-analyze.txt` (`diff` reports no difference), i.e. every one
+  of them pre-existing — the file list is `test/*_test.dart`
+  `dangling_library_doc_comments` and `unnecessary_import`, untouched by this
+  phase. `dart run scripts/check_translations.dart` exits 0. Logs in
+  `Working/phase-03-task08-full-test.txt` and
+  `Working/phase-03-task08-analyze.txt`.
+
+  **Nothing to format and nothing of the lifecycle work left to commit.** The
+  working tree was clean at the start of this task and `git status -sb` reads
+  `## beta...origin/beta` with no ahead/behind marker — the five Hermes commits
+  (`637f9ab` diagnosis → `9008ab0` test coverage) were each committed and
+  pushed by the task that produced them, so the only file this task touched is
+  `TODO.md`, which `dart format` does not own.
+
+  **`TODO.md` — three Hermes passages rewritten**, all of which asserted things
+  the phase disproved:
+  - *"Hermes Agent installer hangs — app handles it correctly"* → *"WORKS,
+    verified end to end 2026-08-28"*, with the measured numbers (install exit 0
+    in 244 s unattended, 9119 bound, HTTP 200 from Windows, `(Get-Process
+    wsl).Count` 0 after) and the three real causes: the wrong command
+    (`gateway` binds nothing, `serve` is the listener), a 5-minute wall-clock
+    cap against a 482 s cold install, and the setup wizard's `/dev/tty` prompt
+    that `--non-interactive` does not gate. The five secondary fixes are listed
+    with the defect each one closed, and the two genuinely-still-open items
+    (upstream `uv.lock`, the missing first-launch "checking" indicator) are kept
+    rather than dropped, so the section is not read as "all clear". The
+    *"WSL may still be wedged from the hung install"* warning is gone — there is
+    no hang to wedge it.
+  - The keep-alive section's *"could not be tested because its installer
+    hangs"* → tested, and covered either way, because `start()` awaits
+    `ensureKeepAlive()` before the tool branch, so the held session is
+    per-service rather than per-tool.
+  - The superseded status-check section's *"Same reasoning applies to Hermes
+    (`pgrep -f '[h]ermes.*gateway'`)"* → done for Hermes too; the pattern is
+    `[h]ermes.*serve` and the status is the port test on 9119.
+
+  `SESSION-HANDOFF.md` needed no edit (it never mentions Hermes) and AGENTS.md's
+  Hermes bullet was already corrected in `5c4d56b`.
+  Note for the next editor: **`TODO.md` is LF, not CRLF** — unlike
+  `lib/i18n/*.json`. `grep -c $'\r$' TODO.md` is 0. A `perl -i -0777` rewrite
+  that assumes CRLF silently matches nothing.
