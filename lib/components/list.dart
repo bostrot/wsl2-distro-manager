@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
+import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'list_item.dart';
@@ -126,38 +128,71 @@ class DistroListState extends State<DistroList> {
             ),
           );
         } else if (snapshot.hasError) {
-          final errorText = snapshot.error.toString();
+          // Not `snapshot.error.toString()`: that put `Exception: <localized
+          // WSL prose>` on the page and offered a Retry that could only fail
+          // the same way. The sentence is translated and mapped from the
+          // stable error code; the raw text keeps its place underneath, and a
+          // remote failure gets the one remedy that actually changes the
+          // outcome — going back to the local WSL (audit LN-17, LN-18).
+          final failure = WslFailure.from(snapshot.error);
           return Expanded(
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    remoteEnabled
-                        ? 'Remote WSL connection failed (${remoteTarget.isEmpty ? 'unknown target' : remoteTarget}).'
-                        : 'Failed to load WSL distros.',
-                  ),
-                  const SizedBox(height: 8),
-                  Text(errorText, textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Button(
-                        onPressed: () {
-                          if (mounted) {
-                            setState(() {
-                              reloadTick++;
-                            });
-                          }
-                        },
-                        child: const Text('Retry'),
-                      ),
-                      const SizedBox(width: 8),
-                      AiDiagnoseButton(errorMessage: errorText),
-                    ],
-                  ),
-                ],
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ErrorBody(
+                      failure: failure,
+                      leading: remoteEnabled
+                          ? 'listfailedremote-text'.i18n([
+                              remoteTarget.isEmpty
+                                  ? 'remotenotset-text'.i18n()
+                                  : remoteTarget
+                            ])
+                          : 'listfailed-text'.i18n(),
+                      hint: remoteEnabled
+                          ? 'listfailedremotehint-text'.i18n()
+                          : 'listfailedhint-text'.i18n(),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (remoteEnabled)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: FilledButton(
+                              key: const ValueKey('test-list-use-local'),
+                              onPressed: () async {
+                                await prefs.setBool('UseRemoteWSL', false);
+                                if (mounted) {
+                                  setState(() {
+                                    reloadTick++;
+                                  });
+                                }
+                              },
+                              child: Text('uselocalwsl-text'.i18n()),
+                            ),
+                          ),
+                        Button(
+                          key: const ValueKey('test-list-retry'),
+                          onPressed: () {
+                            if (mounted) {
+                              setState(() {
+                                reloadTick++;
+                              });
+                            }
+                          },
+                          child: Text('retry-text'.i18n()),
+                        ),
+                        const SizedBox(width: 8),
+                        AiDiagnoseButton(errorMessage: failure.details),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -173,9 +208,9 @@ class DistroListState extends State<DistroList> {
                 const ProgressRing(),
                 if (remoteEnabled) ...[
                   const SizedBox(height: 10),
-                  Text(
-                    'Connecting to remote WSL host ${remoteTarget.isEmpty ? '(not configured)' : remoteTarget}...',
-                  ),
+                  Text('connectingtoremote-text'.i18n([
+                    remoteTarget.isEmpty ? 'remotenotset-text'.i18n() : remoteTarget
+                  ])),
                 ],
               ],
             ),

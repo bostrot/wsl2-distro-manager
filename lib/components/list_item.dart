@@ -1,6 +1,7 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'analytics.dart';
@@ -155,9 +156,11 @@ class _ListItemState extends State<ListItem> {
           loading: false,
           duration: const Duration(seconds: 3));
     } catch (e) {
-      final errorMsg = 'Failed to stop ${widget.item}: $e';
-      Notify.message(errorMsg, severity: InfoBarSeverity.error);
-      diagnoseWithAi(errorMsg);
+      final failure = WslFailure.from(e);
+      Notify.message(
+          '${'stopfailed-text'.i18n([distroLabel(widget.item)])} ${failure.shortReason}'.trim(),
+          severity: InfoBarSeverity.error);
+      diagnoseWithAi(failure.details);
     } finally {
       _setBusy(false);
     }
@@ -190,9 +193,11 @@ class _ListItemState extends State<ListItem> {
           severity: InfoBarSeverity.success,
           duration: const Duration(seconds: 3));
     } catch (e) {
-      final errorMsg = 'Failed to start ${widget.item}: $e';
-      Notify.message(errorMsg, severity: InfoBarSeverity.error);
-      diagnoseWithAi(errorMsg);
+      final failure = WslFailure.from(e);
+      Notify.message(
+          '${'startfailed-text'.i18n([distroLabel(widget.item)])} ${failure.shortReason}'.trim(),
+          severity: InfoBarSeverity.error);
+      diagnoseWithAi(failure.details);
     } finally {
       _setBusy(false);
     }
@@ -420,26 +425,31 @@ class Bar extends StatelessWidget {
                                       onCleaningChanged(true);
                                       // Show initial notification
                                       Notify.message(
-                                          'Cleaning up ${widget.item}. Exporting, removing and importing back...',
+                                          'cleaningupinstance-text'
+                                              .i18n([distroLabel(widget.item)]),
                                           loading: true);
 
                                       try {
                                         await WSLApi().cleanup(widget.item,
                                             onProgress: (status) {
                                           Notify.message(
-                                              'Cleaning up ${widget.item}: $status',
+                                              'cleaningupprogress-text'.i18n(
+                                                  [distroLabel(widget.item), status]),
                                               loading: true);
                                         });
                                         // Show success notification
                                         Notify.message(
-                                            'Successfully cleaned up ${widget.item}',
+                                            'cleanedupinstance-text'
+                                                .i18n([distroLabel(widget.item)]),
                                             severity: InfoBarSeverity.success);
                                       } catch (error) {
-                                        final errorMsg =
-                                            'Failed to clean up ${widget.item}: ${error.toString()}';
-                                        Notify.message(errorMsg,
+                                        final failure = WslFailure.from(error);
+                                        Notify.message(
+                                            '${'cleanupfailed-text'.i18n([
+                                              distroLabel(widget.item)
+                                            ])} ${failure.shortReason}'.trim(),
                                             severity: InfoBarSeverity.error);
-                                        diagnoseWithAi(errorMsg);
+                                        diagnoseWithAi(failure.details);
                                       } finally {
                                         onCleaningChanged(false);
                                       }
@@ -479,11 +489,13 @@ class Bar extends StatelessWidget {
                                           .i18n([widget.item]),
                                       severity: InfoBarSeverity.success);
                                 } catch (e) {
-                                  final errorMsg =
-                                      'Failed to delete ${widget.item}: $e';
-                                  Notify.message(errorMsg,
+                                  final failure = WslFailure.from(e);
+                                  Notify.message(
+                                      '${'deletefailed-text'.i18n([
+                                        distroLabel(widget.item)
+                                      ])} ${failure.shortReason}'.trim(),
                                       severity: InfoBarSeverity.error);
-                                  diagnoseWithAi(errorMsg);
+                                  diagnoseWithAi(failure.details);
                                 }
                               });
                         }),

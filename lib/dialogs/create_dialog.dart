@@ -4,6 +4,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,6 +13,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
+import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
@@ -31,10 +33,17 @@ bool supportsDefaultUser(CreateSourceType type) =>
 /// [diagnosable] separates something going wrong during the install — worth
 /// offering an AI diagnosis for — from a form the user can simply correct.
 class CreateFailure {
-  const CreateFailure(this.message, {this.diagnosable = true});
+  const CreateFailure(this.message,
+      {this.diagnosable = true, this.details = ''});
 
   final String message;
   final bool diagnosable;
+
+  /// What the tool actually wrote.
+  ///
+  /// Kept apart from [message] so the banner can fold it away and the AI
+  /// diagnosis can still have all of it (audit CI-22).
+  final String details;
 }
 
 /// Create Dialog
@@ -148,13 +157,16 @@ bool _failCreate(
   String message,
   ValueNotifier<CreateFailure?>? onError, {
   bool diagnosable = true,
+  String details = '',
 }) {
   if (onError == null) {
-    Notify.message(message, severity: InfoBarSeverity.error);
+    Notify.message(details.isEmpty ? message : '$message $details'.trim(),
+        severity: InfoBarSeverity.error);
   } else {
     // The banner carries the text; the status bar only has to stop spinning.
     Notify.message('');
-    onError.value = CreateFailure(message, diagnosable: diagnosable);
+    onError.value =
+        CreateFailure(message, diagnosable: diagnosable, details: details);
   }
   return false;
 }
@@ -287,9 +299,12 @@ Future<bool> createInstance(
             localImagePath.split(':')[0],
             localImagePath.contains(':') ? localImagePath.split(':')[1] : null);
       } catch (e) {
-        final msg = e.toString().replaceAll('Exception: ', '');
-        final err = '${'errordownloading-text'.i18n()}: $msg';
-        return _failCreate(err, onError, diagnosable: true);
+        final failure = WslFailure.from(e);
+        return _failCreate(
+            '${'dockerexportfailed-text'.i18n()} ${failure.explanation}'.trim(),
+            onError,
+            diagnosable: true,
+            details: failure.details);
       }
     }
 
@@ -302,15 +317,19 @@ Future<bool> createInstance(
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
-      // Prefer stderr for failed processes: WSL writes actionable errors there.
-      final stderr = result.stderr.toString().trim();
+      // Both streams: wsl.exe does not consistently pick one, and the code it
+      // stamps on the failure is the only part that is not localized. The
+      // banner gets a translated sentence and keeps the raw text behind a
+      // disclosure instead of printing it as the error (audit CI-22).
       final stdout = result.stdout is List<int>
-          ? WSLApi().utf8Convert(result.stdout as List<int>).trim()
-          : result.stdout.toString().trim();
-      final error = stderr.isNotEmpty
-          ? stderr
-          : (stdout.isNotEmpty ? stdout : 'error-text'.i18n());
-      return _failCreate(error, onError, diagnosable: true);
+          ? WSLApi().utf8Convert(result.stdout as List<int>)
+          : result.stdout;
+      final failure = WslFailure.fromStreams(stdout, result.stderr);
+      return _failCreate(
+          '${'createinstancefailed-text'.i18n([label])} ${failure.explanation}'.trim(),
+          onError,
+          diagnosable: true,
+          details: failure.details);
     } else {
       var userCmds = prefs.getStringList('UserCmds_$distroName');
       var groupCmds = prefs.getStringList('GroupCmds_$distroName');
@@ -490,10 +509,16 @@ class _CreateWidgetState extends State<CreateWidget> {
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: InfoBar(
                   title: Text(failure.message),
+                  content: failure.details.isEmpty
+                      ? null
+                      : ErrorDetails(details: failure.details),
                   severity: InfoBarSeverity.error,
                   isLong: true,
                   action: failure.diagnosable
-                      ? AiDiagnoseButton(errorMessage: failure.message)
+                      ? AiDiagnoseButton(
+                          errorMessage: failure.details.isEmpty
+                              ? failure.message
+                              : failure.details)
                       : null,
                 ),
               );

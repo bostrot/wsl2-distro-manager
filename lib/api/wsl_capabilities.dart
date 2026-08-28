@@ -141,6 +141,22 @@ class WslCapabilities {
     return true;
   }
 
+  /// The warnings that actually concern `.wslconfig`.
+  ///
+  /// The two probes behind [warnings] are `wsl --version` and `wsl --status`,
+  /// and neither is about the config file — but WSL prefixes its `.wslconfig`
+  /// complaints to the output of *every* invocation, so a line that names the
+  /// file is the only kind the Settings panel may present as being about it
+  /// (audit ST-07). The file name is not localized; the sentence around it is.
+  List<String> get configWarnings => warnings
+      .where((w) => w.toLowerCase().contains('wslconfig'))
+      .toList(growable: false);
+
+  /// Everything else the two probes printed.
+  List<String> get otherWarnings => warnings
+      .where((w) => !w.toLowerCase().contains('wslconfig'))
+      .toList(growable: false);
+
   /// `wsl --manage` and all four of its options arrived in WSL 2.5
   /// (`disk-space.md:48-58`).
   bool get supportsManage => atLeast(2, 5);

@@ -12,6 +12,7 @@ import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -1055,7 +1056,9 @@ class SettingsPageState extends State<SettingsPage> {
                                 await _tunnelService.stop();
                               }
                             } catch (e) {
-                              _tunnelError = e.toString();
+                              _tunnelError = '${'mcp-tunnel-failed-text'.i18n()} '
+                                      '${WslFailure.from(e).shortReason}'
+                                  .trim();
                             } finally {
                               if (mounted) {
                                 setState(() => _tunnelStarting = false);
@@ -1081,7 +1084,8 @@ class SettingsPageState extends State<SettingsPage> {
               padding: const EdgeInsets.all(8.0),
               child: Text(
                 _tunnelError!,
-                style: TextStyle(color: Colors.red, fontSize: 12),
+                style: TextStyle(
+                    color: Colors.errorPrimaryColor, fontSize: 12),
               ),
             ),
           if (_tunnelService.isRunning && _tunnelService.publicUrl != null)
@@ -1251,9 +1255,33 @@ class SettingsPageState extends State<SettingsPage> {
       children: [
         Padding(
           padding: const EdgeInsets.all(10.0),
-          child: Text(
-            'globalconfigurationinfo-text'.i18n(),
-            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'globalconfigurationinfo-text'.i18n(),
+                  style: const TextStyle(
+                      fontSize: 12.0, fontStyle: FontStyle.italic),
+                ),
+              ),
+              const SizedBox(width: 12.0),
+              // The note used to end "run wsl --shutdown" — a terminal
+              // instruction printed above a button that does exactly that
+              // (audit ST-13, IA-20). The button now sits with the sentence.
+              Tooltip(
+                message: 'restartwslinfo-text'.i18n(),
+                child: Button(
+                  key: const ValueKey('test-globalconfig-restart-wsl'),
+                  onPressed: () {
+                    WSLApi().restart();
+                    Notify.message('shuttingdownwsl-text'.i18n(),
+                        severity: InfoBarSeverity.success);
+                  },
+                  child: Text('restartwsl-text'.i18n()),
+                ),
+              ),
+            ],
           ),
         ),
         _wslVersionPanel(context),
@@ -1422,12 +1450,26 @@ class SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
-            if (capabilities != null && capabilities.warnings.isNotEmpty)
+            // Split by what the line is about. The panel used to head every
+            // line of both probes' stderr with "WSL reported:" inside the
+            // .wslconfig section, so a virtualisation warning read as a
+            // complaint about the config file (audit ST-07).
+            if (capabilities != null && capabilities.configWarnings.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
                   '${'wslreported-text'.i18n()}\n'
-                  '${capabilities.warnings.join('\n')}',
+                  '${capabilities.configWarnings.join('\n')}',
+                  style: TextStyle(
+                      color: Colors.warningPrimaryColor, fontSize: 12),
+                ),
+              ),
+            if (capabilities != null && capabilities.otherWarnings.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '${'wslstartupwarnings-text'.i18n()}\n'
+                  '${capabilities.otherWarnings.join('\n')}',
                   style: TextStyle(
                       color: Colors.warningPrimaryColor, fontSize: 12),
                 ),

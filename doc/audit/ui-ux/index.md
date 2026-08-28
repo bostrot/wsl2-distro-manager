@@ -401,7 +401,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-03 -- One honest notification surface | 9 | 0 | 2026-08-28 |
 | FIX-02 -- Report what actually happened | 5 | 5 | 2026-08-28 (partial) |
 | FIX-01 -- Stop discarding what the user typed | 7 | 0 | 2026-08-28 |
-| all others | 0 | 188 | -- |
+| FIX-05 -- Error text a user can act on | 12 | 0 | 2026-08-28 |
+| all others | 0 | 176 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -533,20 +534,41 @@ their only progress indicator for minutes.
 Eleven findings, one rule: never put a raw exception in front of a user, and never
 match on English text.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| IA-16 | blocker | `mount_service.dart:338` throws `Exception(result.stderr)`, but `wsl --mount` writes its reason (including the stable `Wsl/ERROR_*` code) to **stdout** -- read both streams, and never build a dialog body from a bare `Exception` |
-| LN-17 | major | Translate the list-error strings and map the WSL error code to a sentence instead of dumping `Exception: ...` |
-| LN-18 | major | Offer a remedy and a route back to local WSL; Retry that repeats the same failure is not a recovery path |
-| CI-22 | major | Map the WSL error code to a translated sentence; keep the raw stderr behind a "details" disclosure |
-| IA-17 | major | Stop interpolating raw exceptions into the five `docker_images.dart` messages -- two currently read "Error: Exception: ..." |
-| IA-18 | major | Move the sixteen hardcoded English messages into `en.json` and drop the implementation detail ("Exporting, removing and importing back...") |
-| PS-31 | major | Translate the AI Workspace page-level failure and stop wrapping `Exception.toString()` |
-| IA-19 | major | Gate the "disk is offline" hint on the stable error code, not on English Windows text -- it can never fire on a localized host |
-| ST-07 | major | Only surface "WSL reported:" for stderr that actually concerns `.wslconfig` |
-| ST-22 | nit | Same treatment for the tunnel error, and use the theme's error colour rather than `Colors.red` |
-| IA-20 | nit | Replace the "run `wsl --shutdown`" and "install xterm" prose with the buttons that do it |
-| ST-13 | nit | Same string in Settings, 400px above the button that performs it |
+**Status: all 12 fixed.** The root of the work item is one new file,
+`lib/api/wsl_errors.dart`: a `WslFailure` that reads *both* process streams,
+pulls the stable `Wsl/…` code out of localized prose, maps it to a translated
+sentence and keeps the tool's own words in `details`. `lib/components/error_view.dart`
+is the matching surface -- the sentence in the primary position, "Technical
+details" folded away underneath. Regression tests: `test/wsl_errors_test.dart`,
+`test/error_view_test.dart`, plus the ST-07 case in `test/wsl_capabilities_test.dart`.
+
+Three consequences worth recording. **The two streams are not interchangeable**:
+stderr wins the text, because `wsl --import` paints a progress animation on
+stdout and showing that instead of the reason is its own bug (already guarded by
+`wsl_test.dart`'s "shows stderr on import failure") -- but stdout is read when
+stderr is silent, which is the `--mount` case IA-16 is about, and its *code* is
+taken whenever stderr carries none. **An unmapped failure gets no invented
+sentence**: `explanation` is empty, and a caller with its own lead sentence
+("Ubuntu could not be started.") appends the tool's first line rather than a
+vague generic one, so nothing is lost on a surface too small for a disclosure.
+And **IA-20's xterm half is answered by copying, not by installing**: that
+terminal lives on the *host*, so the app cannot elevate to a package manager --
+the dialog hands over the command instead of naming three packages and stopping.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| IA-16 | blocker | `mount_service.dart:338` throws `Exception(result.stderr)`, but `wsl --mount` writes its reason (including the stable `Wsl/ERROR_*` code) to **stdout** -- read both streams, and never build a dialog body from a bare `Exception` | `wsl_errors.dart:79`, `mount_service.dart:288`, `mount_service.dart:339`, `mount_service.dart:354`, `mount_dialog.dart:156`, `mount_dialog.dart:212`, `mount_dialog.dart:242` |
+| LN-17 | major | Translate the list-error strings and map the WSL error code to a sentence instead of dumping `Exception: ...` | `list.dart:137`, `list.dart:149`, `list.dart:211` |
+| LN-18 | major | Offer a remedy and a route back to local WSL; Retry that repeats the same failure is not a recovery path | `list.dart:156`, `list.dart:176` |
+| CI-22 | major | Map the WSL error code to a translated sentence; keep the raw stderr behind a "details" disclosure | `create_dialog.dart:46`, `create_dialog.dart:327`, `create_dialog.dart:514` |
+| IA-17 | major | Stop interpolating raw exceptions into the five `docker_images.dart` messages -- two currently read "Error: Exception: ..." | `docker_images.dart:642`, `docker_images.dart:805`, `templates.dart:68`, `sync.dart:121`, `settings_dialog.dart:314`, `ai_workspace_screen.dart:585` |
+| IA-18 | major | Move the sixteen hardcoded English messages into `en.json` and drop the implementation detail ("Exporting, removing and importing back...") | `list_item.dart:161`, `list_item.dart:198`, `list_item.dart:428`, `list_item.dart:448`, `list_item.dart:494`, `docker_images.dart:350`, `docker_images.dart:532`, `docker_images.dart:618`, `docker_images.dart:749`, `wsl.dart:508`, `wsl.dart:769`, `wsl.dart:823` |
+| PS-31 | major | Translate the AI Workspace page-level failure and stop wrapping `Exception.toString()` | `ai_workspace_screen.dart:447` |
+| IA-19 | major | Gate the "disk is offline" hint on the stable error code, not on English Windows text -- it can never fire on a localized host | `wsl_errors.dart:150`, `mount_dialog.dart:244` |
+| ST-07 | major | Only surface "WSL reported:" for stderr that actually concerns `.wslconfig` | `wsl_capabilities.dart:151`, `wsl_capabilities.dart:156`, `settings_screen.dart:1457`, `settings_screen.dart:1467` |
+| ST-22 | nit | Same treatment for the tunnel error, and use the theme's error colour rather than `Colors.red` | `settings_screen.dart:1059`, `settings_screen.dart:1088` |
+| IA-20 | nit | Replace the "run `wsl --shutdown`" and "install xterm" prose with the buttons that do it | `settings_screen.dart:1281`, `wsl.dart:33`, `wsl.dart:844`, `en.json:117` |
+| ST-13 | nit | Same string in Settings, 400px above the button that performs it | `settings_screen.dart:1281`, `en.json:117` |
 
 ### FIX-06 -- Keyboard operability
 

@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 
@@ -284,7 +285,7 @@ class MountService {
       }
       final result = await _runWslHost(wslArgs);
       if (result.exitCode != 0) {
-        throw Exception(result.stderr.toString().trim());
+        throw WslFailure.fromStreams(result.stdout, result.stderr);
       }
       return;
     }
@@ -335,7 +336,7 @@ class MountService {
 
     final result = await _runWslHost(args);
     if (result.exitCode != 0) {
-      throw Exception(result.stderr.toString().trim());
+      throw WslFailure.fromStreams(result.stdout, result.stderr);
     }
     await prefs.setString('mount_vhd_$safeName', windowsPath);
   }
@@ -350,7 +351,7 @@ class MountService {
     var result = await _runWslHost(['--unmount', windowsPath]);
 
     if (result.exitCode != 0) {
-      throw Exception(result.stderr.toString().trim());
+      throw WslFailure.fromStreams(result.stdout, result.stderr);
     }
 
     // If successful, clean up prefs just in case
@@ -463,7 +464,7 @@ if %errorlevel% neq 0 (
       if (output.isEmpty) {
         output = 'unknownmounterror-text'.i18n();
       }
-      throw Exception(output);
+      throw WslFailure.fromText(output);
     }
   }
 }

@@ -6,6 +6,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_static/shelf_static.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'helpers.dart';
 
@@ -117,7 +118,8 @@ class Sync {
         },
         onError: (error) {
           Notify.message(
-              '${'errordownloading-text'.i18n()} $distroName: $error',
+              '${'syncdownloadfailed-text'.i18n([distroName])} '
+              '${friendlyErrorReason(error)}'.trim(),
               severity: InfoBarSeverity.error,
               loading: false);
         });

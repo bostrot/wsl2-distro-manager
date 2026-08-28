@@ -347,8 +347,8 @@ class DockerImage {
                 if (int.tryParse(userStr) == null) {
                   prefs.setString('StartUser_$distroName', userStr);
                 } else {
-                  Notify.message(
-                      'Not implemented yet: Docker USER is a number.');
+                  Notify.message('dockerusernumber-text'.i18n(),
+                      severity: InfoBarSeverity.warning);
                 }
               }
 
@@ -482,7 +482,8 @@ class DockerImage {
               } else {
                 // User is a number
                 // TODO: implement docker user is a number
-                Notify.message('Not implemented yet: Docker USER is a number.');
+                Notify.message('dockerusernumber-text'.i18n(),
+                    severity: InfoBarSeverity.warning);
               }
             }
           });
@@ -528,7 +529,8 @@ class DockerImage {
         });
       }
     } else {
-      Notify.message('Unknown manifest type');
+      Notify.message('unknownmanifest-text'.i18n(),
+          severity: InfoBarSeverity.error);
       logError(exception ?? "No exception", stacktrace ?? StackTrace.current,
           imageManifest.toString());
       return "false";
@@ -613,7 +615,7 @@ class DockerImage {
       }
     }
 
-    Notify.message('Extracting layers ...');
+    Notify.message('extractinglayersall-text'.i18n());
 
     // Extract layers
     // Write the compressed tar file to disk.
@@ -637,7 +639,7 @@ class DockerImage {
         retry++;
         if (retry == 2) {
           logDebug(e, stackTrace, null);
-          Notify.message('${'error-text'.i18n()}: $e',
+          Notify.message('mergelayersfailed-text'.i18n(),
               severity: InfoBarSeverity.error);
           return false;
         }
@@ -744,7 +746,7 @@ class DockerImage {
     final imageName = filename(imagePath.split(':')[0], imagePath.split(':').length > 1 ? imagePath.split(':')[1] : null);
     final tmpImagePath = (getTmpPath()..cd('local_$imageName')).path;
 
-    Notify.message('Exporting local Docker image ...');
+    Notify.message('exportinglocalimage-text'.i18n());
 
     // Create temp directory for docker save output
     await Directory(tmpImagePath).create(recursive: true);
@@ -765,7 +767,7 @@ class DockerImage {
     }
 
     // Parse the docker save tarball to extract layers
-    Notify.message('Extracting layers ...');
+    Notify.message('extractinglayersall-text'.i18n());
 
     await _processDockerSaveTar(
       tarFilePath,
@@ -800,7 +802,7 @@ class DockerImage {
         retry++;
         if (retry == 2) {
           logDebug(e, stackTrace, null);
-          Notify.message('${'error-text'.i18n()}: $e',
+          Notify.message('mergelayersfailed-text'.i18n(),
               severity: InfoBarSeverity.error);
           return false;
         }

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
+import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -437,7 +439,15 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
           children: [
             const Icon(FluentIcons.error, size: 48),
             const SizedBox(height: 16),
-            Text('Error loading AI Workspace: $_error'),
+            // Was 'Error loading AI Workspace: <Exception.toString()>' —
+            // hardcoded English wrapped around a class name (audit PS-31).
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520.0),
+              child: ErrorBody(
+                failure: WslFailure.from(_error),
+                leading: 'ai-workspace-load-failed-text'.i18n(),
+              ),
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _retryInit,
@@ -572,7 +582,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Error: ${state!.errorMessage}',
+                      WslFailure.from(state!.errorMessage).shortReason,
                       style: TextStyle(color: Colors.red, fontSize: 12),
                     ),
                   ),

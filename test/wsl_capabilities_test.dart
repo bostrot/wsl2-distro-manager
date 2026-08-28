@@ -115,6 +115,26 @@ void main() {
           const WslOutput(0, '', ''));
       expect(capabilities.warnings, isEmpty);
     });
+
+    /// Audit ST-07: the Settings panel headed every one of these lines with
+    /// "WSL reported:" inside the `.wslconfig` section, so a virtualisation
+    /// warning read as a complaint about the config file. Only the lines that
+    /// name the file belong there — and the file name is not localized.
+    test('config warnings are separated from everything else', () {
+      final capabilities = WslCapabilities.parse(
+        const WslOutput(0, _englishVersion,
+            'wsl: Geschachtelte Virtualisierung wird auf diesem Computer nicht unterstützt.'),
+        const WslOutput(0, _status,
+            'wsl: Unbekannter Schlüssel „wsl2.foo“ in .wslconfig wird ignoriert'),
+      );
+      expect(capabilities.configWarnings, hasLength(1));
+      expect(capabilities.configWarnings.single, contains('.wslconfig'));
+      expect(capabilities.otherWarnings, hasLength(1));
+      expect(capabilities.otherWarnings.single, contains('Virtualisierung'));
+      // Nothing is dropped on the way — both lists together are the whole set.
+      expect(capabilities.configWarnings.length + capabilities.otherWarnings.length,
+          capabilities.warnings.length);
+    });
   });
 
   group('atLeast', () {

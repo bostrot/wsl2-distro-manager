@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/debounced_text_box.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -306,11 +307,13 @@ Column settingsColumn(
                       Notify.message('moved-text'
                           .i18n([distroLabel(item), selectedDirectory]));
                     } catch (e) {
-                      Notify.message('move-error-text'.i18n([
-                        distroLabel(item),
-                        selectedDirectory,
-                        e.toString()
-                      ]));
+                      Notify.message(
+                          'move-error-text'.i18n([
+                            distroLabel(item),
+                            selectedDirectory,
+                            friendlyErrorText(e)
+                          ]),
+                          severity: InfoBarSeverity.error);
                     }
                   });
             },

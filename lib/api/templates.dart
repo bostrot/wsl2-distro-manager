@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -62,8 +63,9 @@ class Templates {
       Notify.message(output.isNotEmpty ? output : 'createdinstance-text'.i18n(),
           severity: InfoBarSeverity.success);
     } catch (e) {
+      final failure = WslFailure.from(e);
       Notify.message(
-          e.toString().trim().isNotEmpty ? e.toString() : 'error-text'.i18n(),
+          '${'createinstancefailed-text'.i18n([targetName])} ${failure.shortReason}'.trim(),
           severity: InfoBarSeverity.error);
     }
   }

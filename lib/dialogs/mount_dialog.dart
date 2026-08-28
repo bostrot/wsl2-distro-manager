@@ -2,6 +2,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/mount_service.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
+import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
@@ -109,7 +111,7 @@ class _MountDialogState extends State<MountDialog> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        String errorMessage = e.toString();
+        final failure = WslFailure.from(e);
         bool handled = false;
 
         // Handle unmount by name failure for auto-generated mounts
@@ -151,7 +153,7 @@ class _MountDialogState extends State<MountDialog> {
                             context: context,
                             builder: (context) => ContentDialog(
                               title: Text('error-text'.i18n()),
-                              content: SelectableText(e2.toString()),
+                              content: ErrorBody(failure: WslFailure.from(e2)),
                               actions: [
                                 Button(
                                   child: Text('ok-text'.i18n()),
@@ -176,7 +178,7 @@ class _MountDialogState extends State<MountDialog> {
           // Check for "attached but not mounted" error
           // Look for: wsl.exe --unmount <path>
           RegExp unmountRegex = RegExp(r'wsl\.exe --unmount (.*?)["\n]');
-          Match? match = unmountRegex.firstMatch(errorMessage);
+          Match? match = unmountRegex.firstMatch(failure.details);
           if (match != null) {
             String path = match.group(1)?.trim() ?? '';
             if (path.isNotEmpty) {
@@ -207,7 +209,7 @@ class _MountDialogState extends State<MountDialog> {
                               context: context,
                               builder: (context) => ContentDialog(
                                 title: Text('error-text'.i18n()),
-                                content: SelectableText(e2.toString()),
+                                content: ErrorBody(failure: WslFailure.from(e2)),
                                 actions: [
                                   Button(
                                     child: Text('ok-text'.i18n()),
@@ -230,16 +232,19 @@ class _MountDialogState extends State<MountDialog> {
         }
 
         if (!handled) {
-          if (errorMessage.contains('process cannot access') ||
-              errorMessage.contains('being used by another process')) {
-            errorMessage += 'diskofflinehint-text'.i18n();
-          }
-
+          // The remedy is attached by error code, not by matching English
+          // Windows prose: on a localized host the old substring test could
+          // never fire, so the user got the raw output and no hint (IA-19).
           showDialog(
             context: context,
             builder: (context) => ContentDialog(
-              title: Text('error-text'.i18n()),
-              content: SelectableText(errorMessage),
+              title: Text('mountfailedtitle-text'.i18n()),
+              content: ErrorBody(
+                failure: failure,
+                hint: failure.isResourceInUse
+                    ? 'diskofflinehint-text'.i18n()
+                    : null,
+              ),
               actions: [
                 Button(
                   child: Text('ok-text'.i18n()),

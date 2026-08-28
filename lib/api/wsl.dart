@@ -4,6 +4,7 @@ import 'dart:convert' show Encoding, Utf8Decoder, base64, utf8;
 import 'package:wsl2distromanager/api/downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 
@@ -17,12 +18,20 @@ import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/wsl_args.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 import 'package:wsl2distromanager/api/wsl_conf.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/wsl_distribution_conf.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+
+/// The command the "no terminal found" dialog offers to copy.
+///
+/// Named here rather than inlined so the dialog and any future retry path
+/// cannot drift apart.
+const String installTerminalCommand =
+    'sudo apt update && sudo apt install -y xterm';
 
 /// Adapter for unified access to [ExecutionResult] and [ProcessResult].
 class _ShellResult {
@@ -496,10 +505,15 @@ class WSLApi {
     if (_useRemoteWsl) {
       final result = await _runWsl(['--install']);
       if (result.exitCode == 0) {
-        Notify.message('Triggered WSL install on remote host $remoteTargetLabel.');
+        Notify.message('remoteinstalltriggered-text'.i18n([remoteTargetLabel]),
+            severity: InfoBarSeverity.success);
       } else {
+        final failure = WslFailure.fromStreams(result.stdout, result.stderr);
         Notify.message(
-            'Failed to trigger remote WSL install on $remoteTargetLabel: ${result.stderr}');
+            '${'remoteinstallfailed-text'.i18n([
+              remoteTargetLabel
+            ])} ${failure.shortReason}'.trim(),
+            severity: InfoBarSeverity.error);
       }
       return;
     }
@@ -752,8 +766,8 @@ class WSLApi {
   /// Open wslconfig file
   void editConfig() async {
     if (_useRemoteWsl) {
-      Notify.message(
-          'Remote .wslconfig editing is not supported via local editor. Change values in Settings and Save.');
+      Notify.message('remoteconfignotsupported-text'.i18n(),
+          severity: InfoBarSeverity.warning);
       return;
     }
 
@@ -796,8 +810,8 @@ class WSLApi {
   Future<void> _showMissingTerminalDialog() async {
     final rootContext = GlobalVariable.infobox.currentContext;
     if (rootContext == null) {
-      Notify.message(
-          'No supported terminal emulator found. Install one (for example: xterm, gnome-terminal, or kitty).');
+      Notify.message('terminalnotfoundbody-text'.i18n(),
+          severity: InfoBarSeverity.warning);
       return;
     }
 
@@ -806,20 +820,32 @@ class WSLApi {
       context: rootContext,
       builder: (context) {
         return ContentDialog(
-          title: const Text('Terminal Not Found'),
-          content: const Text(
-            'No supported terminal emulator was found.\n\n'
-            'Install one of these and try again:\n'
-            '- xterm\n'
-            '- gnome-terminal\n'
-            '- kitty\n\n'
-            'Example install command:\n'
-            'sudo apt update && sudo apt install -y xterm',
+          title: Text('terminalnotfound-text'.i18n()),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('terminalnotfoundbody-text'.i18n()),
+              const SizedBox(height: 8.0),
+              SelectableText(installTerminalCommand),
+            ],
           ),
           actions: [
+            // The old body named three packages and stopped there. Handing
+            // over the command is the part the user was missing (IA-20).
             Button(
+              key: const ValueKey('test-terminal-copy-command'),
+              onPressed: () {
+                Clipboard.setData(
+                    const ClipboardData(text: installTerminalCommand));
+                Notify.message('commandcopied-text'.i18n(),
+                    severity: InfoBarSeverity.success);
+              },
+              child: Text('copycommand-text'.i18n()),
+            ),
+            FilledButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text('close-text'.i18n()),
             ),
           ],
         );
