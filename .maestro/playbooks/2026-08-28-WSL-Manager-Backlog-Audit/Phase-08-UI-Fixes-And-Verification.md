@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 21 of 214 findings closed (5 blockers, 13 majors, 3 nits).** Running
+  **In progress — 33 of 214 findings closed (6 blockers, 21 majors, 6 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -45,11 +45,39 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     way to read `/etc/wsl.conf` without `wsl.exe` booting the distro — so a stopped
     distro gets a notice and a "Start it and read the settings" button.
 
-  **Next up:** FIX-05 (error text a user can act on), then FIX-06/FIX-07 (keyboard and
-  accessible names), then the five open FIX-02 items. Verification for this slice:
-  `flutter analyze` clean (two warnings, both pre-existing and untouched),
-  `flutter test` 732 passing (was 721), `dart run scripts/check_translations.dart`
-  exit 0.
+  - **FIX-05 — error text a user can act on: complete (12/12).** One new file,
+    `lib/api/wsl_errors.dart`, is the root of it: `WslFailure` reads *both* process
+    streams, pulls the stable `Wsl/…` code out of localized prose, maps it to a
+    translated sentence and keeps the tool's own words in `details`.
+    `lib/components/error_view.dart` renders that shape — sentence first,
+    "Technical details" folded away underneath — and the mount dialog, the create
+    banner, the distro-list error state and the AI Workspace page all use it. The
+    blocker (IA-16) was `mount_service.dart` throwing `Exception(result.stderr)`
+    over a `wsl --mount` failure that WSL had written to *stdout*, so the dialog
+    body was literally the word `Exception:`; the reason and its
+    `Wsl/ERROR_PATH_NOT_FOUND` code were in hand and thrown away. The two streams
+    are not interchangeable and the fix does not treat them as such: stderr wins
+    the text (`wsl --import` paints progress on stdout, and showing that instead
+    of the reason is its own bug, guarded by `wsl_test.dart`), stdout is read when
+    stderr is silent, and stdout's *code* is taken whenever stderr carries none.
+    The disk-in-use hint is now gated on `ERROR_SHARING_VIOLATION` rather than on
+    the English phrases "process cannot access" / "being used by another process",
+    which could never fire on this German-locale host. 47 new keys landed in all
+    nine locales with real translations; `globalconfigurationinfo-text` and
+    `diskofflinehint-text` were rewritten to stop naming a command, and the
+    Settings note now sits beside a Restart WSL button instead of telling the user
+    to open a terminal. IA-20's xterm half is answered by copying rather than
+    installing — that terminal lives on the *host*, so the app cannot elevate to a
+    package manager; the dialog hands over the command instead.
+
+  **Next up:** FIX-06/FIX-07 (keyboard operability and accessible names), then
+  FIX-04, then the five open FIX-02 items. Verification for this slice:
+  `flutter analyze` clean (the same two pre-existing warnings, untouched),
+  `flutter test` 755 passing (was 732), `dart run scripts/check_translations.dart`
+  exit 0. `dart format` was deliberately **not** run: the toolchain here ships the
+  3.7 "tall style" formatter and the repo is formatted with the older one, so a
+  format pass rewrites every touched file end to end. Edits match the surrounding
+  style by hand instead.
 
 - [ ] Fix the text-quality findings across the app:
   - Replace every user-facing message containing a raw exception, a bare colon, a stack trace or an unactionable shell command with a sentence explaining what failed and what to do next, keeping the technical detail available in an expandable/secondary position
