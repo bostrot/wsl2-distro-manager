@@ -108,12 +108,70 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
   `-` described as stdin, duplicate `windowsterminal.profileTemplate` row, and others)
   are listed in the per-file "Documentation defects" sections.
 
-- [ ] Diff each inventory against the app and write per-area findings under `doc/audit/wsl-docs/`, one file per area, each with YAML front matter (`type: analysis`, `title`, `created: 2026-08-28`, `tags: [wsl, docs-audit, <area>]`, `related:` wiki-links) and a table of key → documented → app state → verdict:
+- [x] Diff each inventory against the app and write per-area findings under `doc/audit/wsl-docs/`, one file per area, each with YAML front matter (`type: analysis`, `title`, `created: 2026-08-28`, `tags: [wsl, docs-audit, <area>]`, `related:` wiki-links) and a table of key → documented → app state → verdict:
   - `wslconfig-keys.md` — global `.wslconfig` coverage
   - `wslconf-keys.md` — per-distro `wsl.conf` coverage
   - `cli-flags.md` — `wsl.exe` flags the app shells out to versus those documented
   - `features.md` — whole feature surfaces (mirrored networking, DNS tunneling, sparse VHD, `--manage`, the WSL Settings app, systemd defaults, plugins, custom distro `.wslconfig`-based distribution)
   - Cross-link them all from `doc/audit/wsl-docs/index.md` using `[[wslconfig-keys]]`-style wiki-links
+
+  **Result (2026-08-28):** Five files written under `doc/audit/wsl-docs/` —
+  `index.md`, `wslconfig-keys.md`, `wslconf-keys.md`, `cli-flags.md`, `features.md`.
+  All five carry `type: analysis` front matter and the four `[[wiki-link]]` targets
+  resolve. Verdict vocabulary is fixed in `index.md`:
+  `covered` / `outdated` / `wrong` / `missing`.
+
+  **The headline contradicts this phase's brief, and that is the main result.**
+
+  1. **`.wslconfig` key coverage is complete — 27 of 27.** All 20 `[wsl2]` and all 7
+     `[experimental]` reference-table keys are rendered by
+     `settings_screen.dart:1010-1156`. Verified by grepping **both** the camelCase and
+     the all-lowercase spelling of every key (the case-insensitivity trap the previous
+     task flagged); each resolves to exactly one `settingsWidget(...)` call site. The
+     brief's orientation paragraph undercounted the app — `safeMode`, `debugConsole`,
+     `maxCrashDumpCount`, `dnsProxy`, `firewall`, `defaultVhdSize`,
+     `bestEffortDnsParsing`, `initialAutoProxyTimeout`, `ignoredPorts` and
+     `hostAddressLoopback` are all already there. **There is no missing-key finding in
+     this area.** Phase 05 should not budget for one.
+  2. **`wsl.conf` is 11 of 15.** Missing: `[user] default`, `[boot] protectBinfmt`,
+     `[gpu] enabled`, `[time] useWindowsTimezone`. The brief undercounted here too —
+     `boot.command`, `network.*` (3) and `interop.*` (2) are already exposed.
+  3. **`wsl.exe`: 13 of 30 top-level verbs used.**
+
+  Two writer defects found that are more serious than any missing key, and both are
+  code bugs rather than docs gaps — Phase 05 should treat them as fixes, not features:
+
+  - **`assets/scripts/settings.bash` is section-blind.** Its `sed` runs over the whole
+    file with `/g`, and `[automount] enabled` and `[interop] enabled` are *both* exposed
+    by the dialog. Toggling either rewrites both. Same script breaks outright on any
+    value containing `/` — `sed -i 's/root[ ]*=[ ]*.*/root = /mnt//g'` — which is the
+    documented default of `automount.root` and the shape of every plausible
+    `boot.command`. `setSetting` returns `true` unconditionally and `execCmds` runs with
+    `showOutput: false`, so the failure never reaches the user, and the value is still
+    written to prefs — the dialog shows the change as applied when it was not.
+  - **`WSLApi.setConfig` / `readConfig` (`wsl.dart:544-630`)** are section-blind,
+    case-sensitive against a case-insensitive format, and `readConfig` strips *every*
+    space inside a value — so `kernelCommandLine = console=ttyS0 nokaslr` reloads
+    mangled and is written back mangled on the next Save. The correct sectioned parser
+    already exists in the same file (`getWSLConf`, `:1824`); only the write paths are wrong.
+
+  Third systemic finding: **13 boolean toggles across both editors render `false` for
+  keys the docs default to `true`** (7 in `.wslconfig`, 6 in `wsl.conf`), because both
+  read an absent key as off. And **the whole `wsl.conf` dialog has no descriptions and
+  no `.i18n()` calls** — labels are `setting.uppercaseFirst()`, so `"MountFsTab"`.
+
+  Two corrections to the brief's own framing, recorded in the files:
+
+  - **There is no WSL Settings app page** (already flagged by task 1). `features.md` F-5
+    records it as an *open question*, not a resolved finding, and explicitly says not to
+    cite `wsl-config.md` for a WSL Settings claim.
+  - **`networkingMode` is a five-value enum**, not `NAT | mirrored`. `features.md` F-1
+    and `wslconfig-keys.md` both carry the full list plus the `bridged` deprecation.
+
+  Deliberately **not** done here, because later tasks own them: no `wsl` command was
+  executed (runtime task), no sizing or ranking (classification task), and no i18n keys
+  were added. `index.md` carries a status table saying so, so nobody mistakes this for a
+  prioritised backlog.
 
 - [ ] Verify each claimed gap against the code before recording it as missing — do not trust the key list alone:
   - `grep -rn "<key>" lib/` for every key marked missing, including camelCase and lowercase spellings
