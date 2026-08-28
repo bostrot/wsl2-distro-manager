@@ -22,7 +22,7 @@
   - **The key is parsed.** A key containing `:` is silently rerouted to the Docker registry path (`create_dialog.dart:183`); the key is also used verbatim as a filename (no sanitisation), and is the on-disk download cache key — so changing an entry's URL without changing its key leaves existing users importing the stale cached rootfs permanently.
   - Existing tests use synthetic catalogue payloads, so rewriting `images.json` breaks nothing.
 
-- [ ] Re-source candidate rootfs URLs from official vendor sources only, and record each source page URL alongside each candidate in `Working/catalogue-candidates.md`:
+- [x] Re-source candidate rootfs URLs from official vendor sources only, and record each source page URL alongside each candidate in `Working/catalogue-candidates.md`:
   - Microsoft's own distribution manifest (`microsoft/WSL` repo, `distributions/DistributionInfo.json` and any newer manifest it points to) — this is the authoritative list of WSL-ready distro images and should drive the core entries
   - Ubuntu: `cloud-images.ubuntu.com` (WSL rootfs variants where published), supported releases only
   - Debian: the official Debian container artifacts source, current stable and oldstable only
@@ -32,6 +32,17 @@
   - Rocky / AlmaLinux: `dl.rockylinux.org` and `repo.almalinux.org` container base images
   - Kali: Kali's own download infrastructure (`kali.download`), not a third-party mirror
   - Arch: the official bootstrap tarball, only if its format is importable per the constraints task
+
+  **Done 2026-08-28** → `Working/catalogue-candidates.md`. 19 primary candidates + 6 fallbacks, every URL read off a live vendor index or API today (not recalled) and smoke-checked with `curl -sIL` — **all 25 returned 200 with a plausible `Content-Length`**. Manifest parsed, not eyeballed, via `Working/phase-06/dump_manifest.dart`. Findings that change the brief:
+  - **Arch is back in.** The constraints task ruled out the bootstrap tarball (`root.x86_64/` prefix → `WSL_E_NOT_A_LINUX_DISTRO`). Arch also publishes a purpose-built WSL image on its own mirror network with a **version-free alias**: `https://geo.mirror.pkgbuild.com/wsl/latest/archlinux.wsl`. Different artifact, no flattening needed.
+  - **Fedora: take `Fedora-WSL-Base-*.wsl`, not the Container-Base image the brief names.** All three `Container-*` artifacts are `.oci.tar.xz` — OCI *layout* archives (`index.json` + `blobs/`), i.e. the same nested-prefix shape that was measured failing. The brief predates Fedora shipping a real WSL artifact.
+  - **`cloud-images.ubuntu.com/wsl/` is dead** — index stops at oracular and `wsl/noble/current/` now holds only checksums and manifests; the rootfs tarball has been removed. Any such URL is a 404, which per the constraints task **hangs the create dialog forever**.
+  - **`repo.almalinux.org` has no rootfs tarball** (only qcow2/raw under `cloud/`); the official channel is the `AlmaLinux/wsl-images` GitHub org. Same for SLE — nothing on `download.opensuse.org`, only `SUSE/WSL-instarball`.
+  - **New non-rotting URLs found where the brief assumed none**: Rocky's `Rocky-N-WSL-Base.latest.x86_64.wsl` aliases, openSUSE's version-free `opensuse-{tumbleweed,leap}-image.x86_64-networkd.tar.xz` appliance aliases, and Debian's `stable/`+`oldstable/` artifact directories. **11 of 19 candidates never rot**, against 0 of 22 today.
+  - **Debian's salsa job-artifact URL is durable by design** — `.gitlab-ci.yml` sets `expire_in: never` with a comment naming Microsoft's manifest. Still version-pinned, so the container artifact path is recommended instead.
+  - **Oracle Linux cannot be added at all**: Microsoft ships it only as `.Appx` (a signed ZIP, not a tar) and Oracle publishes no rootfs of its own. Every legacy manifest entry is `.appx` and all 8 are rejected on the same grounds.
+  - Deliberate exclusions recorded with reasons: Ubuntu 25.10 (EOL Jul 2026) and 20.04 (ESM-only since Apr 2025), Fedora ≤42 (gone from the release tree), Rocky 8 (no WSL-Base, newest build 2024-05), SLES 12 (no official replacement — do not re-source), AlmaLinux 8/Kitten, eLxr, MicroOS/Aeon, and all disk-image formats.
+  - Proposed keys carried forward respect constraint rules 9 and 10 — notably `OpenSUSE`, `Kali Linux` and `SLES 15` **must be re-keyed**, or existing users keep importing the 2022 tarball out of the on-disk download cache forever.
 
 - [ ] Verify every candidate URL mechanically before it goes anywhere near the catalogue:
   - `curl -sIL --max-time 60` each URL and record final status, `Content-Type`, `Content-Length` and the redirect chain
