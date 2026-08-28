@@ -226,6 +226,41 @@ instance-name field and reading all 23 characters back off a screenshot.
 | `-Horizontal` | off | Send `MOUSEEVENTF_HWHEEL` instead |
 | `-Steps` | one per notch | Split the scroll into N events; a single large delta under-scrolls in some scroll views |
 
+### `prefs.ps1`
+
+Reads, patches, backs up and restores `%APPDATA%\com.bostrot\WSL Distro Manager\shared_preferences.json`
+**with the app stopped** -- it throws rather than writing while an instance is
+alive, because the app rewrites the file on exit and would discard the edit.
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `-Baseline` | off | Apply the click-through-audit baseline (see below) |
+| `-Set` | none | Hashtable of key/value pairs; the `flutter.` prefix is added for you |
+| `-Remove` | none | Keys to delete |
+| `-Backup` / `-Restore` | none | Copy the prefs file to / from a path |
+| `-Show` | none | Print the given keys (`$null` when absent) instead of the file path |
+| `-StopApp` | off | Close a running instance first instead of throwing |
+
+`-Baseline` pins English, the light theme, the pubspec version in both `version`
+and `LastChangelogVersion`, `RatingPromptDone`, today's `LastMotd`, and drops
+`MoveOp_*` -- i.e. every once-per-start dialog is pre-dismissed, so a screenshot
+is never taken through a modal. Window geometry is deliberately left alone:
+`resize.ps1` owns it and the app rewrites the saved size on exit anyway.
+
+```powershell
+& ".maestro\tools\prefs.ps1" -Baseline -StopApp -Backup "$env:TEMP\wslm-prefs.json"
+& ".maestro\tools\prefs.ps1" -Set @{ language = 'ja'; themeMode = 'dark' } -StopApp
+& ".maestro\tools\prefs.ps1" -Show language, themeMode
+```
+
+Reads and writes go through `[System.IO.File]::ReadAllText/WriteAllText` with an
+explicit BOM-less UTF-8 encoding. Both halves matter: `Get-Content` without
+`-Encoding UTF8` decodes the file as ANSI and mangles every non-ASCII value in
+it, and a BOM written by `Out-File -Encoding utf8` is a parse error on the Dart
+side that surfaces as "all settings reset". Windows PowerShell's `ConvertTo-Json`
+does preserve the `1183.0` double formatting the Flutter side stores window
+geometry in, so a round trip is safe.
+
 ### `_common.ps1`
 
 Shared plumbing, dot-sourced by everything else — the P/Invoke surface,
@@ -278,11 +313,20 @@ real MSIX package-identity check runs unchanged.
 > `-Mode run` (a debug build); the switch warns when used with a profile or
 > release build, where `kDebugMode` is `false` and the flag is compiled out.
 
+**`-ForcePro` also makes the app look Store-*installed*.** The flag returns
+`true` from `_detectStoreInstall()`, so `isStoreLicensed` -- not just `isPro` --
+is set, and `maybeShowRatingPrompt()` (`lib/dialogs/rating_dialog.dart`) gates on
+exactly that. On a machine with `InstancesCreated` past the threshold, a
+`-ForcePro` launch therefore opens on a modal rating dialog in the middle of the
+window. Run `prefs.ps1 -Baseline` first when the screenshots have to be clean.
+
 ## Notes
 
 - The app **overwrites `shared_preferences.json` on exit**. Kill the process
   before editing prefs by hand, or the edit is lost. `launch.ps1` kills any
   running instance first and waits for it to exit for exactly this reason.
+  `prefs.ps1` enforces the same rule: it throws rather than writing while an
+  instance is alive.
 - `.maestro/screenshots/` is gitignored; the helpers in this folder are tracked.
 - Written for Windows PowerShell 5.1 (`powershell.exe`), which is what is
   available here. The scripts also run under PowerShell 7.

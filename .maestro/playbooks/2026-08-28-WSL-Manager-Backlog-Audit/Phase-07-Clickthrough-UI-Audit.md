@@ -6,11 +6,40 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
 
 ## Tasks
 
-- [ ] Set up a reproducible audit run:
+- [x] Set up a reproducible audit run:
   - Launch with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` so Pro surfaces are reachable
   - Kill the app process before touching `shared_preferences.json` — the app overwrites it on exit, so prefs edits made while it runs are lost
   - Fix the window to a known size via `resize.ps1` (use both a 1400×860 "standard" pass and a deliberately narrow ~900px-wide pass) so screenshots are comparable
   - Create `doc/audit/ui-ux/index.md` with YAML front matter (`type: analysis`, `title: UI/UX Click-Through Audit`, `created: 2026-08-28`, `tags: [ui, ux, audit]`) and a findings table that later files link back to
+
+  **Done 2026-08-28.** Run configuration and how to reproduce it are written up in
+  `doc/audit/ui-ux/index.md`; the master findings table and the per-area / fix-list /
+  not-examined sections are scaffolded there for the passes below.
+
+  - Added `.maestro/tools/prefs.ps1` (documented in the toolkit README) so the prefs
+    baseline is a command rather than a hand edit. It refuses to write while the app is
+    running -- the trap this task calls out -- and `-Baseline` pins `language=en`,
+    `themeMode=light`, `version`/`LastChangelogVersion` = pubspec version,
+    `RatingPromptDone`, today's `LastMotd`, and drops `MoveOp_*`. Read/write goes through
+    BOM-less UTF-8 `ReadAllText`/`WriteAllText`: `Get-Content` without `-Encoding UTF8`
+    mangles the emoji in `flutter.motd`, and a BOM makes the Dart side fail to parse the
+    file, which shows up as "all settings reset".
+  - **`WSLM_FORCE_PRO=true` is not a clean baseline on its own.** It returns `true` from
+    `_detectStoreInstall()` (`lib/api/license_manager.dart:70`), which sets
+    `isStoreLicensed`, and `maybeShowRatingPrompt()` (`lib/dialogs/rating_dialog.dart:20`)
+    gates on exactly that -- with `InstancesCreated = 27` here, the very first launch came
+    up behind a modal rating dialog. Hence `RatingPromptDone` in the baseline.
+  - Pro reachability verified, not assumed: the License screen renders "Pro Plan -- Bought
+    once in the Microsoft Store" under the audit build
+    (`01-baseline-1400x860-license-pro-check.png`).
+  - Both window passes captured and confirmed comparable: `00-baseline-1400x860-home.png`
+    (open nav pane, labels visible) and `02-baseline-900x860-home-narrow.png` (compact,
+    icon-only -- below fluent_ui's 1008px threshold), plus
+    `03-baseline-1400x860-home-restored.png` to show the resize round-trips.
+  - No Dart code changed, so no test run: this task added one PowerShell helper and two
+    Markdown files. `prefs.ps1` was exercised end to end instead -- throw-while-running,
+    `-Backup`, `-Set`, `-Show`, `-Remove`, `-Restore` -- and the prefs file re-verified as
+    BOM-less valid JSON with the emoji and the `1183.0` double formatting intact.
 
 - [ ] Audit the main list and navigation surface, capturing screenshots of each state:
   - `lib/components/list.dart` / `list_item.dart`: running vs stopped distro rows, the 5-second poll not causing visible flicker, hover and focus states, action button order and iconography, long distro names, a machine with zero distros (empty state)
