@@ -553,4 +553,56 @@ Apply the repo conventions from Phase 01 (CRLF files, format only what you touch
   the WSL/subprocess section, since it is a shell trap rather than a WSL one and
   will otherwise be rediscovered.
 
-- [ ] Format only the touched files, confirm `git diff --stat` shows no unrelated churn, and commit the AI Workspace correctness fixes and the `navbar.dart` removal on `beta`.
+- [x] Format only the touched files, confirm `git diff --stat` shows no unrelated churn, and commit the AI Workspace correctness fixes and the `navbar.dart` removal on `beta`.
+
+  **Done (2026-08-28).** The earlier tasks recorded `dart format` as "not run"
+  because reformatting a whole file here produces churn unrelated to the change.
+  That reasoning holds, but it was measured wrong: this repo pins
+  `sdk: ">=2.17.0 <4.0.0"` in `pubspec.yaml`, so `dart_style` resolves the
+  package language version to 2.17 and uses the **short** style, not the tall
+  style introduced in 3.7. Formatting is therefore mild, not a rewrite — so the
+  two halves of this task ("format the touched files" vs "no unrelated churn")
+  are reconcilable rather than in conflict.
+
+  Resolved by formatting the touched *code* rather than the touched *files*.
+  `dart format` over all ten Dart files this phase touched produced 90 hunks;
+  intersecting those hunk ranges with the ranges the phase actually changed
+  (`git diff -U0 8d80fd0^ HEAD -- lib test`) split them 17 / 73. The 17 landed;
+  the 73 are pre-existing over-80-column lines in code this phase never went
+  near — 37 of them in `lib/api/wsl.dart` alone — and were left alone.
+  `lib/api/wsl.dart`, `lib/screens/ai_workspace_screen.dart` and
+  `test/wsl_test.dart` therefore end up with no change at all: every formatter
+  complaint in them is older than this phase.
+
+  The mechanical part is `Working/apply_scoped_format.dart` — scratch, so it is
+  gitignored and stays local; kept on disk as the record of how the selection
+  was made, not as shipped code. One trap worth writing down: `.gitattributes`
+  sets `* text=auto`, so blobs are stored LF while the working tree is CRLF, and
+  the `+` lines of `git diff` come back **LF-only**. Splicing them in verbatim
+  leaves a handful of LF lines inside an otherwise-CRLF file — invisible to
+  `cat -A`/`sed` on Git Bash, and it silently re-dirties the very lines you just
+  formatted. The script re-attaches the CR when the file is CRLF-dominant; all
+  four patched files verified byte-for-byte (CR count == line count).
+
+  The three files this phase created outright (`lib/api/wsl_args.dart`,
+  `test/wsl_args_test.dart`, `test/ai_workspace_screen_test.dart`) and
+  `test/mocks.dart` are now fully `dart format` clean. Re-running the formatter
+  afterwards leaves 73 hunks, and a fresh intersection against the phase ranges
+  confirms **zero** of them touch phase code.
+
+  `git diff --stat` for the whole phase is 23 files and nothing unrelated: the
+  four source/test files above, `lib/api/wsl.dart` + the new `lib/api/wsl_args.dart`,
+  `lib/screens/ai_workspace_screen.dart`, the nine locale files, `test/mocks.dart`
+  and four test files, the `lib/components/navbar.dart` deletion, plus `AGENTS.md`,
+  `TODO.md` and this document.
+
+  `flutter analyze` 105 issues (unchanged baseline), `flutter test` 367/367,
+  `flutter test integration_test/ai_workspace_test.dart -d windows` 17/17,
+  `dart run scripts/check_translations.dart` exit 0.
+
+  The correctness fixes and the `navbar.dart` removal were already committed and
+  pushed to `beta` as they landed (`8d80fd0` → `1345ba6`); this task adds the
+  formatting commit on top. Commit message follows `AGENTS.md` (Conventional
+  Commits, no tool attribution) rather than the generic `MAESTRO:` prefix — the
+  repo rule is explicit that it applies to every agent, and the history moved off
+  that prefix after `8d80fd0`.

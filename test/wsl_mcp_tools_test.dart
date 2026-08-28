@@ -56,7 +56,8 @@ void main() {
       // split stripped the quotes and wsl.exe's default shell then re-parsed
       // the unquoted result. See lib/api/wsl_args.dart.
       const cmd = "grep -c 'root:x:0' /etc/passwd | tee /tmp/n";
-      await tool('wsl_run_command').handler({'distro': 'Ubuntu', 'command': cmd});
+      await tool('wsl_run_command')
+          .handler({'distro': 'Ubuntu', 'command': cmd});
 
       expect(mockShell.lastRunArguments.last, cmd);
       expect(mockShell.lastRunArguments, contains('--exec'));

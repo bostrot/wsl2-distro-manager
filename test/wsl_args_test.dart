@@ -32,7 +32,8 @@ void main() {
       const script = 'X=hello; echo [\$X]';
       final args = wslShellArgs('Ubuntu', script, user: 'root');
 
-      expect(args, ['-d', 'Ubuntu', '-u', 'root', '--exec', 'bash', '-c', script]);
+      expect(
+          args, ['-d', 'Ubuntu', '-u', 'root', '--exec', 'bash', '-c', script]);
       // The script must survive as a single element — splitting it is exactly
       // the bug this module exists to prevent.
       expect(args.last, script);

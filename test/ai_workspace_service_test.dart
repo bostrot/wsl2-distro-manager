@@ -77,7 +77,11 @@ void main() {
     setUpAll(() {
       Notify();
       Notify.message = (msg,
-          {duration, loading = false, useWidget = false, leadingIcon = true, dynamic widget}) {
+          {duration,
+          loading = false,
+          useWidget = false,
+          leadingIcon = true,
+          dynamic widget}) {
         notifications.add(msg);
       };
     });
@@ -378,7 +382,8 @@ void main() {
         );
       });
 
-      test('a failed install keeps its error and message across a background '
+      test(
+          'a failed install keeps its error and message across a background '
           'refresh', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
@@ -402,7 +407,8 @@ void main() {
         expect(state?.hasKnownStatus, true);
       });
 
-      test('a sticky failure still leaves the tool installable, so Retry '
+      test(
+          'a sticky failure still leaves the tool installable, so Retry '
           'works', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
@@ -428,8 +434,7 @@ void main() {
         expect(state?.errorSticky, false);
       });
 
-      test('clearError() releases the tool back to the status probe',
-          () async {
+      test('clearError() releases the tool back to the status probe', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
 
@@ -438,8 +443,8 @@ void main() {
         await service.install(AiWorkspaceTool.openClaw);
 
         service.clearError(AiWorkspaceTool.openClaw);
-        expect(service.getState(AiWorkspaceTool.openClaw)?.errorMessage,
-            isNull);
+        expect(
+            service.getState(AiWorkspaceTool.openClaw)?.errorMessage, isNull);
 
         testShell.exitCode = 0;
         testShell.stderrData = '';
@@ -470,7 +475,8 @@ void main() {
         expect(state?.errorMessage, contains('gateway never bound'));
       });
 
-      test('a transient probe failure is not sticky — the next probe still '
+      test(
+          'a transient probe failure is not sticky — the next probe still '
           'corrects it', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
@@ -721,8 +727,7 @@ void main() {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
 
-        service.getState(AiWorkspaceTool.openClaw)!.status =
-            ToolStatus.stopped;
+        service.getState(AiWorkspaceTool.openClaw)!.status = ToolStatus.stopped;
         testShell.stdoutData = '';
         await service.start(AiWorkspaceTool.openClaw);
 
@@ -1155,7 +1160,8 @@ void main() {
       // The port probe answering "not listening" must not be read as "not
       // installed": the probe falls through to the exists check, and an
       // installed-but-dead gateway keeps its card and its install path.
-      test('a gateway that is not listening reads as stopped, keeping its '
+      test(
+          'a gateway that is not listening reads as stopped, keeping its '
           'install path', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
@@ -1259,8 +1265,8 @@ void main() {
         final state = service.getState(AiWorkspaceTool.openWebUi)!;
         state.status = ToolStatus.starting;
 
-        expect(await service.getDashboardUrl(AiWorkspaceTool.openWebUi),
-            isNull);
+        expect(
+            await service.getDashboardUrl(AiWorkspaceTool.openWebUi), isNull);
       });
 
       test('returns null for a tool that is not running', () async {
@@ -1511,7 +1517,8 @@ void main() {
       // would have reported it running, while nothing answers on the port.
       // The probe has to say "installed, not serving" instead — which
       // refreshStatus maps to stopped, keeping the card and its install path.
-      test('a gateway process that exists while nothing listens reads as '
+      test(
+          'a gateway process that exists while nothing listens reads as '
           'installed, not running', () async {
         if (await _hostPortIsOpen(18789)) {
           markTestSkipped('a real service holds 18789 on this machine, so the '
@@ -1529,7 +1536,8 @@ void main() {
         expect(answer, 'exists');
       });
 
-      test('a gateway that is neither listening nor installed reads as '
+      test(
+          'a gateway that is neither listening nor installed reads as '
           'missing', () async {
         if (await _hostPortIsOpen(18789)) {
           markTestSkipped('a real service holds 18789 on this machine');
@@ -1657,8 +1665,8 @@ void main() {
           // twenty real `/dev/tcp` connect attempts take longer than the test
           // timeout on Windows, and the wait is not what this test is about.
           'HOME=\$(mktemp -d); $killStubs$noSleep'
-          'setsid() { :; }; '
-          "ss() { echo 'LISTEN 0 4096 127.0.0.1:9119 0.0.0.0:*'; }; ",
+              'setsid() { :; }; '
+              "ss() { echo 'LISTEN 0 4096 127.0.0.1:9119 0.0.0.0:*'; }; ",
           '$script; echo SURVIVED',
         );
 
@@ -1672,8 +1680,7 @@ void main() {
       // mention comes *before* the kill (`openclaw gateway stop`), so the
       // gateway really did stop — and then the shell died, so Stop reported
       // failure with an empty message over a tool that was genuinely down.
-      test('the openclaw stop command survives its own kill pattern',
-          () async {
+      test('the openclaw stop command survives its own kill pattern', () async {
         final script =
             await lifecycleScriptFor(AiWorkspaceTool.openClaw, start: false);
 
@@ -1714,6 +1721,9 @@ void main() {
 
         expect(answer, 'SURVIVED');
       });
-    }, skip: _bash == null ? 'no bash available to run the probe scripts' : null);
+    },
+        skip: _bash == null
+            ? 'no bash available to run the probe scripts'
+            : null);
   });
 }

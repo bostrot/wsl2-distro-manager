@@ -630,8 +630,7 @@ class AiWorkspaceService {
         return true;
       } else {
         _recordActionFailure(tool, result.stderr);
-        Notify.message(
-            'ai-workspace-install-failed-text'.i18n([config.name]));
+        Notify.message('ai-workspace-install-failed-text'.i18n([config.name]));
         return false;
       }
     } catch (e) {
