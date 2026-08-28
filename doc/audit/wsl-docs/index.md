@@ -2,10 +2,12 @@
 type: analysis
 title: 'WSL Documentation Audit — index'
 created: 2026-08-28
+updated: 2026-08-28
 tags:
   - wsl
   - docs-audit
   - index
+  - phase-05
 related:
   - '[[wslconfig-keys]]'
   - '[[wslconf-keys]]'
@@ -36,6 +38,14 @@ Sweep totals from [[coverage-sweep]], which enumerated the app side rather than 
 side: **27 / 27** `.wslconfig` keys, **11 / 11** `wsl.conf` keys and **27 / 27** `wsl.exe`
 invocation sites in `lib/api/wsl.dart` resolve to a row above. Nothing the app renders or
 invokes is missing a verdict.
+
+> [!NOTE]
+> The four columns above record the app **as measured on 2026-08-28, before Phase 05**, and
+> are deliberately left at those numbers so the diff stays falsifiable against
+> `microsoftdocs/wsl@8842def`. What changed since is carried by the **Landed** column in
+> each *Finding registry* table and summarised in *Phase 05 implementation record*. In
+> short: `wsl.conf` is now **15 / 15** and every `.wslconfig` key is on its documented
+> widget type.
 
 [[runtime]] is the third pass: it executes WSL **2.6.3.0** and measures what the installed
 build actually does, so the version floors, the section-placement arguments and the
@@ -112,6 +122,10 @@ The real gaps are elsewhere, and they fall into four groups — plus one outrigh
   sized and ranked, mapped to the issues that report it, and flattened into the
   *Ordered implementation list for Phase 05*. If you are implementing rather than reading,
   start there and use the area files as reference.
+- **This file, *Phase 05 implementation record*** — what actually shipped, written
+  2026-08-28 against the code on `beta`. Read it before starting work on any finding
+  above: 16 of the 24 items are done, 3 are partial and 5 are deferred, and every table
+  in the *Finding registry* now carries a **Landed** column pointing at the file and line.
 
 Supporting material, outside the repo tree, under
 `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/`:
@@ -206,81 +220,81 @@ without a destination: items are **P05-01 … P05-24**, and findings with no ite
 
 ### [[wslconfig-keys]] — `.wslconfig`
 
-| Finding | Verdict | Size | Item |
-|:---|:---|:---:|:---|
-| CC-9 slider asserts on `memory=8589934592` / `processors=64` (V-1, R-9) | wrong | S | **P05-01** |
-| `memory=6144MB` silently collapses to `1GB` (R-10) | wrong | S | **P05-01** |
-| CC-2 `readConfig` strips every space inside a value | wrong | M | **P05-02** |
-| CC-3 section-blind read and write; a key relocated to `[wsl2]` is rejected by WSL (R-4) | wrong | M | **P05-02** |
-| CC-4 case-sensitive matching against a case-insensitive format; the appended line loses (V-5, R-8) | wrong | M | **P05-02** |
-| CC-5 comment lines parsed as keys; `#` only, never `;` (R-7) | wrong | M | **P05-02** |
-| CC-10 path values written with single backslashes; WSL discards the line (R-6) | wrong | M | **P05-02** |
-| `kernelCommandLine` mangled by CC-2 | wrong | M | **P05-02** |
-| CC-11 a key can be added and changed but never removed; blocks the tri-state (S-2) | wrong | M | **P05-02** |
-| CC-5 write half — unanchored regex, a commented-out key absorbs the write (S-3) | wrong | M | **P05-02** |
-| CC-1 seven documented-`true` toggles render off when unset | wrong | S | **P05-04** |
-| CC-7 restart requirement stated but hedged; Save never offers it (R-11) | covered | S | **P05-07** |
-| `networkingMode`, `autoMemoryReclaim` rendered as free text | wrong | S | **P05-09** |
-| CC-6 five documented conditional dependencies honoured nowhere | missing | S | **P05-10** |
-| `swap`, `defaultVhdSize` — size keys in plain text boxes | outdated | S | **P05-11** |
-| `vmIdleTimeout`, `maxCrashDumpCount` — numeric keys, no validation, no unit | outdated | S | **P05-11** |
-| `kernel`, `swapFile` — path keys with no file picker | outdated | S | **P05-11** |
-| `guiApplications`' tooltip invents a Windows 11 restriction (V-3) | wrong | S | **P05-12** |
-| `safeMode`'s tooltip is truncated, dropping the only WSL-version floor in the table (V-4) | outdated | S | **P05-12** |
-| 14 further incomplete tooltips; `processors` drops "logical"; two English defects in `globalconfigurationinfo-text` | outdated | S | **P05-12** |
-| CC-8 orphaned `unusedmemoryinfo-text` (`pageReporting`) in nine locales | outdated | S | **P05-12** |
-| R-1 `nestedVirtualization` is refused by the host CPU, and WSL says so on stderr | new | M | **P05-08** |
-| `systemDistro`, `kernelDebugPort` (Intune-only) absent | missing | — | not scheduled |
-| S-4 `Default Distro Location` / `General Data Location` share the `_settings` namespace | n/a | — | not scheduled |
+| Finding | Verdict | Size | Item | Landed |
+|:---|:---|:---:|:---|:---|
+| CC-9 slider asserts on `memory=8589934592` / `processors=64` (V-1, R-9) | wrong | S | **P05-01** | ✅ `settings_screen.dart:1576` — `_numericSetting` calls `wslSliderFits` (`components/wsl_size.dart:80`) *before* the `Slider` constructor; anything out of range renders as an editable text box |
+| `memory=6144MB` silently collapses to `1GB` (R-10) | wrong | S | **P05-01** | ✅ `components/wsl_size.dart:44` `parseWslSize`, unit-aware; 17 tests in `test/wsl_size_test.dart` |
+| CC-2 `readConfig` strips every space inside a value | wrong | M | **P05-02** | ✅ new `api/ini_config.dart` model behind `wsl.dart:671` `readWslConfig` |
+| CC-3 section-blind read and write; a key relocated to `[wsl2]` is rejected by WSL (R-4) | wrong | M | **P05-02** | ✅ `api/wslconfig.dart:206` `WslConfigFile.sectionFor`; the writers at `wsl.dart:728` and `:731` name the section |
+| CC-4 case-sensitive matching against a case-insensitive format; the appended line loses (V-5, R-8) | wrong | M | **P05-02** | ✅ `api/ini_config.dart` — case-insensitive lookup, the file's own spelling preserved on write |
+| CC-5 comment lines parsed as keys; `#` only, never `;` (R-7) | wrong | M | **P05-02** | ✅ `api/ini_config.dart`; the `#`-only dialect is set by `api/wslconfig.dart:155` `kWslConfigSchema` |
+| CC-10 path values written with single backslashes; WSL discards the line (R-6) | wrong | M | **P05-02** | ✅ `api/wslconfig.dart:120` `escapeWslConfigPath`, over the three documented `path` keys listed at `:86` |
+| `kernelCommandLine` mangled by CC-2 | wrong | M | **P05-02** | ✅ same engine — spaces inside a value survive the round trip |
+| CC-11 a key can be added and changed but never removed; blocks the tri-state (S-2) | wrong | M | **P05-02** | ✅ `wsl.dart:731` `removeConfig`; the undo affordance is `settings_screen.dart:1472` `_tristateToggle` |
+| CC-5 write half — unanchored regex, a commented-out key absorbs the write (S-3) | wrong | M | **P05-02** | ✅ `api/ini_config.dart` — a commented-out key parses as a comment, never as a match |
+| CC-1 seven documented-`true` toggles render off when unset | wrong | S | **P05-04** | ✅ `settings_screen.dart:1472` `_tristateToggle` reading `api/wslconfig.dart:98` `kWslConfigBoolDefaults` |
+| CC-7 restart requirement stated but hedged; Save never offers it (R-11) | covered | S | **P05-07** | ◐ **half.** The string is fixed — `i18n/en.json:117` states the restart unconditionally, in all nine locales. The **Save prompt is deferred**: `saveSettings` (`settings_screen.dart:251`) does not offer it, and `restartwslnow-text` / `restartwslprompt-text` (`en.json:410`) are translated but unreferenced |
+| `networkingMode`, `autoMemoryReclaim` rendered as free text | wrong | S | **P05-09** | ✅ `settings_screen.dart:1527` `_enumerationBox`; the two rows at `:1150` and `:1317` |
+| CC-6 five documented conditional dependencies honoured nowhere | missing | S | **P05-10** | ✅ `settings_screen.dart:1096`, `:1146`, `:1330`–`:1361`, reading `_configBool:1282` and `_networkingMode:1289` |
+| `swap`, `defaultVhdSize` — size keys in plain text boxes | outdated | S | **P05-11** | ✅ `settings_screen.dart:1107` (size slider, `0` disables) and `:1175` (validated size box) |
+| `vmIdleTimeout`, `maxCrashDumpCount` — numeric keys, no validation, no unit | outdated | S | **P05-11** | ✅ `settings_screen.dart:1132`, `:1138` — `SettingsType.number` (`:27`), unit in the label, documented default as placeholder |
+| `kernel`, `swapFile` — path keys with no file picker | outdated | S | **P05-11** | ✅ `settings_screen.dart:1071`, `:1118` through `_filePickerSuffix:1297`, which `kernelModules` now shares |
+| `guiApplications`' tooltip invents a Windows 11 restriction (V-3) | wrong | S | **P05-12** | ✅ `i18n/en.json:125` `guiinfo-text` — the invented restriction is gone, in all nine locales |
+| `safeMode`'s tooltip is truncated, dropping the only WSL-version floor in the table (V-4) | outdated | S | **P05-12** | ✅ `i18n/en.json:226` `safemodeinfo-text` — the Win 11 / WSL 0.66.2+ floor is restored |
+| 14 further incomplete tooltips; `processors` drops "logical"; two English defects in `globalconfigurationinfo-text` | outdated | S | **P05-12** | ✅ 26 strings rewritten in all nine locales; `processorinfo-text` at `en.json:120`, `globalconfigurationinfo-text` at `:117` |
+| CC-8 orphaned `unusedmemoryinfo-text` (`pageReporting`) in nine locales | outdated | S | **P05-12** | ✅ deleted from all nine — `grep -rn unusedmemoryinfo-text lib/` returns nothing |
+| R-1 `nestedVirtualization` is refused by the host CPU, and WSL says so on stderr | new | M | **P05-08** | ✅ `api/wsl_capabilities.dart:87` `WslCapabilities.warnings`, rendered at `settings_screen.dart:1232` |
+| `systemDistro`, `kernelDebugPort` (Intune-only) absent | missing | — | not scheduled | ⊘ unchanged, deliberately — reason in *Not scheduled* |
+| S-4 `Default Distro Location` / `General Data Location` share the `_settings` namespace | n/a | — | not scheduled | ⊘ unchanged, deliberately — an app preference, not a WSL key |
 
 ### [[wslconf-keys]] — `wsl.conf`
 
-| Finding | Verdict | Size | Item |
-|:---|:---|:---:|:---|
-| CC-1 section-blind `sed`; `[automount] enabled` and `[interop] enabled` overwrite each other | wrong | M | **P05-03** |
-| CC-2 any value containing `/` breaks the `sed`, silently — including `automount.root`'s documented default | wrong | M | **P05-03** |
-| CC-7 free-text values interpolated unescaped into a **root** shell (V-6) | wrong | M | **P05-03** |
-| V-7 prefs keyed on the file's spelling, not the widget's | risk | M | **P05-03** |
-| `boot.command`, `automount.root` unusable in practice | wrong | M | **P05-03** |
-| CC-3 six documented-`true` toggles render off | wrong | S | **P05-04** |
-| CC-6 `[user] default` written at creation, never editable — and shadowed by the dialog's **Start user** box (S-1) | missing | S | **P05-05** |
-| CC-5 every keystroke writes; no restart signal; `--terminate` suffices (R-12) | missing | S | **P05-06** |
-| CC-4 no labels, no descriptions, no `.i18n()` anywhere in the dialog | missing | S | **P05-13** |
-| `automount.options` — a 7-token composite in a raw text box; the `metadata` precondition unstated | outdated | S | **P05-13** |
-| `[boot] protectBinfmt`, `[gpu] enabled`, `[time] useWindowsTimezone` absent | missing | S | **P05-14** |
+| Finding | Verdict | Size | Item | Landed |
+|:---|:---|:---:|:---|:---|
+| CC-1 section-blind `sed`; `[automount] enabled` and `[interop] enabled` overwrite each other | wrong | M | **P05-03** | ✅ `api/wsl_conf.dart:66` `WslConfFile` over `api/ini_config.dart`; `wsl.dart:2097` `readWSLConf` / `:2147` `updateWSLConf`. `assets/scripts/settings.bash` is **deleted** |
+| CC-2 any value containing `/` breaks the `sed`, silently — including `automount.root`'s documented default | wrong | M | **P05-03** | ✅ same fix — no `sed` survives; the whole file is rewritten from the model |
+| CC-7 free-text values interpolated unescaped into a **root** shell (V-6) | wrong | M | **P05-03** | ✅ `wsl.dart:2025` `writeDistroFile` base64-encodes the payload; the destination path is guarded by `wsl_args.dart` `isPlainDistroPath` |
+| V-7 prefs keyed on the file's spelling, not the widget's | risk | M | **P05-03** | ✅ case-insensitive canonicalisation on read; `loadDistroSettings` (`settings_dialog.dart:666`) derives its key list from `wslConfSettings` (`:369`) instead of a hardcoded twelve |
+| `boot.command`, `automount.root` unusable in practice | wrong | M | **P05-03** | ✅ both round-trip verbatim — `test/wsl_conf_test.dart`, and live against WSL 2.6.3 |
+| CC-3 six documented-`true` toggles render off | wrong | S | **P05-04** | ✅ `settings_dialog.dart:334` `WslConfSetting.defaultOn`, read at `:563`; undo physically removes the line |
+| CC-6 `[user] default` written at creation, never editable — and shadowed by the dialog's **Start user** box (S-1) | missing | S | **P05-05** | ✅ `settings_dialog.dart:413` — a real editor placed under the Start user box, which gained `startuserinfo-text` (`:150`). The `--set-default-user` half is partial; see [[cli-flags]] below |
+| CC-5 every keystroke writes; no restart signal; `--terminate` suffices (R-12) | missing | S | **P05-06** | ✅ `components/debounced_text_box.dart` used at `settings_dialog.dart:655`; the restart rule at `:449`, **Terminate distro** at `:474` |
+| CC-4 no labels, no descriptions, no `.i18n()` anywhere in the dialog | missing | S | **P05-13** | ✅ `settings_dialog.dart:369` — every key carries a localised label + description pair; nothing is derived from a Dart identifier |
+| `automount.options` — a 7-token composite in a raw text box; the `metadata` precondition unstated | outdated | S | **P05-13** | ✅ `automountoptionsinfo-text` names all seven tokens and states the `metadata` precondition. The per-token editor stays deferred (*Not scheduled*) |
+| `[boot] protectBinfmt`, `[gpu] enabled`, `[time] useWindowsTimezone` absent | missing | S | **P05-14** | ✅ `settings_dialog.dart:376`, `:405`, `:407`; the two new section headers at `:434`–`:435`. All fifteen documented keys are editable |
 
 ### [[cli-flags]] — `wsl.exe`
 
-| Finding | Verdict | Size | Item |
-|:---|:---|:---:|:---|
-| CC-1 `--version` / `--status` never invoked; no version gating possible | missing | M | **P05-08** |
-| CC-2 `--manage --move` | missing | M | **P05-15** |
-| CC-2 `--manage --resize`, `--manage --set-sparse`, and `--system` | missing | M | **P05-16** |
-| CC-2 `--manage --set-default-user` | missing | S | **P05-05** |
-| CC-3 every export is an uncompressed tar; `--format` unused | missing | S | **P05-17** |
-| `--import-in-place` — `copyVhd()` copies the VHD twice | missing | S | **P05-18** |
-| `--set-default`, `--set-version`, `--set-default-version` | missing | S | **P05-19** |
-| `--list --verbose` — state and version in one call | missing | S | **P05-20** |
-| CC-5 dead `install()` carrying the `-d` ≠ `--name` trap | wrong | S | **P05-21** |
-| CC-4 two hand-built `--mount` argument strings, one through an elevation path | risk | S | **P05-21** |
-| `--update`, `--update --web-download` | missing | M | **P05-23** |
-| `--shell-type`, `--distribution-id`, `--shutdown --force`, `--uninstall`, `--debug-shell`, `--list --online`, `--list --all`, `--import --version` | missing / n/a | — | not scheduled |
+| Finding | Verdict | Size | Item | Landed |
+|:---|:---|:---:|:---|:---|
+| CC-1 `--version` / `--status` never invoked; no version gating possible | missing | M | **P05-08** | ✅ `api/wsl_capabilities.dart:229` `WslCapabilityService.load` — one cached call of each, parsed by shape because the output is localised |
+| CC-2 `--manage --move` | missing | M | **P05-15** | ✅ `wsl.dart:2297` `moveDistro`, preferred by `move()` at `:1790` on WSL 2.5+; the export → unregister → import path survives only as the pre-2.5 fallback, and a failed native move is never retried down it |
+| CC-2 `--manage --resize`, `--manage --set-sparse`, and `--system` | missing | M | **P05-16** | ✅ `wsl.dart:2305`, `:2313`, and `diskUsage` at `:2385` (`wsl --system … df -k`); the surface is `dialogs/disk_dialog.dart` |
+| CC-2 `--manage --set-default-user` | missing | S | **P05-05** | ◐ **API only.** `wsl.dart:2321` `setDefaultUser` exists and is tested, but **has no caller** — the dialog writes `[user] default` instead (`settings_dialog.dart:413`), which is the documented mechanism and the only one that works for an imported distro. Preferring the verb on WSL 2.5+ is the remaining half |
+| CC-3 every export is an uncompressed tar; `--format` unused | missing | S | **P05-17** | ◐ **API only.** `wsl.dart:1009`–`:1022` takes `format:` and packaging passes `tar.gz`; the export and template UI still never offer it |
+| `--import-in-place` — `copyVhd()` copies the VHD twice | missing | S | **P05-18** | ⏸ **deferred, not started** — no `--import-in-place` anywhere in `lib/`; `copyVhd()` still copies twice |
+| `--set-default`, `--set-version`, `--set-default-version` | missing | S | **P05-19** | ⏸ **deferred, not started** — the i18n keys are seeded (`en.json:448`–`:449`) but no call site exists |
+| `--list --verbose` — state and version in one call | missing | S | **P05-20** | ⏸ **deferred, not started** — `wsl.dart:1682` still issues `--list --running --quiet` alongside the plain list |
+| CC-5 dead `install()` carrying the `-d` ≠ `--name` trap | wrong | S | **P05-21** | ⏸ **deferred** — `wsl.dart:1088` `install()` is still present and still unreferenced. The correct form now sits next to it as `installFromFile` (`:2348`), which does use `--name` |
+| CC-4 two hand-built `--mount` argument strings, one through an elevation path | risk | S | **P05-21** | ⏸ **deferred** — `mount_service.dart:248` still builds the argument string by hand and `:313` still pre-quotes the path |
+| `--update`, `--update --web-download` | missing | M | **P05-23** | ✅ `wsl.dart:2327` `updateWsl`, driven from `settings_screen.dart:1253` next to the version display |
+| `--shell-type`, `--distribution-id`, `--shutdown --force`, `--uninstall`, `--debug-shell`, `--list --online`, `--list --all`, `--import --version` | missing / n/a | — | not scheduled | ⊘ unchanged, deliberately — reasons in *Not scheduled* |
 
 ### [[features]] — capability surfaces
 
-| Finding | Verdict | Size | Item |
-|:---|:---|:---:|:---|
-| F-1 mirrored networking — key present, unexplained, ungated | outdated | S | **P05-09** + **P05-10** |
-| F-2 DNS tunnelling — dependants ungated, tooltips thin | outdated | S | **P05-10** + **P05-12** |
-| F-3 sparse VHD — only the "newly created" half exists | missing | M | **P05-16** |
-| F-4 `wsl --manage` | missing | M | **P05-15**, **P05-16**, **P05-05** |
-| F-5 "WSL Settings" — Microsoft ships one; this app already uses the name for something else (V-8) | missing | S | **P05-22** + research item **R-A** |
-| F-6 systemd — no distro-default awareness, no restart prompt, broken writer | outdated | M | **P05-03** + **P05-04** + **P05-06** |
-| F-7 WSL plugins | missing | L | not scheduled |
-| F-8 custom-distro distribution (`.wsl`, `wsl-distribution.conf`) | missing | L | **P05-24** |
-| F-9 WSL version awareness | missing | M | **P05-08** |
-| F-10 the 8-second rule, surfaced for one file of two | outdated | S | **P05-06** + **P05-07** |
-| F-11 disk-space management | missing | M | **P05-16** |
+| Finding | Verdict | Size | Item | Landed |
+|:---|:---|:---:|:---|:---|
+| F-1 mirrored networking — key present, unexplained, ungated | outdated | S | **P05-09** + **P05-10** | ✅ `settings_screen.dart:1150` (combo box), `:1096` and `:1352`–`:1361` (the three dependencies `mirrored` changes) |
+| F-2 DNS tunnelling — dependants ungated, tooltips thin | outdated | S | **P05-10** + **P05-12** | ✅ `settings_screen.dart:1330`–`:1338`; the tooltips are rewritten in all nine locales |
+| F-3 sparse VHD — only the "newly created" half exists | missing | M | **P05-16** | ✅ `wsl.dart:2313` `--set-sparse` for existing distros, surfaced at `dialogs/disk_dialog.dart:179` with a description that says in so many words that it is not `[experimental] sparseVhd` |
+| F-4 `wsl --manage` | missing | M | **P05-15**, **P05-16**, **P05-05** | ◐ three of four options shipped (`--move`, `--resize`, `--set-sparse`); `--set-default-user` is API-only — see [[cli-flags]] above |
+| F-5 "WSL Settings" — Microsoft ships one; this app already uses the name for something else (V-8) | missing | S | **P05-22** + research item **R-A** | ⏸ **deferred** — `wslsettings-text` still names this app's dialog (`settings_dialog.dart:443`), and `microsoftwslsettings-text` (`en.json:450`) is translated in nine locales but never rendered. R-A was not run either |
+| F-6 systemd — no distro-default awareness, no restart prompt, broken writer | outdated | M | **P05-03** + **P05-04** + **P05-06** | ✅ writer replaced (P05-03); `[boot] systemd` deliberately carries no `defaultOn` because it is whatever the image ships (`settings_dialog.dart:369`); the per-distro restart prompt is `:449` / `:474` |
+| F-7 WSL plugins | missing | L | not scheduled | ⊘ unchanged, deliberately — no demand in 183 issues |
+| F-8 custom-distro distribution (`.wsl`, `wsl-distribution.conf`) | missing | L | **P05-24** | ✅ `api/wsl_distribution_conf.dart`, `api/distro_package.dart`, `screens/package_screen.dart` (route `/package`, `nav/router.dart:86`), `wsl.dart:2348` `installFromFile`, gated on WSL 2.4.4 via `wsl_capabilities.dart:155` |
+| F-9 WSL version awareness | missing | M | **P05-08** | ✅ `api/wsl_capabilities.dart`; the version, WSL's own warnings and the update buttons render at the top of Global Settings (`settings_screen.dart:1194`–`:1253`) |
+| F-10 the 8-second rule, surfaced for one file of two | outdated | S | **P05-06** + **P05-07** | ◐ the per-distro half shipped (`settings_dialog.dart:449`, `:474`); the global half is P05-07's Save prompt, deferred |
+| F-11 disk-space management | missing | M | **P05-16** | ✅ `dialogs/disk_dialog.dart` — allocated against used/free, resize, reclaim. #303's free-space pre-check on Compact already existed (`wsl.dart:1612`, over `freeSpaceBytes` at `:1499`) and was left as is |
 
 [[verification]] V-1…V-8 and [[runtime]] R-1…R-13 are corrections and evidence attached to
 the findings above, not separate work: each appears in these tables through the finding it
@@ -289,8 +303,13 @@ reason P05-09 is **S** rather than **M**.
 
 ## Ordered implementation list for Phase 05
 
-**This list is the input to Phase 05.** It is linear and complete: work it top to bottom.
+**This list was the input to Phase 05.** It is linear and complete: work it top to bottom.
 Sizes total **17 S · 6 M · 1 L**.
+
+**Outcome, 2026-08-28.** Phase 05 shipped **16 items** end to end, left **3 partial** and
+**deferred 5**. Every **M** and the single **L** landed; the eight items that did not land
+in full are all **S** and all tier 3–4. The *Status* column below carries each one, and
+*Phase 05 implementation record* carries the reasons.
 
 Order is impact-first, subject to dependencies. Two placements look like ranking errors
 and are not:
@@ -301,32 +320,32 @@ and are not:
 - **P05-08, the enabling item, sits at position 8, not first.** Nothing in tiers 0–1 needs
   a version check; everything from P05-15 on does.
 
-| # | Item | Size | Tier | Closes | Evidence |
-|---:|:---|:---:|:---:|:---|:---|
-| 1 | Clamp and unit-parse the size / number sliders | S | 0 | `.wslconfig` CC-9, R-9, R-10 | #300 (plausible), #224 |
-| 2 | Replace the `.wslconfig` read/write engine | M | 0 | `.wslconfig` CC-2, CC-3, CC-4, CC-5, CC-10, **CC-11**, V-5, R-4, R-6, R-7, R-8, S-2, S-3 | #87, #225, #234 |
-| 3 | Replace the `wsl.conf` writer | M | 0 | `wsl.conf` CC-1, CC-2, CC-7, V-7 | #185, #309, #261 |
-| 4 | Tri-state booleans: show the documented default | S | 1 | `.wslconfig` CC-1, `wsl.conf` CC-3 | #261 |
-| 5 | `[user] default` editor and the default-user lifecycle | S | 1 | `wsl.conf` CC-6, `--manage --set-default-user` | #268, #313, #192 |
-| 6 | `wsl.conf` dialog: restart scope, and stop writing per keystroke | S | 1 | `wsl.conf` CC-5, F-10 (per-distro half), R-12 | #185, #261 |
-| 7 | Global Settings: offer the restart on Save, and stop hedging | S | 1 | `.wslconfig` CC-7, F-10 (global half), R-11 | — |
-| 8 | WSL capability service: `--version`, `--status`, and WSL's stderr | M | 2 | `cli` CC-1, F-9, R-1, R-2 | — |
-| 9 | `SettingsType.enumeration` for the two enum keys | S | 2 | `networkingMode`, `autoMemoryReclaim`, V-2, F-1 (half) | #14 |
-| 10 | Honour the five documented conditional dependencies | S | 2 | `.wslconfig` CC-6, F-1, F-2 | — |
-| 11 | Right widget for each documented value type | S | 2 | `swap`, `defaultVhdSize`, `vmIdleTimeout`, `maxCrashDumpCount`, `kernel`, `swapFile` | #224 |
-| 12 | `.wslconfig` tooltip pass — 17 rewrites, 2 English defects, 1 orphan deleted | S | 2 | V-3, V-4, CC-8, the Part 3 tooltip diff | #224, #225, #234 |
-| 13 | Labels, descriptions and i18n for the `wsl.conf` dialog | S | 2 | `wsl.conf` CC-4, `automount.options` guidance | #310 (adjacent) |
-| 14 | The four missing `wsl.conf` keys | S | 2 | `protectBinfmt`, `gpu.enabled`, `time.useWindowsTimezone` | — |
-| 15 | `wsl --manage --move` replaces the export / unregister / import move | M | 0 † | `cli` CC-2 (move), F-4 (half) | #280, #166 |
-| 16 | Disk-space surface: usage, `--resize`, `--set-sparse` | M | 3 | F-3 (reclaim half), F-11, `--system` | #303, #133 |
-| 17 | Compressed exports (`--export --format`) | S | 3 | `cli` CC-3 | #203 |
-| 18 | `--import-in-place` for the VHD copy path | S | 3 | `cli` `--import-in-place` | — |
-| 19 | `--set-default`, `--set-version`, `--set-default-version` | S | 3 | the three version / default verbs | #103, #268 |
-| 20 | One `--list --verbose` instead of two list calls | S | 4 | `cli` `--list --verbose` | — |
-| 21 | Hygiene: delete `install()`, fix the two hand-built `--mount` argument paths | S | 4 | `cli` CC-4, CC-5 | — |
-| 22 | Resolve the "WSL Settings" name collision | S | 3 | F-5 (actionable half), V-8 | — |
-| 23 | `wsl --update` / `--update --web-download` from the app | M | 3 | `cli` `--update` | — |
-| 24 | Custom-distro distribution: `.wsl`, `wsl-distribution.conf` | L | 3 | F-8 | #239, #279, #15 |
+| # | Item | Size | Tier | Closes | Evidence | Status |
+|---:|:---|:---:|:---:|:---|:---|:---|
+| 1 | Clamp and unit-parse the size / number sliders | S | 0 | `.wslconfig` CC-9, R-9, R-10 | #300 (plausible), #224 | ✅ shipped |
+| 2 | Replace the `.wslconfig` read/write engine | M | 0 | `.wslconfig` CC-2, CC-3, CC-4, CC-5, CC-10, **CC-11**, V-5, R-4, R-6, R-7, R-8, S-2, S-3 | #87, #225, #234 | ✅ shipped |
+| 3 | Replace the `wsl.conf` writer | M | 0 | `wsl.conf` CC-1, CC-2, CC-7, V-7 | #185, #309, #261 | ✅ shipped |
+| 4 | Tri-state booleans: show the documented default | S | 1 | `.wslconfig` CC-1, `wsl.conf` CC-3 | #261 | ✅ shipped |
+| 5 | `[user] default` editor and the default-user lifecycle | S | 1 | `wsl.conf` CC-6, `--manage --set-default-user` | #268, #313, #192 | ◐ partial |
+| 6 | `wsl.conf` dialog: restart scope, and stop writing per keystroke | S | 1 | `wsl.conf` CC-5, F-10 (per-distro half), R-12 | #185, #261 | ✅ shipped |
+| 7 | Global Settings: offer the restart on Save, and stop hedging | S | 1 | `.wslconfig` CC-7, F-10 (global half), R-11 | — | ◐ partial |
+| 8 | WSL capability service: `--version`, `--status`, and WSL's stderr | M | 2 | `cli` CC-1, F-9, R-1, R-2 | — | ✅ shipped |
+| 9 | `SettingsType.enumeration` for the two enum keys | S | 2 | `networkingMode`, `autoMemoryReclaim`, V-2, F-1 (half) | #14 | ✅ shipped |
+| 10 | Honour the five documented conditional dependencies | S | 2 | `.wslconfig` CC-6, F-1, F-2 | — | ✅ shipped |
+| 11 | Right widget for each documented value type | S | 2 | `swap`, `defaultVhdSize`, `vmIdleTimeout`, `maxCrashDumpCount`, `kernel`, `swapFile` | #224 | ✅ shipped |
+| 12 | `.wslconfig` tooltip pass — 17 rewrites, 2 English defects, 1 orphan deleted | S | 2 | V-3, V-4, CC-8, the Part 3 tooltip diff | #224, #225, #234 | ✅ shipped |
+| 13 | Labels, descriptions and i18n for the `wsl.conf` dialog | S | 2 | `wsl.conf` CC-4, `automount.options` guidance | #310 (adjacent) | ✅ shipped |
+| 14 | The four missing `wsl.conf` keys | S | 2 | `protectBinfmt`, `gpu.enabled`, `time.useWindowsTimezone` | — | ✅ shipped |
+| 15 | `wsl --manage --move` replaces the export / unregister / import move | M | 0 † | `cli` CC-2 (move), F-4 (half) | #280, #166 | ✅ shipped |
+| 16 | Disk-space surface: usage, `--resize`, `--set-sparse` | M | 3 | F-3 (reclaim half), F-11, `--system` | #303, #133 | ✅ shipped |
+| 17 | Compressed exports (`--export --format`) | S | 3 | `cli` CC-3 | #203 | ◐ partial |
+| 18 | `--import-in-place` for the VHD copy path | S | 3 | `cli` `--import-in-place` | — | ⏸ deferred |
+| 19 | `--set-default`, `--set-version`, `--set-default-version` | S | 3 | the three version / default verbs | #103, #268 | ⏸ deferred |
+| 20 | One `--list --verbose` instead of two list calls | S | 4 | `cli` `--list --verbose` | — | ⏸ deferred |
+| 21 | Hygiene: delete `install()`, fix the two hand-built `--mount` argument paths | S | 4 | `cli` CC-4, CC-5 | — | ⏸ deferred |
+| 22 | Resolve the "WSL Settings" name collision | S | 3 | F-5 (actionable half), V-8 | — | ⏸ deferred |
+| 23 | `wsl --update` / `--update --web-download` from the app | M | 3 | `cli` `--update` | — | ✅ shipped |
+| 24 | Custom-distro distribution: `.wsl`, `wsl-distribution.conf` | L | 3 | F-8 | #239, #279, #15 | ✅ shipped |
 
 † **P05-15 is tier 0 by impact** — it is the only finding in this audit with a user report
 of actual data loss (#280) — but it depends on P05-08, so it is scheduled after it. If
@@ -540,6 +559,95 @@ editing of `%UserProfile%\.wslconfig` by both apps conflicts. Needs the shipping
 `microsoft/WSL`. Worth doing **before** P05-11, as the natural benchmark for the widget-type
 decisions — but not a blocker, since P05-11 already has the docs' value types.
 
+## Phase 05 implementation record
+
+Written 2026-08-28, at the end of Phase 05, from the code as it stands on `beta`. Read it
+with the **Landed** columns above: those say where a finding went, this says what a whole
+item did and — where it did not land in full — why.
+
+### Shipped, 16 items
+
+| # | Item | Where it landed |
+|---:|:---|:---|
+| 1 | Size / number sliders | `lib/components/wsl_size.dart` (new) + `settings_screen.dart:1576`; `test/wsl_size_test.dart` |
+| 2 | `.wslconfig` engine | `lib/api/ini_config.dart` + `lib/api/wslconfig.dart` (both new); `wsl.dart:671`–`:738`; `settings_screen.dart:365` writes only what changed; `test/wslconfig_test.dart` |
+| 3 | `wsl.conf` writer | `lib/api/wsl_conf.dart` (new, over `ini_config.dart`); `wsl.dart:2097`–`:2166`; `assets/scripts/settings.bash` deleted; `test/wsl_conf_test.dart` |
+| 4 | Tri-state booleans | `settings_screen.dart:1472` and `settings_dialog.dart:334` / `:563` |
+| 6 | `wsl.conf` debounce + restart scope | `lib/components/debounced_text_box.dart` (new); `settings_dialog.dart:449`, `:474`, `:655` |
+| 8 | Capability service | `lib/api/wsl_capabilities.dart` (new); surfaced `settings_screen.dart:1194`–`:1253` |
+| 9 | Enumeration widget | `settings_screen.dart:27`, `:1527` |
+| 10 | Conditional dependencies | `settings_screen.dart:1096`, `:1146`, `:1282`–`:1361` |
+| 11 | Documented value types | `settings_screen.dart:1071`, `:1107`, `:1118`, `:1132`, `:1138`, `:1175`, `:1297` |
+| 12 | Tooltip pass | 26 rewrites + 1 deletion across the nine `lib/i18n/*.json` |
+| 13 | `wsl.conf` labels and i18n | `settings_dialog.dart:369` (the `wslConfSettings` table) |
+| 14 | The four missing `wsl.conf` keys | `settings_dialog.dart:376`, `:405`, `:407`, `:413` |
+| 15 | `--manage --move` | `wsl.dart:1790` (`move`) and `:2297` (`moveDistro`) |
+| 16 | Disk surface | `lib/dialogs/disk_dialog.dart` (new); `wsl.dart:2305`, `:2313`, `:2385` |
+| 23 | `wsl --update` | `wsl.dart:2327`; `settings_screen.dart:1253` |
+| 24 | Custom-distro distribution | `lib/api/wsl_distribution_conf.dart`, `lib/api/distro_package.dart`, `lib/screens/package_screen.dart` (all new); `wsl.dart:2348`; route at `nav/router.dart:86` |
+
+### Partial, 3 items — what is missing, and why
+
+- **P05-05 — `[user] default`.** The editor shipped (`settings_dialog.dart:413`); the
+  audit's *prefer `--manage --set-default-user` where WSL ≥ 2.5* half did not.
+  `setDefaultUser` (`wsl.dart:2321`) exists and is tested but has **no caller**. Writing
+  the key is the documented mechanism and the one that works for an imported distro, so
+  the shipped behaviour is correct rather than a stopgap — the verb would only save a
+  distro restart. Deferred as an **S** on top of a working feature, not as a gap.
+- **P05-07 — restart on Save.** The *string* half landed with P05-12
+  (`globalconfigurationinfo-text`, `en.json:117`, nine locales, no longer hedged). The
+  *prompt* half did not: `saveSettings` (`settings_screen.dart:251`) still returns without
+  offering `WSLApi().restart()`, and `restartwslnow-text` / `restartwslprompt-text`
+  (`en.json:410`–`:411`) are translated in all nine locales but unreferenced. The screen
+  does carry a separate **Stop WSL** button (`settings_screen.dart:218`), so the action is
+  reachable — it is one click away and unprompted, which is exactly what R-11 called
+  hedging. **This is the highest-value item left**: tier 1, one dialog, and the i18n is
+  already done.
+- **P05-17 — compressed exports.** `WSLApi.export` takes `format:` (`wsl.dart:1009`) and
+  packaging passes `tar.gz`; no user-facing export path offers the choice. The API half
+  was a by-product of P05-24, so what remains is UI only.
+
+### Deferred, 5 items — all S, all tier 3–4
+
+| # | Item | Why it was not done |
+|---:|:---|:---|
+| 18 | `--import-in-place` | Not started. An optimisation of `copyVhd()` — it removes one full-size VHD copy but changes no behaviour the user can see, and it touches the import path, which is the riskiest one to change without a running-app pass budgeted for it |
+| 19 | `--set-default` / `--set-version` / `--set-default-version` | Not started. Depends on nothing that is missing — P05-08 shipped — so this is purely unspent budget. i18n is already seeded (`en.json:448`–`:449`), which makes it the cheapest of the five to pick up. Two open issues behind it (#103, #268) |
+| 20 | One `--list --verbose` | Not started. A pure refactor of `wsl.dart:1682` with no user-visible change; tier 4 |
+| 21 | Hygiene — delete `install()`, fix the two `--mount` argument strings | Not started. `wsl.dart:1088` is still dead code carrying the `-d` ≠ `--name` trap, and `mount_service.dart:248` / `:313` still hand-build their arguments. The trap itself is now documented in `AGENTS.md` and the correct form ships next to it (`installFromFile`), so the risk is lower than the audit measured — but not zero, because deleting dead code is not the same as it being gone |
+| 22 | "WSL Settings" name collision | Not started, and it is the one deferral with an external dependency: **R-A was never run**. Renaming this app's dialog is a nine-locale user-visible rename, and the audit itself scheduled R-A (benchmark against Microsoft's app) before committing to how the two are distinguished. `microsoftwslsettings-text` (`en.json:450`) is already translated in nine locales, so half the work is banked |
+
+**R-A — benchmark against Microsoft's WSL Settings app: not done.** It needs the shipping
+first-party app, which was not available in this environment. F-5's two open questions —
+which keys that GUI exposes, and whether concurrent editing of `%UserProfile%\.wslconfig`
+by both apps conflicts — are still open.
+
+### Found while implementing, not in the audit
+
+Four defects that no pass of this audit predicted, all found by writing or running the
+code, all fixed within Phase 05. Recorded here because the audit is meant to be a map of
+what is true, and these were not on it:
+
+- **Concurrent in-distro config writes lost each other.** `updateWSLConf` / `removeSetting`
+  / `updateDistributionConf` / `removeDistributionSetting` are each a whole-file
+  read-modify-write over `wsl.exe` taking a second or more, and the dialog writes per key,
+  so a second edit started inside that window read the pre-edit file and put back a copy
+  the first key was never in. Silent — both writes succeed. Fixed by
+  `WSLApi._serialiseConfigWrite` (`wsl.dart:2125`), a static per-`'<distro>|<path>'` queue.
+  Measured live against a real distro; documented in `AGENTS.md`.
+- **An unreadable config file read as empty.** `readWslConfig` returning `''` instead of
+  null meant an unreachable remote host's whole `.wslconfig` would be replaced by the one
+  key the user touched on the next Save. Now null, with the caller refusing to write.
+- **The write path's *destination* was shell syntax.** `writeDistroFile` base64s its
+  payload, but `> $path` has to be shell for the redirection to happen and the path was
+  interpolated raw. Guarded by `isPlainDistroPath` (`wsl_args.dart`), which refuses rather
+  than quotes.
+- **`move()`'s safety floor read a stale preference.** The export-size floor resolved the
+  VHD through `getInstancePath`, so a stale `Path_<distro>` read as "no VHD" and dropped
+  the floor from 10 MB to 1 MB — on exactly the large distros it exists to protect. Now
+  `currentDistroPath` / `vhdxSizeBytes` (`wsl.dart:440`, `:447`) resolve through
+  `findVhdxPath`.
+
 ## Not scheduled, with reasons
 
 | Finding | Why not |
@@ -594,7 +702,19 @@ must be re-checked in **all** locales, not just `en.json`: only English was ever
 | Runtime behaviour verified against local WSL | done — [[runtime]] |
 | **Findings sized (S/M/L), ranked, ordered for Phase 05** | **done — this file, *Ordered implementation list*** |
 | False-negative sanity check | done — [[coverage-sweep]] |
-| i18n keys added for the S-sized findings | pending |
+| i18n keys added for the S-sized findings | done — Phase 05; ~130 keys and 26 rewrites across all nine locales, pinned in `test/locales_test.dart` |
+
+| Phase 05 task | State |
+|:---|:---|
+| `.wslconfig` S-sized findings | done — P05-01, P05-09, P05-10, P05-11, P05-12 |
+| `wsl.conf` S-sized findings | done — P05-03, P05-04, P05-05, P05-06, P05-13, P05-14 |
+| M-sized surfaces | done — P05-02, P05-08, P05-15, P05-16, P05-23 |
+| L-sized surface | done — P05-24 |
+| API layer wiring (broker, quoting, VHD paths) | done — every new verb runs through `ExecutionBroker` with a sized timeout |
+| Tests for the new surface | done — `flutter test` 696 passing, from 393 at the start of the phase |
+| Running-app pass and screenshots | done — 65 screenshots in `.maestro/screenshots/phase-05/`, against WSL 2.6.3.0 |
+| **Findings marked implemented or deferred in this file** | **done — *Phase 05 implementation record*** |
+| P05-07, P05-17 (UI half), P05-18, P05-19, P05-20, P05-21, P05-22, R-A | **not done** — reasons in *Phase 05 implementation record* |
 
 **The ordered implementation list above is the Phase 05 input.** It covers every finding
 in the seven files: 24 items (17 S · 6 M · 1 L), one research item, and twelve findings

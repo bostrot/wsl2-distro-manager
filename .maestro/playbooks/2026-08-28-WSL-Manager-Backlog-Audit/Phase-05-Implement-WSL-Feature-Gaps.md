@@ -535,4 +535,51 @@ Every setting added must be gated on the minimum WSL version recorded in the aud
     was run, for the reason the previous three tasks record, and every added line is ≤ 80
     columns.
 
-- [ ] Update `doc/audit/wsl-docs/index.md` to mark each finding as implemented (with the file and line where it landed) or explicitly deferred with a reason, so the audit stays an accurate map rather than a stale wish list. Format only the touched Dart files, confirm `git diff --stat` shows no unrelated churn, and commit on `beta`.
+- [x] Update `doc/audit/wsl-docs/index.md` to mark each finding as implemented (with the file and line where it landed) or explicitly deferred with a reason, so the audit stays an accurate map rather than a stale wish list. Format only the touched Dart files, confirm `git diff --stat` shows no unrelated churn, and commit on `beta`.
+
+  **Done 2026-08-28.** `doc/audit/wsl-docs/index.md` only — `git diff --stat` is
+  **1 file, +214 / −94**, and **no Dart file was touched**, so there was nothing to
+  format. Every verdict below was re-read out of the code on `beta` at HEAD rather than
+  copied from the five completion notes above; two of the line numbers those notes carry
+  had already drifted and are corrected here.
+
+  - **Every finding in all four registry tables now carries a `Landed` column** with the
+    file and line it went to, or `⏸ deferred` / `⊘ unchanged, deliberately` with the
+    reason. Four states, not two: `✅` shipped, `◐` half — which is the one the task's
+    binary phrasing does not have a word for, and three items need it — `⏸` deferred, and
+    `⊘` never scheduled.
+  - **The ordered implementation list gained a `Status` column**, and a new
+    *Phase 05 implementation record* section carries the per-item detail: where each of the
+    16 shipped items landed, what is missing from each of the 3 partials, and why each of
+    the 5 deferrals was not done.
+  - **The count: 16 shipped, 3 partial, 5 deferred, of 24.** Every **M** and the single
+    **L** landed; all eight items that did not land in full are **S**, and all are tier 3–4
+    except P05-07. Recorded in the record section, not just totalled:
+    - **P05-05** shipped its editor; `setDefaultUser` (`wsl.dart:2321`) exists, is tested
+      and **has no caller** — writing `[user] default` is the documented mechanism and the
+      only one that works for an imported distro, so the missing half is an optimisation.
+    - **P05-07** shipped its *string* half only. `saveSettings`
+      (`settings_screen.dart:251`) still does not prompt, and `restartwslnow-text` /
+      `restartwslprompt-text` are translated in nine locales and unreferenced. Flagged in
+      the record as **the highest-value item left** — tier 1, one dialog, i18n already done.
+    - **P05-17** shipped its API half (`wsl.dart:1009` takes `format:`); no export UI
+      offers it.
+    - **P05-18, P05-19, P05-20, P05-21, P05-22** were never started, each with its own
+      reason. P05-22 is the only one with an external dependency: research item **R-A**
+      needs Microsoft's shipping WSL Settings app, which is not available here.
+  - **Two line references were wrong and are fixed**, which is the point of re-reading
+    rather than transcribing: the free-space pre-check on Compact is `wsl.dart:1612` (over
+    `freeSpaceBytes` at `:1499`), not `:1457` as this document's third task recorded, and
+    the `wsl.conf` writer block ends at `:2166`.
+  - **Four defects Phase 05 found that no pass of the audit predicted** are recorded in a
+    *Found while implementing* subsection, so the audit stays a map of what is true: the
+    unserialised read-modify-write config writes, `readWslConfig` returning `''` for an
+    unreadable file, the raw-interpolated redirect target in `writeDistroFile`, and
+    `move()`'s safety floor reading the stale `Path_` preference.
+  - **The four-areas table at the top is deliberately left at its pre-Phase-05 numbers**
+    with a callout saying so — it is the diff against `microsoftdocs/wsl@8842def` and has
+    to stay falsifiable against that commit. The `Landed` columns carry what changed.
+  - **Verification:** `dart run scripts/check_translations.dart` exit 0.
+    `git status` is one modified file, `doc/audit/wsl-docs/index.md`; no `lib/`, no
+    `test/`, no `dart format`, so `flutter test` and `flutter analyze` cannot have moved
+    from the 696 passing / 108 issues, 0 errors the previous task recorded.
