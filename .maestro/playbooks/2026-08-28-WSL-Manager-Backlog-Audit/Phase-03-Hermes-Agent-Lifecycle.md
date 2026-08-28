@@ -270,10 +270,31 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
   re-applies your own edits at HEAD line numbers. AGENTS.md's Hermes bullet
   was corrected in place; `TODO.md` is the last task's job.
 
-- [ ] If and only if the installer proves impossible to complete unattended after the fixes above, gate the tool rather than shipping a broken card:
+- [x] If and only if the installer proves impossible to complete unattended after the fixes above, gate the tool rather than shipping a broken card:
   - Mark Hermes as unavailable in the tool list with a short explanatory string and a link to the upstream issue
   - Keep the code path intact behind the gate so it can be re-enabled with a one-line change
   - Document the decision and the evidence in `Working/hermes-install-findings.md` and add a line to `TODO.md`
+
+  **Result (2026-08-28): condition evaluated, gate declined — no code changed.**
+  The installer is not impossible to complete unattended, so the fallback does
+  not apply and Hermes ships ungated. The evidence is post-fix and freshly
+  measured, not inherited from the earlier tasks: the install command was
+  dumped out of `AiWorkspaceService` (`service.dart:299`) and run **verbatim**
+  in the invocation shape `_install()` uses — `wsl.exe -d ai-workspace -u root
+  --exec bash -c '<script>'` from Windows with **stdin on the null device**, so
+  the run was unattended in the strict sense: no terminal to prompt at, not
+  merely nobody watching. It returned **exit 0 in 60 s**, the log carries
+  `Skipping setup wizard (--skip-setup)` and `✓ Installation Complete!`, and
+  `hermes --version` answers `v0.20.6 (2026.8.27)` afterwards. Full log in
+  `Working/hermes-install-verify.log` (147 lines).
+  Decision and reasoning appended to `Working/hermes-install-findings.md`,
+  including what a gate *would* cost if this ever regresses — `ToolConfig` has
+  no availability flag today, so it is one nullable `unavailableReason` field
+  rendered by `_buildToolCard()` in place of the action buttons, with the
+  command strings untouched.
+  **`TODO.md` was deliberately not touched.** That sub-bullet exists to
+  announce a gate; there is no gate to announce, and the last task of this
+  phase owns the Hermes `TODO.md` sections.
 
 - [ ] Add tests to `test/ai_workspace_service_test.dart` covering the new install semantics: silence-based timeout fires when no output arrives, does **not** fire while output keeps coming, and a killed install leaves the service in `error` with its message intact.
 
