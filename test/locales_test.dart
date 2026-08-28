@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wsl2distromanager/api/wsl_conf.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/dialogs/settings_dialog.dart';
 
 /// A locale without a matching lib/i18n file makes LocalJsonLocalization throw
 /// during load, and the failed delegate leaves the app rendering an empty
@@ -129,6 +131,8 @@ void main() {
       'setdefaultdistro-text',
       'setwslversion-text',
       'microsoftwslsettings-text',
+      'startuserinfo-text',
+      'wslconfwritefailed-text',
     ];
 
     test('are present and non-empty in every locale', () {
@@ -162,6 +166,83 @@ void main() {
               reason: '${file.path}: "$key" is still the English string');
         }
       }
+    });
+  });
+
+  /// The distro settings dialog used to label its controls with the Dart
+  /// identifier — `"MountFsTab"` — and carried no `.i18n()` call at all
+  /// (doc/audit/wsl-docs/wslconf-keys.md CC-4). Every key it renders now names
+  /// two strings, and a key added without them would silently render its i18n
+  /// key as the label.
+  group('wsl.conf dialog strings', () {
+    test('every rendered key has a label and a description in English', () {
+      final english =
+          json.decode(File('lib/i18n/en.json').readAsStringSync()) as Map;
+
+      for (final setting in wslConfSettings) {
+        for (final key in [setting.labelKey, setting.infoKey]) {
+          expect(english[key], isA<String>(),
+              reason:
+                  '[${setting.section}] ${setting.key} → "$key" is missing');
+          expect((english[key] as String).trim(), isNotEmpty,
+              reason: '[${setting.section}] ${setting.key} → "$key" is empty');
+        }
+      }
+    });
+
+    test('every section header has one too', () {
+      final english =
+          json.decode(File('lib/i18n/en.json').readAsStringSync()) as Map;
+
+      for (final label in wslConfSectionLabels.values) {
+        expect(english[label], isA<String>(), reason: '"$label" is missing');
+      }
+    });
+
+    test('the dialog renders all fifteen documented keys', () {
+      // Fourteen in the Expanders plus [user] default, which sits next to the
+      // "Start user" box instead.
+      expect(wslConfSettings.length, 15);
+
+      for (final section in kWslConfKeys.entries) {
+        for (final key in section.value) {
+          expect(
+              wslConfSettings
+                  .any((s) => s.section == section.key && s.key == key),
+              true,
+              reason: '[${section.key}] $key has no widget');
+        }
+      }
+    });
+
+    test('every section except [user] has an Expander', () {
+      expect(wslConfSectionLabels.keys.toSet()..add('user'),
+          kWslConfKeys.keys.toSet());
+    });
+
+    test('the six documented-true toggles carry their default', () {
+      // Audit CC-3: these all rendered off on a distro whose wsl.conf is
+      // absent, which is most of them.
+      const documentedTrue = [
+        'automount-enabled',
+        'automount-mountFsTab',
+        'network-generateHosts',
+        'network-generateResolvConf',
+        'interop-enabled',
+        'interop-appendWindowsPath',
+      ];
+      for (final prefKey in documentedTrue) {
+        final setting = wslConfSettings.firstWhere((s) => s.prefKey == prefKey);
+        expect(setting.defaultOn, true, reason: '$prefKey defaults to on');
+      }
+
+      // [boot] systemd is the exception: its default is whatever the distro
+      // image ships, so it must not claim one.
+      expect(
+          wslConfSettings
+              .firstWhere((s) => s.prefKey == 'boot-systemd')
+              .defaultOn,
+          isNull);
     });
   });
 }

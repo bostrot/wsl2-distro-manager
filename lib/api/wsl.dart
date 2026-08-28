@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert' show Encoding, Utf8Decoder, utf8;
+import 'dart:convert' show Encoding, Utf8Decoder, base64, utf8;
 import 'package:chunked_downloader/chunked_downloader.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -8,7 +8,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 
 import 'package:path/path.dart' as p;
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
@@ -16,6 +15,7 @@ import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/wsl_args.dart';
+import 'package:wsl2distromanager/api/wsl_conf.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -1803,44 +1803,100 @@ try {
     return decoded.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
   }
 
+  /// Read `/etc/wsl.conf` from [distro] as a mutable, section-aware model.
+  ///
+  /// Returns null when the distro could not be reached at all, which is the
+  /// difference that keeps [updateWSLConf] safe: a *missing* file is an empty
+  /// config and may be created, but an *unreadable* one must never be
+  /// overwritten with just the key the user happened to toggle. The
+  /// `2>/dev/null; exit 0` makes bash's own status say only "the distro ran
+  /// this", leaving wsl.exe free to report the failures that matter.
+  Future<WslConfFile?> readWSLConf(String distro) async {
+    // Raw bytes on both channels, decoded through [utf8Convert]. wsl.exe
+    // answers its *own* failures — "There is no distribution with the
+    // supplied name" — in UTF-16, and a strict utf8 decoder throws a
+    // FormatException on that rather than handing the message back, which
+    // would turn a missing distro into a crash instead of a `false`.
+    final ProcessResult result = await _runWsl(
+        wslShellArgs(distro, 'cat /etc/wsl.conf 2>/dev/null; exit 0',
+            user: 'root'),
+        runInShell: false,
+        stdoutEncoding: null,
+        stderrEncoding: null);
+
+    if (result.exitCode != 0) {
+      logDebug(
+          'Could not read /etc/wsl.conf from $distro: '
+          '${utf8Convert(result.stderr as List<int>)}',
+          null,
+          null);
+      return null;
+    }
+    return WslConfFile.parse(utf8Convert(result.stdout as List<int>));
+  }
+
+  /// Write [conf] back to `/etc/wsl.conf` in [distro], whole file at once.
+  ///
+  /// The payload travels base64-encoded. That is not obfuscation: the old
+  /// writer interpolated the value into a `sed` expression and into an
+  /// `echo -e "…"` that ran as root, so a `/` broke the write and a `"` or a
+  /// `$(…)` ran as a command (audit CC-2, CC-7). base64's alphabet has no
+  /// character a shell interprets, so there is nothing left to escape.
+  ///
+  /// Returns whether the file was actually written — a read-only
+  /// `/etc/wsl.conf` fails the redirection and the caller has to say so
+  /// instead of reporting a change that never happened.
+  Future<bool> writeWSLConf(String distro, WslConfFile conf) async {
+    final String payload = base64.encode(utf8.encode(conf.serialize()));
+    final ProcessResult result = await _runWsl(
+        wslShellArgs(distro, "printf %s '$payload' | base64 -d > /etc/wsl.conf",
+            user: 'root'),
+        runInShell: false,
+        stdoutEncoding: null,
+        stderrEncoding: null);
+
+    if (result.exitCode != 0) {
+      logDebug(
+          'Could not write /etc/wsl.conf in $distro: '
+          '${utf8Convert(result.stderr as List<int>)}',
+          null,
+          null);
+      return false;
+    }
+    return true;
+  }
+
+  /// Read, [mutate] and write back `/etc/wsl.conf` in one pass.
+  ///
+  /// Every key-level change goes through here so that the sections the user
+  /// did not touch come back out unchanged — the whole point of replacing the
+  /// section-blind `sed` writer.
+  Future<bool> updateWSLConf(
+      String distro, void Function(WslConfFile conf) mutate) async {
+    final WslConfFile? conf = await readWSLConf(distro);
+    if (conf == null) return false;
+    mutate(conf);
+    return writeWSLConf(distro, conf);
+  }
+
   /// Change setting in wsl.conf with key and value
   Future<bool> setSetting(
-      String distro, String parent, String key, String value) async {
-    // Read trigger script from assets
-    String script = await rootBundle.loadString('assets/scripts/settings.bash');
-    script = script.replaceAll(RegExp(r'^#.*\n', multiLine: true), '');
-    script = script.replaceAll('PARENT', parent);
-    script = script.replaceAll('KEY', key);
-    script = script.replaceAll('VALUE', value);
-    List<String> scriptLines = script.split('\n');
+      String distro, String parent, String key, String value) {
+    return updateWSLConf(distro, (conf) => conf.set(parent, key, value));
+  }
 
-    // Execute trigger script
-    await execCmds(distro, scriptLines,
-        onMsg: (msg) {}, onDone: () {}, showOutput: false);
-    return true;
+  /// Remove a key from wsl.conf, letting the distro's own default apply again.
+  Future<bool> removeSetting(String distro, String parent, String key) async {
+    final WslConfFile? conf = await readWSLConf(distro);
+    if (conf == null) return false;
+    if (!conf.remove(parent, key)) return true;
+    return writeWSLConf(distro, conf);
   }
 
   /// Get wsl.conf settings
   Future<Map<String, Map<String, String>>> getWSLConf(String distro) async {
-    String output = await execCmdAsRoot(distro, 'cat /etc/wsl.conf');
-    Map<String, Map<String, String>> config = {};
-    String currentSection = '';
-
-    for (String line in output.split('\n')) {
-      line = line.trim();
-      if (line.startsWith('[') && line.endsWith(']')) {
-        currentSection = line.substring(1, line.length - 1);
-        config[currentSection] = {};
-      } else if (line.contains('=')) {
-        List<String> parts = line.split('=');
-        String key = parts[0].trim();
-        String value = parts.sublist(1).join('=').trim();
-        if (currentSection.isNotEmpty) {
-          config[currentSection]![key] = value;
-        }
-      }
-    }
-    return config;
+    final WslConfFile? conf = await readWSLConf(distro);
+    return conf?.toMap() ?? <String, Map<String, String>>{};
   }
 
   /// Get default user of a distro

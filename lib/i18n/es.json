@@ -450,5 +450,7 @@
   "microsoftwslsettings-text": "Windows también incluye una app llamada \"WSL Settings\" que edita este mismo archivo .wslconfig. Evita editarlo en las dos a la vez.",
   "settingoutofrange-text": "Fuera del rango admitido (%s), por lo que se muestra como texto y se guarda tal cual.",
   "settinginvalidsize-text": "No es un tamaño que WSL entienda. Usa un número de bytes o añade KB, MB, GB o TB.",
-  "settinginvalidnumber-text": "No es un número entero."
+  "settinginvalidnumber-text": "No es un número entero.",
+  "startuserinfo-text": "Solo se aplica a las terminales que abre esta aplicación. Para cambiar el usuario en todas las demás formas de iniciar esta distribución, usa el ajuste «Usuario» de abajo.",
+  "wslconfwritefailed-text": "No se pudo escribir «%s» en /etc/wsl.conf. El ajuste no se aplicó."
 }

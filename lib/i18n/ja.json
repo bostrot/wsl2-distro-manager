@@ -450,5 +450,7 @@
   "microsoftwslsettings-text": "Windows にも同じ .wslconfig を編集する「WSL Settings」アプリが同梱されています。両方で同時に編集しないでください。",
   "settingoutofrange-text": "サポートされている範囲 (%s) を超えているため、テキストとして表示され、書かれたとおりに保存されます。",
   "settinginvalidsize-text": "WSL が理解できるサイズではありません。バイト数の数値を入力するか、KB、MB、GB、TB を付けてください。",
-  "settinginvalidnumber-text": "整数ではありません。"
+  "settinginvalidnumber-text": "整数ではありません。",
+  "startuserinfo-text": "このアプリから起動したターミナルにのみ適用されます。ディストリビューションを起動するあらゆる方法でユーザーを変更するには、下の「ユーザー」設定を使用してください。",
+  "wslconfwritefailed-text": "「%s」を /etc/wsl.conf に書き込めませんでした。設定は適用されていません。"
 }

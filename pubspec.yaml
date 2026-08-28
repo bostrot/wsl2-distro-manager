@@ -60,7 +60,6 @@ flutter:
   uses-material-design: true
   assets:
     - lib/i18n/
-    - assets/scripts/settings.bash
     - images.json
 
 msix_config:

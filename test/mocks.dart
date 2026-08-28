@@ -64,6 +64,24 @@ class MockShell implements Shell {
   String? execCmdAsRootResponse;
   String defaultUserHome = '/home/tester';
 
+  /// In-distro `/etc/wsl.conf`, so a write can be read back.
+  ///
+  /// Null means the file does not exist, which is what `cat` reports on most
+  /// freshly imported distros — the case the audit's CC-3 is about.
+  String? wslConfContents;
+
+  /// `wsl.exe` itself fails, e.g. the distro will not start. The config
+  /// writer has to leave the file alone rather than replace it with the one
+  /// key it was asked to set.
+  bool simulateWslConfUnreachable = false;
+
+  /// The redirection into `/etc/wsl.conf` fails — a read-only filesystem.
+  bool simulateWslConfReadOnly = false;
+
+  /// Every in-distro shell script [run] has been handed, in order. Counting
+  /// them is how the settings dialog's debounce is measured.
+  final List<String> runCommands = [];
+
   bool simulateExportFailure = false;
   bool simulatePermissionDenied = false;
   bool simulateInvalidPath = false;
@@ -99,6 +117,7 @@ class MockShell implements Shell {
     if ((arguments.contains('sh') || arguments.contains('bash')) &&
         arguments.contains('-c')) {
       String cmd = arguments.last;
+      runCommands.add(cmd);
       if (cmd == 'command -v code') {
         if (simulateCodeMissing) {
           exitCode = 1;
@@ -113,6 +132,26 @@ class MockShell implements Shell {
         stdout = '/testfile\n';
       } else if (cmd == 'cat /etc/wsl.conf' && execCmdAsRootResponse != null) {
         stdout = execCmdAsRootResponse!;
+      } else if (cmd == 'cat /etc/wsl.conf 2>/dev/null; exit 0') {
+        // WSLApi.readWSLConf. `exit 0` means bash ran, so a non-zero status
+        // here can only come from wsl.exe failing to reach the distro.
+        if (simulateWslConfUnreachable) {
+          stderr = 'There is no distribution with the supplied name.';
+          exitCode = 1;
+        } else {
+          stdout = wslConfContents ?? execCmdAsRootResponse ?? '';
+        }
+      } else if (cmd.startsWith("printf %s '") &&
+          cmd.endsWith("' | base64 -d > /etc/wsl.conf")) {
+        // WSLApi.writeWSLConf.
+        if (simulateWslConfUnreachable || simulateWslConfReadOnly) {
+          stderr = '/etc/wsl.conf: Read-only file system';
+          exitCode = 1;
+        } else {
+          final payload = cmd.substring("printf %s '".length,
+              cmd.length - "' | base64 -d > /etc/wsl.conf".length);
+          wslConfContents = utf8.decode(base64.decode(payload));
+        }
       }
     }
 

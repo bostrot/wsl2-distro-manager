@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_conf.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -485,6 +486,123 @@ systemd = true
     expect(config['network']!['generateHosts'], 'true');
     expect(config['network']!['hostname'], 'MyHost');
     expect(config['boot']!['systemd'], 'true');
+  });
+
+  /// The `/etc/wsl.conf` writer, end to end through the shell layer. The
+  /// per-key behaviour lives in test/wsl_conf_test.dart; what is pinned here
+  /// is the command WSLApi builds and the failure it reports.
+  group('wsl.conf read/write', () {
+    test('setSetting writes only the key it was given', () async {
+      mockShell.wslConfContents =
+          '# hand written\n[automount]\nenabled = true\n\n[interop]\nenabled = true\n';
+
+      expect(await wslApi.setSetting('Ubuntu', 'interop', 'enabled', 'false'),
+          true);
+
+      // Audit CC-1: the old `sed` rewrote both `enabled` lines at once.
+      expect(mockShell.wslConfContents,
+          '# hand written\n[automount]\nenabled = true\n\n[interop]\nenabled = false\n');
+    });
+
+    test('a value full of shell metacharacters round-trips verbatim', () async {
+      // Audit CC-2 / CC-7: `/` broke the sed delimiter and `"`, backticks and
+      // `$(…)` ran as root inside the distro.
+      const value = r'/usr/sbin/service docker start && echo "$(id)" `x`';
+      mockShell.wslConfContents = '';
+
+      expect(await wslApi.setSetting('Ubuntu', 'boot', 'command', value), true);
+      expect((await wslApi.getWSLConf('Ubuntu'))['boot']!['command'], value);
+    });
+
+    test('a value with spaces and "=" survives', () async {
+      mockShell.wslConfContents = '';
+      await wslApi.setSetting(
+          'Ubuntu', 'automount', 'options', 'metadata,uid=1000,gid=1000');
+      await wslApi.setSetting('Ubuntu', 'boot', 'command', 'echo a = b');
+
+      final config = await wslApi.getWSLConf('Ubuntu');
+      expect(config['automount']!['options'], 'metadata,uid=1000,gid=1000');
+      expect(config['boot']!['command'], 'echo a = b');
+    });
+
+    test('every documented key round-trips through the writer', () async {
+      mockShell.wslConfContents = '';
+
+      for (final section in kWslConfKeys.entries) {
+        for (final key in section.value) {
+          expect(await wslApi.setSetting('Ubuntu', section.key, key, 'v-$key'),
+              true);
+        }
+      }
+
+      final config = await wslApi.getWSLConf('Ubuntu');
+      for (final section in kWslConfKeys.entries) {
+        for (final key in section.value) {
+          expect(config[section.key]?[key], 'v-$key',
+              reason: '[${section.key}] $key did not survive');
+        }
+      }
+    });
+
+    test('the writer never puts a double quote in the command', () async {
+      // runInShell is false, so a `"` reaches bash literally — see
+      // lib/api/wsl_args.dart.
+      mockShell.wslConfContents = '';
+      await wslApi.setSetting('Ubuntu', 'network', 'hostname', 'my"host');
+
+      expect(mockShell.lastRunArguments.last, isNot(contains('"')));
+      expect(mockShell.lastRunArguments, containsAllInOrder(['-d', 'Ubuntu']));
+      expect(mockShell.lastRunArguments, containsAllInOrder(['-u', 'root']));
+      expect(mockShell.lastRunInShell, false);
+      expect((await wslApi.getWSLConf('Ubuntu'))['network']!['hostname'],
+          'my"host');
+    });
+
+    test('removeSetting deletes the line, leaving the rest', () async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\ncommand = echo hi\n';
+
+      expect(await wslApi.removeSetting('Ubuntu', 'boot', 'systemd'), true);
+      expect(mockShell.wslConfContents, '[boot]\ncommand = echo hi\n');
+    });
+
+    test('removing a key that is not there does not rewrite the file',
+        () async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\n';
+      mockShell.simulateWslConfReadOnly = true;
+
+      // No write is attempted, so the read-only filesystem never comes up.
+      expect(await wslApi.removeSetting('Ubuntu', 'boot', 'command'), true);
+      expect(mockShell.wslConfContents, '[boot]\nsystemd = true\n');
+    });
+
+    test('a read-only /etc/wsl.conf reports failure', () async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\n';
+      mockShell.simulateWslConfReadOnly = true;
+
+      // The old writer returned true unconditionally with showOutput: false,
+      // so a failed write still showed as applied (audit CC-2).
+      expect(
+          await wslApi.setSetting('Ubuntu', 'boot', 'systemd', 'false'), false);
+      expect(mockShell.wslConfContents, '[boot]\nsystemd = true\n');
+    });
+
+    test('an unreachable distro is never overwritten', () async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\n';
+      mockShell.simulateWslConfUnreachable = true;
+
+      expect(
+          await wslApi.setSetting('Ubuntu', 'network', 'hostname', 'x'), false);
+      expect(await wslApi.getWSLConf('Ubuntu'), isEmpty);
+      expect(mockShell.wslConfContents, '[boot]\nsystemd = true\n');
+    });
+
+    test('a distro with no wsl.conf gets one created', () async {
+      mockShell.wslConfContents = null;
+
+      expect(
+          await wslApi.setSetting('Ubuntu', 'user', 'default', 'tester'), true);
+      expect(mockShell.wslConfContents, '[user]\ndefault = tester\n');
+    });
   });
 
   test('Move distro fails if export is too small', () async {

@@ -451,5 +451,7 @@
   "microsoftwslsettings-text": "Windows 也內建一個名為「WSL Settings」的應用程式，編輯的是同一個 .wslconfig 檔案。請勿同時在兩者中編輯。",
   "settingoutofrange-text": "超出支援的範圍（%s），因此以文字形式顯示並按原樣儲存。",
   "settinginvalidsize-text": "這不是 WSL 能辨識的大小。請輸入位元組數，或附加 KB、MB、GB 或 TB。",
-  "settinginvalidnumber-text": "不是整數。"
+  "settinginvalidnumber-text": "不是整數。",
+  "startuserinfo-text": "僅適用於本應用程式啟動的終端機。若要變更以其他任何方式啟動此發行版時使用的使用者，請使用下方的「使用者」設定。",
+  "wslconfwritefailed-text": "無法將「%s」寫入 /etc/wsl.conf，該設定未生效。"
 }

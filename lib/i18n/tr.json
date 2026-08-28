@@ -450,5 +450,7 @@
   "microsoftwslsettings-text": "Windows ayrıca aynı .wslconfig dosyasını düzenleyen \"WSL Settings\" adlı bir uygulama içerir. Dosyayı ikisinde aynı anda düzenlemeyin.",
   "settingoutofrange-text": "Desteklenen aralığın (%s) dışında olduğundan metin olarak gösterilir ve yazıldığı gibi kaydedilir.",
   "settinginvalidsize-text": "WSL'nin anladığı bir boyut değil. Bayt cinsinden bir sayı girin veya KB, MB, GB ya da TB ekleyin.",
-  "settinginvalidnumber-text": "Tam sayı değil."
+  "settinginvalidnumber-text": "Tam sayı değil.",
+  "startuserinfo-text": "Yalnızca bu uygulamanın açtığı terminaller için geçerlidir. Bu dağıtımı başlatmanın diğer tüm yollarında kullanıcıyı değiştirmek için aşağıdaki „Kullanıcı“ ayarını kullanın.",
+  "wslconfwritefailed-text": "\"%s\" /etc/wsl.conf dosyasına yazılamadı. Ayar uygulanmadı."
 }

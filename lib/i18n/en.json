@@ -450,5 +450,7 @@
   "microsoftwslsettings-text": "Windows also ships a \"WSL Settings\" app that edits this same .wslconfig file. Avoid editing it in both at the same time.",
   "settingoutofrange-text": "Outside the supported range (%s), so it is shown as text and saved exactly as written.",
   "settinginvalidsize-text": "Not a size WSL understands. Use a plain number of bytes, or add KB, MB, GB or TB.",
-  "settinginvalidnumber-text": "Not a whole number."
+  "settinginvalidnumber-text": "Not a whole number.",
+  "startuserinfo-text": "Only applies to terminals this app starts. To change the user every other way of starting this distro gets, use the User setting below.",
+  "wslconfwritefailed-text": "Could not write \"%s\" to /etc/wsl.conf. The setting was not applied."
 }

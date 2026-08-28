@@ -450,5 +450,7 @@
   "microsoftwslsettings-text": "A Windows is tartalmaz egy \"WSL Settings\" nevű alkalmazást, amely ugyanezt a .wslconfig fájlt szerkeszti. Ne szerkeszd egyszerre mindkettőben.",
   "settingoutofrange-text": "A támogatott tartományon (%s) kívül esik, ezért szövegként jelenik meg, és pontosan így kerül mentésre.",
   "settinginvalidsize-text": "A WSL nem érti ezt a méretet. Adj meg bájtban egy számot, vagy írj mögé KB-ot, MB-ot, GB-ot vagy TB-ot.",
-  "settinginvalidnumber-text": "Nem egész szám."
+  "settinginvalidnumber-text": "Nem egész szám.",
+  "startuserinfo-text": "Csak az alkalmazás által indított terminálokra vonatkozik. Ha a disztribúció minden más indítási módjához szeretnéd módosítani a felhasználót, használd az alábbi „Felhasználó” beállítást.",
+  "wslconfwritefailed-text": "A(z) „%s” nem írható a /etc/wsl.conf fájlba. A beállítás nem lépett érvénybe."
 }
