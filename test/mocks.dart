@@ -490,6 +490,13 @@ class ControlledProcess implements Process {
   int killCount = 0;
   ProcessSignal? lastKillSignal;
 
+  /// What [exitCode] reports once the child has been killed. `-1` is the
+  /// ordinary "died on a signal" answer, but `wsl.exe` is a Windows launcher
+  /// around a Linux process and a terminated one can still hand back a
+  /// perfectly clean `0` — which is why the service decides a killed install
+  /// by its abandon reason and not by the exit code.
+  int exitCodeOnKill = -1;
+
   /// WSL writes UTF-16LE, so every ASCII byte is followed by a null one —
   /// this mimics that on the way out, which is what the reader decodes.
   static List<int> _asWslBytes(String text) =>
@@ -523,7 +530,7 @@ class ControlledProcess implements Process {
     lastKillSignal = signal;
     _close();
     if (_exited.isCompleted) return false;
-    _exited.complete(-1);
+    _exited.complete(exitCodeOnKill);
     return true;
   }
 

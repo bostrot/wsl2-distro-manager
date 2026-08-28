@@ -296,6 +296,53 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
   announce a gate; there is no gate to announce, and the last task of this
   phase owns the Hermes `TODO.md` sections.
 
-- [ ] Add tests to `test/ai_workspace_service_test.dart` covering the new install semantics: silence-based timeout fires when no output arrives, does **not** fire while output keeps coming, and a killed install leaves the service in `error` with its message intact.
+- [x] Add tests to `test/ai_workspace_service_test.dart` covering the new install semantics: silence-based timeout fires when no output arrives, does **not** fire while output keeps coming, and a killed install leaves the service in `error` with its message intact.
+
+  **Result (2026-08-28).** All three semantics were already covered by the
+  `streamed install` group written alongside the implementation two tasks ago,
+  so this task audited that coverage and closed the four gaps it left rather
+  than restating it. `flutter test` **390 green** (was 386), all 4 new cases in
+  the existing `streamed install` group; `flutter analyze` unchanged at 105
+  pre-existing issues. Logs in `Working/phase-03-task07-full-test.txt` and
+  `Working/phase-03-task07-analyze.txt`. No `lib/` code changed — this is a
+  test-only task and the implementation held up under every mutation below.
+
+  **Every new test was verified to actually bite**, by mutating the service,
+  watching the test fail, and reverting — a passing test proves nothing about
+  a defence it never exercises, and two of these turned out to guard less than
+  they appeared to on the first attempt:
+
+  - *gives up on an installer that never prints anything* — the existing
+    silence test always emitted one line first, so the `lastLine == null` arm
+    of the failure message was unreached. It matters because the measured
+    real-world wedge (`hermes_cli.main setup` on `/dev/tty`) happens **before**
+    the installer says anything, and quoting a `Last output:` with nothing
+    after it reads as though the installer spoke. Mutation: drop the null
+    guard → `Last output: null` → test fails.
+  - *output on stderr alone counts as progress* — `resetSilence()` fires from
+    both pipes and only stdout was covered. npm and Playwright both report on
+    stderr, so a stdout-only budget would kill a healthy install exactly as
+    the old wall-clock cap did. Mutation: `if (!isError) resetSilence()` →
+    the install is killed after 3× the budget of steady stderr → test fails.
+  - *a killed installer that reports success is still a failure* — `wsl.exe`
+    is a Windows launcher around a Linux process and a terminated one can
+    report a clean `0`; without this the card goes **green** over a half-built
+    tree. Needed a mock knob: `ControlledProcess.exitCodeOnKill` (default
+    `-1`, unchanged for every existing test). Two defences stop it and the
+    test pins the **pair** — removing either alone still passes, because
+    `_runStreamed` rewrites a 0 exit to `-1` *and* `isSuccess` requires
+    `error == null`. Verified: mutating both together turns the install green
+    and the test fails.
+  - *a killed install releases the tool and stays in error* — `isInstalling()`
+    must go false or the page's 1 s repaint ticker spins forever and the tool
+    is locked out of every probe; and the message must survive **two**
+    consecutive probes, with only an explicit `clearError()` releasing it.
+    Mutation: `errorSticky = false` → the second probe overwrites the failure
+    with `running` → test fails.
+
+  Formatting: `dart format` wants nothing in the new lines — the Phase 01
+  `-U0` helper reports `applied=0 skipped(unrelated)=19`, i.e. all 19 hunks it
+  would otherwise apply are pre-existing churn elsewhere in the file, left
+  alone.
 
 - [ ] Run `flutter test` and `flutter analyze`, fix all failures, format only the touched files, and commit the Hermes lifecycle work on `beta`. Update the Hermes sections of `TODO.md` to reflect the verified state.

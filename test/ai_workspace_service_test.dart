@@ -886,6 +886,142 @@ void main() {
 
         expect(service.installProgress(AiWorkspaceTool.hermesAgent), isNull);
       });
+
+      // The silence budget has to fire on an installer that never prints
+      // anything at all, not only on one that prints and then stops: the
+      // measured failure was `hermes_cli.main setup` sitting on `/dev/tty`,
+      // and a wedge that early leaves no line to quote back.
+      test('gives up on an installer that never prints anything', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService();
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+
+        expect(await service.install(AiWorkspaceTool.hermesAgent), false);
+        expect(child.killCount, greaterThan(0));
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent)!;
+        expect(state.status, ToolStatus.error);
+        expect(state.errorMessage, contains('Nothing was printed for'));
+        // No line arrived, so there is nothing to attribute — an empty
+        // `Last output:` reads as though the installer said something.
+        expect(state.errorMessage, isNot(contains('Last output')));
+        expect(service.installProgress(AiWorkspaceTool.hermesAgent), isNull);
+      });
+
+      // Progress is progress whichever pipe it arrives on. The Hermes
+      // installer's own steps report on stderr — npm and Playwright both do —
+      // so a budget that only watches stdout kills a healthy install just as
+      // the old wall-clock cap did.
+      test('output on stderr alone counts as progress', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService();
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+
+        // Three times the silence budget, with nothing at all on stdout.
+        for (var tick = 0; tick < 6; tick++) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          child.emitError('npm warn deprecated package $tick\n');
+        }
+        child.exit(0);
+
+        expect(await install, true);
+        expect(child.killCount, 0);
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.stopped,
+        );
+        expect(
+          service.installProgress(AiWorkspaceTool.hermesAgent),
+          'npm warn deprecated package 5',
+        );
+      });
+
+      // `wsl.exe` is a Windows launcher around a Linux process, and a
+      // terminated one can report a clean 0. Trusting that would turn every
+      // abandoned install into a *success*: the card would go green over a
+      // half-built tree with no `hermes` binary in it — the exact debris the
+      // old wall-clock cap left behind. Two things stop it, and this pins the
+      // pair rather than either one: the abandon path rewrites a 0 exit to
+      // -1, and `isSuccess` additionally requires no `error`. Removing both
+      // (verified) turns this install green.
+      test('a killed installer that reports success is still a failure',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService();
+        await service.init();
+
+        final child = ControlledProcess()..exitCodeOnKill = 0;
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+        await Future.delayed(const Duration(milliseconds: 50));
+        child.emit('Installing node dependencies...\n');
+
+        expect(await install, false);
+        expect(child.killCount, greaterThan(0));
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent)!;
+        expect(state.status, ToolStatus.error);
+        expect(state.errorMessage, contains('Nothing was printed for'));
+        // Nothing was installed, so nothing may claim to have been.
+        expect(state.installPath, isNull);
+        expect(
+          notifications,
+          isNot(contains(
+              'ai-workspace-install-success-text'.i18n(['Hermes Agent']))),
+        );
+      });
+
+      // The page polls `isInstalling` to decide whether to keep repainting and
+      // whether a status probe may run; an abandoned install that never left
+      // the set would spin forever and lock the tool out of every probe.
+      test('a killed install releases the tool and stays in error', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService();
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+        await Future.delayed(const Duration(milliseconds: 50));
+        child.emit('Installing node dependencies...\n');
+        expect(await install, false);
+
+        expect(service.isInstalling(AiWorkspaceTool.hermesAgent), false);
+        final message =
+            service.getState(AiWorkspaceTool.hermesAgent)!.errorMessage;
+
+        // Only an explicit user action clears it — two probes in a row do not.
+        testShell.processFactory = null;
+        testShell.stdoutData = 'running';
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.error,
+        );
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.errorMessage,
+          message,
+        );
+
+        service.clearError(AiWorkspaceTool.hermesAgent);
+        await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.running,
+        );
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.errorMessage,
+          isNull,
+        );
+      });
     });
 
     group('start/stop', () {
