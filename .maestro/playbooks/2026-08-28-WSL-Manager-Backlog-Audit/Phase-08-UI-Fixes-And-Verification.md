@@ -27,7 +27,6 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     and the catch was unreachable), CI-12, CI-17, IA-12, PS-17. Still open: CI-36, ST-53,
     ST-45, PS-19, PS-32 — all per-screen work in `qa_dialog.dart`,
     `settings_screen.dart` and `ai_workspace_screen.dart`.
-
   - **FIX-01 — stop discarding what the user typed: complete (7/7).** A new
     `UnsavedChangesGuard` (`lib/components/unsaved_changes.dart`) lets a dirty screen
     register an exit guard; every nav-pane item, the app-bar back button, the window X
