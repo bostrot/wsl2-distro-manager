@@ -72,11 +72,31 @@ String _waitForPort(int port) =>
     'for _i in $_kWaitIterations; do ${_listeningTest(port)} && break; '
     'sleep 1; done; ';
 
-/// `pgrep -f` patterns for the two gateways. The leading bracket is the
-/// classic self-match guard — `[h]ermes` is eight literal characters that do
-/// not contain the substring `hermes`, so the pattern cannot match the
+/// The mirror of [_waitForPort]: gives a stopped service ~20s to let go of
+/// [port], then answers whether it actually did.
+///
+/// A kill that matched nothing exits 0 exactly like one that killed the
+/// service, and `docker stop` is followed by `|| true`, so the exit code of a
+/// stop command says nothing at all. Measured 2026-08-28: the Hermes card
+/// flipped to "stopped" while the process was still running and still
+/// listening on 9119. The port is the same authority [_listeningStatusCheck]
+/// already uses to decide the card's status, so a stop that does not free it
+/// has not stopped anything.
+String _waitForPortClosed(int port) =>
+    'for _i in $_kWaitIterations; do ${_listeningTest(port)} || break; '
+    'sleep 1; done; ! ${_listeningTest(port)}';
+
+/// `pgrep -f` patterns for the two long-running services. The leading bracket
+/// is the classic self-match guard — `[h]ermes` is eight literal characters
+/// that do not contain the substring `hermes`, so the pattern cannot match the
 /// process carrying it. See [_killByPattern] for why that is not enough.
-const String _kHermesPattern = '[h]ermes.*gateway';
+///
+/// `serve`, not `gateway`: `hermes gateway` is the *messaging* gateway
+/// (Telegram/Discord/WhatsApp) and binds no TCP port at all. The process that
+/// listens on [_kHermesPort] is `hermes serve`, so a pattern aimed at
+/// `gateway` matched nothing the card cares about — Stop reported success over
+/// a service that kept serving (measured 2026-08-28).
+const String _kHermesPattern = '[h]ermes.*serve';
 const String _kOpenClawPattern = '[o]penclaw';
 
 /// Kills every process whose command line matches [pattern], without killing
@@ -145,31 +165,81 @@ String _describeDuration(Duration duration) {
   return '${duration.inMilliseconds} ms';
 }
 
-/// Splits streamed process output into whole lines, carrying an unterminated
+/// One piece of streamed output, and how it ended.
+class _OutputSegment {
+  final String text;
+
+  /// Ended in a bare `\r`, so it is a progress-bar frame the terminal was
+  /// about to overwrite rather than a line the tool meant to leave behind.
+  final bool transient;
+
+  const _OutputSegment(this.text, {required this.transient});
+}
+
+/// Splits streamed process output into segments, carrying an unterminated
 /// tail over to the next chunk.
 ///
-/// `\r` ends a line just as `\n` does: installers draw their download
-/// progress with carriage returns, and each redraw is the freshest thing
-/// there is to show.
+/// `\r` ends a segment just as `\n` does: installers draw their download
+/// progress with carriage returns, and each redraw is the freshest thing there
+/// is to show. It does *not* end a line, though — the frame that happens to be
+/// on screen when an installer goes quiet is a fragment of a redraw, not a
+/// sentence, and quoting it back as "last output" produced the unreadable
+/// `Last output: (O) 2. No` on a failed install (measured 2026-08-28). Hence
+/// [_OutputSegment.transient]: worth showing live, never worth keeping.
 class _LineAssembler {
   String _partial = '';
 
-  List<String> add(String text) {
-    final parts = (_partial + text).split(RegExp(r'[\r\n]'));
-    _partial = parts.removeLast();
-    return parts
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
+  List<_OutputSegment> add(String text) {
+    final segments = <_OutputSegment>[];
+    final buffer = _partial + text;
+    var start = 0;
+    var i = 0;
+    while (i < buffer.length) {
+      final char = buffer[i];
+      if (char != '\n' && char != '\r') {
+        i++;
+        continue;
+      }
+      var transient = char == '\r';
+      var next = i + 1;
+      // `\r\n` is one line end, not a redraw followed by an empty line. A `\r`
+      // at the very end of the chunk is read as a redraw without waiting for
+      // the next chunk to confirm it: holding the segment back would defeat
+      // the whole point of streaming, since a progress bar writes exactly one
+      // `\r`-terminated chunk per frame. Misreading a CRLF line split at the
+      // CR costs one line its committed status, and this stream is a WSL pipe
+      // that does no CRLF translation in the first place.
+      if (transient && next < buffer.length && buffer[next] == '\n') {
+        transient = false;
+        next++;
+      }
+      final piece = buffer.substring(start, i).trim();
+      if (piece.isNotEmpty) {
+        segments.add(_OutputSegment(piece, transient: transient));
+      }
+      start = next;
+      i = next;
+    }
+    _partial = buffer.substring(start);
+    return segments;
   }
 
-  /// Whatever is left unterminated when the stream closes.
-  String? flush() {
+  /// Whatever is left unterminated when the stream closes. The stream ending
+  /// is what commits it — nothing is coming to overwrite it.
+  _OutputSegment? flush() {
     final rest = _partial.trim();
     _partial = '';
-    return rest.isEmpty ? null : rest;
+    return rest.isEmpty ? null : _OutputSegment(rest, transient: false);
   }
 }
+
+/// Receives one segment of streamed installer output. [transient] marks a
+/// progress-bar frame — fine to render live, never kept as the retained "last
+/// output". See [_LineAssembler].
+typedef InstallOutputSink = void Function(
+  String line, {
+  required bool transient,
+});
 
 /// Status of a workspace tool instance.
 ///
@@ -218,22 +288,45 @@ class ToolConfig {
 final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
   AiWorkspaceTool.hermesAgent: ToolConfig(
     name: 'Hermes Agent',
-    installCommand: 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh '
-        '| bash -s -- --non-interactive',
-    // setsid, not `nohup &`: the launcher survives this one-shot wsl call.
+    // `--skip-setup` is the installer's own flag for this, and it is the only
+    // one that works: `--non-interactive` gates `prompt_yes_no` but not the
+    // setup wizard, which `main()` runs unconditionally and which reads from
+    // `/dev/tty` directly. The wizard's own escape hatch is a failed
+    // `(: </dev/tty)` probe — and under `wsl.exe` that probe *succeeds*, so
+    // the wizard opened a terminal nobody was typing into and sat there.
+    // Measured 2026-08-28: `hermes_cli.main setup` with `fd 0 -> /dev/tty`,
+    // no I/O at all for 20 min, until the silence budget reaped it.
+    installCommand:
+        'curl -fsSL https://hermes-agent.nousresearch.com/install.sh '
+        '| bash -s -- --non-interactive --skip-setup',
+    // `serve`, not `gateway`: only `hermes serve` binds [_kHermesPort] — see
+    // [_kHermesPattern]. `--skip-build` keeps the first start from running an
+    // npm web build inside the two-minute start timeout.
+    // setsid, not `nohup &`: the server survives this one-shot wsl call.
     // The trailing port wait is the real success check — the launcher exits 0
-    // even if the gateway dies immediately, and a `pgrep` gate here reported
-    // success for a gateway that never bound 9119.
+    // even if the server dies immediately, and a `pgrep` gate here reported
+    // success for a process that never bound 9119.
     startCommand: '${_killByPattern(_kHermesPattern)}; '
         'mkdir -p \$HOME/.hermes; '
-        'setsid hermes gateway </dev/null >>\$HOME/.hermes/gateway.log 2>&1 & '
+        'setsid hermes serve --skip-build </dev/null '
+        '>>\$HOME/.hermes/serve.log 2>&1 & '
         'disown; ${_waitForPort(_kHermesPort)}${_listeningTest(_kHermesPort)}',
-    stopCommand: _killByPattern(_kHermesPattern),
+    // Ask first, then insist, then check — the same shape as OpenClaw's stop.
+    // `hermes serve --stop` is the CLI's own shutdown; the kill is the
+    // backstop for a server it has lost track of, and the port test is the
+    // only thing that actually decides the exit code.
+    stopCommand: 'hermes serve --stop >/dev/null 2>&1; '
+        '${_killByPattern(_kHermesPattern)}; '
+        '${_waitForPortClosed(_kHermesPort)}',
     // A live process proves nothing — see [_listeningTest].
     statusCheck: _listeningStatusCheck(_kHermesPort),
     port: _kHermesPort,
     defaultInstallPath: 'cmd://hermes',
-    dashboardCommand: 'hermes dashboard',
+    // No dashboardCommand on purpose. `hermes dashboard` *starts* a server on
+    // the same fixed port and then blocks; it never prints a URL, so parsing
+    // its output found nothing and the card said "No dashboard URL from:
+    // hermes dashboard" after a 40s wait. The port is fixed and already
+    // proven reachable from Windows, so [getUrl] is the whole answer.
   ),
   AiWorkspaceTool.openClaw: ToolConfig(
     name: 'OpenClaw',
@@ -245,8 +338,10 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     // after a bind that failed outright.
     startCommand: 'openclaw gateway restart >/dev/null 2>&1; '
         '${_waitForPort(_kOpenClawPort)}${_listeningTest(_kOpenClawPort)}',
+    // The port-closed check, not the exit code, is what says it stopped.
     stopCommand: 'openclaw gateway stop >/dev/null 2>&1; '
-        '${_killByPattern(_kOpenClawPattern)}',
+        '${_killByPattern(_kOpenClawPattern)}; '
+        '${_waitForPortClosed(_kOpenClawPort)}',
     // A live process proves nothing — it routinely runs without ever binding.
     statusCheck: _listeningStatusCheck(_kOpenClawPort),
     port: _kOpenClawPort,
@@ -261,7 +356,9 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
         'docker pull ghcr.io/open-webui/open-webui:latest && docker rm -f open-webui >/dev/null 2>&1; docker run -d -p 8083:8080 --name open-webui ghcr.io/open-webui/open-webui:latest',
     startCommand:
         'docker start open-webui || (docker pull ghcr.io/open-webui/open-webui:latest && docker run -d -p 8083:8080 --name open-webui ghcr.io/open-webui/open-webui:latest)',
-    stopCommand: 'docker stop open-webui || true',
+    // `|| true` keeps a missing container from being an error; the port check
+    // that follows is what actually decides whether the stop worked.
+    stopCommand: 'docker stop open-webui || true; ${_waitForPortClosed(8083)}',
     statusCheck:
         'docker ps --filter name=open-webui | grep -q Up && echo running || echo stopped',
     // `Up` is not `serving`: the container runs its alembic migrations for
@@ -388,6 +485,11 @@ class AiWorkspaceService {
   // same reason [_installing] does: the progress an install has made must
   // still be there when the user comes back to the page.
   final Map<AiWorkspaceTool, String> _installProgress = {};
+
+  // The same, minus the progress-bar frames. A redraw is the right thing to
+  // show while it is redrawing and the wrong thing to leave frozen on a failed
+  // card, so once the install is over this replaces [_installProgress].
+  final Map<AiWorkspaceTool, String> _installLastLine = {};
 
   // WSL shuts a distro down once its last session exits, which takes systemd
   // user services with it — measured: a started gateway is listening while a
@@ -632,6 +734,14 @@ class AiWorkspaceService {
   /// touch this tool again until [clearError] runs. A failed install used to
   /// be erased by the very next background probe, which reported the tool as
   /// plain `notInstalled` with no message.
+  /// What a failed action puts on the card. A command killed by a signal
+  /// writes nothing to stderr of its own, which rendered a bare `Error:` with
+  /// nothing after it — seen on Stop (fixed in Phase 02) and then on Start.
+  static String _failureDetail(String? stderr, String fallback) {
+    final detail = (stderr ?? '').trim();
+    return detail.isEmpty ? fallback : detail;
+  }
+
   void _recordActionFailure(AiWorkspaceTool tool, String? message) {
     final state = _toolStates[tool];
     if (state == null) return;
@@ -645,6 +755,12 @@ class AiWorkspaceService {
   /// dismiss affordance. [status] falls back to the last *confirmed* answer
   /// rather than a guess, since an error is never cached.
   void clearError(AiWorkspaceTool tool) {
+    // Every explicit user action routes through here, which makes it the one
+    // place the previous action's residue belongs. Without it the install's
+    // last line outlived the install: a *start* that failed rendered the card
+    // with the *installer's* final output underneath it.
+    _installProgress.remove(tool);
+    _installLastLine.remove(tool);
     final state = _toolStates[tool];
     if (state == null) return;
     state.errorMessage = null;
@@ -660,14 +776,20 @@ class AiWorkspaceService {
   Future<bool> install(AiWorkspaceTool tool) async {
     if (_installing.contains(tool)) return false;
     // An explicit retry owns the card again; the previous failure is history,
-    // and so is the progress line the previous attempt left behind.
+    // and so is the progress line the previous attempt left behind (dropped by
+    // clearError, which every user action goes through).
     clearError(tool);
-    _installProgress.remove(tool);
     _installing.add(tool);
     try {
       return await _install(tool);
     } finally {
       _installing.remove(tool);
+      // The install is over, so nothing is going to redraw the progress-bar
+      // frame that may be sitting in _installProgress. Fall back to the last
+      // line the installer actually committed, which is what a failed card
+      // quotes back at the user.
+      final committed = _installLastLine[tool];
+      if (committed != null) _installProgress[tool] = committed;
     }
   }
 
@@ -698,7 +820,10 @@ class AiWorkspaceService {
         'set -o pipefail; ${config.installCommand}',
         silenceTimeout: _installSilenceTimeout,
         maxDuration: _installMaxDuration,
-        onLine: (line) => _installProgress[tool] = line,
+        onLine: (line, {required transient}) {
+          _installProgress[tool] = line;
+          if (!transient) _installLastLine[tool] = line;
+        },
       );
       if (result.isSuccess) {
         final state = _toolStates[tool];
@@ -713,7 +838,11 @@ class AiWorkspaceService {
             'ai-workspace-install-success-text'.i18n([config.name]));
         return true;
       } else {
-        _recordActionFailure(tool, result.stderr);
+        _recordActionFailure(
+          tool,
+          _failureDetail(result.stderr,
+              'ai-workspace-install-failed-text'.i18n([config.name])),
+        );
         Notify.message('ai-workspace-install-failed-text'.i18n([config.name]));
         return false;
       }
@@ -742,7 +871,7 @@ class AiWorkspaceService {
     String script, {
     required Duration silenceTimeout,
     required Duration maxDuration,
-    required void Function(String line) onLine,
+    required InstallOutputSink onLine,
   }) async {
     final stopwatch = Stopwatch()..start();
     final process = await _broker.startPersistent(
@@ -752,6 +881,7 @@ class AiWorkspaceService {
     var stdoutTail = '';
     var stderrTail = '';
     String? abandonReason;
+    // Only committed lines, never progress-bar frames — see [_LineAssembler].
     String? lastLine;
     Timer? silenceTimer;
     Timer? ceilingTimer;
@@ -809,16 +939,16 @@ class AiWorkspaceService {
             } else {
               stdoutTail = _appendTail(stdoutTail, text);
             }
-            for (final line in assembler.add(text)) {
-              lastLine = line;
-              onLine(line);
+            for (final segment in assembler.add(text)) {
+              if (!segment.transient) lastLine = segment.text;
+              onLine(segment.text, transient: segment.transient);
             }
           },
           onDone: () {
             final rest = assembler.flush();
             if (rest != null) {
-              lastLine = rest;
-              onLine(rest);
+              lastLine = rest.text;
+              onLine(rest.text, transient: false);
             }
             if (!done.isCompleted) done.complete();
           },
@@ -937,7 +1067,11 @@ class AiWorkspaceService {
             .i18n([config.name]));
         return true;
       } else {
-        _recordActionFailure(tool, result.stderr);
+        _recordActionFailure(
+          tool,
+          _failureDetail(result.stderr,
+              'ai-workspace-start-failed-text'.i18n([config.name])),
+        );
         Notify.message('ai-workspace-start-failed-text'.i18n([config.name]));
         return false;
       }
@@ -957,7 +1091,10 @@ class AiWorkspaceService {
     final request = ExecutionRequest(
       command: 'wsl',
       arguments: _wslArgs(config.stopCommand),
-      timeout: const Duration(minutes: 1),
+      // Room for the tool's own shutdown plus the 20s port-closed wait that
+      // now decides the exit code — `docker stop` alone spends 10s on SIGTERM
+      // before it escalates.
+      timeout: const Duration(minutes: 2),
     );
 
     try {
@@ -972,12 +1109,11 @@ class AiWorkspaceService {
         return true;
       } else {
         // Stop has no toast of its own — the card's `Error:` line is the only
-        // feedback — and a stop that dies on a signal writes nothing to
-        // stderr, which rendered a bare `Error:` with nothing after it.
-        final detail = result.stderr.trim();
-        _toolStates[tool]?.errorMessage = detail.isEmpty
-            ? 'ai-workspace-stop-failed-text'.i18n([config.name])
-            : detail;
+        // feedback — and the port-closed check that decides this exit code
+        // writes nothing to stderr at all, so the fallback is the whole
+        // message here more often than not.
+        _toolStates[tool]?.errorMessage = _failureDetail(
+            result.stderr, 'ai-workspace-stop-failed-text'.i18n([config.name]));
         return false;
       }
     } catch (e) {
@@ -1010,9 +1146,18 @@ class AiWorkspaceService {
       uninstallCmd =
           'docker rm -f $imageName && docker rmi ghcr.io/open-webui/$imageName:latest';
     } else if (tool == AiWorkspaceTool.hermesAgent) {
-      // No documented uninstall command — remove every known install root.
+      // No documented uninstall command — remove every known install root and
+      // the launcher. The launcher matters: the installer writes
+      // `<bindir>/hermes` as a 147-byte wrapper *script*, not a symlink into
+      // the install root, so removing only the roots left it behind and
+      // `command -v hermes` kept answering "exists". The card then read
+      // "Installed" over a tool whose first line was
+      // `venv/bin/python: No such file or directory`, with Install disabled —
+      // the app could not get itself back to a clean state (measured
+      // 2026-08-28). Both bin dirs: the installer picks by privilege.
       uninstallCmd = '${_killByPattern(_kHermesPattern)}; '
-          'rm -rf \$HOME/.hermes /usr/local/lib/hermes-agent; hash -r';
+          'rm -rf \$HOME/.hermes /usr/local/lib/hermes-agent; '
+          'rm -f /usr/local/bin/hermes \$HOME/.local/bin/hermes; hash -r';
     } else if (tool == AiWorkspaceTool.openClaw) {
       // Covers both install methods: git wrapper and global npm. The kill has
       // to survive its own command line here too — the `rm`/`npm` lines below
@@ -1037,7 +1182,8 @@ class AiWorkspaceService {
         // Clears installPath too — see the ToolState.status setter.
         _toolStates[tool]?.status = ToolStatus.notInstalled;
       } else {
-        _toolStates[tool]?.errorMessage = result.stderr;
+        _toolStates[tool]?.errorMessage = _failureDetail(
+            result.stderr, 'ai-workspace-uninstall-failed'.i18n());
         return false;
       }
     } catch (e) {
@@ -1222,7 +1368,9 @@ class AiWorkspaceService {
     // "Could not open the dashboard" on its own is untraceable; say which
     // step gave up.
     if (url == null) {
-      state.errorMessage = 'No dashboard URL from: ${config.dashboardCommand}';
+      state.errorMessage = config.dashboardCommand == null
+          ? 'No dashboard URL for ${config.name}'
+          : 'No dashboard URL from: ${config.dashboardCommand}';
       return null;
     }
     if (!await _waitUntilReachable(url)) {

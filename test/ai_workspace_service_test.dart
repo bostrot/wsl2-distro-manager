@@ -567,6 +567,26 @@ void main() {
         );
       });
 
+      // `--non-interactive` only gates `prompt_yes_no`; `main()` runs the
+      // setup wizard unconditionally, and the wizard reads from `/dev/tty`
+      // directly. Its own skip is a failed `(: </dev/tty)` probe, which under
+      // wsl.exe succeeds — so the wizard opened a terminal nobody was typing
+      // into and `hermes_cli.main setup` sat there with no I/O for 20 min
+      // until the silence budget reaped the install (measured 2026-08-28).
+      // `--skip-setup` is the installer's documented way out.
+      test('hermes install skips the setup wizard that waits on a tty',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        testShell.exitCode = 0;
+        await service.install(AiWorkspaceTool.hermesAgent);
+
+        final command = testShell.lastCommand.last;
+        expect(command.contains('--skip-setup'), true);
+        expect(command.contains('--non-interactive'), true);
+      });
+
       test('openclaw installs from the real openclaw.ai endpoint', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
@@ -805,6 +825,67 @@ void main() {
           );
         },
       );
+
+      // A `\r` frame is the freshest thing there is while the bar is redrawing
+      // and meaningless once it stops: the Playwright download left the
+      // fragment `(O) 2. No` frozen on the card as both the progress line and
+      // the retained "Last output" of the failure that followed 12 minutes
+      // later (measured 2026-08-28).
+      test('a progress-bar frame is shown live but never kept', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService(silence: const Duration(seconds: 5));
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+
+        await Future.delayed(const Duration(milliseconds: 50));
+        child.emit('Installing browser tools\n');
+        child.emit('Downloading Chromium 184.3 MiB [==   ] 40%\r');
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // Live: the redraw is what the user wants to see.
+        expect(service.installProgress(AiWorkspaceTool.hermesAgent),
+            contains('40%'));
+
+        child.exit(1);
+        expect(await install, false);
+
+        // Over: the last thing the installer actually committed to a line.
+        expect(service.installProgress(AiWorkspaceTool.hermesAgent),
+            'Installing browser tools');
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.errorMessage,
+          isNot(contains('40%')),
+        );
+      });
+
+      // `_installProgress` used to be cleared only when a new install began,
+      // so a *start* that failed rendered the card with the *installer's*
+      // final line quoted underneath it.
+      test('the next action drops the previous install output', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService();
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+        await Future.delayed(const Duration(milliseconds: 50));
+        child.emit('fetching sources\n');
+        expect(await install, false);
+        expect(service.installProgress(AiWorkspaceTool.hermesAgent),
+            'fetching sources');
+
+        testShell.processFactory = null;
+        testShell.exitCode = 1;
+        service.getState(AiWorkspaceTool.hermesAgent)!.status =
+            ToolStatus.stopped;
+        await service.start(AiWorkspaceTool.hermesAgent);
+
+        expect(service.installProgress(AiWorkspaceTool.hermesAgent), isNull);
+      });
     });
 
     group('start/stop', () {
@@ -913,14 +994,19 @@ void main() {
         await service.start(AiWorkspaceTool.hermesAgent);
 
         final command = testShell.lastCommand.last;
-        expect(command.contains('setsid hermes gateway'), true);
+        // `serve`, not `gateway`: `hermes gateway` is the messaging gateway
+        // and binds no TCP port at all, so the card could never go green off
+        // it. `hermes serve` is what listens on 9119 (measured 2026-08-28:
+        // started by hand, the card went green on its own).
+        expect(command.contains('setsid hermes serve --skip-build'), true);
+        expect(command.contains('gateway'), false);
         expect(command.contains('for _i in'), true);
         expect(command.contains('/dev/tcp/127.0.0.1/9119'), true);
         // The gate is the port, never a live process. `pgrep` is allowed
-        // exactly once — in the kill that clears the old gateway first — so
+        // exactly once — in the kill that clears the old server first — so
         // this pins it there rather than banning the word outright.
         expect('pgrep'.allMatches(command).length, 1);
-        expect(command.contains('pgrep -f \'[h]ermes.*gateway\''), true);
+        expect(command.contains('pgrep -f \'[h]ermes.*serve\''), true);
         expect(command.trimRight().endsWith('2>/dev/null; }'), true,
             reason: 'the listening test has to be the last thing that runs');
       });
@@ -997,6 +1083,69 @@ void main() {
             'ai-workspace-stop-failed-text'.i18n(['OpenClaw']));
       });
 
+      // A kill that matched nothing exits 0 exactly like one that worked, and
+      // `docker stop` is followed by `|| true`. Measured 2026-08-28: the
+      // Hermes card flipped to "stopped" while the process was still running
+      // and still listening on 9119. Every stop now ends on the same port test
+      // the status probe uses.
+      test('every stop command verifies the port is actually released',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        for (final tool in AiWorkspaceTool.values) {
+          service.getState(tool)!.status = ToolStatus.running;
+          await service.stop(tool);
+
+          final command = testShell.lastCommand.last;
+          final port = service.getState(tool)!.port;
+          expect(command.contains('/dev/tcp/127.0.0.1/$port'), true,
+              reason: '${tool.name} stop should end on its own port');
+          expect(command.trimRight().endsWith('2>/dev/null; }'), true,
+              reason: '${tool.name}: the port test has to be the last thing '
+                  'that runs, or the exit code is somebody else\'s');
+          expect(command.contains('! {'), true,
+              reason: '${tool.name}: stopped means the port is *not* serving');
+        }
+      });
+
+      // `hermes gateway` is the messaging gateway and never binds a port, so
+      // a kill aimed at it matched nothing the card cares about while
+      // `hermes serve` kept serving.
+      test('stopping hermes targets the process that holds the port', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        service.getState(AiWorkspaceTool.hermesAgent)!.status =
+            ToolStatus.running;
+        await service.stop(AiWorkspaceTool.hermesAgent);
+
+        final command = testShell.lastCommand.last;
+        expect(command.contains('pgrep -f \'[h]ermes.*serve\''), true);
+        expect(command.contains('gateway'), false);
+      });
+
+      // Same bug class as the failed stop below: a start whose gate is a bare
+      // shell test writes nothing to stderr, and the card has no toast to fall
+      // back on once it is dismissed — it rendered a red `Error:` followed by
+      // nothing at all.
+      test('a failed start with no stderr still says something readable',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent)!;
+        state.status = ToolStatus.stopped;
+
+        testShell.exitCode = 1;
+        testShell.stderrData = '   ';
+        final result = await service.start(AiWorkspaceTool.hermesAgent);
+
+        expect(result, false);
+        expect(state.errorMessage,
+            'ai-workspace-start-failed-text'.i18n(['Hermes Agent']));
+      });
+
       test('a failed stop keeps real stderr when there is any', () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
@@ -1027,6 +1176,30 @@ void main() {
         expect(result, true);
         expect(state.status, ToolStatus.notInstalled);
         expect(state.installPath, isNull);
+      });
+
+      // The installer writes `<bindir>/hermes` as a wrapper *script*, not a
+      // symlink into the install root, so removing only the roots left it on
+      // PATH: `command -v hermes` kept answering "exists" and the card read
+      // "Installed" over a launcher whose first line was
+      // `venv/bin/python: No such file or directory`, with Install disabled.
+      // Measured 2026-08-28 — the app could not return itself to a clean
+      // state at all.
+      test('uninstalling hermes removes the launcher, not just the roots',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        service.getState(AiWorkspaceTool.hermesAgent)!.status =
+            ToolStatus.stopped;
+        testShell.allCommands.clear();
+        await service.uninstall(AiWorkspaceTool.hermesAgent);
+
+        final removal = testShell.allCommands
+            .expand((cmd) => cmd)
+            .firstWhere((arg) => arg.contains('hermes-agent'));
+        expect(removal.contains('/usr/local/bin/hermes'), true);
+        expect(removal.contains('\$HOME/.local/bin/hermes'), true);
       });
 
       test('stops running tool before uninstalling', () async {
@@ -1496,22 +1669,25 @@ void main() {
         expect(testShell.allCommands, isEmpty);
       });
 
-      test('hermes agent runs "hermes dashboard" and returns the printed URL',
+      // `hermes dashboard` *starts* a server on the same fixed port and then
+      // blocks — it never prints a URL, so running it burned 40s and then put
+      // `No dashboard URL from: hermes dashboard` on the card while nothing
+      // opened (measured 2026-08-28). The port is fixed and reachable, so the
+      // static URL is the whole answer and no command runs at all.
+      test('hermes agent opens its fixed port without running any command',
           () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
 
         final state = service.getState(AiWorkspaceTool.hermesAgent)!;
         state.status = ToolStatus.running;
-        testShell.stdoutData = 'http://127.0.0.1:9119/?token=abc123';
+        testShell.allCommands.clear();
 
         final url = await service.getDashboardUrl(AiWorkspaceTool.hermesAgent);
 
-        expect(url, 'http://127.0.0.1:9119/?token=abc123');
-        expect(
-          testShell.lastCommand.any((a) => a.contains('hermes dashboard')),
-          true,
-        );
+        expect(url, 'http://localhost:9119');
+        expect(testShell.allCommands, isEmpty);
+        expect(state.errorMessage, isNull);
       });
 
       test('openclaw runs "openclaw dashboard" and returns the printed URL',
@@ -1537,12 +1713,13 @@ void main() {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
 
-        final state = service.getState(AiWorkspaceTool.hermesAgent)!;
+        final state = service.getState(AiWorkspaceTool.openClaw)!;
         state.status = ToolStatus.running;
         testShell.stdoutData = '';
         testShell.exitCode = 1;
 
-        expect(await service.getDashboardUrl(AiWorkspaceTool.hermesAgent), isNull);
+        expect(await service.getDashboardUrl(AiWorkspaceTool.openClaw), isNull);
+        expect(state.errorMessage, contains('openclaw dashboard'));
       });
 
       // Regression: docker reporting a container "Up" (or a gateway CLI

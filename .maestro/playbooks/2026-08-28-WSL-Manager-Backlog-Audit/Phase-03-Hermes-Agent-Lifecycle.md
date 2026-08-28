@@ -193,10 +193,82 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
     read "Nicht installiert" for 14 s; the probe itself is sound
     (`Working/probe_hermes.dart` replicates it and always answers `exists`).
 
-- [ ] Fix whatever the click-through breaks. Likely candidates, all previously seen on the sibling tools:
+- [x] Fix whatever the click-through breaks. Likely candidates, all previously seen on the sibling tools:
   - The gateway dying with its WSL session — `AiWorkspaceService` already holds one `wsl -d ai-workspace sleep infinity` session via `ExecutionBroker.startPersistent`; confirm Hermes is covered by it, since Hermes uses the `setsid` shape and may not need it
   - Dashboard URL extraction happening shell-side; parse in Dart via the existing `_firstServiceUrl` helper, preferring a loopback address
   - `canLaunchUrl` gating the launch — every other launch site in the app calls `launchUrl` directly
+
+  **Result (2026-08-28).** All seven items from the click-through's *What the
+  next task has to change* list, plus the three "likely candidates" above.
+  Every command string was dumped straight out of `AiWorkspaceService` and run
+  **verbatim** against the real `ai-workspace` distro, so what was verified is
+  what the app builds. Full write-up in `Working/hermes-lifecycle-fixes.md`.
+
+  **The lifecycle now works end to end, live:** install **exit 0 in 244 s
+  unattended**, start binds 9119 and `http://localhost:9119` answers **HTTP
+  200 from Windows**, stop frees the port and leaves no process, and
+  `(Get-Process wsl).Count` is 0 afterwards. The single wrong assumption was
+  the command, not the port: `hermes gateway` is the *messaging* gateway and
+  binds nothing; `hermes serve` is what listens on 9119. Its `--help` in the
+  distro confirms it ("Headless: it never opens a browser UI", `--port PORT
+  Port (default 9119)`), and it carries `--stop`/`--status` of its own.
+
+  - **Start** → `setsid hermes serve --skip-build`, pattern
+    `[h]ermes.*serve`. No mention of `gateway` survives anywhere in the
+    Hermes path.
+  - **Stop** → `hermes serve --stop`, then the kill loop, then a new
+    `_waitForPortClosed()` — the mirror of `_waitForPort()`. Applied to all
+    three tools, because the exit code of a stop was meaningless everywhere:
+    a kill that matched nothing exits 0, and `docker stop` is followed by
+    `|| true`. Proven with a negative case: with a dummy
+    `python3 -m http.server 9119` holding the port, the stop command exits
+    **1**; before, it exited 0 and the card read "angehalten" over a live
+    service. (Measuring that needed care — `wsl … | tr -d '\0'; echo $?`
+    reports *`tr`'s* status, so every stop looked successful until the pipe
+    came out.)
+  - **Install** → `--skip-setup`. Not `--accept-hooks`, not `</dev/null`:
+    read from the installer, `--non-interactive` gates `prompt_yes_no` and
+    the `--stage` protocol but **not** `main()`, which calls
+    `run_setup_wizard` unconditionally; the wizard's own escape is a failed
+    `(: </dev/tty)` probe, which under `wsl.exe` *succeeds*; and the wizard
+    reopens `/dev/tty` rather than reading stdin, so redirecting stdin cannot
+    reach it. The log now contains `Skipping setup wizard (--skip-setup)`.
+  - **Dashboard** → `dashboardCommand` dropped entirely. `hermes dashboard`
+    starts a server on the same fixed port and blocks without ever printing a
+    URL; `getUrl()`'s `http://localhost:9119` is the correct answer and costs
+    no WSL call at all.
+  - **Uninstall** → also `rm -f /usr/local/bin/hermes $HOME/.local/bin/hermes`.
+    The launcher is a wrapper *script*, not a symlink into the install root.
+  - **F4 rendering** → `ExecutionBroker._stripControlChars` now removes whole
+    ANSI CSI/OSC sequences instead of the lone ESC byte (the `[0;36m` residue
+    was its parameters, orphaned); the reinstall log carries real ESC bytes on
+    78 lines, so this is aimed at live data. And `_LineAssembler` marks a
+    `\r`-terminated segment **transient**: still shown live, because a
+    redrawing bar is the freshest thing there is, but never kept as the
+    retained "last output" — which is where `(O) 2. No` froze.
+  - **F5** → `start()` got the empty-stderr fallback `stop()` received in
+    Phase 02, now shared as `_failureDetail()` across install/start/stop/
+    uninstall; and `clearError()` — which every explicit user action already
+    routes through — drops the previous action's install output, so a failed
+    *start* no longer quotes the *installer* underneath it.
+
+  The three "likely candidates" in the bullets above: **keep-alive already
+  covers Hermes** (`start()` awaits `ensureKeepAlive()` before the tool
+  branch, so it is per-service, not per-tool); **URL extraction is already in
+  Dart** via `_firstServiceUrl` (Phase 02) and Hermes no longer reaches it;
+  **`canLaunchUrl` already does not gate the launch**
+  (`ai_workspace_screen.dart:294`). No change needed for any of them.
+
+  `flutter test` **386 green** (was 376), `flutter analyze` unchanged at 105
+  pre-existing issues, `check_translations` clean — no new i18n keys, the
+  fallbacks reuse existing ones. 13 new cases across
+  `test/execution_broker_test.dart` and `test/ai_workspace_service_test.dart`;
+  the pre-existing `probe script semantics` group, which runs the real command
+  strings through a real shell, passes unchanged against the new ones.
+  Formatting scoped to the touched lines with the Phase 01 `-U0` helper —
+  note it needs the diff's *old* side to be the working tree, not HEAD, or it
+  re-applies your own edits at HEAD line numbers. AGENTS.md's Hermes bullet
+  was corrected in place; `TODO.md` is the last task's job.
 
 - [ ] If and only if the installer proves impossible to complete unattended after the fixes above, gate the tool rather than shipping a broken card:
   - Mark Hermes as unavailable in the tool list with a short explanatory string and a link to the upstream issue

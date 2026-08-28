@@ -453,6 +453,45 @@ void main() {
       expect(result.stderr, 'a warning\n');
     });
 
+    // Stripping the lone ESC byte left its parameters behind as ordinary
+    // text, so the AI Workspace card rendered a streamed installer line as
+    // `[0;36m— Trying SSH clone...` (measured 2026-08-28). The sequence has
+    // to be removed whole.
+    test('ANSI colour sequences are removed with their parameters', () async {
+      testShell.stdoutData = '\x1B[0;36m- Trying SSH clone...\x1B[0m\n';
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'wsl',
+        arguments: ['-d', 'ai-workspace', 'bash'],
+      ));
+
+      expect(result.stdout, '- Trying SSH clone...\n');
+    });
+
+    test('cursor moves, line erases and window titles are removed too',
+        () async {
+      testShell.stdoutData =
+          '\x1B]0;installing\x07\x1B[2K\x1B[1Aprogress 40%\x1B[?25l\n';
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'wsl',
+        arguments: ['-d', 'ai-workspace', 'bash'],
+      ));
+
+      expect(result.stdout, 'progress 40%\n');
+    });
+
+    test('a bracket that is not an escape sequence survives', () async {
+      testShell.stdoutData = 'pgrep -f [h]ermes matched [0] processes\n';
+
+      final result = await broker.run(const ExecutionRequest(
+        command: 'wsl',
+        arguments: ['-d', 'ai-workspace', 'bash'],
+      ));
+
+      expect(result.stdout, 'pgrep -f [h]ermes matched [0] processes\n');
+    });
+
     test('empty output yields empty strings, not nulls', () async {
       testShell.stdoutData = '';
       testShell.stderrData = '';

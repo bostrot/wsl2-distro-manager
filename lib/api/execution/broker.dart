@@ -58,10 +58,22 @@ class ExecutionBroker {
     return _stripControlChars(decoded);
   }
 
-  /// Strip control characters (including the null bytes from UTF-16LE output)
-  /// while preserving common whitespace.
+  /// Strip ANSI escape sequences and control characters (including the null
+  /// bytes from UTF-16LE output) while preserving common whitespace.
+  ///
+  /// The escape *sequences* have to go before the bare-control-character pass.
+  /// Dropping the lone ESC byte first leaves its parameters behind as ordinary
+  /// text, which is how a streamed installer line reached the AI Workspace card
+  /// reading `[0;36m— Trying SSH clone...` (measured 2026-08-28).
   static String _stripControlChars(String text) {
-    return text.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
+    return text
+        // CSI: colours, cursor moves, line erases.
+        .replaceAll(RegExp(r'\x1B\[[0-9;:?]*[ -/]*[@-~]'), '')
+        // OSC: window titles and hyperlinks, terminated by BEL or ST.
+        .replaceAll(RegExp(r'\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)'), '')
+        // Two-character escapes (charset selects, RI, DECSC/DECRC).
+        .replaceAll(RegExp(r'\x1B[@-Z\\-_]'), '')
+        .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
   }
 
   /// Returns true when the command is a WSL invocation that produces UTF-16LE output.
