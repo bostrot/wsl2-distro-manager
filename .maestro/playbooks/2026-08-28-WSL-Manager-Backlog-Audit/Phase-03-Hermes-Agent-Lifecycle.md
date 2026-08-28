@@ -36,11 +36,51 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
   per line — `bash` ignores an inherited `PS4` for non-interactive scripts, so a
   `stdbuf -oL awk` reader stamps them instead).
 
-- [ ] Make the Hermes install path survive a genuinely slow installer, in `lib/api/ai_workspace/service.dart`:
+- [x] Make the Hermes install path survive a genuinely slow installer, in `lib/api/ai_workspace/service.dart`:
   - Switch the install from the one-shot capture path to `ExecutionBroker.startPersistent`/streaming so output arrives live (the Phase 01 broker rework guarantees the child is killed if it really does need to be abandoned)
   - Raise the Hermes install timeout to a value justified by the measurement above, and make the timeout apply to *silence* (no new output for N minutes) rather than total wall-clock, so a slow-but-progressing install is not killed
   - Add `set -o pipefail` wherever a `curl … | bash` shape remains — `curl … | sh` exits 0 when curl fails
   - Keep every command string free of double quotes, and avoid `~` inside double quotes (`[ -d "~/.foo" ]` never matches)
+
+  **Result (2026-08-28):** Done in `lib/api/ai_workspace/service.dart`.
+  `_install()` no longer calls `ExecutionBroker.run()`; it goes through a new
+  `_runStreamed()`, which spawns the install with
+  `ExecutionBroker.startPersistent`, reads both pipes live
+  (`ExecutionBroker.decodeWslOutput`, so UTF-16LE is handled the same way
+  everywhere), and reports every completed line through an `onLine` callback.
+  `\r` terminates a line as well as `\n`, so Playwright's progress-bar
+  redraws register as progress rather than as one 108 s silence.
+  **The budget is silence, not wall clock:** `_kInstallSilenceTimeout` =
+  12 min with nothing on *either* stream — above the 600 s the upstream script
+  allows its own `npm install`/Playwright steps, which is what the measurement
+  in the previous task requires — with `_kInstallMaxDuration` = 45 min as an
+  absolute ceiling for an installer that wedges while still dribbling output.
+  Both are constructor-injectable (`installSilenceTimeout`,
+  `installMaxDuration`) purely as a test seam. Every abandon path reaps the
+  child through `ExecutionBroker.terminate()` (made public for this; it was
+  already the escalation `run()` used), so a give-up cannot leave an orphaned
+  `wsl.exe` behind, and the resulting `errorMessage` names the budget that
+  expired *and* the last line printed, since a killed shell writes nothing to
+  stderr of its own.
+  The `set -o pipefail;` prefix is unchanged and still applies to every
+  install command — the two `curl … | bash` shapes are the whole reason it is
+  there. A new test asserts no built command string contains a `"` or a `~`;
+  none does.
+  Progress is exposed as `installProgress(tool)` (last line, kept after the
+  install ends, cleared when a retry starts) for the UI task that follows;
+  no screen changes here.
+  Tests added to `test/ai_workspace_service_test.dart` (group
+  `streamed install`, 5 cases + the quoting guard): output is readable while
+  the child is still running, the silence timeout fires and reaps, it does
+  **not** fire while output keeps arriving across 3× the budget, the ceiling
+  stops a chatty-but-endless installer, and a killed install stays `error`
+  with its message intact through the next `refreshStatus()`. They need a
+  child a test can drive, so `test/mocks.dart` gains `ControlledProcess` and
+  `TestShell.processFactory`. `flutter analyze` is unchanged at 105 issues
+  (all pre-existing) and `flutter test` is green at 373 (was 367).
+  Formatting was scoped to the touched lines using the Phase 01 helper; note
+  it needs a **`-U0`** diff — a diff with context makes it drop the context
+  lines. `Working/revert_hunks.dart` is the repair path if that happens again.
 
 - [ ] Surface install progress in `lib/screens/ai_workspace_screen.dart`:
   - Show the last streamed output line (or a small scrolling log region) under the installing card, reusing whatever progress/log widget already exists in the repo rather than inventing one — search `lib/components/` first

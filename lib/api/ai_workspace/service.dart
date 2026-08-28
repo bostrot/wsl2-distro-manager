@@ -109,6 +109,68 @@ String _killByPattern(String pattern) =>
 /// Supported AI workspace tools.
 enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi }
 
+/// How long an install may print nothing at all before it is abandoned.
+///
+/// Measured live on 2026-08-28 against the real `ai-workspace` distro: a cold
+/// Hermes install takes 482s end to end and spends 306s of that inside a
+/// single `npm install --silent` whose output the installer redirects into a
+/// temp file, so nothing reaches us at all unless it fails. That step carries
+/// its own 600s cap, and Ubuntu 26.04 additionally trips the installer's
+/// `playwright_host_unrecognized()` path, which retries a second long
+/// download step. Any silence budget under 600s therefore kills a healthy
+/// install — which is exactly what the old 5-minute *wall-clock* cap did,
+/// always mid-npm, leaving a half-built tree and no `hermes` binary behind.
+const Duration _kInstallSilenceTimeout = Duration(minutes: 12);
+
+/// Absolute ceiling, so an installer that wedges while still dribbling output
+/// cannot run forever. Room for two cold Hermes installs and then some.
+const Duration _kInstallMaxDuration = Duration(minutes: 45);
+
+/// How much of each stream is kept for the failure message. npm and
+/// Playwright logs run to megabytes and only the tail is ever shown.
+const int _kOutputTailLimit = 8192;
+
+/// Keeps the last [_kOutputTailLimit] characters of a stream.
+String _appendTail(String tail, String text) {
+  final merged = tail + text;
+  if (merged.length <= _kOutputTailLimit) return merged;
+  return merged.substring(merged.length - _kOutputTailLimit);
+}
+
+/// Duration as it reads in an error message. Minutes in production, smaller
+/// units so a test with a sub-minute budget does not report `0 min`.
+String _describeDuration(Duration duration) {
+  if (duration.inMinutes >= 1) return '${duration.inMinutes} min';
+  if (duration.inSeconds >= 1) return '${duration.inSeconds} s';
+  return '${duration.inMilliseconds} ms';
+}
+
+/// Splits streamed process output into whole lines, carrying an unterminated
+/// tail over to the next chunk.
+///
+/// `\r` ends a line just as `\n` does: installers draw their download
+/// progress with carriage returns, and each redraw is the freshest thing
+/// there is to show.
+class _LineAssembler {
+  String _partial = '';
+
+  List<String> add(String text) {
+    final parts = (_partial + text).split(RegExp(r'[\r\n]'));
+    _partial = parts.removeLast();
+    return parts
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+  }
+
+  /// Whatever is left unterminated when the stream closes.
+  String? flush() {
+    final rest = _partial.trim();
+    _partial = '';
+    return rest.isEmpty ? null : rest;
+  }
+}
+
 /// Status of a workspace tool instance.
 ///
 /// [starting] is deliberately distinct from [running]: Open WebUI's container
@@ -322,6 +384,11 @@ class AiWorkspaceService {
   // overwriting an install that is still running.
   final Set<AiWorkspaceTool> _installing = {};
 
+  // Last line the running installer printed, per tool. Lives here for the
+  // same reason [_installing] does: the progress an install has made must
+  // still be there when the user comes back to the page.
+  final Map<AiWorkspaceTool, String> _installProgress = {};
+
   // WSL shuts a distro down once its last session exits, which takes systemd
   // user services with it — measured: a started gateway is listening while a
   // session is held open and gone ~20s after the last one closes. Every action
@@ -329,11 +396,22 @@ class AiWorkspaceService {
   // already dead by the time "open dashboard" runs.
   Process? _keepAlive;
 
+  /// How long an install may go silent before it is abandoned, and its
+  /// absolute ceiling. Injectable so tests can exercise both without waiting
+  /// out the real budgets.
+  final Duration _installSilenceTimeout;
+  final Duration _installMaxDuration;
+
   AiWorkspaceService({
     required ExecutionBroker broker,
     DashboardReachabilityChecker? reachabilityChecker,
-  })  : _broker = broker,
-        _isReachable = reachabilityChecker ?? _defaultReachabilityCheck;
+    Duration? installSilenceTimeout,
+    Duration? installMaxDuration,
+  }) : _broker = broker,
+       _isReachable = reachabilityChecker ?? _defaultReachabilityCheck,
+       _installSilenceTimeout =
+           installSilenceTimeout ?? _kInstallSilenceTimeout,
+       _installMaxDuration = installMaxDuration ?? _kInstallMaxDuration;
 
   Map<AiWorkspaceTool, ToolState> get toolStates =>
       Map.unmodifiable(_toolStates);
@@ -343,6 +421,11 @@ class AiWorkspaceService {
   /// True while [install] is still running for [tool], including across a
   /// navigation away from the AI Workspace page.
   bool isInstalling(AiWorkspaceTool tool) => _installing.contains(tool);
+
+  /// The most recent line the installer printed for [tool], or null when it
+  /// has not printed anything yet. Kept after the install ends so a failure
+  /// card can still show where it got to.
+  String? installProgress(AiWorkspaceTool tool) => _installProgress[tool];
 
   /// Holds one WSL session open so long-running tools survive between the
   /// one-shot calls that start, probe and use them. Safe to call repeatedly.
@@ -576,8 +659,10 @@ class AiWorkspaceService {
   /// Install a workspace tool.
   Future<bool> install(AiWorkspaceTool tool) async {
     if (_installing.contains(tool)) return false;
-    // An explicit retry owns the card again; the previous failure is history.
+    // An explicit retry owns the card again; the previous failure is history,
+    // and so is the progress line the previous attempt left behind.
     clearError(tool);
+    _installProgress.remove(tool);
     _installing.add(tool);
     try {
       return await _install(tool);
@@ -607,15 +692,14 @@ class AiWorkspaceService {
       loading: true,
     );
 
-    final request = ExecutionRequest(
-      command: 'wsl',
-      // pipefail: `curl ... | sh` otherwise exits 0 even when curl fails.
-      arguments: _wslArgs('set -o pipefail; ${config.installCommand}'),
-      timeout: const Duration(minutes: 5),
-    );
-
     try {
-      final result = await _broker.run(request);
+      final result = await _runStreamed(
+        // pipefail: `curl ... | sh` otherwise exits 0 even when curl fails.
+        'set -o pipefail; ${config.installCommand}',
+        silenceTimeout: _installSilenceTimeout,
+        maxDuration: _installMaxDuration,
+        onLine: (line) => _installProgress[tool] = line,
+      );
       if (result.isSuccess) {
         final state = _toolStates[tool];
         state?.status = ToolStatus.stopped;
@@ -638,6 +722,158 @@ class AiWorkspaceService {
       Notify.message('ai-workspace-install-failed-text'.i18n([config.name]));
       return false;
     }
+  }
+
+  /// Runs [script] in the distro with its output streamed back line by line
+  /// through [onLine], and gives up only after [silenceTimeout] with nothing
+  /// new on either stream — not after a fixed wall clock.
+  ///
+  /// [ExecutionBroker.run] can express only the latter, which is why this
+  /// exists: by total runtime alone a slow-but-progressing install looks
+  /// exactly like a hung one, and a Hermes install measured at 482s cold was
+  /// being killed at 300s every time. [maxDuration] is the backstop for an
+  /// installer that wedges while still dribbling output.
+  ///
+  /// The handle comes from [ExecutionBroker.startPersistent], so the child is
+  /// ours to reap — every abandon path runs it through
+  /// [ExecutionBroker.terminate] rather than leaving an orphaned `wsl.exe`
+  /// behind.
+  Future<ExecutionResult> _runStreamed(
+    String script, {
+    required Duration silenceTimeout,
+    required Duration maxDuration,
+    required void Function(String line) onLine,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final process = await _broker.startPersistent(
+      ExecutionRequest(command: 'wsl', arguments: _wslArgs(script)),
+    );
+
+    var stdoutTail = '';
+    var stderrTail = '';
+    String? abandonReason;
+    String? lastLine;
+    Timer? silenceTimer;
+    Timer? ceilingTimer;
+
+    void abandon(String reason) {
+      if (abandonReason != null) return;
+      abandonReason = reason;
+      silenceTimer?.cancel();
+      ceilingTimer?.cancel();
+      unawaited(ExecutionBroker.terminate(process));
+    }
+
+    void resetSilence() {
+      if (abandonReason != null) return;
+      silenceTimer?.cancel();
+      silenceTimer = Timer(
+        silenceTimeout,
+        () => abandon(
+          'Nothing was printed for '
+          '${_describeDuration(silenceTimeout)}, so the command was '
+          'stopped.',
+        ),
+      );
+    }
+
+    ceilingTimer = Timer(
+      maxDuration,
+      () => abandon(
+        'Still running after ${_describeDuration(maxDuration)}, '
+        'so the command was stopped.',
+      ),
+    );
+    resetSilence();
+
+    final drained = <Future<void>>[];
+    final subscriptions = <StreamSubscription<List<int>>>[];
+
+    void attach(Stream<List<int>> stream, {required bool isError}) {
+      final assembler = _LineAssembler();
+      final done = Completer<void>();
+      drained.add(done.future);
+      subscriptions.add(
+        stream.listen(
+          (data) {
+            // The same UTF-16LE-with-null-bytes decode every other wsl.exe
+            // reader does. Chunk boundaries are safe here: the payload is ASCII
+            // installer output, not arbitrary text.
+            final text = ExecutionBroker.decodeWslOutput(data);
+            if (text.isEmpty) return;
+            // Any byte at all is progress, whichever stream it arrived on —
+            // installers report progress on stderr as readily as on stdout.
+            resetSilence();
+            if (isError) {
+              stderrTail = _appendTail(stderrTail, text);
+            } else {
+              stdoutTail = _appendTail(stdoutTail, text);
+            }
+            for (final line in assembler.add(text)) {
+              lastLine = line;
+              onLine(line);
+            }
+          },
+          onDone: () {
+            final rest = assembler.flush();
+            if (rest != null) {
+              lastLine = rest;
+              onLine(rest);
+            }
+            if (!done.isCompleted) done.complete();
+          },
+          onError: (Object _) {
+            if (!done.isCompleted) done.complete();
+          },
+          cancelOnError: true,
+        ),
+      );
+    }
+
+    attach(process.stdout, isError: false);
+    attach(process.stderr, isError: true);
+
+    final exitCode = await process.exitCode;
+    // A dead child's pipes close with it, but the wait is bounded anyway: a
+    // stream that never closes must not hold the install open forever.
+    await Future.wait(
+      drained,
+    ).timeout(const Duration(seconds: 2), onTimeout: () => <void>[]);
+    silenceTimer?.cancel();
+    ceilingTimer.cancel();
+    for (final subscription in subscriptions) {
+      await subscription.cancel();
+    }
+    stopwatch.stop();
+
+    final reason = abandonReason;
+    if (reason == null) {
+      return ExecutionResult(
+        exitCode: exitCode,
+        stdout: stdoutTail,
+        stderr: stderrTail,
+        duration: stopwatch.elapsed,
+        auditSeverity: exitCode == 0 ? AuditSeverity.info : AuditSeverity.error,
+      );
+    }
+
+    // The card shows this verbatim, so it has to say what happened and where
+    // the command got to: a bare "install failed" over a killed process is
+    // untraceable, and a killed shell writes nothing to stderr of its own.
+    final detail = [
+      lastLine == null ? reason : '$reason Last output: $lastLine',
+      stderrTail.trim(),
+    ].where((part) => part.isNotEmpty).join('\n');
+    return ExecutionResult(
+      // A process killed on a signal can still report 0 on some paths; the
+      // abandon is the answer here, not the exit code.
+      exitCode: exitCode == 0 ? -1 : exitCode,
+      stdout: stdoutTail,
+      stderr: detail,
+      duration: stopwatch.elapsed,
+      error: TimeoutException(reason, stopwatch.elapsed),
+      auditSeverity: AuditSeverity.error,
+    );
   }
 
   /// Start a running tool instance.

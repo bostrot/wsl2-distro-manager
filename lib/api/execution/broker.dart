@@ -88,7 +88,11 @@ class ExecutionBroker {
 
   /// Terminate a child that outlived its timeout, escalating to SIGKILL when
   /// it does not go away on its own.
-  static Future<void> _terminate(Process process) async {
+  ///
+  /// Public because [startPersistent] hands back a process the caller owns,
+  /// and every one of those callers needs the same escalation — see the
+  /// streamed install in `lib/api/ai_workspace/service.dart`.
+  static Future<void> terminate(Process process) async {
     try {
       process.kill();
       await process.exitCode.timeout(
@@ -199,7 +203,7 @@ class ExecutionBroker {
         exitCode = await completion.timeout(request.timeout);
       } catch (e) {
         // Reap the child before surfacing anything, otherwise it outlives us.
-        await _terminate(process);
+        await terminate(process);
         await stdoutSub.cancel();
         await stderrSub.cancel();
         if (e is TimeoutException) {

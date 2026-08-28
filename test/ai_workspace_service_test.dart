@@ -1,3 +1,4 @@
+import 'dart:async' show Timer;
 import 'dart:io' show Process, Socket;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -603,6 +604,207 @@ void main() {
           );
         }
       });
+
+      // Every in-distro command reaches bash through `Process.run(...,
+      // runInShell: false)`, so a double quote arrives literally and `~` does
+      // not expand inside one — `[ -d "~/.hermes" ]` never matched anything.
+      test('no built command uses a double quote or a tilde', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        for (final tool in AiWorkspaceTool.values) {
+          service.getState(tool)?.status = ToolStatus.stopped;
+          await service.install(tool);
+          await service.start(tool);
+          await service.stop(tool);
+          await service.uninstall(tool);
+        }
+
+        for (final command in testShell.allCommands) {
+          for (final argument in command) {
+            expect(
+              argument.contains('"'),
+              false,
+              reason: 'double quote in: $argument',
+            );
+            expect(
+              argument.contains('~'),
+              false,
+              reason: 'tilde in: $argument',
+            );
+          }
+        }
+      });
+    });
+
+    // The install path streams instead of capturing a single result, and its
+    // budget is silence rather than wall clock. Measured 2026-08-28: a cold
+    // Hermes install runs 482s and goes quiet for 306s inside one
+    // `npm install --silent`, so the old 5-minute total cap killed a healthy
+    // install every time, always mid-npm.
+    group('streamed install', () {
+      /// A service whose install budgets are small enough to observe.
+      AiWorkspaceService shortBudgetService({
+        Duration silence = const Duration(milliseconds: 300),
+        Duration ceiling = const Duration(seconds: 30),
+      }) => AiWorkspaceService(
+        broker: broker,
+        reachabilityChecker: (_) async => true,
+        installSilenceTimeout: silence,
+        installMaxDuration: ceiling,
+      );
+
+      test('reports the installer output while it is still running', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService(silence: const Duration(seconds: 5));
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+
+        await Future.delayed(const Duration(milliseconds: 50));
+        child.emit('Cloning hermes-agent...\n');
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // The point of streaming: this is readable before the child exits.
+        expect(service.isInstalling(AiWorkspaceTool.hermesAgent), true);
+        expect(
+          service.installProgress(AiWorkspaceTool.hermesAgent),
+          'Cloning hermes-agent...',
+        );
+
+        // Carriage returns are line ends too — progress bars redraw with them.
+        child.emit('Downloading Chromium 184.3 MiB [====      ] 40%\r');
+        await Future.delayed(const Duration(milliseconds: 50));
+        expect(
+          service.installProgress(AiWorkspaceTool.hermesAgent),
+          contains('40%'),
+        );
+
+        child.exit(0);
+        expect(await install, true);
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.stopped,
+        );
+      });
+
+      test('gives up when the installer goes silent', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService();
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+
+        await Future.delayed(const Duration(milliseconds: 50));
+        child.emit('Installing node dependencies...\n');
+        // ...and then nothing, for longer than the silence budget.
+
+        expect(await install, false);
+        // Abandoned means reaped: a timeout that only stops waiting leaves an
+        // orphaned wsl.exe behind.
+        expect(child.killCount, greaterThan(0));
+
+        final state = service.getState(AiWorkspaceTool.hermesAgent)!;
+        expect(state.status, ToolStatus.error);
+        expect(state.errorMessage, contains('Nothing was printed for'));
+        // Where it got to is the only clue the user has.
+        expect(state.errorMessage, contains('Installing node dependencies'));
+        expect(state.errorSticky, true);
+      });
+
+      test('keeps waiting while output is still arriving', () async {
+        testShell.stdoutData = 'ai-workspace';
+        final service = shortBudgetService();
+        await service.init();
+
+        final child = ControlledProcess();
+        testShell.processFactory = () => child;
+        final install = service.install(AiWorkspaceTool.hermesAgent);
+
+        // Six ticks at 100ms each: three times the 300ms silence budget in
+        // total, and never 300ms without something to show for it.
+        for (var tick = 0; tick < 6; tick++) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          child.emit('step $tick\n');
+        }
+        child.exit(0);
+
+        expect(await install, true);
+        expect(child.killCount, 0);
+        expect(
+          service.getState(AiWorkspaceTool.hermesAgent)?.status,
+          ToolStatus.stopped,
+        );
+        expect(service.installProgress(AiWorkspaceTool.hermesAgent), 'step 5');
+      });
+
+      test(
+        'stops an installer that never finishes but keeps talking',
+        () async {
+          testShell.stdoutData = 'ai-workspace';
+          final service = shortBudgetService(
+            silence: const Duration(seconds: 5),
+            ceiling: const Duration(milliseconds: 400),
+          );
+          await service.init();
+
+          final child = ControlledProcess();
+          testShell.processFactory = () => child;
+          final install = service.install(AiWorkspaceTool.hermesAgent);
+
+          final chatter = Timer.periodic(
+            const Duration(milliseconds: 50),
+            (_) => child.emit('still working\n'),
+          );
+          final installed = await install;
+          chatter.cancel();
+
+          expect(installed, false);
+          expect(child.killCount, greaterThan(0));
+          expect(
+            service.getState(AiWorkspaceTool.hermesAgent)?.errorMessage,
+            contains('Still running after'),
+          );
+        },
+      );
+
+      test(
+        'a failed install keeps its message through the next probe',
+        () async {
+          testShell.stdoutData = 'ai-workspace';
+          final service = shortBudgetService();
+          await service.init();
+
+          final child = ControlledProcess();
+          testShell.processFactory = () => child;
+          final install = service.install(AiWorkspaceTool.hermesAgent);
+          await Future.delayed(const Duration(milliseconds: 50));
+          child.emit('fetching sources\n');
+          expect(await install, false);
+
+          final message = service
+              .getState(AiWorkspaceTool.hermesAgent)
+              ?.errorMessage;
+          testShell.processFactory = null;
+          testShell.stdoutData = 'missing';
+          await service.refreshStatus(AiWorkspaceTool.hermesAgent);
+
+          // The probe that runs straight after a failure used to overwrite it
+          // with a bare "not installed" and no reason at all.
+          expect(
+            service.getState(AiWorkspaceTool.hermesAgent)?.status,
+            ToolStatus.error,
+          );
+          expect(
+            service.getState(AiWorkspaceTool.hermesAgent)?.errorMessage,
+            message,
+          );
+        },
+      );
     });
 
     group('start/stop', () {

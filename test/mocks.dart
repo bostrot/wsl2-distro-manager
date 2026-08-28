@@ -404,6 +404,11 @@ class TestShell implements Shell {
   Duration? artificialDelay;
   bool throwOnRun = false;
 
+  /// Hands back a caller-supplied [Process] from [start] instead of the
+  /// canned [MockProcess]. The streamed install path needs a child it can
+  /// feed output to over time; everything else is happy with the default.
+  Process Function()? processFactory;
+
   List<String> lastCommand = [];
   List<List<String>> allCommands = [];
 
@@ -428,15 +433,20 @@ class TestShell implements Shell {
   }
 
   @override
-  Future<Process> start(String executable, List<String> arguments,
-      {String? workingDirectory,
-      Map<String, String>? environment,
-      bool includeParentEnvironment = true,
-      ProcessStartMode mode = ProcessStartMode.inheritStdio,
-      bool runInShell = false}) async {
+  Future<Process> start(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    bool includeParentEnvironment = true,
+    ProcessStartMode mode = ProcessStartMode.inheritStdio,
+    bool runInShell = false,
+  }) async {
     if (throwOnRun) throw Exception('shell error');
     lastCommand = [executable, ...arguments];
     allCommands.add([executable, ...arguments]);
+    final factory = processFactory;
+    if (factory != null) return factory();
     // ExecutionBroker.run() goes through start() so it owns a killable handle;
     // startPersistent() uses the same entry point for keep-alive sessions.
     return MockProcess(
@@ -455,5 +465,75 @@ class TestShell implements Shell {
     allCommands.clear();
     artificialDelay = null;
     throwOnRun = false;
+    processFactory = null;
   }
+}
+
+/// A [Process] whose output and exit are driven by the test, one chunk at a
+/// time.
+///
+/// [MockProcess] emits everything it has at once and (unless given a delay)
+/// has already exited by the time anyone listens, which cannot express "still
+/// running, still printing" — the shape the AI workspace install path's
+/// silence timeout is built around.
+class ControlledProcess implements Process {
+  final StreamController<List<int>> _stdout =
+      StreamController<List<int>>.broadcast();
+  final StreamController<List<int>> _stderr =
+      StreamController<List<int>>.broadcast();
+  final Completer<int> _exited = Completer<int>();
+
+  /// How many times [kill] was called, so a test can assert the child really
+  /// was reaped rather than abandoned.
+  int killCount = 0;
+  ProcessSignal? lastKillSignal;
+
+  /// WSL writes UTF-16LE, so every ASCII byte is followed by a null one —
+  /// this mimics that on the way out, which is what the reader decodes.
+  static List<int> _asWslBytes(String text) =>
+      utf8.encode(text).expand((byte) => [byte, 0]).toList();
+
+  void emit(String text) {
+    if (!_stdout.isClosed) _stdout.add(_asWslBytes(text));
+  }
+
+  void emitError(String text) {
+    if (!_stderr.isClosed) _stderr.add(_asWslBytes(text));
+  }
+
+  /// Ends the process normally with [code].
+  void exit([int code = 0]) {
+    _close();
+    if (!_exited.isCompleted) _exited.complete(code);
+  }
+
+  void _close() {
+    if (!_stdout.isClosed) _stdout.close();
+    if (!_stderr.isClosed) _stderr.close();
+  }
+
+  @override
+  Future<int> get exitCode => _exited.future;
+
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    killCount++;
+    lastKillSignal = signal;
+    _close();
+    if (_exited.isCompleted) return false;
+    _exited.complete(-1);
+    return true;
+  }
+
+  @override
+  int get pid => 4242;
+
+  @override
+  Stream<List<int>> get stderr => _stderr.stream;
+
+  @override
+  IOSink get stdin => IOSink(StreamController<List<int>>().sink);
+
+  @override
+  Stream<List<int>> get stdout => _stdout.stream;
 }
