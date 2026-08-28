@@ -173,10 +173,78 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
   were added. `index.md` carries a status table saying so, so nobody mistakes this for a
   prioritised backlog.
 
-- [ ] Verify each claimed gap against the code before recording it as missing — do not trust the key list alone:
+- [x] Verify each claimed gap against the code before recording it as missing — do not trust the key list alone:
   - `grep -rn "<key>" lib/` for every key marked missing, including camelCase and lowercase spellings
   - For keys the app does expose, check the *widget type* is right: booleans rendered as toggles, enums as combo boxes with the documented values (e.g. `networkingMode` = `NAT` | `mirrored`, `autoMemoryReclaim` = `disabled` | `gradual` | `dropcache`), sizes with the size postfix, and paths with a file picker
   - Check the tooltip/help text matches current documentation, not a 2023 snapshot; flag outdated wording as `outdated` rather than `covered`
+
+  **Result (2026-08-28):** Second pass written to `doc/audit/wsl-docs/verification.md`
+  and corrections applied in place to the four area files + `index.md`. **No claim was
+  withdrawn — every gap the previous task recorded is real.** But 3 verdicts were wrong in
+  the safe direction and 8 findings were missed. No source file was touched.
+
+  **The largest result is a crash, and it came out of the widget-type check, not the key
+  list.** `fluent_ui` 4.13.0's `Slider` asserts its range in the *constructor*
+  (`slider.dart:41`), and `settings_screen.dart:1196` feeds it a value parsed straight from
+  `.wslconfig` with no clamp. `wsl-config.md:252` says `size` entries **default to bytes**,
+  so `memory=8589934592` is the documented way to write 8 GB — it parses cleanly to
+  `8589934592.0` and is handed to a slider whose `max` is `hostGB + 1`. The Settings page
+  throws on build. `processors=64` on a 16-thread host does the same. Asserts are stripped
+  in release, so the shipped app draws the thumb off the track instead of crashing — the
+  failure mode differs by build mode, which is why nobody has reported it. Recorded as
+  `wslconfig-keys.md` **CC-9**; it should be the first thing the runtime task reproduces,
+  since it is a one-line file edit plus an app launch.
+
+  Verdicts corrected, all three from `covered`/`outdated` to something worse:
+
+  1. **`guiApplications` → `wrong`.** Its tooltip ends "Only available for Windows 11."
+     The docs put **no** ¹ footnote on that key — the marker sits on `debugConsole`,
+     `nestedVirtualization`, `vmIdleTimeout` and `autoProxy`. A Windows 10 user reading the
+     app skips a key that works on their machine.
+  2. **`safeMode` → `outdated`.** `safemodeinfo-text` is truncated mid-sentence and drops
+     "Only available for Windows 11 and WSL version 0.66.2+" — the *only* inline WSL-version
+     floor in the entire `[wsl2]` reference table, and the app is the one place that loses it.
+  3. **`processors` → `outdated`.** Tooltip drops "logical" from "How many logical
+     processors", and the slider is a CC-9 site.
+
+  Five further findings the first pass did not have:
+
+  4. **The `ComboBox` the enum keys need is already used three times in this app** —
+     `create_dialog.dart:522`, `mount_dialog.dart:334` and `:515`. Adding
+     `SettingsType.enumeration` reuses an established pattern, so the classification task
+     should size `networkingMode` and `autoMemoryReclaim` as **S**, not **M**.
+  5. **Case-sensitivity (CC-4) is worse than "the setting is ignored."** Traced end to end:
+     a lowercase `swapfile=` line makes `readData` create a controller with no widget, so the
+     `swapFile` box renders **empty** — the screen shows nothing configured — and once the
+     user fills it, Save writes a *second* line, leaving `swapfile` and `swapFile` both under
+     `[wsl2]`.
+  6. **`wsl.conf` text values reach a root shell unescaped.** `setSetting`'s
+     `replaceAll('VALUE', value)` lands inside `echo -e "…"` and `execCmds` runs with
+     `-u root`, so a `"` or `$(…)` in `boot.command` / `automount.options` executes as root in
+     the distro. Not remotely triggerable, but it constrains the Phase 05 fix: the writer must
+     **escape**, not just change the `sed` delimiter. Recorded as `wslconf-keys.md` CC-7.
+  7. **"WSL Settings" is already this app's name for the `wsl.conf` dialog**
+     (`en.json:134` → `settings_dialog.dart:291`), while Windows now ships a Start-menu app
+     of that exact name editing `.wslconfig` — which this app edits on a *different* screen.
+     F-5 amended: the collision has to be renamed before anything else there, which makes F-5
+     cheaper and more urgent than the first pass judged.
+  8. **Re-grep footnote for `cli-flags.md` CC-1.** `grep -rn -- "--version" lib/` returns
+     **1** and `--format` returns **2**, so a later reader will think the "0 hits" claim is
+     refuted. It is not — those are `cloudflared --version` and two `docker --format` calls.
+     Footnoted in place so the claim survives.
+
+  Full tooltip diff (all 27 keys, app string against the doc sentence it paraphrases) is in
+  `verification.md` Part 3: **10 covered, 16 outdated, 1 wrong**; only 8 are
+  verbatim-complete. The dominant failure is silent truncation of the docs' "Only applicable
+  when…" clauses — the same conditions `wslconfig-keys.md` CC-6 says no widget enforces. They
+  are absent from both the behaviour *and* the text, so a user has no way to learn them.
+  Also confirmed: `globalconfigurationinfo-text` misquotes its own source, "take **affect**"
+  where the doc says "take effect".
+
+  Still not run: nothing was executed. CC-9 is derived from the `fluent_ui` source and the
+  parse expression, and only `en.json` was diffed — the other eight locales may carry
+  different errors, which the i18n task at the end of this phase should check for the three
+  corrected strings.
 
 - [ ] Verify the runtime behaviour claims the app makes, against the local WSL version:
   - Run `wsl --version` and record kernel/WSLg/MSRDC versions in the audit
