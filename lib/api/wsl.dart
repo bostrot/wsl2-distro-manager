@@ -53,11 +53,25 @@ class WSLApi {
   final ExecutionBroker? _broker;
   static const Duration _remoteListTimeout = Duration(seconds: 12);
 
+  /// Ceiling for a single in-distro `cat`/`printf`/`chmod`/`test`.
+  ///
+  /// Generous for the work — these read and write files of a few hundred bytes
+  /// — and sized instead for the distro that has to *cold start* to answer,
+  /// which is the slow case and takes seconds, not minutes. Anything past this
+  /// is a distro that is not coming up, and the settings dialog needs to say so
+  /// rather than spin.
+  static const Duration _distroFileTimeout = Duration(seconds: 60);
+
+  /// Default ceiling for a `wsl.exe` verb that did not name its own.
+  static const Duration _verbTimeout = Duration(minutes: 5);
+
   /// Whether a [Shell] was handed in. Only tests do that, and it decides which
   /// capability cache this instance reads — see [capabilities].
   final bool _hasInjectedShell;
 
   WslCapabilityService? _capabilities;
+
+  ExecutionBroker? _lazyBroker;
 
   WSLApi(
       {Shell? shell,
@@ -86,6 +100,22 @@ class WSLApi {
     if (!_hasInjectedShell) return WslCapabilityService.instance;
     return _capabilities = WslCapabilityService(apiBuilder: () => this);
   }
+
+  /// The broker every command added by Phase 05 runs through.
+  ///
+  /// `Process.run` hands back no handle, so a `.timeout()` wrapped around it
+  /// can only *abandon* the child — the leak this repo already paid for once
+  /// as hundreds of orphaned `wsl.exe` processes. [ExecutionBroker.run] spawns
+  /// through `Shell.start`, keeps the handle, and reaps on timeout (SIGTERM,
+  /// escalating to SIGKILL after 2s). A `--manage --move` of a 40 GB disk that
+  /// wedges is then a failed command, not a process nobody can see or stop.
+  ///
+  /// Built here when the constructor was handed none, because in production
+  /// nothing passes one — the `broker` parameter is only ever filled in by
+  /// tests and by the remote-execution branches — and "routed through the
+  /// broker" has to be true of the shipping app, not just of the test build.
+  ExecutionBroker get executionBroker =>
+      _broker ?? (_lazyBroker ??= ExecutionBroker(shell: shell));
 
   bool get _useRemoteWsl {
     final enabled = prefs.getBool('UseRemoteWSL') ?? false;
@@ -313,6 +343,42 @@ class WSLApi {
     );
   }
 
+  /// Run `wsl <args>` through [executionBroker] and hand back both channels.
+  ///
+  /// The local/remote split is [_runWsl]'s, so a remote target keeps working;
+  /// what is different is that [timeout] is **required** and enforced by a
+  /// broker that owns the child. Every Phase-05 verb and every in-distro file
+  /// read or write goes through here rather than through [_runWsl], so none of
+  /// them can hang the caller forever or leave a `wsl.exe` behind.
+  ///
+  /// Decoding is the broker's [ExecutionBroker.decodeWslOutput], which is
+  /// [utf8Convert] — lenient UTF-8 with the control characters stripped. That
+  /// is load-bearing rather than cosmetic: wsl.exe answers `--version`,
+  /// `--status` and its own failures in UTF-16, and a strict decoder throws a
+  /// `FormatException` on that instead of returning the text.
+  Future<WslOutput> _brokeredWsl(
+    List<String> args, {
+    required Duration timeout,
+  }) async {
+    final ExecutionRequest request = _useRemoteWsl
+        ? ExecutionRequest(
+            command: 'ssh',
+            arguments: _buildRemoteArgs('wsl', args),
+            timeout: timeout,
+          )
+        : ExecutionRequest(
+            command: 'wsl',
+            arguments: args,
+            timeout: timeout,
+          );
+
+    final ExecutionResult result = await executionBroker.run(request);
+    if (result.error != null) {
+      logDebug('wsl ${args.join(' ')} failed: ${result.error}', null, null);
+    }
+    return WslOutput(result.exitCode, result.stdout, result.stderr);
+  }
+
   Future<Process> _startWsl(
     List<String> args, {
     bool runInShell = false,
@@ -362,6 +428,33 @@ class WSLApi {
     return int.tryParse(result.stdout.trim());
   }
 
+  /// Where [distro]'s disk actually lives right now.
+  ///
+  /// [findVhdxPath] resolves the registry **before** the stored `Path_`
+  /// preference, which is the right order for a *current location* question:
+  /// the preference goes stale whenever the distro is moved by anything other
+  /// than this app, restored from a config, or written by an older version.
+  /// [getInstancePath] has the opposite order — it is the "where should a new
+  /// instance go" answer, and it writes the preference back — so it is only
+  /// the fallback here, for a distro whose disk cannot be found on disk at all.
+  String currentDistroPath(String distro) {
+    final vhdx = findVhdxPath(distro);
+    if (vhdx != null) return p.dirname(vhdx);
+    return getInstancePath(distro).path;
+  }
+
+  /// Byte length of [distro]'s `ext4.vhdx`, or 0 when it cannot be found.
+  int vhdxSizeBytes(String distro) {
+    final vhdx = findVhdxPath(distro);
+    if (vhdx == null) return 0;
+    try {
+      return File(vhdx).lengthSync();
+    } on FileSystemException catch (error, stack) {
+      logDebug(error, stack, null);
+      return 0;
+    }
+  }
+
   /// Get distro size of [distroName] a string with a GB suffix.
   /// Returns null if size is 0.
   /// e.g. "2.00 GB"
@@ -377,20 +470,14 @@ class WSLApi {
       return '${'size-text'.i18n()}: ${size.toStringAsFixed(2)} GB';
     }
 
-    String ext4Path = getInstancePath(distroName).file('ext4.vhdx');
-    // Get size of distro
-    try {
-      File file = File(ext4Path);
-      int byteSize = file.lengthSync();
-      if (byteSize == 0) {
-        return null;
-      }
-      double size = byteSize / 1024 / 1024 / 1024; // Convert to GB
-      return '${'size-text'.i18n()}: ${size.toStringAsFixed(2)} GB';
-    } catch (error, stack) {
-      logDebug(error, stack, null);
+    // Through findVhdxPath, so a distro moved outside this app still reports a
+    // size instead of silently reading as 0 from the stale preference.
+    final int byteSize = vhdxSizeBytes(distroName);
+    if (byteSize == 0) {
       return null;
     }
+    final double size = byteSize / 1024 / 1024 / 1024; // Convert to GB
+    return '${'size-text'.i18n()}: ${size.toStringAsFixed(2)} GB';
   }
 
   /// Create directory
@@ -1724,7 +1811,7 @@ try {
       }
       final currentPath = _useRemoteWsl
           ? _remoteInstallPathFor(distro)
-          : getInstancePath(distro).path;
+          : currentDistroPath(distro);
       if (_isSamePath(currentPath, targetPath)) {
         throw Exception(
             "Cannot move '$distro': new path must be different from current path ($currentPath).");
@@ -1814,7 +1901,7 @@ try {
     String exportFilePath = path.file('export.ext4');
 
     // Check if new path is same as old path (normalize + absolute paths, compare case-insensitive on Windows)
-    String currentPath = getInstancePath(distro).path;
+    String currentPath = currentDistroPath(distro);
     if (_isSamePath(currentPath, path.path)) {
       throw Exception(
           "Cannot move '$distro': new path must be different from current path (${p.canonicalize(currentPath)}).");
@@ -1826,16 +1913,11 @@ try {
     // Verify export
     File exportFile = File(exportFilePath);
 
-    // Get original VHDX size to determine safety threshold
-    int vhdxSize = 0;
-    try {
-      File vhdxFile = File(getInstancePath(distro).file('ext4.vhdx'));
-      if (vhdxFile.existsSync()) {
-        vhdxSize = vhdxFile.lengthSync();
-      }
-    } catch (e) {
-      logDebug('Could not get VHDX size for $distro: $e', null, null);
-    }
+    // Get original VHDX size to determine safety threshold. Resolved through
+    // findVhdxPath: a stale `Path_` reads as "no VHD", which silently drops
+    // the export floor from 10MB to 1MB on exactly the large distros the
+    // higher floor exists to protect.
+    final int vhdxSize = vhdxSizeBytes(distro);
 
     // Determine minimum safe size based on original VHDX
     // If VHDX is large (>1GB), expect at least 10MB export to catch "header-only" corruptions.
@@ -1899,27 +1981,26 @@ try {
   /// `2>/dev/null; exit 0` makes bash's own status say only "the distro ran
   /// this", leaving wsl.exe free to report the failures that matter.
   ///
-  /// Raw bytes on both channels, decoded through [utf8Convert]. wsl.exe
-  /// answers its *own* failures — "There is no distribution with the
-  /// supplied name" — in UTF-16, and a strict utf8 decoder throws a
-  /// FormatException on that rather than handing the message back, which
-  /// would turn a missing distro into a crash instead of a `false`.
+  /// [path] is interpolated into the script, so it is checked against
+  /// [isPlainDistroPath] first and refused rather than quoted. Every caller
+  /// names an `/etc` constant, so nothing legitimate is turned away.
   Future<String?> readDistroFile(String distro, String path) async {
-    final ProcessResult result = await _runWsl(
-        wslShellArgs(distro, 'cat $path 2>/dev/null; exit 0', user: 'root'),
-        runInShell: false,
-        stdoutEncoding: null,
-        stderrEncoding: null);
-
-    if (result.exitCode != 0) {
-      logDebug(
-          'Could not read $path from $distro: '
-          '${utf8Convert(result.stderr as List<int>)}',
-          null,
+    if (!isPlainDistroPath(path)) {
+      logDebug('Refusing to read $path from $distro: not a plain path', null,
           null);
       return null;
     }
-    return utf8Convert(result.stdout as List<int>);
+
+    final WslOutput result = await _brokeredWsl(
+        wslShellArgs(distro, 'cat $path 2>/dev/null; exit 0', user: 'root'),
+        timeout: _distroFileTimeout);
+
+    if (!result.ok) {
+      logDebug(
+          'Could not read $path from $distro: ${result.stderr}', null, null);
+      return null;
+    }
+    return result.stdout;
   }
 
   /// Write [content] to [path] inside [distro] as root, whole file at once.
@@ -1937,37 +2018,37 @@ try {
   /// Returns whether the file was actually written — a read-only filesystem
   /// fails the redirection and the caller has to say so instead of reporting a
   /// change that never happened.
+  ///
+  /// The base64 encoding covers the *payload*; the redirection target is the
+  /// half it cannot cover, because `> $path` has to be shell syntax for the
+  /// redirection to happen at all. [isPlainDistroPath] closes that half.
   Future<bool> writeDistroFile(String distro, String path, String content,
       {String? mode}) async {
+    if (!isPlainDistroPath(path)) {
+      logDebug(
+          'Refusing to write $path in $distro: not a plain path', null, null);
+      return false;
+    }
+
     final String payload = base64.encode(utf8.encode(content));
-    final ProcessResult result = await _runWsl(
+    final WslOutput result = await _brokeredWsl(
         wslShellArgs(distro, "printf %s '$payload' | base64 -d > $path",
             user: 'root'),
-        runInShell: false,
-        stdoutEncoding: null,
-        stderrEncoding: null);
+        timeout: _distroFileTimeout);
 
-    if (result.exitCode != 0) {
+    if (!result.ok) {
       logDebug(
-          'Could not write $path in $distro: '
-          '${utf8Convert(result.stderr as List<int>)}',
-          null,
-          null);
+          'Could not write $path in $distro: ${result.stderr}', null, null);
       return false;
     }
 
     if (mode != null) {
-      final ProcessResult chmod = await _runWsl(
+      final WslOutput chmod = await _brokeredWsl(
           wslExecArgs(distro, ['chmod', mode, path], user: 'root'),
-          runInShell: false,
-          stdoutEncoding: null,
-          stderrEncoding: null);
-      if (chmod.exitCode != 0) {
-        logDebug(
-            'Could not chmod $mode $path in $distro: '
-            '${utf8Convert(chmod.stderr as List<int>)}',
-            null,
-            null);
+          timeout: _distroFileTimeout);
+      if (!chmod.ok) {
+        logDebug('Could not chmod $mode $path in $distro: ${chmod.stderr}',
+            null, null);
         return false;
       }
     }
@@ -1983,21 +2064,17 @@ try {
   /// [isExecutableInDistro], which runs no shell at all.
   Future<Set<String>> readDistroFileList(
       String distro, List<String> paths) async {
-    final safe = paths
-        .where((path) => RegExp(r'^/[A-Za-z0-9._/-]*$').hasMatch(path))
-        .toList();
+    final safe = paths.where(isPlainDistroPath).toList();
     if (safe.isEmpty) return <String>{};
 
     final script =
         'for f in ${safe.join(' ')}; do [ -e \$f ] && echo \$f; done; exit 0';
-    final ProcessResult result = await _runWsl(
+    final WslOutput result = await _brokeredWsl(
         wslShellArgs(distro, script, user: 'root'),
-        runInShell: false,
-        stdoutEncoding: null,
-        stderrEncoding: null);
-    if (result.exitCode != 0) return <String>{};
+        timeout: _distroFileTimeout);
+    if (!result.ok) return <String>{};
 
-    return utf8Convert(result.stdout as List<int>)
+    return result.stdout
         .split('\n')
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
@@ -2010,12 +2087,10 @@ try {
   /// which the user edits, so it must never reach a shell. `--exec` hands the
   /// arguments to `test` untouched.
   Future<bool> isExecutableInDistro(String distro, String path) async {
-    final ProcessResult result = await _runWsl(
+    final WslOutput result = await _brokeredWsl(
         wslExecArgs(distro, ['test', '-x', path], user: 'root'),
-        runInShell: false,
-        stdoutEncoding: null,
-        stderrEncoding: null);
-    return result.exitCode == 0;
+        timeout: _distroFileTimeout);
+    return result.ok;
   }
 
   /// Read `/etc/wsl.conf` from [distro] as a mutable, section-aware model.
@@ -2132,36 +2207,21 @@ try {
   // on stderr with exit code 0, so a caller that reads only the exit code
   // cannot tell a working command from a silently ignored one (runtime R-1,
   // R-4, R-9).
+  //
+  // [runVerb] in turn goes through [_brokeredWsl], so each verb's timeout is
+  // enforced by something holding the child's handle. The old `.timeout()`
+  // around `Process.run` could only stop *waiting*: a `--manage --move` that
+  // wedged went on holding the VHD open with nothing left pointing at it.
   // ===========================================================================
 
   /// Run [args] and hand back **both** channels and the exit code.
   ///
-  /// Raw bytes on both channels, decoded through [utf8Convert]: wsl.exe answers
-  /// `--version`, `--status` and its own failures in UTF-16, and a strict utf8
-  /// decoder throws a `FormatException` on that instead of returning the text.
-  Future<WslOutput> runVerb(List<String> args, {Duration? timeout}) async {
-    try {
-      var future = _runWsl(args, stdoutEncoding: null, stderrEncoding: null);
-      if (timeout != null) {
-        future = future.timeout(timeout);
-      }
-      final ProcessResult result = await future;
-      return WslOutput(
-        result.exitCode,
-        utf8Convert(result.stdout is List<int>
-            ? result.stdout as List<int>
-            : utf8.encode(result.stdout?.toString() ?? '')),
-        utf8Convert(result.stderr is List<int>
-            ? result.stderr as List<int>
-            : utf8.encode(result.stderr?.toString() ?? '')),
-      );
-    } on TimeoutException {
-      return WslOutput(-1, '', 'wsl ${args.join(' ')} timed out');
-    } catch (error, stack) {
-      logDebug('wsl ${args.join(' ')} failed: $error', stack, null);
-      return WslOutput(-1, '', error.toString());
-    }
-  }
+  /// [timeout] bounds the whole call and kills the child when it expires;
+  /// callers give it the shape of the work — 20s for a version probe, half an
+  /// hour for a move that copies a disk.
+  Future<WslOutput> runVerb(List<String> args,
+          {Duration timeout = _verbTimeout}) =>
+      _brokeredWsl(args, timeout: timeout);
 
   /// `wsl --version`. Inbox WSL rejects the flag outright, which is the
   /// documented probe for "is this the Store build" (`systemd.md:30`).
@@ -2254,6 +2314,17 @@ try {
     // it is wsl.exe being told to register the distro under nothing.
     final trimmedName = name?.trim() ?? '';
     final trimmedLocation = location?.trim() ?? '';
+
+    // A `"` in the name is refused at registration rather than carried: the
+    // name is argv here, but [start] launches a terminal through `cmd.exe`
+    // (`runInShell: true`, deliberately — see its own comment), and a quote
+    // in the distro name makes that command line unparseable. Registering a
+    // distro this app could never open again is worse than saying no now.
+    if (trimmedName.contains('"')) {
+      return Future.value(const WslOutput(
+          -1, '', 'A distribution name cannot contain a double quote.'));
+    }
+
     return runVerb([
       '--install',
       '--from-file',

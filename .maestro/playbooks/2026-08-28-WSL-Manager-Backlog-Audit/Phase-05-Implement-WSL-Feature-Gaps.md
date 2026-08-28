@@ -322,10 +322,93 @@ Every setting added must be gated on the minimum WSL version recorded in the aud
     registry override in `build-custom-distro.md` is an admin test procedure, not a
     settings-screen feature.
 
-- [ ] Wire the new settings into the API layer where they are not just file writes:
+- [x] Wire the new settings into the API layer where they are not just file writes:
   - Extend `lib/api/wsl.dart` for any new `wsl.exe` command, routing it through `ExecutionBroker` with an appropriate timeout — never `Process.run` directly
   - Keep every WSL command string free of double quotes (`runInShell: false` passes `"` through to bash literally)
   - Resolve any disk path through `findVhdxPath()` / `vhdxPathCandidates()`, not the stale `Path_<distro>` preference
+
+  **Done 2026-08-28.** All three bullets were audits of what the previous four tasks
+  shipped, and each turned up something real. No new `wsl.exe` verb was needed — the
+  commands are all there — so the work was the routing, the quoting and the path
+  resolution behind them.
+
+  - **The broker was not actually in the loop, for anything.** Every new command went
+    through `_runWsl` → `Shell.run` → `Process.run`, and `runVerb` wrapped that in a
+    `.timeout()`. `Process.run` hands back **no handle**, so that timeout could only stop
+    *waiting*: the child went on running. That is the leak AGENTS.md already records as
+    hundreds of orphaned `wsl.exe` processes, and it was sitting on the one verb where it
+    matters most — a `--manage --move` that wedges keeps the VHD open. New
+    `WSLApi._brokeredWsl` (`wsl.dart:346`) builds an `ExecutionRequest` with a **required**
+    timeout and runs it through `ExecutionBroker`, which spawns via `Shell.start`, keeps the
+    handle and reaps on expiry (SIGTERM → SIGKILL after 2s). `runVerb` and all four
+    in-distro file primitives — `readDistroFile`, `writeDistroFile`, `readDistroFileList`,
+    `isExecutableInDistro` — now go through it. The local/remote split is `_runWsl`'s, so a
+    remote target is unaffected.
+  - **The broker had to be *built*, not just passed.** `WSLApi`'s `broker:` parameter is
+    filled in by nothing in production (AGENTS.md's own note: every production call site
+    uses the default constructor, so the `_broker != null` branches are dead code today), so
+    "routed through the broker" would have been true of the tests and false of the shipping
+    app. New `executionBroker` getter (`wsl.dart:104`) lazily builds one over the instance's
+    own `Shell` when the constructor was handed none. The existing `_broker != null`
+    branches are deliberately left alone — flipping those forty call sites is not this task.
+  - **Timeouts sized to the work, not one number.** 20s for `--version`/`--status`, 30s for
+    `df`, 60s for an in-distro `cat`/`printf`/`chmod`/`test` (sized for a distro that has to
+    *cold start* to answer, not for the few hundred bytes it moves), 20min for `--update`,
+    30min for `--manage`, 60min for `--install --from-file`, and a 5min default for a verb
+    that names none. A test reads each one back out of the broker's own audit log, so it
+    pins what was *requested* rather than what the call site looks like.
+  - **Decoding moved rather than duplicated.** `ExecutionBroker.decodeWslOutput` is
+    `utf8Convert` — lenient UTF-8 with control characters stripped — so the manual
+    `stdoutEncoding: null` + `utf8Convert(result.stdout as List<int>)` dance disappeared from
+    five call sites. Load-bearing, not cosmetic: wsl.exe answers `--version` and its own
+    failures in UTF-16 and a strict decoder throws `FormatException` on that.
+  - **Quoting: the payload was safe, the destination was not.** `writeDistroFile` base64s its
+    content so no value reaches a shell — but `> $path` has to *be* shell syntax for the
+    redirection to happen, and `path` was interpolated raw. `/etc/wsl.conf; rm -rf /` was two
+    commands. `readDistroFile` had the same hole in its `cat`. New `isPlainDistroPath`
+    (`wsl_args.dart`) — absolute, and built only from characters no shell interprets — is now
+    the guard on both, and `readDistroFileList`'s inline copy of that regex was replaced by
+    it rather than left as a third. A failing path is **refused**, not quoted: there is no
+    legitimate `/etc` path with a space in it, and a guard that silently rewrites its input
+    is harder to reason about than one that says no.
+  - **One real double quote, found by the sweep test.** `installFromFile` passed a
+    user-typed `--name` through untouched. It is argv to wsl.exe so it is not an injection —
+    but `start()` launches a terminal through `cmd.exe` on purpose (`runInShell: true`), and
+    a `"` in the distro name makes *that* command line unparseable. The distro would install
+    and then never open. It is now refused at registration with a stated reason, which is
+    strictly better than registering something this app could never use.
+  - **The disk paths were reading the stale preference.** `getInstancePath()` prefers
+    `Path_<distro>` and only then the registry — right for "where should a new instance go",
+    backwards for "where is this distro now", which is exactly why `vhdxPathCandidates()`
+    exists with the opposite order. Three call sites were asking the wrong one, and the worst
+    was in `move()`: the export-size floor read the VHD through `getInstancePath`, so a stale
+    preference reads as "no VHD", which **silently drops the safety floor from 10MB to 1MB**
+    — on precisely the large distros the higher floor exists to protect. Also fixed: both
+    same-path checks (a stale preference could refuse a legitimate move or wave through a
+    no-op) and `getSize`, which reported no size at all. New `currentDistroPath` and
+    `vhdxSizeBytes` (`wsl.dart:431`) resolve through `findVhdxPath` and fall back to
+    `getInstancePath` only when no disk can be found at all.
+  - **The mock had to stop being channel-specific.** `MockShell.run` held the whole
+    simulation and `MockShell.start` returned an empty, exit-0 `MockProcess` for everything
+    but `--unregister`. Routing the new commands through the broker (which uses `start`)
+    would have made half the suite pass against a mock that answered nothing — a green test
+    that proves nothing, which is worse than a red one. Both channels now share one
+    `_simulate`, and `runCalls`/`lastRunInShell` record from either, so an order assertion
+    still sees a `start`-based `--move` interleaved with a `run`-based `--terminate`. Two
+    existing assertions moved from `lastRunArguments` to `runCalls.last` for the same reason;
+    a duplicate `--unregister` block that removed the distro even under
+    `simulateRemoveFailure` was deleted while the two paths were being merged.
+  - **Verification:** `flutter test` **675 passing** (was 665) — 10 new in
+    `test/wsl_test.dart`. `flutter analyze` **108 issues, 0 errors**, byte-identical to the
+    baseline this document's previous task recorded. `dart run scripts/check_translations.dart`
+    exit 0 (no new user-facing strings — the refusal messages are diagnostics on
+    `WslOutput.stderr`, which the existing `…failed-text` keys already render).
+    `flutter test integration_test/` is `+17 -4`, the same four debug-connection failures as
+    the pre-existing baseline (`Working/phase-05-task05-integration.txt`).
+    `git diff --numstat` carries **no formatting churn**: this SDK's `dart format` reflows
+    the whole of every file it is pointed at (the repo is written in the pre-3.x style), so
+    the four touched files were left in their own style and only the added hunks were
+    written to match it.
 
 - [ ] Write tests for the new surface:
   - Extend `test/wsl_test.dart` for `.wslconfig` and `wsl.conf` read/write round-trips of the new keys, including quoting and unusual values

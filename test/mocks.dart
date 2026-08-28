@@ -55,8 +55,10 @@ class MockShell implements Shell {
   final List<String> distros = [];
   List<String> lastStartArguments = [];
 
-  /// Whether the last [run] was routed through cmd.exe. In-distro WSL
-  /// commands must not be — see lib/api/wsl_args.dart.
+  /// Whether the last command — through [run] or [start] — was routed through
+  /// cmd.exe. In-distro WSL commands must not be, on either channel: `cmd /c`
+  /// eats `&`, `|`, `<`, `>` and `^` before wsl.exe ever sees them. See
+  /// lib/api/wsl_args.dart.
   bool lastRunInShell = false;
   String lastStartExecutable = '';
   List<String> lastRunArguments = [];
@@ -97,9 +99,12 @@ class MockShell implements Shell {
   /// Every `ssh` invocation fails — the remote host is unreachable.
   bool sshFails = false;
 
-  /// Every argument list [run] has been handed, in order. `lastRunArguments`
-  /// only remembers one, which is not enough to assert that a *sequence*
-  /// happened — "terminate, then move" — or that a step did **not**.
+  /// Every argument list this shell has been handed, in order, through either
+  /// [run] or [start]. `lastRunArguments` only remembers one, which is not
+  /// enough to assert that a *sequence* happened — "terminate, then move" — or
+  /// that a step did **not**. Both channels feed it because the commands that
+  /// go through `ExecutionBroker` (and so through `start`) interleave with the
+  /// ones that still call `run`, and an order assertion has to see both.
   final List<List<String>> runCalls = <List<String>>[];
 
   /// Every `wsl --manage` argument list this shell has been handed.
@@ -162,6 +167,34 @@ class MockShell implements Shell {
       Encoding? stderrEncoding = systemEncoding}) async {
     lastRunExecutable = executable;
     lastRunArguments = arguments;
+
+    final outcome = _simulate(executable, arguments, runInShell);
+
+    dynamic stdoutData = outcome.stdout;
+    if (stdoutEncoding == null) {
+      stdoutData = utf8.encode(outcome.stdout);
+    }
+
+    dynamic stderrData = outcome.stderr;
+    if (stderrEncoding == null) {
+      stderrData = utf8.encode(outcome.stderr);
+    }
+
+    return ProcessResult(0, outcome.exitCode, stdoutData, stderrData);
+  }
+
+  /// Answer one command, whichever channel it arrived on.
+  ///
+  /// [run] and [start] share this because the code under test now uses both
+  /// for the same commands: `ExecutionBroker` spawns through `Shell.start` so
+  /// it can reap a timed-out child, so every `wsl.exe` verb and every
+  /// in-distro file read/write reaches this mock through `start`, while the
+  /// older direct-`Process.run` paths still reach it through `run`. A
+  /// simulation that lived in `run` alone would answer half of them with an
+  /// empty, exit-0 process — which is not a failing test, it is a passing one
+  /// that proves nothing.
+  _MockOutcome _simulate(
+      String executable, List<String> arguments, bool runInShell) {
     lastRunInShell = runInShell;
     runCalls.add(List<String>.from(arguments));
 
@@ -170,13 +203,8 @@ class MockShell implements Shell {
     int exitCode = 0;
 
     if (sshFails && executable == 'ssh') {
-      return ProcessResult(
-          0,
-          255,
-          stdoutEncoding == null ? <int>[] : '',
-          stderrEncoding == null
-              ? utf8.encode('ssh: connect to host: Connection refused')
-              : 'ssh: connect to host: Connection refused');
+      return const _MockOutcome(
+          255, '', 'ssh: connect to host: Connection refused');
     }
 
     // Every in-distro invocation now arrives as `--exec <shell> -c <script>`
@@ -362,11 +390,6 @@ class MockShell implements Shell {
       }
     }
 
-    if (arguments.contains('--unregister')) {
-      String distro = arguments[1];
-      distros.remove(distro);
-    }
-
     if (arguments.contains('--install')) {
       installCalls.add(List<String>.from(arguments));
       if (arguments.contains('-d')) {
@@ -383,17 +406,7 @@ class MockShell implements Shell {
       }
     }
 
-    dynamic stdoutData = stdout;
-    if (stdoutEncoding == null) {
-      stdoutData = utf8.encode(stdout);
-    }
-
-    dynamic stderrData = stderr;
-    if (stderrEncoding == null) {
-      stderrData = utf8.encode(stderr);
-    }
-
-    return ProcessResult(0, exitCode, stdoutData, stderrData);
+    return _MockOutcome(exitCode, stdout, stderr);
   }
 
   @override
@@ -406,20 +419,23 @@ class MockShell implements Shell {
     lastStartExecutable = executable;
     lastStartArguments = arguments;
 
-    // WSLApi.remove() runs `wsl --unregister` through Process.start (not
-    // shell.run), so the same simulation the run() path offers has to exist
-    // here too — otherwise remove() silently no-ops against the mock: the
-    // distro stays in [distros] and simulateRemoveFailure never fires.
-    if (arguments.contains('--unregister')) {
-      final distro = arguments[arguments.indexOf('--unregister') + 1];
-      if (simulateRemoveFailure) {
-        return MockProcess(exitCode: 1, stderr: 'Unregister failed');
-      }
-      distros.remove(distro);
-    }
-
-    return MockProcess();
+    final outcome = _simulate(executable, arguments, runInShell);
+    return MockProcess(
+      exitCode: outcome.exitCode,
+      stdout: outcome.stdout,
+      stderr: outcome.stderr,
+    );
   }
+}
+
+/// What [MockShell._simulate] decided, before it is shaped into a
+/// [ProcessResult] or a [MockProcess].
+class _MockOutcome {
+  final int exitCode;
+  final String stdout;
+  final String stderr;
+
+  const _MockOutcome(this.exitCode, this.stdout, this.stderr);
 }
 
 class MockProcess implements Process {

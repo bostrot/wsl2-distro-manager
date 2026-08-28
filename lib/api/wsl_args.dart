@@ -94,3 +94,19 @@ List<String> wslShellArgs(
 }) {
   return wslExecArgs(distro, [shell, '-c', script], user: user);
 }
+
+/// In-distro paths this app is willing to interpolate into a shell script.
+///
+/// Absolute, and built only from characters no shell interprets — no space,
+/// no quote, no `$`, no `;`. [wslShellArgs] hands its script to `bash -c`, so
+/// a path that reaches it unquoted is code; `/etc/wsl.conf; rm -rf /` would
+/// be two commands. Every path this app writes to (`/etc/wsl.conf`,
+/// `/etc/wsl-distribution.conf`, `/etc/oobe.sh`) matches, so the guard costs
+/// nothing and closes the one hole the base64 payload encoding does not:
+/// the payload is safe, the *destination* was not.
+///
+/// A path that fails this is not quoted-and-passed — it is refused. There is
+/// no legitimate caller with a space in an `/etc` path, and a guard that
+/// silently rewrites its input is harder to reason about than one that says no.
+bool isPlainDistroPath(String path) =>
+    RegExp(r'^/[A-Za-z0-9._/-]+$').hasMatch(path);

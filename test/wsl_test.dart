@@ -551,9 +551,13 @@ systemd = true
       mockShell.wslConfContents = '';
       await wslApi.setSetting('Ubuntu', 'network', 'hostname', 'my"host');
 
-      expect(mockShell.lastRunArguments.last, isNot(contains('"')));
-      expect(mockShell.lastRunArguments, containsAllInOrder(['-d', 'Ubuntu']));
-      expect(mockShell.lastRunArguments, containsAllInOrder(['-u', 'root']));
+      // runCalls, not lastRunArguments: the write goes through
+      // ExecutionBroker, which spawns via Shell.start so it can reap the
+      // child. The assertion is about the argv, not about the channel.
+      final write = mockShell.runCalls.last;
+      expect(write.last, isNot(contains('"')));
+      expect(write, containsAllInOrder(['-d', 'Ubuntu']));
+      expect(write, containsAllInOrder(['-u', 'root']));
       expect(mockShell.lastRunInShell, false);
       expect((await wslApi.getWSLConf('Ubuntu'))['network']!['hostname'],
           'my"host');
@@ -897,7 +901,7 @@ systemd = true
           '/dev/sdd        104857600  1048576 103809024   1% /mnt/wslg/distro\n';
 
       final usage = await wslApi.diskUsage('Ubuntu');
-      expect(mockShell.lastRunArguments,
+      expect(mockShell.runCalls.last,
           ['--system', '-d', 'Ubuntu', 'df', '-k', '/mnt/wslg/distro']);
       expect(usage!.usedBytes, 1048576 * 1024);
       expect(usage.totalBytes, 104857600 * 1024);
@@ -1141,6 +1145,183 @@ systemd = true
 
       expect(mockShell.wslConfContents, '[boot]\nsystemd = true\n');
       expect(mockShell.distributionConfContents, '[oobe]\ndefaultName = b\n');
+    });
+  });
+
+  /// Phase 05, "wire the new settings into the API layer": every command the
+  /// phase added must go through [ExecutionBroker] with a timeout, must not
+  /// put a `"` anywhere in its argv, and must resolve a disk through
+  /// [findVhdxPath] rather than the stale `Path_` preference.
+  group('the new API surface is brokered, quoted and path-resolved', () {
+    test('a verb spawns through Shell.start, never Process.run', () async {
+      // Not a style preference. `Process.run` hands back no handle, so the
+      // only thing a timeout around it can do is stop waiting — the child
+      // goes on holding whatever it holds. The broker spawns through
+      // `Shell.start` precisely so it can reap.
+      await wslApi.versionInfo();
+
+      expect(mockShell.lastStartExecutable, 'wsl');
+      expect(mockShell.lastStartArguments, ['--version']);
+      expect(mockShell.lastRunExecutable, '',
+          reason: 'the run channel must not have been used at all');
+    });
+
+    test('in-distro reads and writes are brokered too', () async {
+      mockShell.wslConfContents = '';
+      await wslApi.setSetting('Ubuntu', 'boot', 'systemd', 'true');
+
+      expect(mockShell.lastStartExecutable, 'wsl');
+      expect(mockShell.lastRunExecutable, '');
+    });
+
+    test('every verb carries a timeout sized to its work', () async {
+      // Read off the broker's own audit log, so this pins what was actually
+      // requested rather than what the call site looks like.
+      Future<Duration> lastTimeout(Future<void> Function() call) async {
+        await call();
+        return wslApi.executionBroker.auditLog.last.request.timeout;
+      }
+
+      const target = 'C:/WSL2-Distros/timeoutprobe';
+      addTearDown(() async {
+        final dir = Directory(target);
+        if (dir.existsSync()) await dir.delete(recursive: true);
+      });
+
+      expect(await lastTimeout(() => wslApi.versionInfo()),
+          const Duration(seconds: 20));
+      expect(await lastTimeout(() => wslApi.statusInfo()),
+          const Duration(seconds: 20));
+      expect(await lastTimeout(() => wslApi.manageMove('Ubuntu', target)),
+          const Duration(minutes: 30));
+      expect(await lastTimeout(() => wslApi.updateWsl()),
+          const Duration(minutes: 20));
+      expect(await lastTimeout(() => wslApi.installFromFile('C:/a.wsl')),
+          const Duration(minutes: 60));
+      expect(await lastTimeout(() => wslApi.diskUsage('Ubuntu')),
+          const Duration(seconds: 30));
+      expect(
+          await lastTimeout(
+              () => wslApi.readDistroFile('Ubuntu', '/etc/os-release')),
+          const Duration(seconds: 60));
+    });
+
+    test('a wedged verb is killed, not abandoned', () async {
+      final hung = ControlledProcess();
+      final testShell = TestShell()..processFactory = () => hung;
+      final api = WSLApi(shell: testShell);
+
+      final result =
+          await api.runVerb(['--manage', 'Ubuntu', '--move', 'C:/target'],
+              timeout: const Duration(milliseconds: 50));
+
+      expect(result.ok, false);
+      expect(result.stderr, contains('timed out'));
+      expect(hung.killCount, greaterThanOrEqualTo(1),
+          reason: 'the child must be reaped, not left running');
+    });
+
+    test('no new command puts a double quote in its argv', () async {
+      // runInShell is false, so a `"` is not a quote to anything downstream —
+      // it reaches bash literally (lib/api/wsl_args.dart).
+      mockShell.distributionConfContents = '';
+
+      await wslApi.setDistributionSetting(
+          'Ubuntu', 'windowsterminal', 'profileTemplate', '/usr/lib/a"b.json');
+      await wslApi.writeDistroFile('Ubuntu', '/etc/oobe.sh', 'echo "hi"\n',
+          mode: '0755');
+      await wslApi.installFromFile('C:/My Distros/a.wsl', name: 'my distro');
+      await wslApi.manageResize('Ubuntu', '2TB');
+      await wslApi.readDistroFileList(
+          'Ubuntu', const ['/etc/wsl.conf', '/etc/resolv.conf']);
+
+      for (final call in mockShell.runCalls) {
+        for (final argument in call) {
+          expect(argument, isNot(contains('"')),
+              reason: 'a double quote reached bash in: ${call.join(' ')}');
+        }
+      }
+    });
+
+    test('a name with a double quote is refused, not registered', () async {
+      // The name is argv to wsl.exe, but start() launches a terminal through
+      // cmd.exe on purpose, and a quote in the name makes that command line
+      // unparseable — the distro would install and then never open.
+      final result =
+          await wslApi.installFromFile('C:/a.wsl', name: 'my"distro');
+
+      expect(result.ok, false);
+      expect(result.text, contains('double quote'));
+      expect(mockShell.installCalls, isEmpty);
+    });
+
+    test('a path that is not a plain path is refused, not interpolated',
+        () async {
+      // `> $path` has to be shell syntax for the redirection to happen at
+      // all, which is the one half the base64 payload cannot cover.
+      mockShell.wslConfContents = '';
+      final before = mockShell.runCalls.length;
+
+      expect(
+          await wslApi.writeDistroFile(
+              'Ubuntu', '/etc/wsl.conf; rm -rf /', 'x'),
+          false);
+      expect(await wslApi.readDistroFile('Ubuntu', '/etc/\$(id).conf'), isNull);
+      expect(await wslApi.readDistroFile('Ubuntu', 'etc/wsl.conf'), isNull,
+          reason: 'a relative path is not an absolute one');
+
+      expect(mockShell.runCalls.length, before,
+          reason: 'nothing may run for a refused path');
+    });
+
+    test('a plain path is still accepted', () async {
+      mockShell.wslConfContents = '';
+      expect(
+          await wslApi.writeDistroFile(
+              'Ubuntu', '/usr/lib/wsl/my-icon.ico', 'x'),
+          true);
+    });
+
+    /// Stage [name]'s disk where the app's own default puts it, while the
+    /// stored `Path_` preference points somewhere it is not — a distro moved
+    /// by anything other than this app, or a config restored onto a machine
+    /// with a different layout.
+    void stageStaleDistro(String name, {int? bytes}) {
+      final vhdx = File('C:/WSL2-Distros/$name/ext4.vhdx')
+        ..createSync(recursive: true);
+      if (bytes != null) {
+        final handle = vhdx.openSync(mode: FileMode.write);
+        handle.truncateSync(bytes);
+        handle.closeSync();
+      }
+      prefs.setString('Path_$name', 'C:/WSL2-Distros/$name-gone');
+      addTearDown(() async {
+        await prefs.remove('Path_$name');
+        for (final path in ['C:/WSL2-Distros/$name', 'C:/WSL2-Distros/$name-gone']) {
+          final dir = Directory(path);
+          if (dir.existsSync()) await dir.delete(recursive: true);
+        }
+      });
+    }
+
+    test('currentDistroPath resolves the disk, not the stale preference',
+        () async {
+      stageStaleDistro('stalepref');
+
+      final resolved = wslApi.currentDistroPath('stalepref');
+      expect(File('$resolved/ext4.vhdx').existsSync(), true,
+          reason: 'the answer must be where the disk actually is');
+      expect(resolved.toLowerCase(), isNot(contains('-gone')));
+    });
+
+    test('vhdxSizeBytes measures the resolved disk', () async {
+      // 3 MB clears move()'s 1 MB floor without asking the build machine for
+      // real disk; the assertion is on the exact length either way.
+      const size = 3 * 1024 * 1024;
+      stageStaleDistro('sizedpref', bytes: size);
+
+      expect(wslApi.vhdxSizeBytes('sizedpref'), size);
+      expect(wslApi.vhdxSizeBytes('no-such-distro-anywhere'), 0);
     });
   });
 }
