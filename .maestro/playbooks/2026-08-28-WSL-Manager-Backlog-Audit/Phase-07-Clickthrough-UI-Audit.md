@@ -41,11 +41,43 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
     `-Backup`, `-Set`, `-Show`, `-Remove`, `-Restore` -- and the prefs file re-verified as
     BOM-less valid JSON with the emoji and the `1183.0` double formatting intact.
 
-- [ ] Audit the main list and navigation surface, capturing screenshots of each state:
+- [x] Audit the main list and navigation surface, capturing screenshots of each state:
   - `lib/components/list.dart` / `list_item.dart`: running vs stopped distro rows, the 5-second poll not causing visible flicker, hover and focus states, action button order and iconography, long distro names, a machine with zero distros (empty state)
   - `lib/nav/panelist.dart` sidebar: labels, selected state, `PaneItem.title` must be a real `Text` or the entry has no accessible name
   - Window title bar, theme switch, and the app's behaviour at the narrow width
   - Write findings to `doc/audit/ui-ux/list-and-navigation.md` with front matter, one finding per row: what, where (`file:line`), severity, and the screenshot filename
+
+  **Done 2026-08-28.** 26 findings (LN-01..LN-26) in `doc/audit/ui-ux/list-and-navigation.md`,
+  all copied into the master table in `doc/audit/ui-ux/index.md`. 22 screenshots in
+  `.maestro/screenshots/phase-07/` (gitignored), including four nearest-neighbour zoom
+  crops -- the action-bar and compact-rail defects are not legible at 1:1.
+
+  - **Measured, not eyeballed.** Three findings came out of pixel diffs rather than
+    looking: the 5-second poll is *clean* (13 captures 1s apart, 0 changed pixels in the
+    list region -- recorded as a verified-pass so the audit doesn't imply a problem);
+    six Tab presses on home changed 0 pixels outside the one label that happened to
+    update (LN-12), cross-checked against the create screen where the same helper does
+    produce a focus ring on Tab 1, so the keystrokes are being delivered; and clicking
+    the app-bar back arrow on `/templates` changed 0 pixels (LN-13).
+  - **Two findings were reproduced by driving state through `prefs.ps1`** rather than
+    waiting for them: a 97-char `DistroName_Ubuntu` for the long-name pass (LN-01,
+    LN-23), and `UseRemoteWSL` + an unreachable `RemoteWSLTarget` to force the list's
+    error and loading branches (LN-17, LN-18, LN-20), which are otherwise unreachable on
+    a healthy host. Baseline restored afterwards; original prefs backed up to
+    `%TEMP%\wslm-prefs-p07-list.json`.
+  - **LN-03 is the one to fix first.** `home_screen.dart:109` builds a new `GlobalKey`
+    on every build, so toggling the AI panel tears down the whole list subtree --
+    verified by expanding a row, clicking the toggle, and watching it collapse. Same
+    root cause leaks `reloadEvery5Seconds()`'s never-terminating `for(;;)` loop once per
+    teardown (stated from source; the `wsl.exe` process-count measurement was too noisy
+    to support a claim, so it is not presented as one).
+  - **LN-21/LN-22 are labelled source-derived, not screenshotted.** The zero-distro empty
+    state needs the host's real distros deleted, and `HomePage` constructs its own
+    `WSLApi()` with no injection seam so it can't be faked in a widget test either. Noted
+    in the index's "not examined" section rather than quietly implied to be covered.
+  - No Dart code changed -- this task produced two Markdown files and screenshots -- so
+    there is nothing new to unit-test. `flutter analyze` was run anyway to confirm the
+    tree is unchanged and clean.
 
 - [ ] Audit the create and install flows:
   - `lib/screens/create_screen.dart` (the new dedicated screen): field order, validation messages, what happens with an empty name, a duplicate name, a name with spaces or non-ASCII characters, the catalogue dropdown, the custom-rootfs path, install progress, cancel, and the error/retry state
