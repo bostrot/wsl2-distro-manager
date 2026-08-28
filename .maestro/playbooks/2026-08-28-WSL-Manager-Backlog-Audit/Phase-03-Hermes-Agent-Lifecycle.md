@@ -137,12 +137,61 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
   `-U0` helper. Logs in `Working/phase-03-task03-full-test.txt` and
   `Working/phase-03-task03-analyze.txt`.
 
-- [ ] Verify the Hermes lifecycle by clicking through the running app, capturing a screenshot at each step into `.maestro/screenshots/phase-03/`:
+- [x] Verify the Hermes lifecycle by clicking through the running app, capturing a screenshot at each step into `.maestro/screenshots/phase-03/`:
   - Install → progress visible, completes or fails with a readable reason
   - Start → card reports running only when the gateway is actually serving (port-based check from Phase 02)
   - Open dashboard → browser opens on a working Hermes page, not a documentation link
   - Stop → card returns to installed/stopped, and no `wsl.exe` orphans accumulate (`(Get-Process wsl).Count` before and after)
   - Record each result in `Working/hermes-clickthrough.md` with the screenshot filename next to it
+
+  **Result (2026-08-28).** Done against the real `ai-workspace` distro,
+  `launch.ps1 -Mode run -ForcePro -Width 1280 -Height 900`. 24 screenshots in
+  `.maestro/screenshots/phase-03/`, full write-up with nine findings in
+  `Working/hermes-clickthrough.md`. Nothing was staged and nothing was fixed
+  here — the fixes belong to the next task, which now has an exact list.
+
+  **The lifecycle does not work, and the cause is a single wrong assumption:**
+  `hermes gateway` is the **messaging** gateway (Telegram/Discord/WhatsApp) and
+  binds **no TCP port at all**. The thing that listens on 9119 is
+  `hermes serve` / `hermes dashboard` (`--port PORT   Port (default 9119…)`).
+  The port constant is right; the command aimed at it is not. Started
+  `hermes serve --skip-build` by hand and the card went green on its own with
+  `http://localhost:9119` answering **HTTP 200** from Windows
+  (`19-running-after-serve.png`) — so the Phase 02 port-based check needs no
+  change.
+
+  - **Install — fails, but the streaming works.** Progress is visible and
+    updates with no interaction across seven screenshots. It dies at
+    `Nothing was printed for 12 min, so the command was stopped.` The budget
+    did **not** misfire: `hermes_cli.main setup` was wedged with **`fd 0 →
+    /dev/tty`**, zero `/proc/<pid>/io` movement over 30 s and no log line for
+    20 min — an interactive prompt (cf. `--accept-hooks`, *"without a TTY
+    prompt"*). Task 01's 482 s unattended run only completed because it had a
+    real terminal. Upstream `uv sync --locked` also errors on a stale
+    `uv.lock`, non-fatally, and dominates the failure tail. Two rendering
+    defects: ANSI escapes survive as `[0;36m` residue, and the `\r`-split
+    Playwright bar leaves the frozen fragment `(O) 2. No` as both the progress
+    line and the retained "last output".
+  - **Start — fails with a bare `Error:`** and no text (the empty-stderr
+    fallback Phase 02 added to `stop()` was never added to `start()`), plus the
+    stale *install* progress line on a *start* failure.
+  - **Open dashboard — never opens.** `hermes dashboard` starts a server and
+    blocks; it prints no URL, so the card says
+    `No dashboard URL from: hermes dashboard`. Browser process count 15 → 15.
+  - **Stop — reports success while the service is still serving.** `stop()`
+    trusts exit 0, and the command ends in `; true`; `hermes serve` was still
+    running and still listening on 9119 with the card reading "angehalten".
+  - **Orphans — clean.** `(Get-Process wsl).Count` 2 before and 2 after the
+    whole cycle (both the keep-alive), and it dropped to 0 the moment the
+    silence timeout reaped the abandoned install. Force-killing the app does
+    leak those 2 keep-alive processes.
+  - **Two defects outside the four bullets.** Uninstall reports success but
+    leaves `/usr/local/bin/hermes` — a wrapper *script*, not a symlink — so the
+    card still reads "Installed" over a tool that cannot run, and the app can
+    never return itself to a clean state. And on the first launch of a session a
+    cached status renders with no "checking" indicator, so two installed tools
+    read "Nicht installiert" for 14 s; the probe itself is sound
+    (`Working/probe_hermes.dart` replicates it and always answers `exists`).
 
 - [ ] Fix whatever the click-through breaks. Likely candidates, all previously seen on the sibling tools:
   - The gateway dying with its WSL session — `AiWorkspaceService` already holds one `wsl -d ai-workspace sleep infinity` session via `ExecutionBroker.startPersistent`; confirm Hermes is covered by it, since Hermes uses the `setsid` shape and may not need it
