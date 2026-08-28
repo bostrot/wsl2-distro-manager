@@ -400,5 +400,7 @@
   "rate-later": "Talán később",
   "rate-never": "Ne kérdezd többet",
   "startingup-text": "Indul...",
-  "ai-workspace-startingup-hint-text": "Az eszköz még indul. A vezérlőpult akkor nyitható meg, ha készen áll."
+  "ai-workspace-startingup-hint-text": "Az eszköz még indul. A vezérlőpult akkor nyitható meg, ha készen áll.",
+  "ai-workspace-install-progress-text": "Telepítés... várakozás a telepítő első kimenetére.",
+  "ai-workspace-install-last-output-text": "Utolsó kimenet: %s"
 }

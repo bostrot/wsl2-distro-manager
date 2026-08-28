@@ -401,5 +401,7 @@
   "rate-later": "稍後再說",
   "rate-never": "不再詢問",
   "startingup-text": "正在啟動...",
-  "ai-workspace-startingup-hint-text": "工具仍在啟動中。就緒後即可開啟其儀表板。"
+  "ai-workspace-startingup-hint-text": "工具仍在啟動中。就緒後即可開啟其儀表板。",
+  "ai-workspace-install-progress-text": "正在安裝... 正在等待安裝程式的首次輸出。",
+  "ai-workspace-install-last-output-text": "最新輸出: %s"
 }

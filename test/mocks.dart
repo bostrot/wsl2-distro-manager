@@ -477,10 +477,12 @@ class TestShell implements Shell {
 /// running, still printing" — the shape the AI workspace install path's
 /// silence timeout is built around.
 class ControlledProcess implements Process {
-  final StreamController<List<int>> _stdout =
-      StreamController<List<int>>.broadcast();
-  final StreamController<List<int>> _stderr =
-      StreamController<List<int>>.broadcast();
+  // Single-subscription, like a real process pipe. A broadcast controller
+  // drops anything written before someone listens, and its cancel() never
+  // completes under a widget test's fake clock — which strands any test that
+  // drives an install through the UI.
+  final StreamController<List<int>> _stdout = StreamController<List<int>>();
+  final StreamController<List<int>> _stderr = StreamController<List<int>>();
   final Completer<int> _exited = Completer<int>();
 
   /// How many times [kill] was called, so a test can assert the child really

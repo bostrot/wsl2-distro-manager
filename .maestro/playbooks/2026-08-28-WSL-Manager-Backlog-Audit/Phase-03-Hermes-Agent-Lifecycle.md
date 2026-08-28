@@ -82,10 +82,60 @@ Run the app with `flutter run -d windows --dart-define=WSLM_FORCE_PRO=true` (the
   it needs a **`-U0`** diff — a diff with context makes it drop the context
   lines. `Working/revert_hunks.dart` is the repair path if that happens again.
 
-- [ ] Surface install progress in `lib/screens/ai_workspace_screen.dart`:
+- [x] Surface install progress in `lib/screens/ai_workspace_screen.dart`:
   - Show the last streamed output line (or a small scrolling log region) under the installing card, reusing whatever progress/log widget already exists in the repo rather than inventing one — search `lib/components/` first
   - Keep the existing "install survives navigation" behaviour intact: tracking lives in the service via `isInstalling()`, and `refreshStatus()` must not clobber an install in flight
   - Add any new i18n keys to **all** files in `lib/i18n/` by appending (never sorting), with real translations, not English placeholders
+
+  **Result (2026-08-28):** Done in `lib/screens/ai_workspace_screen.dart`.
+  The card now carries a progress region fed by `installProgress(tool)`: while
+  `isInstalling(tool)` is true it shows the last streamed line, falling back to
+  `ai-workspace-install-progress-text` until the installer prints anything, so
+  the region does not pop into existence on the first line. **Nothing new was
+  invented for it** — `lib/components/` has no log or progress widget (only
+  `Notify`'s bottom InfoBar and bare `ProgressRing`s), so the page's own
+  `_buildInlineStatus()` (spinner + grey secondary label) is reused, gaining a
+  `fill` flag that takes the full width and ellipsises instead of sizing to the
+  text; installer lines are arbitrarily long and would otherwise overflow the
+  card. After a *failed* install the retained last line is shown as
+  `Last output: …` — the service keeps it for exactly this reason, and for a
+  silence-timeout kill it is the only clue there is, since a signalled shell
+  writes nothing to stderr of its own.
+  **The repaint problem was the real work.** Tracking still lives entirely in
+  the service, and `refreshStatus()` still refuses to probe a tool that is
+  installing — but the old `_watchOngoingInstalls()` only ticked for an install
+  *inherited* from a previous instance of the page, and only called `setState`
+  when one *finished*, so a line that changed every few seconds would never
+  have been drawn. It is now `_syncInstallWatch()`: it repaints every second
+  (`_kInstallProgressPoll`) while any install is in flight, reads a finished
+  tool's real status back, and cancels itself when `_watchedInstalls` empties.
+  `_handleInstall()` starts it from the button press — `install()` marks the
+  tool installing before its first `await`, so the ticker can start on the same
+  frame.
+  Two keys appended to all nine `lib/i18n/*.json` with real translations
+  (`ai-workspace-install-progress-text`, `ai-workspace-install-last-output-text`);
+  `dart run scripts/check_translations.dart` is clean. Note for future edits:
+  **`sed -i` in this git-bash strips every CR from the file it rewrites**, which
+  silently turns a CRLF JSON file into LF and drops the substitution — use
+  `perl -i -0777` (verified to preserve CRLF) for these files.
+  Test-only keys added while here: the install/start/stop `FilledButton`s had
+  none, so nothing could click them; they are now
+  `test-ai-{install,start,stop}-<tool>`, unique per card as the repo requires.
+  3 widget tests added to `test/ai_workspace_screen_test.dart` — output visible
+  and *updating* mid-install with no user interaction, a fresh page re-attaching
+  to an install started with no page mounted (and not probing over it), and a
+  failed install keeping its last output on the card. Two harness findings that
+  cost most of the time: `ControlledProcess` used **broadcast** controllers,
+  which drop anything written before a listener attaches (now single-
+  subscription, like a real pipe); and `StreamSubscription.cancel()` on a closed
+  `StreamController` **never completes under the widget-test fake clock**, so
+  `_runStreamed`'s cleanup stranded every UI-driven install — `pumpInstallToEnd()`
+  waits under `tester.runAsync()` instead. `pumpAndSettle()` is unusable on this
+  page at all: a `starting` tool's 10 s poll schedules a frame forever.
+  `flutter test` 376 green (was 373), `flutter analyze` unchanged at 105
+  pre-existing issues; formatting scoped to the touched lines with the Phase 01
+  `-U0` helper. Logs in `Working/phase-03-task03-full-test.txt` and
+  `Working/phase-03-task03-analyze.txt`.
 
 - [ ] Verify the Hermes lifecycle by clicking through the running app, capturing a screenshot at each step into `.maestro/screenshots/phase-03/`:
   - Install → progress visible, completes or fails with a readable reason

@@ -151,4 +151,158 @@ void main() {
 
     expect(testShell.allCommands.length, settled);
   });
+
+  /// Puts every tool in a settled, known state so the page renders cards
+  /// straight away instead of spinning on "checking".
+  Future<void> seedSettled(ToolStatus status) async {
+    testShell.stdoutData = 'ai-workspace';
+    await service.ensureDistro();
+    service.seedToolStates();
+    for (final tool in AiWorkspaceTool.values) {
+      final state = service.getState(tool)!;
+      state.status = status;
+      state.checked = true;
+      state.hasKnownStatus = true;
+    }
+  }
+
+  /// Runs the install of [tool] to completion, then gives the progress ticker a
+  /// frame to land its own setState on.
+  ///
+  /// `pumpAndSettle` is unusable on this page: a status probe can land a tool
+  /// back on `starting`, and that poll schedules a frame every ten seconds
+  /// for as long as it runs, so nothing ever settles.
+  ///
+  /// The wait runs under [WidgetTester.runAsync] because cancelling a
+  /// subscription of a closed StreamController never completes on the fake
+  /// clock, and the streamed install cancels both of the child's pipes before
+  /// it returns — on the fake clock the install simply never ends.
+  Future<void> pumpInstallToEnd(
+      WidgetTester tester, AiWorkspaceTool tool) async {
+    await tester.runAsync(() async {
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      while (service.isInstalling(tool) && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    expect(service.isInstalling(tool), false,
+        reason: 'the install never finished');
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+  }
+
+  // A Hermes install runs for minutes (measured: 482s cold). Without the
+  // streamed line under the card the user watches a bare spinner, and a
+  // wedged installer looks exactly like a working one.
+  testWidgets('the card shows installer output while the install runs',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.notInstalled);
+
+    final child = ControlledProcess();
+    testShell.processFactory = () => child;
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.byKey(const ValueKey('test-ai-install-hermesAgent')));
+    await tester.pump();
+    // Two frames: one for the button press, one for the child to be spawned
+    // and its pipes listened to before anything is written to them.
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Nothing printed yet: the placeholder holds the region open so it does
+    // not pop into existence on the first line.
+    expect(find.byKey(const ValueKey('test-ai-install-progress-hermesAgent')),
+        findsOneWidget);
+
+    child.emit('Cloning hermes-agent...\n');
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('Cloning hermes-agent'), findsOneWidget);
+
+    // The line has to keep moving with no user interaction in between — the
+    // page repaints on its own tick, not on a button press.
+    child.emit('Installing node dependencies...\n');
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('Cloning hermes-agent'), findsNothing);
+    expect(find.textContaining('Installing node dependencies'), findsOneWidget);
+
+    child.exit(0);
+    await pumpInstallToEnd(tester, AiWorkspaceTool.hermesAgent);
+
+    // Finished: the progress region is gone and the card carries the status.
+    expect(find.byKey(const ValueKey('test-ai-install-progress-hermesAgent')),
+        findsNothing);
+  });
+
+  // Navigating away disposes this page; the install keeps running in the
+  // service. A fresh page has to re-attach to it, progress line and all.
+  testWidgets('a fresh page re-attaches to an install already in flight',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.notInstalled);
+
+    final child = ControlledProcess();
+    testShell.processFactory = () => child;
+
+    // Started with no page mounted at all — the service owns it.
+    final install = service.install(AiWorkspaceTool.hermesAgent);
+    // Let the child be spawned and its pipes listened to before anything is
+    // written to them.
+    await tester.pump(const Duration(milliseconds: 100));
+    child.emit('Downloading Chromium 184.3 MiB\n');
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.textContaining('Downloading Chromium'), findsOneWidget);
+    // A probe mid-install would report the tool missing and cache that over a
+    // download that is still running.
+    expect(service.getState(AiWorkspaceTool.hermesAgent)?.status,
+        ToolStatus.notInstalled);
+
+    child.exit(0);
+    await pumpInstallToEnd(tester, AiWorkspaceTool.hermesAgent);
+    expect(await tester.runAsync(() => install), true);
+    expect(find.byKey(const ValueKey('test-ai-install-progress-hermesAgent')),
+        findsNothing);
+  });
+
+  // A killed shell writes nothing of its own to stderr, so the last line the
+  // installer managed to print is the only clue the user has about where it
+  // got to. The service keeps it; the card has to keep showing it.
+  testWidgets('a failed install keeps its last output on the card',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.notInstalled);
+
+    final child = ControlledProcess();
+    testShell.processFactory = () => child;
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.byKey(const ValueKey('test-ai-install-hermesAgent')));
+    await tester.pump();
+    // Two frames: one for the button press, one for the child to be spawned
+    // and its pipes listened to before anything is written to them.
+    await tester.pump(const Duration(milliseconds: 100));
+
+    child.emit('npm install --silent\n');
+    await tester.pump(const Duration(seconds: 1));
+    child.exit(1);
+    await pumpInstallToEnd(tester, AiWorkspaceTool.hermesAgent);
+
+    expect(service.getState(AiWorkspaceTool.hermesAgent)?.status,
+        ToolStatus.error);
+    expect(service.installProgress(AiWorkspaceTool.hermesAgent),
+        'npm install --silent');
+    expect(
+        find.byKey(const ValueKey('test-ai-install-last-output-hermesAgent')),
+        findsOneWidget);
+  });
 }

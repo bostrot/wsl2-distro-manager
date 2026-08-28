@@ -400,5 +400,7 @@
   "rate-later": "Más tarde",
   "rate-never": "No preguntar más",
   "startingup-text": "Iniciando...",
-  "ai-workspace-startingup-hint-text": "La herramienta aún se está iniciando. Su panel se abrirá cuando esté lista."
+  "ai-workspace-startingup-hint-text": "La herramienta aún se está iniciando. Su panel se abrirá cuando esté lista.",
+  "ai-workspace-install-progress-text": "Instalando... esperando la primera salida del instalador.",
+  "ai-workspace-install-last-output-text": "Última salida: %s"
 }

@@ -400,5 +400,7 @@
   "rate-later": "あとで",
   "rate-never": "今後表示しない",
   "startingup-text": "起動中...",
-  "ai-workspace-startingup-hint-text": "ツールはまだ起動中です。準備が完了するとダッシュボードを開けます。"
+  "ai-workspace-startingup-hint-text": "ツールはまだ起動中です。準備が完了するとダッシュボードを開けます。",
+  "ai-workspace-install-progress-text": "インストール中... インストーラーの最初の出力を待っています。",
+  "ai-workspace-install-last-output-text": "最後の出力: %s"
 }

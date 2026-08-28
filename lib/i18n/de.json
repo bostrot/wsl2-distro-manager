@@ -401,5 +401,7 @@
   "rate-later": "Später",
   "rate-never": "Nicht mehr fragen",
   "startingup-text": "Startet...",
-  "ai-workspace-startingup-hint-text": "Das Tool startet noch. Das Dashboard lässt sich öffnen, sobald es bereit ist."
+  "ai-workspace-startingup-hint-text": "Das Tool startet noch. Das Dashboard lässt sich öffnen, sobald es bereit ist.",
+  "ai-workspace-install-progress-text": "Wird installiert... warte auf die erste Ausgabe des Installers.",
+  "ai-workspace-install-last-output-text": "Letzte Ausgabe: %s"
 }

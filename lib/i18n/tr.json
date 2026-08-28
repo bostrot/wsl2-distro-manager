@@ -400,5 +400,7 @@
   "rate-later": "Daha sonra",
   "rate-never": "Bir daha sorma",
   "startingup-text": "Başlatılıyor...",
-  "ai-workspace-startingup-hint-text": "Araç hâlâ başlatılıyor. Panel, hazır olduğunda açılabilir."
+  "ai-workspace-startingup-hint-text": "Araç hâlâ başlatılıyor. Panel, hazır olduğunda açılabilir.",
+  "ai-workspace-install-progress-text": "Kuruluyor... yükleyicinin ilk çıktısı bekleniyor.",
+  "ai-workspace-install-last-output-text": "Son çıktı: %s"
 }

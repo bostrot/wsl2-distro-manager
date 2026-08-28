@@ -16,6 +16,12 @@ import 'package:wsl2distromanager/nav/router.dart';
 /// each tick is one cheap `docker inspect`.
 const Duration _kStartingPoll = Duration(seconds: 10);
 
+/// How often the card repaints while an install is streaming. The service
+/// keeps only the newest line, so this is a repaint rate, not a sampling
+/// rate — nothing is lost by missing a line, and one second is fast enough
+/// to read as live without rebuilding the page on every `npm` write.
+const Duration _kInstallProgressPoll = Duration(seconds: 1);
+
 class AiWorkspacePage extends StatefulWidget {
   const AiWorkspacePage({super.key});
 
@@ -33,6 +39,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   final Set<AiWorkspaceTool> _checkingTools = {...AiWorkspaceTool.values};
   // Re-attaches this page to an install that a previous instance started.
   Timer? _installWatch;
+  // Tools this page has seen mid-install. A tool that drops out of the
+  // service's installing set while it is in here has just finished, and is
+  // the one that needs its real status read back.
+  final Set<AiWorkspaceTool> _watchedInstalls = {};
   Timer? _startingWatch;
 
   bool get _isPro {
@@ -101,25 +111,44 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       .where((tool) => _service.getState(tool)?.status == ToolStatus.starting)
       .toList();
 
-  /// An install started before this page was rebuilt is still running in the
-  /// service. Poll until it finishes so the card stops showing progress and
-  /// picks up the real status.
-  void _watchOngoingInstalls() {
-    final ongoing = AiWorkspaceTool.values.where(_service.isInstalling).toSet();
-    if (ongoing.isEmpty) return;
-    _installWatch?.cancel();
-    _installWatch = Timer.periodic(const Duration(seconds: 1), (timer) async {
+  /// Ticks while any install is running. An install started by the button on
+  /// this page and one inherited from a previous instance of it are the same
+  /// case — the service owns both — so the page only has to watch: each tick
+  /// repaints the streamed progress line under the card, and a tool that has
+  /// left [AiWorkspaceService.isInstalling] gets its real status read back.
+  void _syncInstallWatch() {
+    _watchedInstalls
+        .addAll(AiWorkspaceTool.values.where(_service.isInstalling));
+    if (_watchedInstalls.isEmpty) {
+      _installWatch?.cancel();
+      _installWatch = null;
+      return;
+    }
+    // Already ticking — a second timer would just double the repaint rate.
+    if (_installWatch != null) return;
+    _installWatch = Timer.periodic(_kInstallProgressPoll, (timer) async {
       if (!mounted) {
         timer.cancel();
+        _installWatch = null;
         return;
       }
-      final finished = ongoing.where((t) => !_service.isInstalling(t)).toSet();
-      if (finished.isEmpty) return;
-      timer.cancel();
+      final finished =
+          _watchedInstalls.where((t) => !_service.isInstalling(t)).toList();
+      _watchedInstalls.removeAll(finished);
+      if (_watchedInstalls.isEmpty) {
+        timer.cancel();
+        _installWatch = null;
+      }
+      // Every tick, not only the last one: the progress line changes while
+      // the installer is still running, which is the whole point of showing
+      // it. Nothing here touches WSL, so a repaint is all it costs.
+      setState(() {});
       for (final tool in finished) {
         await _service.refreshStatus(tool);
       }
-      if (mounted) setState(_syncStartingWatch);
+      if (mounted && finished.isNotEmpty) {
+        setState(_syncStartingWatch);
+      }
     });
   }
 
@@ -127,7 +156,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     if (_service.toolStates.isEmpty) {
       _service.seedToolStates();
     }
-    _watchOngoingInstalls();
+    _syncInstallWatch();
 
     try {
       await _service.ensureDistro();
@@ -191,8 +220,13 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       _service.clearError(tool);
       _busyTools.add(tool);
     });
+    // install() marks the tool as installing before its first await, so by
+    // the time this returns the future the service already knows about it and
+    // the progress ticker can start on the same frame as the button press.
+    final install = _service.install(tool);
+    if (mounted) setState(_syncInstallWatch);
     try {
-      await _service.install(tool);
+      await install;
     } finally {
       if (context.mounted) {
         setState(() => _busyTools.remove(tool));
@@ -448,19 +482,27 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   /// Spinner plus a grey label saying what is being waited on.
-  Widget _buildInlineStatus(String label) {
+  ///
+  /// [fill] takes the full width and ellipsises the label instead of sizing
+  /// to it — installer output is arbitrarily long and would otherwise
+  /// overflow the card. The default stays min-sized for the header, where
+  /// this sits next to a [Spacer].
+  Widget _buildInlineStatus(String label, {bool fill = false}) {
+    final text = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(fontSize: 12, color: secondaryTextColor(context)),
+    );
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
       children: [
         const SizedBox.square(
           dimension: 12,
           child: ProgressRing(strokeWidth: 2),
         ),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: secondaryTextColor(context)),
-        ),
+        if (fill) Expanded(child: text) else text,
       ],
     );
   }
@@ -483,6 +525,12 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // a retry has to stay reachable.
     final canInstall = state?.status == ToolStatus.notInstalled ||
         state?.status == ToolStatus.error;
+    // The service keeps the last streamed line after the install ends. A
+    // failure is the case that needs it — the error text is whatever the
+    // killed shell managed to write, which for a timeout is nothing at all.
+    final lastOutput = state?.status == ToolStatus.error
+        ? _service.installProgress(tool)
+        : null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -541,10 +589,35 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 ],
               ),
             ],
+            // Streamed installer output. A Hermes install runs for minutes at
+            // a time, and without this the card is a bare spinner: a stall
+            // and steady progress look exactly alike.
+            if (_service.isInstalling(tool)) ...[
+              const SizedBox(height: 8),
+              KeyedSubtree(
+                key: ValueKey('test-ai-install-progress-${tool.name}'),
+                child: _buildInlineStatus(
+                  _service.installProgress(tool) ??
+                      'ai-workspace-install-progress-text'.i18n(),
+                  fill: true,
+                ),
+              ),
+            ] else if (lastOutput != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'ai-workspace-install-last-output-text'.i18n([lastOutput]),
+                key: ValueKey('test-ai-install-last-output-${tool.name}'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    TextStyle(fontSize: 12, color: secondaryTextColor(context)),
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
                 _buildAction(
+                  key: ValueKey('test-ai-install-${tool.name}'),
                   // A failed install leaves the tool in `error`, which is not
                   // "installed" — labelling it that way and greying the
                   // button out strands the user with no way to try again.
@@ -559,6 +632,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 ),
                 const SizedBox(width: 8),
                 _buildAction(
+                  key: ValueKey('test-ai-start-${tool.name}'),
                   label: 'start-text'.i18n(),
                   enabled: state?.status == ToolStatus.stopped &&
                       !isBusy &&
@@ -568,6 +642,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 ),
                 const SizedBox(width: 8),
                 _buildAction(
+                  key: ValueKey('test-ai-stop-${tool.name}'),
                   label: 'stop-text'.i18n(),
                   enabled: state?.status == ToolStatus.running &&
                       !isBusy &&
@@ -630,12 +705,14 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   Widget _buildAction({
+    required Key key,
     required String label,
     required bool enabled,
     required bool busy,
     required VoidCallback onPressed,
   }) {
     return FilledButton(
+      key: key,
       onPressed: enabled ? onPressed : null,
       child: busy
           ? SizedBox.square(dimension: 16, child: ProgressRing())
