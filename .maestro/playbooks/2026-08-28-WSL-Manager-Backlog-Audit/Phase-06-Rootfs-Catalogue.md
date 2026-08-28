@@ -6,10 +6,21 @@
 
 ## Tasks
 
-- [ ] Establish the constraints before sourcing anything:
+- [x] Establish the constraints before sourcing anything:
   - Read `lib/api/archive.dart` and `lib/api/layer_processor.dart` and record which archive formats the app can actually import (`.tar`, `.tar.gz`, `.tar.xz`, `.wsl`, `.zst`?) — do not add a URL in a format the importer cannot handle
   - Read how `images.json` is consumed (`grep -rn "images.json\|cdn/images" lib/`) and confirm the exact schema: flat `"Name": "url"` map, ordering behaviour, and whether the name is parsed anywhere
   - Write both findings to `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/catalogue-constraints.md`
+
+  **Done 2026-08-28** → `Working/catalogue-constraints.md`. Headline findings, all measured against WSL 2.6.3.0 rather than reasoned:
+  - `archive.dart` and `layer_processor.dart` are **not on the catalogue path** — they only serve the Docker source type. The catalogue importer is `wsl.exe` itself: `WSLApi.create()` downloads the URL and calls `wsl --import` directly.
+  - `wsl --import` **content-sniffs and ignores the file extension**. Verified by importing an xz payload and a zstd payload both named `.tar.gz`, then round-tripping via `wsl --export` to prove the files landed. This matters because `create()` hard-codes a `.tar.gz` suffix on every download regardless of the real format (`wsl.dart:1355`) — cosmetically wrong, functionally harmless.
+  - Accepted: `.tar`, `.tar.gz`, `.tar.xz`, `.tar.zst`, `.wsl`. Prefer `.tar.gz`, accept `.tar.xz`, treat `.tar.zst` as last resort (`wsl --export --format zstd` is rejected with `E_INVALIDARG`, so import is more permissive than export — thinner historical support).
+  - **The Arch bootstrap tarball is ruled out.** A tar nested under a top-level prefix (`root.x86_64/`) fails with `WSL_E_NOT_A_LINUX_DISTRO`. Its zstd compression is fine; its shape is not. Do not source it in the next task without flattening.
+  - **A dead URL hangs the create dialog forever**, it does not error: `create()` uses `ChunkedDownloader(…)..start()` (cascade → the Future and its exception are discarded), and `done` is only set on success, so the `while (!downloader.done)` poll spins indefinitely. Raises the bar on the verification task. Two neighbouring defects logged for the later fix task: the `file.rename()` at `wsl.dart:1377` is not awaited, and the temp path ends up `.tar.gz.tmp.tmp`.
+  - Schema is a flat JSON object of `"Name": "url"` **string** pairs; any other shape (array, wrapper key, non-string value, or a non-JSON `Content-Type` from the CDN) throws and silently drops every client to its bundled fallback.
+  - **File order is display order** — no sort anywhere between `json.decode` and the `AutoSuggestBox`. Reordering in the rewrite task is a real UX change.
+  - **The key is parsed.** A key containing `:` is silently rerouted to the Docker registry path (`create_dialog.dart:183`); the key is also used verbatim as a filename (no sanitisation), and is the on-disk download cache key — so changing an entry's URL without changing its key leaves existing users importing the stale cached rootfs permanently.
+  - Existing tests use synthetic catalogue payloads, so rewriting `images.json` breaks nothing.
 
 - [ ] Re-source candidate rootfs URLs from official vendor sources only, and record each source page URL alongside each candidate in `Working/catalogue-candidates.md`:
   - Microsoft's own distribution manifest (`microsoft/WSL` repo, `distributions/DistributionInfo.json` and any newer manifest it points to) — this is the authoritative list of WSL-ready distro images and should drive the core entries
