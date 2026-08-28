@@ -69,6 +69,17 @@ final List<NavigationPaneItem> originalItems = [
     },
   ),
   PaneItem(
+    key: const Key('/package'),
+    icon: const Icon(FluentIcons.package),
+    title: Text('custompackage-text'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      if (router.state.uri.toString() != '/package') {
+        router.pushNamed('package');
+      }
+    },
+  ),
+  PaneItem(
     key: const Key('/mount'),
     icon: const Icon(FluentIcons.hard_drive),
     title: Text('mountdisk-text'.i18n()),

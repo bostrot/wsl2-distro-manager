@@ -225,7 +225,102 @@ Every setting added must be gated on the minimum WSL version recorded in the aud
   - **Not done here.** The running-app pass and the screenshots are a later task in this
     document, as is updating `doc/audit/wsl-docs/index.md`.
 
-- [ ] Implement the **L**-sized surfaces from the audit list. Build each behind the existing screen/route pattern (`lib/nav/router.dart`, `lib/nav/panelist.dart`, `lib/screens/`), following the precedent set by the recently added `create_screen.dart` — a dedicated screen, not a dialog, for anything with long-running progress. Split this task across multiple passes if the audit lists more than one L item, finishing each end to end before starting the next.
+- [x] Implement the **L**-sized surfaces from the audit list. Build each behind the existing screen/route pattern (`lib/nav/router.dart`, `lib/nav/panelist.dart`, `lib/screens/`), following the precedent set by the recently added `create_screen.dart` — a dedicated screen, not a dialog, for anything with long-running progress. Split this task across multiple passes if the audit lists more than one L item, finishing each end to end before starting the next.
+
+  **Done 2026-08-28.** Closes ordered-list item **P05-24**, [[features]] **F-8** — the
+  audit's *only* **L**, so this is one pass, end to end. No split was needed.
+
+  - **The shape of the feature, and why it is not tar surgery.** `build-custom-distro.md`
+    describes one path — rootfs → gzipped tar → rename to `.wsl` → `wsl --install
+    --from-file` — with `/etc/wsl-distribution.conf` inside the archive deciding what
+    happens on first launch. The obvious implementation is to export a tar and splice the
+    config into it afterwards; it is the wrong trade, because a distro export is routinely
+    several gigabytes, appending means either holding it in memory or hand-editing the
+    trailing zero blocks, and duplicate-entry precedence on extraction is unspecified for
+    WSL's own extractor. So the config is edited **inside the distro**, with the same
+    editor pattern as `wsl.conf`, and packaging is then just an export of a distro that
+    already contains what it needs. Nothing is injected behind the user's back, the result
+    is inspectable with `cat`, and wsl.exe produces the whole archive.
+  - **New `lib/api/wsl_distribution_conf.dart`** — the third dialect of
+    `ini_config.dart`, after `wsl.conf` (P05-03) and `.wslconfig` (P05-02). Seven
+    documented keys across `[oobe]` / `[shortcut]` / `[windowsterminal]`, the two
+    documented-`true` boolean defaults, and case-insensitive canonicalisation that
+    reconciles the doc's own contradiction: its reference table writes `profileTemplate`
+    and its sample file writes `ProfileTemplate`, and a file copied out of either has to
+    reach the widget. `documentedSection()` is explicitly **not** usable on this dialect —
+    `enabled` belongs to two sections — and every read and write names its section.
+  - **`readWSLConf` / `writeWSLConf` generalised** (`wsl.dart:1907`) into
+    `readDistroFile` / `writeDistroFile`, so the base64 payload, the
+    `2>/dev/null; exit 0` and the UTF-16 stderr decoding are written once rather than
+    three times. `writeDistroFile` gained a `mode:` for the `chmod` the docs require —
+    `0644` on both config files, `0755` on the OOBE script — and a failed `chmod` is a
+    failed write, not a silent one. `readDistroFileList` and `isExecutableInDistro` are
+    new: the first is the only probe that builds a script from its arguments and so drops
+    anything that is not a plain absolute path; the second runs `test -x` as **argv**,
+    because its path comes out of a file the user edits.
+  - **`wsl --install --from-file`** (`wsl.dart:2247`) — the documented install path, and
+    the half of F-8 the app could not do at all. Unlike `--import` it honours the
+    package's `wsl-distribution.conf`, so the result gets its OOBE, its default user, its
+    Start-menu shortcut and its Windows Terminal profile — none of which an `--import`ed
+    distro has ever had, which is [[wslconf-keys]] CC-6's root cause and #268's. Flags
+    read off the shipping binary's own `--help`, not guessed: `--name`, `--location`,
+    `--no-launch`. `--no-launch` is the default here because the OOBE script is
+    interactive and a GUI has no console to answer it.
+  - **`--export --format`** is now a parameter of `WSLApi.export`, defaulting to absent so
+    every existing caller keeps writing a plain tar. Packaging passes `tar.gz`, the format
+    the docs recommend in so many words. This is the API half of **P05-17** and nothing
+    more; wiring it into the template/export UI is still that item.
+  - **New `lib/api/distro_package.dart`** — `DistroPackager` (package / install / inspect
+    / write the sample OOBE script) plus `packageIssues`, a **pure** function from config
+    + probe to a ranked list of problems. Every rule in it is a line of the docs, not a
+    preference: a missing `oobe.defaultName` is an error because `:191` states the
+    double-click install needs one; a non-executable `oobe.command` is an error because
+    "the user won't be able to open a shell"; a command without `defaultUid`, a non-`.ico`
+    icon, a missing `/etc/wsl.conf` and a shipped `/etc/resolv.conf` are the four
+    "Configuration file recommendations" warnings.
+  - **New `lib/screens/package_screen.dart`**, route `/package`, pane item between Add
+    instance and Mount. A screen and not a dialog for the reason the task states —
+    `wsl --export` over a whole root filesystem runs for minutes — and because the order
+    matters: the config has to be right *before* the export freezes it into the package,
+    so editor → readiness check → package button sit on one surface in that order. The
+    editor holds the parsed file in state rather than mirroring into `SharedPreferences`
+    the way the `wsl.conf` dialog does, so there is nothing to keep in step; each write
+    re-reads, because a screen showing its own optimistic guess is how a failed write
+    reads as a successful one.
+  - **Everything is gated on WSL 2.4.4** via new
+    `WslCapabilities.supportsWslPackages` — `build-custom-distro.md:16` states the floor
+    outright. Below it the screen says so with `requireswsl-text` rather than letting
+    `--from-file` come back as wsl.exe's untranslated "Invalid command line option".
+  - **`DebouncedTextBox` extracted** to `lib/components/debounced_text_box.dart` and
+    `settings_dialog.dart` rewired onto it, rather than writing the 700 ms debounce a
+    second time. Its 15 existing widget tests pass unchanged.
+  - **Two things the tests found, both fixed.** `installFromFile` did not trim its name,
+    so a whitespace-only name became `--name '  '` — which is not "no name", it is wsl.exe
+    registering the distro under nothing. And the mock's `cat` branch was per-file, which
+    hid that `readDistroFile` had no generic unreachable path; it is now one branch and
+    `simulateWslConfUnreachable` covers every in-distro read.
+  - **54 new i18n keys with real translations in all nine locales**
+    (`Working/phase-05-task04-i18n-*.json`, applied by `Working/update_i18n_keys.dart`),
+    all pinned in `test/locales_test.dart`. `selectfile-text` was reused rather than
+    adding a second "Browse".
+  - **Verification:** `flutter test` **665 passing** (was 568) — 25 in the new
+    `test/wsl_distribution_conf_test.dart`, 41 in `test/distro_package_test.dart`, 20 in
+    `test/package_screen_test.dart`, 5 added to `test/wsl_test.dart` and 6 to
+    `test/locales_test.dart`. `flutter analyze` **0 errors**, 108 issues against a 105
+    baseline; the three added are `dangling_library_doc_comments` on the three new test
+    files, matching the five test files that already carry it.
+    `dart run scripts/check_translations.dart` exit 0.
+    `flutter test integration_test/` is `+17 -4`, the same four debug-connection failures
+    as the pre-existing baseline (`Working/phase-05-task04-integration.txt`).
+    `git diff --stat` carries **no formatting churn**: `dart format` reflows ~160 lines of
+    `wsl.dart`, ~120 of `panelist.dart` and ~600 of `wsl_test.dart` that were already
+    unformatted at HEAD, so only the hunks this task added were reformatted, by hand.
+  - **Not done here.** The running-app pass and the screenshots are a later task in this
+    document, as is updating `doc/audit/wsl-docs/index.md`. `wsl --list --online` /
+    `DistributionListUrl` manifest publishing is deliberately out: the audit lists
+    `--list --online` under *Not scheduled* ("the app ships its own catalogue"), and the
+    registry override in `build-custom-distro.md` is an admin test procedure, not a
+    settings-screen feature.
 
 - [ ] Wire the new settings into the API layer where they are not just file writes:
   - Extend `lib/api/wsl.dart` for any new `wsl.exe` command, routing it through `ExecutionBroker` with an appropriate timeout — never `Process.run` directly

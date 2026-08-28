@@ -1055,4 +1055,92 @@ systemd = true
       expect(config.flatten(), {'memory': '8GB', 'sparseVhd': 'true'});
     });
   });
+
+  /// The in-distro file plumbing P05-24 generalised out of `readWSLConf` /
+  /// `writeWSLConf`, plus the `/etc/wsl-distribution.conf` round trip built on
+  /// top of it (doc/audit/wsl-docs/features.md F-8).
+  group('in-distro file read/write (P05-24)', () {
+    test('every documented wsl-distribution.conf key round-trips', () async {
+      mockShell.distributionConfContents = '';
+
+      const values = <String, Map<String, String>>{
+        'oobe': {
+          'command': '/etc/oobe.sh',
+          'defaultUid': '1000',
+          'defaultName': 'my-distro',
+        },
+        'shortcut': {'enabled': 'true', 'icon': '/usr/lib/wsl/my-icon.ico'},
+        'windowsterminal': {
+          'enabled': 'false',
+          'profileTemplate': '/usr/lib/wsl/terminal-profile.json',
+        },
+      };
+
+      for (final section in values.entries) {
+        for (final pair in section.value.entries) {
+          expect(
+              await wslApi.setDistributionSetting(
+                  'Ubuntu', section.key, pair.key, pair.value),
+              true,
+              reason: '[${section.key}] ${pair.key} failed to write');
+        }
+      }
+
+      final conf = await wslApi.readDistributionConf('Ubuntu');
+      for (final section in values.entries) {
+        for (final pair in section.value.entries) {
+          expect(conf!.get(section.key, pair.key), pair.value,
+              reason: '[${section.key}] ${pair.key} did not survive');
+        }
+      }
+    });
+
+    test('a value with spaces and "=" survives', () async {
+      mockShell.distributionConfContents = '';
+      await wslApi.setDistributionSetting(
+          'Ubuntu', 'oobe', 'command', '/etc/oobe.sh --uid=1000 --name=a b');
+
+      final conf = await wslApi.readDistributionConf('Ubuntu');
+      expect(
+          conf!.get('oobe', 'command'), '/etc/oobe.sh --uid=1000 --name=a b');
+    });
+
+    test('writeDistroFile carries an arbitrary path and chmods it', () async {
+      expect(
+          await wslApi.writeDistroFile(
+              'Ubuntu', '/usr/lib/wsl/profile.json', '{"profiles": []}',
+              mode: '0644'),
+          true);
+
+      expect(mockShell.writtenDistroFiles['/usr/lib/wsl/profile.json'],
+          '{"profiles": []}');
+      expect(mockShell.chmodCalls.single,
+          containsAllInOrder(['chmod', '0644', '/usr/lib/wsl/profile.json']));
+    });
+
+    test('a failed chmod is a failed write, not a silent one', () async {
+      mockShell.simulateWslConfReadOnly = true;
+      expect(
+          await wslApi.writeDistroFile('Ubuntu', '/etc/oobe.sh', '#!/bin/sh\n',
+              mode: '0755'),
+          false);
+    });
+
+    test('readDistroFile reports an unreachable distro as null', () async {
+      mockShell.simulateWslConfUnreachable = true;
+      expect(await wslApi.readDistroFile('Ubuntu', '/etc/os-release'), isNull);
+    });
+
+    /// `wsl.conf` and `wsl-distribution.conf` are separate files and a write
+    /// to one must not touch the other — they share a writer now.
+    test('the two config files stay separate', () async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\n';
+      mockShell.distributionConfContents = '[oobe]\ndefaultName = a\n';
+
+      await wslApi.setDistributionSetting('Ubuntu', 'oobe', 'defaultName', 'b');
+
+      expect(mockShell.wslConfContents, '[boot]\nsystemd = true\n');
+      expect(mockShell.distributionConfContents, '[oobe]\ndefaultName = b\n');
+    });
+  });
 }

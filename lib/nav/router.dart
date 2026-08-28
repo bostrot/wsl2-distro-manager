@@ -9,6 +9,7 @@ import 'package:wsl2distromanager/screens/actions_screen.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
 import 'package:wsl2distromanager/screens/license_screen.dart';
+import 'package:wsl2distromanager/screens/package_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/screens/template_screen.dart';
 
@@ -78,6 +79,13 @@ final router = GoRouter(
           path: '/addinstance',
           name: 'addinstance',
           builder: (context, state) => const CreatePage(),
+        ),
+
+        /// Custom distro packaging (`.wsl`, wsl-distribution.conf)
+        GoRoute(
+          path: '/package',
+          name: 'package',
+          builder: (context, state) => const PackagePage(),
         ),
       ],
     ),

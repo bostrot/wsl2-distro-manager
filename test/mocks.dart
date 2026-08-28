@@ -108,6 +108,31 @@ class MockShell implements Shell {
   /// Every `wsl --update` argument list.
   final List<List<String>> updateCalls = <List<String>>[];
 
+  /// Every `wsl --install` argument list, so a `--from-file` install can be
+  /// asserted on order and flags rather than on "something ran".
+  final List<List<String>> installCalls = <List<String>>[];
+
+  /// `wsl --install --from-file` fails with this message instead of
+  /// succeeding.
+  String? installFromFileFailure;
+
+  /// In-distro `/etc/wsl-distribution.conf`, so a write can be read back.
+  /// Null means the file does not exist, which is what every `--import`ed
+  /// distro looks like (audit F-8).
+  String? distributionConfContents;
+
+  /// Absolute paths [readDistroFileList] should report as present.
+  final Set<String> existingDistroFiles = <String>{};
+
+  /// Paths `test -x` should answer yes for.
+  final Set<String> executableDistroFiles = <String>{};
+
+  /// Every `chmod` argument list the distro has been handed.
+  final List<List<String>> chmodCalls = <List<String>>[];
+
+  /// Arbitrary in-distro files this shell has been asked to write, by path.
+  final Map<String, String> writtenDistroFiles = <String, String>{};
+
   /// `wsl --manage` fails with this message instead of succeeding.
   String? manageFailure;
 
@@ -184,18 +209,65 @@ class MockShell implements Shell {
         } else {
           stdout = wslConfContents ?? execCmdAsRootResponse ?? '';
         }
-      } else if (cmd.startsWith("printf %s '") &&
-          cmd.endsWith("' | base64 -d > /etc/wsl.conf")) {
-        // WSLApi.writeWSLConf.
-        if (simulateWslConfUnreachable || simulateWslConfReadOnly) {
-          stderr = '/etc/wsl.conf: Read-only file system';
+      } else if (cmd.startsWith('cat ') &&
+          cmd.endsWith(' 2>/dev/null; exit 0')) {
+        // WSLApi.readDistroFile, of which readWSLConf and
+        // readDistributionConf are the two schema-aware callers.
+        final path = cmd.substring(
+            'cat '.length, cmd.length - ' 2>/dev/null; exit 0'.length);
+        if (simulateWslConfUnreachable) {
+          stderr = 'There is no distribution with the supplied name.';
+          exitCode = 1;
+        } else if (path == '/etc/wsl-distribution.conf') {
+          stdout = distributionConfContents ?? '';
+        } else {
+          // A file that is not there `cat`s as empty with status 0, which is
+          // what the `2>/dev/null; exit 0` is for.
+          stdout = writtenDistroFiles[path] ?? '';
+        }
+      } else if (cmd.startsWith('for f in ') && cmd.contains(r'[ -e $f ]')) {
+        // WSLApi.readDistroFileList.
+        if (simulateWslConfUnreachable) {
           exitCode = 1;
         } else {
-          final payload = cmd.substring("printf %s '".length,
-              cmd.length - "' | base64 -d > /etc/wsl.conf".length);
-          wslConfContents = utf8.decode(base64.decode(payload));
+          final paths =
+              cmd.substring('for f in '.length, cmd.indexOf('; do')).split(' ');
+          stdout = paths.where(existingDistroFiles.contains).join('\n');
+        }
+      } else if (cmd.startsWith("printf %s '") &&
+          cmd.contains("' | base64 -d > ")) {
+        // WSLApi.writeDistroFile, of which writeWSLConf is one caller.
+        final marker = "' | base64 -d > ";
+        final split = cmd.indexOf(marker);
+        final path = cmd.substring(split + marker.length);
+        if (simulateWslConfUnreachable || simulateWslConfReadOnly) {
+          stderr = '$path: Read-only file system';
+          exitCode = 1;
+        } else {
+          final payload = cmd.substring("printf %s '".length, split);
+          final content = utf8.decode(base64.decode(payload));
+          writtenDistroFiles[path] = content;
+          if (path == '/etc/wsl.conf') {
+            wslConfContents = content;
+          } else if (path == '/etc/wsl-distribution.conf') {
+            distributionConfContents = content;
+          }
+          existingDistroFiles.add(path);
         }
       }
+    }
+
+    // `--exec test -x <path>`: WSLApi.isExecutableInDistro. argv, not a
+    // script, so it never reaches the `bash -c` branch above.
+    if (arguments.contains('test') && arguments.contains('-x')) {
+      final path = arguments.last;
+      exitCode = executableDistroFiles.contains(path) ? 0 : 1;
+    }
+
+    if (arguments.contains('chmod')) {
+      chmodCalls.add(List<String>.from(arguments));
+      final path = arguments.last;
+      if (arguments.contains('0755')) executableDistroFiles.add(path);
     }
 
     if (arguments.contains('--list')) {
@@ -296,9 +368,18 @@ class MockShell implements Shell {
     }
 
     if (arguments.contains('--install')) {
+      installCalls.add(List<String>.from(arguments));
       if (arguments.contains('-d')) {
         String distro = arguments[arguments.indexOf('-d') + 1];
         distros.add(distro);
+      }
+      if (arguments.contains('--from-file')) {
+        if (installFromFileFailure != null) {
+          stderr = installFromFileFailure!;
+          exitCode = 1;
+        } else if (arguments.contains('--name')) {
+          distros.add(arguments[arguments.indexOf('--name') + 1]);
+        }
       }
     }
 

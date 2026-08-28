@@ -14,7 +14,8 @@ class MockWSLApi implements WSLApi {
   bool throwOnImport = false;
 
   @override
-  Future<String> export(String distroName, String path) async {
+  Future<String> export(String distroName, String path,
+      {String? format}) async {
     // Create dummy file
     File(path).createSync(recursive: true);
     return '';

@@ -145,6 +145,15 @@ class WslCapabilities {
   /// (`disk-space.md:48-58`).
   bool get supportsManage => atLeast(2, 5);
 
+  /// `.wsl` packages: `--install --from-file`, `/etc/wsl-distribution.conf`
+  /// and `--export --format`.
+  ///
+  /// `build-custom-distro.md:16` states the floor in so many words — "This
+  /// guide only applies to WSL release 2.4.4 and higher". Below it, a `.wsl`
+  /// file is just a tar with an extension nothing recognises, the distribution
+  /// config is never read, and `--from-file` is an invalid option.
+  bool get supportsWslPackages => atLeast(2, 4, 4);
+
   /// Build from the two probes' raw output.
   factory WslCapabilities.parse(WslOutput version, WslOutput status) {
     final warnings = <String>[];

@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/debounced_text_box.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/sync.dart';
@@ -622,40 +623,9 @@ class _WslConfTextField extends StatefulWidget {
 }
 
 class _WslConfTextFieldState extends State<_WslConfTextField> {
-  static const Duration _debounce = Duration(milliseconds: 700);
-
-  late final TextEditingController _controller;
-  late final FocusNode _focusNode;
-  late String _committed;
-  Timer? _timer;
-
   String get _prefKey => '${widget.item}-${widget.setting.prefKey}';
 
-  @override
-  void initState() {
-    super.initState();
-    _committed = prefs.getString(_prefKey) ?? '';
-    _controller = TextEditingController(text: _committed);
-    _focusNode = FocusNode();
-    _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) _commit();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  Future<void> _commit() async {
-    _timer?.cancel();
-    final value = _controller.text;
-    if (value == _committed) return;
-    _committed = value;
-
+  Future<void> _commit(String value) async {
     // An emptied box means "unset", which has to delete the line: writing
     // `hostname =` back would pin the distro to an empty value instead of
     // letting WSL fall back to the Windows computer name.
@@ -682,15 +652,10 @@ class _WslConfTextFieldState extends State<_WslConfTextField> {
         children: [
           _settingHeader(context, widget.item, widget.setState, widget.setting),
           const SizedBox(height: 4.0),
-          TextBox(
-            controller: _controller,
-            focusNode: _focusNode,
+          DebouncedTextBox(
+            initialValue: prefs.getString(_prefKey) ?? '',
             placeholder: widget.setting.placeholder,
-            onChanged: (_) {
-              _timer?.cancel();
-              _timer = Timer(_debounce, _commit);
-            },
-            onSubmitted: (_) => _commit(),
+            onCommit: _commit,
           ),
         ],
       ),

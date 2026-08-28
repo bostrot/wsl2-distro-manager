@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wsl2distromanager/api/wsl_conf.dart';
+import 'package:wsl2distromanager/api/wsl_distribution_conf.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/dialogs/settings_dialog.dart';
+import 'package:wsl2distromanager/screens/package_screen.dart';
 
 /// A locale without a matching lib/i18n file makes LocalJsonLocalization throw
 /// during load, and the failed delegate leaves the app rendering an empty
@@ -168,6 +170,61 @@ void main() {
       'sparsefailed-text',
       'movenative-text',
       'movelegacy-text',
+      // P05-24 — custom-distro distribution (the audit's one L, features F-8).
+      'custompackage-text',
+      'custompackageinfo-text',
+      'custompackageunsupported-text',
+      'distributionconf-text',
+      'distributionconfinfo-text',
+      'distrounreachable-text',
+      'selectdistro-text',
+      'oobe-text',
+      'oobedefaultname-text',
+      'oobedefaultnameinfo-text',
+      'oobecommand-text',
+      'oobecommandinfo-text',
+      'oobedefaultuid-text',
+      'oobedefaultuidinfo-text',
+      'writeoobescript-text',
+      'writeoobescriptinfo-text',
+      'writingoobescript-text',
+      'wroteoobescript-text',
+      'shortcut-text',
+      'shortcutenabled-text',
+      'shortcutenabledinfo-text',
+      'shortcuticon-text',
+      'shortcuticoninfo-text',
+      'windowsterminal-text',
+      'terminalprofileenabled-text',
+      'terminalprofileenabledinfo-text',
+      'terminalprofiletemplate-text',
+      'terminalprofiletemplateinfo-text',
+      'packagereadiness-text',
+      'packagereadinessinfo-text',
+      'packageready-text',
+      'packagenodefaultname-text',
+      'packageoobenotexecutable-text',
+      'packagenooobe-text',
+      'packagenouid-text',
+      'packageiconformat-text',
+      'packagenowslconf-text',
+      'packageresolvconf-text',
+      'packagedistro-text',
+      'packagedistroinfo-text',
+      'packageoutput-text',
+      'packageformatinfo-text',
+      'packagenopath-text',
+      'createpackage-text',
+      'packaging-text',
+      'packaged-text',
+      'packagefailed-text',
+      'installfromfile-text',
+      'installfromfileinfo-text',
+      'packagenofile-text',
+      'installpackage-text',
+      'installingpackage-text',
+      'installedpackage-text',
+      'installpackagefailed-text',
     ];
 
     test('are present and non-empty in every locale', () {
@@ -278,6 +335,61 @@ void main() {
               .firstWhere((s) => s.prefKey == 'boot-systemd')
               .defaultOn,
           isNull);
+    });
+  });
+
+  /// The same guarantee for the `wsl-distribution.conf` editor added by
+  /// P05-24: a key rendered without a label and a description shows its own
+  /// i18n key in the UI.
+  group('wsl-distribution.conf editor strings', () {
+    test('every rendered key has a label and a description in English', () {
+      final english =
+          json.decode(File('lib/i18n/en.json').readAsStringSync()) as Map;
+
+      for (final setting in distributionConfSettings) {
+        for (final key in [setting.labelKey, setting.infoKey]) {
+          expect(english[key], isA<String>(),
+              reason:
+                  '[${setting.section}] ${setting.key} → "$key" is missing');
+          expect((english[key] as String).trim(), isNotEmpty,
+              reason: '[${setting.section}] ${setting.key} → "$key" is empty');
+        }
+      }
+    });
+
+    test('every section header has one too', () {
+      final english =
+          json.decode(File('lib/i18n/en.json').readAsStringSync()) as Map;
+
+      for (final label in distributionConfSectionLabels.values) {
+        expect(english[label], isA<String>(), reason: '"$label" is missing');
+      }
+    });
+
+    test('the editor renders all seven documented keys', () {
+      expect(distributionConfSettings.length, 7);
+
+      for (final section in kWslDistributionConfKeys.entries) {
+        for (final key in section.value) {
+          expect(
+              distributionConfSettings
+                  .any((s) => s.section == section.key && s.key == key),
+              true,
+              reason: '[${section.key}] $key has no widget');
+        }
+      }
+    });
+
+    test('every documented section has a header', () {
+      expect(distributionConfSectionLabels.keys.toSet(),
+          kWslDistributionConfKeys.keys.toSet());
+    });
+
+    test('both documented booleans default to on', () {
+      for (final setting in distributionConfSettings.where((s) => s.isToggle)) {
+        expect(setting.defaultOn, true,
+            reason: '[${setting.section}] ${setting.key} defaults to on');
+      }
     });
   });
 }

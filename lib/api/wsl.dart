@@ -17,6 +17,7 @@ import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/wsl_args.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 import 'package:wsl2distromanager/api/wsl_conf.dart';
+import 'package:wsl2distromanager/api/wsl_distribution_conf.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -916,10 +917,23 @@ class WSLApi {
     return importRes;
   }
 
-  /// Export a WSL distro by name
-  Future<String> export(String distribution, String location) async {
-    ProcessResult results = await _runWsl(['--export', distribution, location],
-        stdoutEncoding: null, stderrEncoding: null);
+  /// Export a WSL distro by name.
+  ///
+  /// [format] is `wsl --export --format <tar|tar.gz|tar.xz|vhd>`. Omitted, the
+  /// export is an uncompressed tar, which is what every existing caller has
+  /// always produced and what they keep producing. `.wsl` packaging passes
+  /// `tar.gz`, the format `build-custom-distro.md` recommends — "other
+  /// compression formats run the risk of breaking compatibility with older WSL
+  /// versions". The flag itself needs WSL 2.4.4, so callers gate on
+  /// [WslCapabilities.supportsWslPackages] before passing it.
+  Future<String> export(String distribution, String location,
+      {String? format}) async {
+    ProcessResult results = await _runWsl([
+      '--export',
+      distribution,
+      location,
+      if (format != null) ...['--format', format],
+    ], stdoutEncoding: null, stderrEncoding: null);
 
     // Check if the export command was successful
     if (results.exitCode != 0) {
@@ -1876,53 +1890,58 @@ try {
     return decoded.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
   }
 
-  /// Read `/etc/wsl.conf` from [distro] as a mutable, section-aware model.
+  /// Read [path] from inside [distro] as root.
   ///
   /// Returns null when the distro could not be reached at all, which is the
-  /// difference that keeps [updateWSLConf] safe: a *missing* file is an empty
-  /// config and may be created, but an *unreadable* one must never be
-  /// overwritten with just the key the user happened to toggle. The
+  /// difference that keeps every update-in-place caller safe: a *missing* file
+  /// is an empty file and may be created, but an *unreadable* one must never
+  /// be overwritten with just the key the user happened to toggle. The
   /// `2>/dev/null; exit 0` makes bash's own status say only "the distro ran
   /// this", leaving wsl.exe free to report the failures that matter.
-  Future<WslConfFile?> readWSLConf(String distro) async {
-    // Raw bytes on both channels, decoded through [utf8Convert]. wsl.exe
-    // answers its *own* failures — "There is no distribution with the
-    // supplied name" — in UTF-16, and a strict utf8 decoder throws a
-    // FormatException on that rather than handing the message back, which
-    // would turn a missing distro into a crash instead of a `false`.
+  ///
+  /// Raw bytes on both channels, decoded through [utf8Convert]. wsl.exe
+  /// answers its *own* failures — "There is no distribution with the
+  /// supplied name" — in UTF-16, and a strict utf8 decoder throws a
+  /// FormatException on that rather than handing the message back, which
+  /// would turn a missing distro into a crash instead of a `false`.
+  Future<String?> readDistroFile(String distro, String path) async {
     final ProcessResult result = await _runWsl(
-        wslShellArgs(distro, 'cat /etc/wsl.conf 2>/dev/null; exit 0',
-            user: 'root'),
+        wslShellArgs(distro, 'cat $path 2>/dev/null; exit 0', user: 'root'),
         runInShell: false,
         stdoutEncoding: null,
         stderrEncoding: null);
 
     if (result.exitCode != 0) {
       logDebug(
-          'Could not read /etc/wsl.conf from $distro: '
+          'Could not read $path from $distro: '
           '${utf8Convert(result.stderr as List<int>)}',
           null,
           null);
       return null;
     }
-    return WslConfFile.parse(utf8Convert(result.stdout as List<int>));
+    return utf8Convert(result.stdout as List<int>);
   }
 
-  /// Write [conf] back to `/etc/wsl.conf` in [distro], whole file at once.
+  /// Write [content] to [path] inside [distro] as root, whole file at once.
   ///
   /// The payload travels base64-encoded. That is not obfuscation: the old
-  /// writer interpolated the value into a `sed` expression and into an
-  /// `echo -e "…"` that ran as root, so a `/` broke the write and a `"` or a
-  /// `$(…)` ran as a command (audit CC-2, CC-7). base64's alphabet has no
+  /// `wsl.conf` writer interpolated the value into a `sed` expression and into
+  /// an `echo -e "…"` that ran as root, so a `/` broke the write and a `"` or
+  /// a `$(…)` ran as a command (audit CC-2, CC-7). base64's alphabet has no
   /// character a shell interprets, so there is nothing left to escape.
   ///
-  /// Returns whether the file was actually written — a read-only
-  /// `/etc/wsl.conf` fails the redirection and the caller has to say so
-  /// instead of reporting a change that never happened.
-  Future<bool> writeWSLConf(String distro, WslConfFile conf) async {
-    final String payload = base64.encode(utf8.encode(conf.serialize()));
+  /// Pass [mode] to `chmod` the file afterwards — `build-custom-distro.md`'s
+  /// configuration recommendations call for `0644` on both config files, and
+  /// an OOBE script WSL cannot execute is a distro whose first launch fails.
+  ///
+  /// Returns whether the file was actually written — a read-only filesystem
+  /// fails the redirection and the caller has to say so instead of reporting a
+  /// change that never happened.
+  Future<bool> writeDistroFile(String distro, String path, String content,
+      {String? mode}) async {
+    final String payload = base64.encode(utf8.encode(content));
     final ProcessResult result = await _runWsl(
-        wslShellArgs(distro, "printf %s '$payload' | base64 -d > /etc/wsl.conf",
+        wslShellArgs(distro, "printf %s '$payload' | base64 -d > $path",
             user: 'root'),
         runInShell: false,
         stdoutEncoding: null,
@@ -1930,14 +1949,85 @@ try {
 
     if (result.exitCode != 0) {
       logDebug(
-          'Could not write /etc/wsl.conf in $distro: '
+          'Could not write $path in $distro: '
           '${utf8Convert(result.stderr as List<int>)}',
           null,
           null);
       return false;
     }
+
+    if (mode != null) {
+      final ProcessResult chmod = await _runWsl(
+          wslExecArgs(distro, ['chmod', mode, path], user: 'root'),
+          runInShell: false,
+          stdoutEncoding: null,
+          stderrEncoding: null);
+      if (chmod.exitCode != 0) {
+        logDebug(
+            'Could not chmod $mode $path in $distro: '
+            '${utf8Convert(chmod.stderr as List<int>)}',
+            null,
+            null);
+        return false;
+      }
+    }
     return true;
   }
+
+  /// Which of [paths] exist inside [distro], in one round trip.
+  ///
+  /// Only literal absolute paths this app names itself are accepted — anything
+  /// with a shell metacharacter in it is dropped rather than interpolated,
+  /// because this is the one probe that does build a script out of its
+  /// arguments. Callers with a path that came out of a config file use
+  /// [isExecutableInDistro], which runs no shell at all.
+  Future<Set<String>> readDistroFileList(
+      String distro, List<String> paths) async {
+    final safe = paths
+        .where((path) => RegExp(r'^/[A-Za-z0-9._/-]*$').hasMatch(path))
+        .toList();
+    if (safe.isEmpty) return <String>{};
+
+    final script =
+        'for f in ${safe.join(' ')}; do [ -e \$f ] && echo \$f; done; exit 0';
+    final ProcessResult result = await _runWsl(
+        wslShellArgs(distro, script, user: 'root'),
+        runInShell: false,
+        stdoutEncoding: null,
+        stderrEncoding: null);
+    if (result.exitCode != 0) return <String>{};
+
+    return utf8Convert(result.stdout as List<int>)
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toSet();
+  }
+
+  /// Whether [path] is executable inside [distro].
+  ///
+  /// argv, not a script: [path] comes out of `/etc/wsl-distribution.conf`,
+  /// which the user edits, so it must never reach a shell. `--exec` hands the
+  /// arguments to `test` untouched.
+  Future<bool> isExecutableInDistro(String distro, String path) async {
+    final ProcessResult result = await _runWsl(
+        wslExecArgs(distro, ['test', '-x', path], user: 'root'),
+        runInShell: false,
+        stdoutEncoding: null,
+        stderrEncoding: null);
+    return result.exitCode == 0;
+  }
+
+  /// Read `/etc/wsl.conf` from [distro] as a mutable, section-aware model.
+  Future<WslConfFile?> readWSLConf(String distro) async {
+    final String? text = await readDistroFile(distro, '/etc/wsl.conf');
+    if (text == null) return null;
+    return WslConfFile.parse(text);
+  }
+
+  /// Write [conf] back to `/etc/wsl.conf` in [distro], whole file at once.
+  Future<bool> writeWSLConf(String distro, WslConfFile conf) =>
+      writeDistroFile(distro, '/etc/wsl.conf', conf.serialize());
 
   /// Read, [mutate] and write back `/etc/wsl.conf` in one pass.
   ///
@@ -1964,6 +2054,53 @@ try {
     if (conf == null) return false;
     if (!conf.remove(parent, key)) return true;
     return writeWSLConf(distro, conf);
+  }
+
+  /// Read `/etc/wsl-distribution.conf` from [distro].
+  ///
+  /// Null means the distro could not be reached; an *absent* file parses as an
+  /// empty config, which is what every distro this app has created reads as —
+  /// `wsl --import` writes no distribution config at all (audit F-8).
+  Future<WslDistributionConfFile?> readDistributionConf(String distro) async {
+    final String? text = await readDistroFile(distro, kWslDistributionConfPath);
+    if (text == null) return null;
+    return WslDistributionConfFile.parse(text);
+  }
+
+  /// Write [conf] back to `/etc/wsl-distribution.conf` in [distro].
+  ///
+  /// `0644`, owned by root, is what `build-custom-distro.md`'s configuration
+  /// recommendations require of both config files in a packaged distro.
+  Future<bool> writeDistributionConf(
+          String distro, WslDistributionConfFile conf) =>
+      writeDistroFile(distro, kWslDistributionConfPath, conf.serialize(),
+          mode: '0644');
+
+  /// Read, [mutate] and write back `/etc/wsl-distribution.conf` in one pass,
+  /// so the sections the user did not touch come back out unchanged.
+  Future<bool> updateDistributionConf(
+      String distro, void Function(WslDistributionConfFile conf) mutate) async {
+    final WslDistributionConfFile? conf = await readDistributionConf(distro);
+    if (conf == null) return false;
+    mutate(conf);
+    return writeDistributionConf(distro, conf);
+  }
+
+  /// Set one `wsl-distribution.conf` key.
+  Future<bool> setDistributionSetting(
+          String distro, String section, String key, String value) =>
+      updateDistributionConf(distro, (conf) => conf.set(section, key, value));
+
+  /// Remove one `wsl-distribution.conf` key, letting WSL's own default apply
+  /// again. Writing `enabled = true` back is not the same thing — the
+  /// documented default has to be reachable, which is only true if the line
+  /// can go away (the tri-state rule of audit CC-11).
+  Future<bool> removeDistributionSetting(
+      String distro, String section, String key) async {
+    final WslDistributionConfFile? conf = await readDistributionConf(distro);
+    if (conf == null) return false;
+    if (!conf.remove(section, key)) return true;
+    return writeDistributionConf(distro, conf);
   }
 
   /// Get wsl.conf settings
@@ -2090,6 +2227,42 @@ try {
         '--update',
         if (webDownload) '--web-download',
       ], timeout: const Duration(minutes: 20));
+
+  /// `wsl --install --from-file <path>`: install a packaged `.wsl` distro.
+  ///
+  /// The documented install path for a custom distribution
+  /// (`build-custom-distro.md:195`), and the half of audit F-8 that this app
+  /// could not do at all. Unlike `--import`, this one honours the
+  /// `/etc/wsl-distribution.conf` inside the archive, so the result gets its
+  /// OOBE run, its default user, its Start-menu shortcut and its Windows
+  /// Terminal profile — none of which an `--import`ed distro has ever had.
+  ///
+  /// [name] overrides `oobe.defaultName`; without either, wsl.exe has no name
+  /// to register the distro under. [noLaunch] suppresses the first-run shell,
+  /// which is what a GUI wants: the OOBE script is interactive and there is no
+  /// console attached to answer it.
+  ///
+  /// Requires WSL 2.4.4 — see [WslCapabilities.supportsWslPackages]. Callers
+  /// must check first; an older wsl.exe answers `Invalid command line option`.
+  Future<WslOutput> installFromFile(
+    String path, {
+    String? name,
+    String? location,
+    bool noLaunch = true,
+  }) {
+    // Trimmed here rather than at the call site: `--name ''` is not "no name",
+    // it is wsl.exe being told to register the distro under nothing.
+    final trimmedName = name?.trim() ?? '';
+    final trimmedLocation = location?.trim() ?? '';
+    return runVerb([
+      '--install',
+      '--from-file',
+      path,
+      if (trimmedName.isNotEmpty) ...['--name', trimmedName],
+      if (trimmedLocation.isNotEmpty) ...['--location', trimmedLocation],
+      if (noLaunch) '--no-launch',
+    ], timeout: const Duration(minutes: 60));
+  }
 
   /// Disk usage of [distribution] as the system distro sees it.
   ///
