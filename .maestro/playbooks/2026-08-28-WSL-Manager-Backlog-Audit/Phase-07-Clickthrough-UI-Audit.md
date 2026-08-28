@@ -188,11 +188,77 @@ Screenshots go to `.maestro/screenshots/phase-07/` (gitignored, never committed)
     errors and 2 warnings**, both warnings pre-existing (`wsl.dart:1744`,
     `test/mocks.dart:597`).
 
-- [ ] Audit the Pro surfaces:
+- [x] Audit the Pro surfaces:
   - `lib/screens/ai_workspace_screen.dart`: card layout, the four lifecycle states, error text legibility, progress visibility, dashboard buttons
   - `lib/screens/license_screen.dart`, `lib/components/pro_badge.dart`, `lib/components/beta_badge.dart`: how Pro gating is communicated to a free user — is it clear what they get, without nagging?
   - `lib/components/ai_chat_panel.dart`, `recommendations_panel.dart`, `ai_diagnosis.dart`, and the MCP server surface
   - Write `doc/audit/ui-ux/pro-surfaces.md`
+
+  **Done 2026-08-28.** 46 findings (PS-01..PS-46) in `doc/audit/ui-ux/pro-surfaces.md`,
+  all copied into the master table in `doc/audit/ui-ux/index.md`. 33 screenshots in
+  `.maestro/screenshots/phase-07/` (gitignored, `140`..`179`), including seven
+  nearest-neighbour zoom crops — the amber badges, the disabled button labels, the status
+  pills and the compact-rail overlap are not legible at 1:1.
+
+  - **This is the only pass that had to be run twice.** "How Pro gating is communicated to
+    a free user" is not observable from a `WSLM_FORCE_PRO` build, so the same tree was
+    relaunched *without* the flag — which is exactly the unpackaged free path — and every
+    gate was walked from there. Four launches in total (Pro, Pro + seeded prefs, free,
+    free + forced list error).
+  - **Three real tool lifecycles were driven end to end**, so `starting`, `running`, the
+    busy states and install progress come from actual runs. OpenClaw was started and its
+    dashboard opened; Open WebUI was started through its health gate; and **Hermes Agent
+    was installed from scratch (6 minutes) and uninstalled again**. Everything was put
+    back: Hermes to `Not Installed`, both other tools to `stopped`, prefs restored from
+    `%TEMP%\wslm-prefs-p07-pro.json` and re-verified key by key.
+  - **PS-01 and PS-40 are the two to fix first, and they are the same story from both
+    ends.** The licence screen sells "Script Generation" and "Smart Recommendations" with
+    a ✓ in the Pro column; `grep -rn "generateScript" lib` returns only the declaration,
+    and `_addAiPoweredRecommendations()` is an empty placeholder. Meanwhile the half of
+    the recommender that *does* render was reproduced live (`DockerImageCount = 5`) and
+    prints **its own i18n keys** — `recommend-docker-template`, `recommend-systemd` —
+    because those three keys are missing from **all nine** locale files.
+    `scripts/check_translations.dart` cannot catch it: it diffs the locales against
+    `en.json`, and they are absent from `en.json` too.
+  - **PS-15 is one root cause with three measured instances.** `isBusy` is a single
+    per-tool boolean and each button guesses whether it is the busy one: starting OpenClaw
+    spun **Uninstall** (`152`), opening the dashboard spun **Stop + Open Dashboard +
+    Uninstall** (`155`), and uninstalling Hermes spun **Start** (`169`).
+  - **Nine contrast numbers were sampled per pixel, not eyeballed.** The two worst are
+    structural: the amber `BETA` and `NEW` pills are `#FFBF00` on a 20 %-alpha wash of
+    themselves — **1.37:1** and **1.35:1** — and a disabled `FilledButton` label is white
+    on `#C6C6C6`, **1.71:1**, in a card where two of three buttons are always disabled.
+    Status pills: `stopped` **2.70:1** and `Starting up...` **3.84:1** fail AA, `running`
+    4.51:1 and `Not Installed` 10.50:1 pass. The licence table's "not included" ✗ is
+    **1.85:1** and its ✓ is 3.03:1. The chat empty-state hint is **3.69:1**. The AI
+    Assistant's only entry point, the FAB, is **1.29:1** against the page.
+  - **Three behaviours were proved by measurement rather than assertion.** The install
+    progress line changed between 15s and 60s (1307 px) and then **0 px between 60s and
+    180s**, so the one signal against a stall can itself stall (PS-18). The status bar
+    still read "Starting Open WebUI..." 105 s after the card said `running`, and survived
+    two later Stop operations (PS-17). And the recommendations dismiss ✕ wrote
+    `DismissedRecommendations = [recommend-systemd]` to `shared_preferences.json` while
+    changing nothing on screen (PS-41).
+  - **PS-33 was verified by reading the input back.** Pressing Send with no API key
+    navigates the whole app to Settings — telling the user, in a toast, to do the thing
+    it just did — lands on Settings with every accordion collapsed including the one it
+    names, and **discards the typed question**: returning Home shows the placeholder.
+  - **PS-31, PS-32, PS-37, PS-42, PS-44 and the `AiDiagnoseButton` are labelled
+    source-derived, not screenshotted.** The AI Workspace page-level error needs
+    `ensureDistro()` to fail, and the remote-WSL trick that worked for the list does not
+    apply — the service never sets `ExecutionRequest.useRemote`. The diagnose button was
+    attempted via an unreachable `RemoteWSLTarget` and abandoned after the SSH connect had
+    not timed out in 2.5 minutes. All are in the index's "not examined" section rather
+    than quietly implied to be covered.
+  - **Twelve verified passes are recorded too**, so a later regression is visible — most
+    importantly that **the upsell is genuinely restrained**: across four launches and
+    every screen of the free build there was no interstitial, no modal and no timed
+    prompt, and a non-Pro user's AI Workspace touches WSL zero times. PS-01..PS-07 should
+    be fixed without losing that.
+  - No Dart code changed — `git status` lists only the two Markdown files — so there is
+    nothing new to unit-test. `flutter analyze` was run anyway: **109 issues, 0 errors and
+    2 warnings**, both pre-existing (`wsl.dart:1744`, `test/mocks.dart:597`) — identical
+    to the baseline the previous task recorded.
 
 - [ ] Audit theme, locale and text quality — the highest-yield nitpicking:
   - Repeat the main screens in **dark and light** themes and diff the screenshots; flag any hardcoded `Colors.grey`, any low-contrast text, and any icon that disappears against its background

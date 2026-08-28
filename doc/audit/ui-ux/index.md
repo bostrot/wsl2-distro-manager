@@ -237,6 +237,52 @@ Populated by the per-area passes below; empty until they run. Severity is
 | ST-60 | Nothing says a snippet is a root bash script in a distro, and it cannot be run from this screen | [[settings-and-tools]] | `actions_screen.dart:373` | nit | S | `127-actions-empty.png` |
 | ST-61 | Two "add" affordances in opposite corners; "Add Community snippets" capitalises its middle word | [[settings-and-tools]] | `actions_screen.dart:109` | nit | S | `127-actions-empty.png` |
 | ST-62 | "Cancel" is the left button in three dialogs and the right button in the one that deletes things | [[settings-and-tools]] | `base_dialog.dart` | major | S | `121` vs `113`/`123`/`135` |
+| PS-01 | Purchase table sells Script Generation and Smart Recommendations; neither has a reachable implementation | [[pro-surfaces]] | `license_screen.dart:248` | blocker | L | `172-free-license.png` |
+| PS-02 | The purchase screen never shows a price -- no number anywhere on it | [[pro-surfaces]] | `license_screen.dart:202` | blocker | S | `172-free-license.png` |
+| PS-03 | Comparison glyphs are icon-only with no semantics; the "not included" mark measures 1.85:1 | [[pro-surfaces]] | `license_screen.dart:258` | major | S | `172b-license-table-zoom.png` |
+| PS-04 | The Pro user never sees the feature list -- it lives in the non-Pro branch only | [[pro-surfaces]] | `license_screen.dart:74` | major | S | `144-license-pro.png` |
+| PS-05 | No restore-purchase or support path if MSIX entitlement detection is wrong | [[pro-surfaces]] | `license_manager.dart:62` | major | M | _source-derived_ |
+| PS-06 | Nav item says "Upgrade to Pro"; the page it opens is headed "License" | [[pro-surfaces]] | `panelist.dart:96` | nit | S | `172-free-license.png` |
+| PS-07 | The store button is the app's only `canLaunchUrl`-gated launch -- the bug the codebase works around elsewhere | [[pro-surfaces]] | `license_screen.dart:40` | nit | S | _verified passing here_ |
+| PS-08 | `ProBadge` / `ProFeatureWrapper` / `UpgradePrompt` have no call sites; six gates, six vocabularies | [[pro-surfaces]] | `pro_badge.dart:6` | major | S | _source-derived_ |
+| PS-09 | Amber means BETA and NEW; both badges measure 1.35:1 / 1.37:1 | [[pro-surfaces]] | `beta_badge.dart:7` | major | S | `171b-free-navfooter-zoom.png` |
+| PS-10 | Compact nav draws the BETA badge on top of the AI Workspace icon and its selection bar | [[pro-surfaces]] | `panelist.dart:52` | major | S | `150b-compact-betabadge-zoom.png` |
+| PS-11 | The free MCP toggle looks enabled; clicking it jumps to License and discards unsaved settings | [[pro-surfaces]] | `settings_screen.dart:748` | major | S | `178-free-mcp-toggle-jump.png` |
+| PS-12 | Disabled BYOK fields give no per-field reason and their placeholders read as filled-in values | [[pro-surfaces]] | `settings_screen.dart:660` | nit | S | `176-free-settings-byok.png` |
+| PS-13 | The paywall drops the BETA badge the same page shows in the Pro build | [[pro-surfaces]] | `ai_workspace_screen.dart:359` | nit | S | `174-free-aiws-paywall.png` |
+| PS-14 | The only entry to the AI Assistant is a 48px circle at 1.29:1 against the page | [[pro-surfaces]] | `home_screen.dart:146` | major | S | `140b-pro-aifab-zoom.png` |
+| PS-15 | One `isBusy` flag spins the wrong buttons: Start spins Uninstall, dashboard spins Stop+Uninstall, uninstall spins Start | [[pro-surfaces]] | `ai_workspace_screen.dart:630` | blocker | M | `152`/`155`/`169` |
+| PS-16 | A tool stuck in "Starting up..." cannot be stopped -- only Uninstall is enabled | [[pro-surfaces]] | `ai_workspace_screen.dart:637` | major | S | `157-aiws-openwebui-start.png` |
+| PS-17 | Status bar still read "Starting Open WebUI..." 105s after it was running and through two later stops | [[pro-surfaces]] | `service.dart:1063` | major | S | `158`/`159` |
+| PS-18 | A six-minute install has no cancel and its one progress line froze for 2 minutes (0 px changed) | [[pro-surfaces]] | `ai_workspace_screen.dart:600` | major | M | `165`/`166`/`167` |
+| PS-19 | The badge read "Not Installed" for the entire six-minute install | [[pro-surfaces]] | `ai_workspace_screen.dart:551` | major | S | `165-aiws-install-progress-60s.png` |
+| PS-20 | "stopped" 2.70:1 and "Starting up..." 3.84:1 both fail AA; stopped is the most-shown state | [[pro-surfaces]] | `ai_workspace_screen.dart:723` | major | S | `141c-aiws-badges-zoom.png` |
+| PS-21 | Disabled `FilledButton` labels are white on #C6C6C6 -- 1.71:1, and 2 of 3 are always disabled | [[pro-surfaces]] | `ai_workspace_screen.dart:712` | major | S | `141b-aiws-card-zoom.png` |
+| PS-22 | "Installed" is a permanently disabled button repeating the status badge on the same row | [[pro-surfaces]] | `ai_workspace_screen.dart:620` | major | S | `141-aiws-initial.png` |
+| PS-23 | On a running tool Stop is the primary button and Open Dashboard is not | [[pro-surfaces]] | `ai_workspace_screen.dart:644` | major | S | `154-aiws-start-final.png` |
+| PS-24 | The `notInstalled` dot renders #323130 -- darker than running or stopped, reads as a bullet | [[pro-surfaces]] | `ai_workspace_screen.dart:740` | nit | S | `141-aiws-initial.png` |
+| PS-25 | Three casing conventions in one badge column: "Not Installed" / "Starting up..." / "running" | [[pro-surfaces]] | `en.json` | nit | S | `141-aiws-initial.png` |
+| PS-26 | "Installed: cmd://openclaw" -- hardcoded English exposing an internal URI sentinel | [[pro-surfaces]] | `ai_workspace_screen.dart:562` | nit | S | `141-aiws-initial.png` |
+| PS-27 | Uninstall confirms with an accent FilledButton where every other destructive dialog uses red | [[pro-surfaces]] | `ai_workspace_screen.dart:313` | major | S | `143-aiws-uninstall-confirm.png` |
+| PS-28 | The uninstall dialog names the tool on a bare line, then the sentence says "this tool" | [[pro-surfaces]] | `ai_workspace_screen.dart:317` | nit | S | `143-aiws-uninstall-confirm.png` |
+| PS-29 | Uninstall success toast is built by concatenation ("<name> uninstalled successfully") | [[pro-surfaces]] | `ai_workspace_screen.dart:351` | nit | S | `170-aiws-uninstall-done.png` |
+| PS-30 | The Open Dashboard tooltip repeats the button's visible label verbatim | [[pro-surfaces]] | `ai_workspace_screen.dart:659` | nit | S | `156-aiws-dashboard-result.png` |
+| PS-31 | Page-level failure is hardcoded English wrapping a raw `Exception.toString()` | [[pro-surfaces]] | `ai_workspace_screen.dart:440` | major | M | _source-derived_ |
+| PS-32 | A failed stop shows a red `Error:` line under an unchanged green "running" badge | [[pro-surfaces]] | `service.dart:1090` | nit | S | _source-derived_ |
+| PS-33 | Send without an API key navigates to Settings and discards the typed question | [[pro-surfaces]] | `ai_chat_panel.dart:42` | blocker | M | `147`/`148b` |
+| PS-34 | The chat panel gives no hint it cannot work until Send is pressed; no cancel, no close | [[pro-surfaces]] | `ai_chat_panel.dart:136` | major | S | `145-aichat-empty.png` |
+| PS-35 | Clear-history: 14px icon, no tooltip, no `MergeSemantics`, no confirmation, always enabled | [[pro-surfaces]] | `ai_chat_panel.dart:124` | major | S | `145-aichat-empty.png` |
+| PS-36 | Chat empty-state hint measures 3.69:1; five hardcoded `Colors.grey` literals in one file | [[pro-surfaces]] | `ai_chat_panel.dart:142` | major | S | `145b-aichat-empty-zoom.png` |
+| PS-37 | The user's chat avatar is `FluentIcons.add` -- a plus sign | [[pro-surfaces]] | `ai_chat_panel.dart:294` | nit | S | _source-derived_ |
+| PS-38 | At 900px the fixed 360px panel takes 40% of the window and the hint has 17px of margin | [[pro-surfaces]] | `home_screen.dart:104` | nit | S | `149-aichat-narrow900.png` |
+| PS-39 | The chat panel's own Upgrade button is unreachable -- the FAB that opens it is Pro-only | [[pro-surfaces]] | `ai_chat_panel.dart:156` | nit | S | `171-free-home.png` |
+| PS-40 | The recommendations panel renders raw i18n keys; all three are missing from all nine locales | [[pro-surfaces]] | `recommender_service.dart:34` | blocker | S | `160b-recommendations-zoom.png` |
+| PS-41 | The dismiss X writes `DismissedRecommendations` to prefs and changes nothing on screen | [[pro-surfaces]] | `recommendations_panel.dart:110` | major | S | `161-recommendations-after-dismiss.png` |
+| PS-42 | `clearDismissed()` adds to the dismissed list, and the "Go to" link calls it too | [[pro-surfaces]] | `recommender_service.dart:101` | major | S | _source-derived_ |
+| PS-43 | "Go to Templates" is three English fragments built by string interpolation | [[pro-surfaces]] | `recommendations_panel.dart:98` | major | S | `160b-recommendations-zoom.png` |
+| PS-44 | Dismissing every recommendation leaves an empty bordered box titled "Recommendations" | [[pro-surfaces]] | `recommendations_panel.dart:19` | nit | S | _source-derived_ |
+| PS-45 | The dismiss X chases the label instead of the right edge; 11px and 10px text | [[pro-surfaces]] | `recommendations_panel.dart:36` | nit | S | `160b-recommendations-zoom.png` |
+| PS-46 | Every toast is `InfoBarSeverity.info` with one decoration -- install-failed looks like install-succeeded | [[pro-surfaces]] | `notify.dart:22` | major | M | `167`/`170`/`147` |
 
 ## Per-area files
 
@@ -245,7 +291,7 @@ Populated by the per-area passes below; empty until they run. Severity is
 | [[list-and-navigation]] | distro list, list rows, nav pane, title bar, narrow width | **done** -- 26 findings (LN-01..LN-26) |
 | [[create-and-install]] | create screen, install/copy/QA dialogs | **done** -- 40 findings (CI-01..CI-40) |
 | [[settings-and-tools]] | app settings, per-distro settings, templates, mount, actions | **done** -- 62 findings (ST-01..ST-62) |
-| [[pro-surfaces]] | AI Workspace, license, badges, AI chat, recommendations, MCP | not started |
+| [[pro-surfaces]] | AI Workspace, license, badges, AI chat, recommendations, MCP | **done** -- 46 findings (PS-01..PS-46) |
 | [[theme-and-locales]] | dark/light diff, all nine locales, text quality | not started |
 | [[interaction-and-a11y]] | tab order, tooltips, long operations, error text | not started |
 
@@ -277,8 +323,27 @@ Recorded as the audit runs, so it never implies coverage it does not have.
   (CI-13) -- deliberately not triggered, so the audit does not leave a passwordless
   account on the host.
 - **Store-packaged build** -- the audit runs an unpackaged debug build with the Pro gate
-  forced. Anything whose appearance depends on real MSIX package identity (the genuine
-  free-tier experience, Store purchase flow) is out of scope for the click-through.
+  forced. Anything whose appearance depends on real MSIX package identity (the Store
+  purchase flow, a *false negative* from `GetCurrentPackageFullName`) is out of scope for
+  the click-through. The **free-tier experience is covered**, though: [[pro-surfaces]]
+  relaunched the same build *without* `WSLM_FORCE_PRO`, which is exactly the unpackaged
+  free path, and audited every gate from there.
+- **The AI Workspace page-level error state** (PS-31) -- `AiWorkspaceService` builds its
+  own `ExecutionRequest`s and never sets `useRemote`, so the unreachable-SSH trick that
+  reached the list's error branch does not touch it; the only other route is unregistering
+  the host's real 16.6 GB `ai-workspace` distro. Read from source and labelled as such.
+- **`AiDiagnoseButton` / `diagnoseWithAi()`** -- it only renders on a distro row already in
+  an error state or on a failed create. An attempt to reach it via an unreachable
+  `RemoteWSLTarget` was abandoned after the SSH connect had not timed out in 2.5 minutes;
+  the resulting loading state is already recorded as LN-18/LN-20. Behaviour read from
+  source in [[pro-surfaces]] and not counted as a finding.
+- **A real AI chat exchange** -- needs a live OpenAI-compatible key and would send this
+  machine's WSL configuration to a third-party endpoint. The markdown rendering of
+  assistant replies, the scroll-to-bottom behaviour and the in-flight loading row were
+  therefore not observed.
+- **Dark mode for the Pro surfaces** -- deliberately deferred to [[theme-and-locales]],
+  which owns the light/dark diff. PS-36 lists the hardcoded `Colors.grey` literals that
+  pass should start from.
 - **The Cloudflare tunnel path in MCP settings** -- enabling it downloads `cloudflared`
   and publishes this machine's MCP server, which can run arbitrary commands in every
   distro, to a public URL. Deliberately not triggered; ST-22 is read from source and
