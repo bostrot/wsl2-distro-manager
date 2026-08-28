@@ -122,10 +122,56 @@
   > sees any of it** — every online client keeps getting the old 22-entry list with the
   > dead 2022 assets. The handoff note is the next task.
 
-- [ ] Write the CDN handoff note at `Working/cdn-upload.md`:
+- [x] Write the CDN handoff note at `Working/cdn-upload.md`:
   - State plainly that the runtime source is `https://n8n.aachen.dev/webhook/cdn/images.json` and that the repo copy is only the bundled fallback
   - Include the exact final JSON payload to upload, and a one-line `curl` command to verify the CDN afterwards
   - Note the date and which entries changed, so the CDN and repo copies can be compared later
+
+  **Done 2026-08-28** → `Working/cdn-upload.md`. The note was written against a live
+  probe of the endpoint rather than against the assumption in the previous task, and
+  that probe found something that changes the framing of this whole phase:
+
+  - **The CDN endpoint is not stale — it is broken.**
+    `https://n8n.aachen.dev/webhook/cdn/images.json` answers **HTTP 200,
+    `application/json; charset=utf-8`, `Transfer-Encoding: chunked`, and a
+    zero-byte body.** Six requests over ~90 s in four shapes (plain, `Accept:
+    application/json`, `--compressed`, `--http1.0`, custom Dart UA, headers-only):
+    all 200, all 0 bytes.
+  - **Traced through dio 5.9.0, not guessed**: `sync_transformer.dart:63-76` sets
+    `response = null` for a JSON content type with zero bytes, so `response.data`
+    is `null`, the `statusCode < 300` guard passes, and `jsonData.forEach(...)`
+    (`app.dart:71`) throws `NoSuchMethodError` into the bare `catch (e)`. Every
+    online client therefore **already** falls through to its own bundled
+    `images.json`. This corrects the warning left on the rewrite task: users are not
+    "getting the old 22-entry list from the CDN", they are getting whatever list
+    shipped in their installer. Same visible outcome, different cause — and it means
+    the maintainer has to *repair* the endpoint, not merely refresh it.
+  - The note therefore lists all seven conditions the endpoint must satisfy
+    (status, JSON content type, **non-empty body**, top-level object, string values,
+    preserved key order, key charset) — each one traced to the line of code that
+    breaks, because every one of them fails silently into the fallback.
+  - **The embedded payload was verified against the file, not transcribed by eye**:
+    the fenced JSON block in the note canonically re-encodes to bytes identical to
+    `images.json` (`sha256 97db5b08…`, 2263 B minified; the committed file is
+    `f5ec7818…`, 2398 B, CRLF, no trailing newline). Both fingerprints are recorded
+    in the note so a later CDN-vs-repo comparison is one command.
+  - **Both verification commands were actually run.** The required one-liner
+    (`curl -sS -w '…bytes=%{size_download}'`) prints
+    `[status=200 type=application/json; charset=utf-8 bytes=0]` today — it catches
+    the live failure, which a status-code-only check would not. The stricter
+    order-preserving PowerShell comparison was run too and correctly reports
+    `MISMATCH`. The `jq` variant is included but flagged in the note as **not run**
+    (`jq` is not installed on this machine).
+  - Change baseline is stated honestly as the **previous repo copy** (`2970c85^`),
+    not the CDN's content — the CDN's last-good payload is unreadable, so it is not
+    reconstructed. Diff computed mechanically via
+    `Working/phase-06/diff_catalogue.dart`: **17 removed, 14 added, 5 kept with
+    unchanged URLs**, each with its reason.
+
+  > [!IMPORTANT]
+  > **Nothing in phase 06 has reached a user, and cannot until the maintainer
+  > uploads this payload manually.** No attempt was made to write to the endpoint
+  > from here — publishing to third-party infrastructure is the maintainer's call.
 
 - [ ] Install-test the catalogue by clicking through the running app, not by reasoning about it:
   - Launch with `.maestro/tools/launch.ps1`, open the create-instance screen, and install one entry per distro family (at minimum: newest Ubuntu LTS, Debian stable, Alpine, Fedora, Rocky or Alma, openSUSE, Kali)
