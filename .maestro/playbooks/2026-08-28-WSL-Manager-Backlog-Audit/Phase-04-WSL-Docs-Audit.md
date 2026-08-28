@@ -51,11 +51,62 @@ What the app exposes today, for orientation: `.wslconfig` keys live in `lib/scre
   `bridged` deprecated since WSL 2.4.5 and `virtioproxy` the NAT fallback since
   2.3.25 — not the two-value `NAT | mirrored` this phase's brief assumes.
 
-- [ ] Extract the documented surface into machine-checkable inventories in `Working/`:
+- [x] Extract the documented surface into machine-checkable inventories in `Working/`:
   - `wslconfig-keys.md` — every `[wsl2]`, `[experimental]` and other section key, with its type, default, minimum WSL version and one-line description
   - `wslconf-keys.md` — every `wsl.conf` section/key (`[automount]`, `[network]`, `[interop]`, `[user]`, `[boot]`) with the same fields
   - `wsl-exe-flags.md` — every documented `wsl.exe` command and flag, including newer ones such as `--manage`, `--mount --vhd`, `--import --vhd`, `--export --vhd`, `--install --no-distribution`, `--version`, `--update`, `--set-sparse`, `--move`
   - Note explicitly which keys the docs mark as deprecated, experimental-graduated, or renamed
+
+  **Result (2026-08-28):** Three inventories written, all citing
+  `microsoftdocs/wsl@8842def (2026-07-30)` with page + line for every row.
+  `Working/wslconfig-keys.md` (29 keys), `Working/wslconf-keys.md` (7 sections /
+  15 keys + 7 `automount.options` sub-values), `Working/wsl-exe-flags.md`
+  (64 commands + options, swept across all 23 pages carrying a `wsl --<flag>`).
+  Each file ends with a "what was not examined" section. No `lib/` file was
+  opened — this task is the documented side only.
+
+  Six things that change how the later Phase 04 tasks must be run:
+
+  1. **`--set-sparse` and `--move` are not in the docs at all.** Nor are
+     `--shell-type`, `--`, `--distribution-id`, `--uninstall`, `--shutdown --force`,
+     `--install --version/--vhd-size/--fixed-vhd/--legacy`, or
+     `--manage --set-default-user` — 12 flags exist only in `wsl.exe --help`.
+     I ran `wsl.exe --help` locally (de-DE output; flag spellings verbatim,
+     descriptions translated) and marked those rows **H** so the absence is a
+     checkable claim rather than missing evidence. `cli-flags.md` must diff the
+     app against **D + H**, not against `basic-commands.md` alone.
+  2. **`--export --vhd` is stale.** `basic-commands.md:185` documents it; `faq.yml:188`
+     and the shipping binary use `--export --format <tar|tar.gz|tar.xz|vhd>`, and the
+     local `--help` offers no `--vhd` on `--export` at all. Anything in `lib/api/wsl.dart`
+     that shells out to `--export --vhd` needs re-verification, and the compressed
+     export formats are an undocumented real capability.
+  3. **`boot.systemd` has no row in the `[boot]` reference table** — it exists only in
+     prose (`wsl-config.md:46-57`, `systemd.md`). Floor is WSL **0.67.6+**. A mechanical
+     table extraction loses the most user-visible key in `wsl.conf`; the app already
+     ships it, so this is a docs gap, not an app gap.
+  4. **`troubleshooting.md` still calls `networkingMode`, `autoProxy` and `dnsTunneling`
+     `[experimental]`** (lines 305/315/335) while `wsl-config.md` has them in `[wsl2]`.
+     Same commit, contradicting itself. Any app tooltip that says "experimental" about
+     these three is **outdated**, not merely stale wording — a user following it writes a
+     section header current WSL ignores.
+  5. **Five documented conditional dependencies** must drive UI enablement in Phase 05:
+     `dnsTunneling` → {`bestEffortDnsParsing`, `dnsTunnelingIpAddress`}; `autoProxy` →
+     `initialAutoProxyTimeout`; `networkingMode=mirrored` → {`ignoredPorts`,
+     `hostAddressLoopback`} and **`localhostForwarding` becomes ignored**;
+     `networkingMode=NAT` → `dnsProxy`. Also `automount.options`' `umask`/`fmask`/`dmask`
+     are inert unless `metadata` is present.
+  6. **`.wslconfig` key matching is case-insensitive and the docs use both spellings** —
+     `wsl-config.md`'s example writes `swapfile=` / `localhostforwarding=` all-lowercase
+     against the table's `swapFile` / `localhostForwarding`. The verification task's
+     `grep -rn "<key>" lib/` must cover both spellings or it will report false gaps.
+
+  Also recorded, for completeness rather than action: two `[wsl2]` keys
+  (`systemDistro`, `kernelDebugPort`) appear only in `intune.md`, never in the reference
+  table; `[automount] crossDistro` and the removed `[filesystem] umask` are historical;
+  and nine upstream documentation defects (malformed `kernelModules` row, "supports four
+  sections" when seven are documented, inverted `protectBinfmt` description, `--export`'s
+  `-` described as stdin, duplicate `windowsterminal.profileTemplate` row, and others)
+  are listed in the per-file "Documentation defects" sections.
 
 - [ ] Diff each inventory against the app and write per-area findings under `doc/audit/wsl-docs/`, one file per area, each with YAML front matter (`type: analysis`, `title`, `created: 2026-08-28`, `tags: [wsl, docs-audit, <area>]`, `related:` wiki-links) and a table of key → documented → app state → verdict:
   - `wslconfig-keys.md` — global `.wslconfig` coverage
