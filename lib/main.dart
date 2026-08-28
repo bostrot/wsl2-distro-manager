@@ -36,8 +36,9 @@ Future<void> restoreWindowBounds() async {
   final left = prefs.getDouble('WindowLeft');
   final top = prefs.getDouble('WindowTop');
 
-  await windowManager.setSize(
-      width != null && height != null ? Size(width, height) : defaultWindowSize);
+  await windowManager.setSize(width != null && height != null
+      ? Size(width, height)
+      : defaultWindowSize);
 
   if (left != null && top != null) {
     await windowManager.setPosition(Offset(left, top));
@@ -222,6 +223,14 @@ class WSLManager extends StatelessWidget {
           ),
           locale: appTheme.locale,
           localeResolutionCallback: (locale, supportedLocales) {
+            // A locale set on AppTheme is the settings picker previewing a
+            // language the user has not saved yet, so it outranks the stored
+            // preference — which is only ever the *saved* language (ST-02).
+            final preview = appTheme.locale;
+            if (preview != null) {
+              language = preview.toLanguageTag();
+              return preview;
+            }
             // Language was set manually
             if (selectedLang != null) {
               language = selectedLang;

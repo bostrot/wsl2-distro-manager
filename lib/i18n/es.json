@@ -152,7 +152,7 @@
   "saveastemplate-text": "Guardar como plantilla",
   "savingastemplate-text": "Guardando como plantilla ...",
   "language-text": "Idioma",
-  "languagechange-text": "El cambio de idioma se aplicará después de reiniciar.",
+  "languagechange-text": "El idioma cambia al instante. Guarda para conservarlo.",
   "notemplates-text": "No se encontraron plantillas",
   "cleanuptitle-text": "Limpiar instancia de WSL (%s0)",
   "cleanupbody-text": "Realmente desea limpiar la distribución? Esto compactará el disco duro virtual para recuperar espacio. La instancia se detendrá y no estará disponible durante este proceso.",
@@ -544,5 +544,15 @@
   "startinginstance-text": "Iniciando %s...",
   "stoppinginstance-text": "Deteniendo %s...",
   "deletinginstance-text": "Eliminando %s...",
-  "errorenterusername-text": "Introduce un nombre de usuario para el usuario predeterminado o desactiva la opción."
+  "errorenterusername-text": "Introduce un nombre de usuario para el usuario predeterminado o desactiva la opción.",
+  "unsavedchanges-title": "Cambios sin guardar",
+  "unsavedchanges-text": "Esta página tiene cambios que aún no has guardado. ¿Guardarlos antes de salir?",
+  "unsavedchanges-marker-text": "Cambios sin guardar",
+  "discardchanges-text": "Descartar",
+  "settingssaved-text": "Ajustes guardados.",
+  "opensettings-text": "Abrir ajustes",
+  "ai-chat-pro-required-text": "El chat de IA es una función Pro.",
+  "distrostopped-text": "Esta distro no está en ejecución",
+  "distrostoppedinfo-text": "Leer los ajustes de %s implica leer /etc/wsl.conf dentro de ella, lo que inicia la distro. Seguirá en ejecución hasta que la detengas.",
+  "startandread-text": "Iniciarla y leer los ajustes"
 }

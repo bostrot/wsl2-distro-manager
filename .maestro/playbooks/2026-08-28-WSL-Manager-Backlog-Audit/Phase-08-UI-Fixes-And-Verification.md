@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 14 of 214 findings closed (3 blockers, 8 majors, 3 nits).** Running
+  **In progress — 21 of 214 findings closed (5 blockers, 13 majors, 3 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -28,10 +28,29 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     ST-45, PS-19, PS-32 — all per-screen work in `qa_dialog.dart`,
     `settings_screen.dart` and `ai_workspace_screen.dart`.
 
-  **Next up:** FIX-01 (settings dirty-flag / discarded input, 2 blockers), then FIX-05
-  (error text), then FIX-06/FIX-07 (keyboard and accessible names). Verification for this
-  slice: `flutter analyze` clean (two warnings, both pre-existing and untouched),
-  `flutter test` 721 passing (was 708), `dart run scripts/check_translations.dart` exit 0.
+  - **FIX-01 — stop discarding what the user typed: complete (7/7).** A new
+    `UnsavedChangesGuard` (`lib/components/unsaved_changes.dart`) lets a dirty screen
+    register an exit guard; every nav-pane item, the app-bar back button, the window X
+    and the two in-screen buttons that navigated on their own now ask before building
+    the next screen. Settings compares a draft snapshot against the last saved one
+    rather than trusting a dozen controls to set a flag, which also drives the new
+    "Unsaved changes" marker and Discard button. The save-on-`dispose()` that was meant
+    to commit on exit and observably never fired is gone. Language is in the draft and
+    previews live (`localeResolutionCallback` now prefers `AppTheme.locale` over the
+    stored preference, or the stored value would win on the rebuild the preview
+    triggers); Save confirms in place instead of teleporting to Home; the free MCP
+    toggle is disabled with its hint dimmed instead of replacing the screen; the AI chat
+    panel says why Send did nothing *in* the panel and keeps the typed question; and the
+    per-distro dialog buffers `wsl.conf` edits so Cancel cancels and Save is the only
+    thing that touches the distro. ST-27 is answered by warning up front — there is no
+    way to read `/etc/wsl.conf` without `wsl.exe` booting the distro — so a stopped
+    distro gets a notice and a "Start it and read the settings" button.
+
+  **Next up:** FIX-05 (error text a user can act on), then FIX-06/FIX-07 (keyboard and
+  accessible names), then the five open FIX-02 items. Verification for this slice:
+  `flutter analyze` clean (two warnings, both pre-existing and untouched),
+  `flutter test` 732 passing (was 721), `dart run scripts/check_translations.dart`
+  exit 0.
 
 - [ ] Fix the text-quality findings across the app:
   - Replace every user-facing message containing a raw exception, a bare colon, a stack trace or an unactionable shell command with a sentence explaining what failed and what to do next, keeping the technical detail available in an expandable/secondary position

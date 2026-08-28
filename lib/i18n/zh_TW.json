@@ -152,7 +152,7 @@
   "saveastemplate-text": "另存為範本",
   "savingastemplate-text": "另存為範本 ...",
   "language-text": "語言",
-  "languagechange-text": "語言變更將在重新啟動後生效。",
+  "languagechange-text": "語言會立即切換。儲存後才會保留。",
   "notemplates-text": "沒有找到範本",
   "cleanuptitle-text": "清理 WSL 安裝實體 (%s0)",
   "cleanupbody-text": "您真的要清理該發行版嗎？ 這將壓縮虛擬硬碟以回收空間。 在此過程中，實例將停止且不可用。",
@@ -545,5 +545,15 @@
   "startinginstance-text": "正在啟動 %s...",
   "stoppinginstance-text": "正在停止 %s...",
   "deletinginstance-text": "正在刪除 %s...",
-  "errorenterusername-text": "請輸入預設使用者的使用者名稱，或關閉此選項。"
+  "errorenterusername-text": "請輸入預設使用者的使用者名稱，或關閉此選項。",
+  "unsavedchanges-title": "未儲存的變更",
+  "unsavedchanges-text": "此頁面有尚未儲存的變更。離開前要儲存嗎？",
+  "unsavedchanges-marker-text": "未儲存的變更",
+  "discardchanges-text": "捨棄",
+  "settingssaved-text": "設定已儲存。",
+  "opensettings-text": "開啟設定",
+  "ai-chat-pro-required-text": "AI 聊天是 Pro 功能。",
+  "distrostopped-text": "此發行版未在執行",
+  "distrostoppedinfo-text": "讀取 %s 的設定需要讀取其中的 /etc/wsl.conf，這會啟動該發行版。在你終止它之前會持續執行。",
+  "startandread-text": "啟動並讀取設定"
 }

@@ -11,6 +11,7 @@ import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/dialogs/bug_dialog.dart';
 import 'package:wsl2distromanager/main.dart';
 import 'package:wsl2distromanager/nav/init.dart';
@@ -166,9 +167,13 @@ class RootPageState extends State<RootPage> with WindowListener {
         leading: () {
           final enabled = widget.shellContext != null && router.canPop();
           final onPressed = enabled
-              ? () {
+              ? () async {
+                  // Back is an exit route like any other, so it asks the
+                  // screen it is leaving first (audit ST-01).
+                  if (!await UnsavedChangesGuard.confirmLeave()) return;
+                  if (!mounted) return;
                   if (router.canPop()) {
-                    context.pop();
+                    router.pop();
                     setState(() {});
                   }
                 }
@@ -310,6 +315,9 @@ class RootPageState extends State<RootPage> with WindowListener {
 
   @override
   void onWindowClose() async {
+    // `setPreventClose(true)` in main() is what gives a dirty screen the
+    // chance to answer here rather than losing the edits to the X (ST-01).
+    if (!await UnsavedChangesGuard.confirmLeave()) return;
     await _saveWindowBounds();
     SystemNavigator.pop();
     exit(0);

@@ -16,9 +16,7 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('homepage-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.state.uri.toString() != '/') {
-        router.pushNamed('home');
-      }
+      navigateGuarded('home', path: '/');
     },
   ),
   PaneItem(
@@ -27,9 +25,7 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('managequickactions-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.state.uri.toString() != '/quickactions') {
-        router.pushNamed('quickactions');
-      }
+      navigateGuarded('quickactions', path: '/quickactions');
     },
   ),
   PaneItem(
@@ -38,9 +34,7 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('templates-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.state.uri.toString() != '/templates') {
-        router.pushNamed('templates');
-      }
+      navigateGuarded('templates', path: '/templates');
     },
   ),
   PaneItem(
@@ -52,9 +46,7 @@ final List<NavigationPaneItem> originalItems = [
     infoBadge: const BetaBadge(),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.state.uri.toString() != '/ai-workspace') {
-        router.pushNamed('ai-workspace');
-      }
+      navigateGuarded('ai-workspace', path: '/ai-workspace');
     },
   ),
   PaneItem(
@@ -63,9 +55,7 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('addinstance-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.state.uri.toString() != '/addinstance') {
-        router.pushNamed('addinstance');
-      }
+      navigateGuarded('addinstance', path: '/addinstance');
     },
   ),
   PaneItem(
@@ -74,9 +64,7 @@ final List<NavigationPaneItem> originalItems = [
     title: Text('custompackage-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
-      if (router.state.uri.toString() != '/package') {
-        router.pushNamed('package');
-      }
+      navigateGuarded('package', path: '/package');
     },
   ),
   PaneItem(
@@ -89,69 +77,68 @@ final List<NavigationPaneItem> originalItems = [
     },
   ),
 ];
+
 /// Rebuilt on every access: the label and badge depend on the licence state,
 /// and a PaneItem title has to be a real Text — fluent_ui reads the string out
 /// of it, so a builder widget renders an empty entry.
 List<NavigationPaneItem> get footerItems => [
-  PaneItem(
-    key: const Key('/license'),
-    icon: const Icon(FluentIcons.crown),
-    title: Text(LicenseManager().isPro
-        ? 'license-text'.i18n()
-        : 'upgrade-pro-text'.i18n()),
-    infoBadge: LicenseManager().isPro
-        ? null
-        : Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: const Text(
-              'NEW',
-              style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFFFBF00),
+      PaneItem(
+        key: const Key('/license'),
+        icon: const Icon(FluentIcons.crown),
+        title: Text(LicenseManager().isPro
+            ? 'license-text'.i18n()
+            : 'upgrade-pro-text'.i18n()),
+        infoBadge: LicenseManager().isPro
+            ? null
+            : Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: const Text(
+                  'NEW',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFFBF00),
+                  ),
+                ),
               ),
-            ),
-          ),
-    body: const SizedBox.shrink(),
-    onTap: () {
-      if (router.state.uri.toString() != '/license')
-        router.pushNamed('license');
-    },
-  ),
-  LinkPaneItemAction(
-    icon: const Icon(FluentIcons.heart),
-    title: Text('sponsor-text'.i18n()),
-    link: 'https://github.com/sponsors/bostrot',
-    body: const SizedBox.shrink(),
-  ),
-  PaneItemSeparator(),
-  PaneItem(
-    key: const Key('/settings'),
-    icon: const Icon(FluentIcons.settings),
-    title: Text('settings-text'.i18n()),
-    body: const SizedBox.shrink(),
-    onTap: () {
-      if (router.state.uri.toString() != '/settings')
-        router.pushNamed('settings');
-    },
-  ),
-  LinkPaneItemAction(
-    icon: const Icon(FluentIcons.help),
-    title: Text('documentation-text'.i18n()),
-    link: 'https://github.com/bostrot/wsl2-distro-manager/wiki',
-    body: const SizedBox.shrink(),
-  ),
-  PaneItem(
-    key: const Key('/about'),
-    icon: const Icon(FluentIcons.info),
-    title: Text('about-text'.i18n()),
-    body: const SizedBox.shrink(),
-    onTap: () {
-      infoDialog(prefs, currentVersion);
-    },
-  ),
-];
+        body: const SizedBox.shrink(),
+        onTap: () {
+          navigateGuarded('license', path: '/license');
+        },
+      ),
+      LinkPaneItemAction(
+        icon: const Icon(FluentIcons.heart),
+        title: Text('sponsor-text'.i18n()),
+        link: 'https://github.com/sponsors/bostrot',
+        body: const SizedBox.shrink(),
+      ),
+      PaneItemSeparator(),
+      PaneItem(
+        key: const Key('/settings'),
+        icon: const Icon(FluentIcons.settings),
+        title: Text('settings-text'.i18n()),
+        body: const SizedBox.shrink(),
+        onTap: () {
+          navigateGuarded('settings', path: '/settings');
+        },
+      ),
+      LinkPaneItemAction(
+        icon: const Icon(FluentIcons.help),
+        title: Text('documentation-text'.i18n()),
+        link: 'https://github.com/bostrot/wsl2-distro-manager/wiki',
+        body: const SizedBox.shrink(),
+      ),
+      PaneItem(
+        key: const Key('/about'),
+        icon: const Icon(FluentIcons.info),
+        title: Text('about-text'.i18n()),
+        body: const SizedBox.shrink(),
+        onTap: () {
+          infoDialog(prefs, currentVersion);
+        },
+      ),
+    ];

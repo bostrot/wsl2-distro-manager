@@ -22,6 +22,36 @@ class _AiChatPanelState extends State<AiChatPanel> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
 
+  /// i18n key of the precondition that stopped the last Send, if any.
+  ///
+  /// Send used to answer a missing API key by navigating to Settings on its
+  /// own, which destroyed this panel and took the typed question with it
+  /// (audit PS-33). The notice is rendered in the panel instead, and the text
+  /// stays in the box.
+  String? _blockedReasonKey;
+
+  /// The route the notice's button goes to, and its label.
+  String? _blockedRouteName;
+  String? _blockedActionKey;
+
+  void _block(String reasonKey, String routeName, String actionKey) {
+    if (!mounted) return;
+    setState(() {
+      _blockedReasonKey = reasonKey;
+      _blockedRouteName = routeName;
+      _blockedActionKey = actionKey;
+    });
+  }
+
+  void _unblock() {
+    if (_blockedReasonKey == null) return;
+    setState(() {
+      _blockedReasonKey = null;
+      _blockedRouteName = null;
+      _blockedActionKey = null;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,17 +64,17 @@ class _AiChatPanelState extends State<AiChatPanel> {
 
     // Check license
     if (!_license.isPro) {
-      router.pushNamed('license');
+      _block('ai-chat-pro-required-text', 'license', 'upgrade-text');
       return;
     }
 
     // Chat runs on the user's own API key — nothing to send without one.
     if (!_ai.hasByokConfigured) {
-      Notify.message('byok-required-text'.i18n());
-      router.pushNamed('settings');
+      _block('byok-required-text', 'settings', 'opensettings-text');
       return;
     }
 
+    _unblock();
     setState(() {
       _isLoading = true;
     });
@@ -64,11 +94,13 @@ class _AiChatPanelState extends State<AiChatPanel> {
       });
 
       final msg = e.toString();
-      if (msg.contains('pro-required')) {
-        router.pushNamed('license');
-      } else if (msg.contains('byok-required')) {
-        Notify.message('byok-required-text'.i18n(),
-            severity: InfoBarSeverity.warning);
+      if (msg.contains('pro-required') || msg.contains('byok-required')) {
+        // The question never reached a provider, so give it back rather than
+        // making the user retype it (PS-33).
+        if (_inputController.text.isEmpty) _inputController.text = text;
+        msg.contains('pro-required')
+            ? _block('ai-chat-pro-required-text', 'license', 'upgrade-text')
+            : _block('byok-required-text', 'settings', 'opensettings-text');
       } else {
         Notify.message('ai-error-text'.i18n(), severity: InfoBarSeverity.error);
       }
@@ -158,7 +190,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
                       if (!_license.isPro) ...[
                         const SizedBox(height: 16),
                         Button(
-                          onPressed: () => router.pushNamed('license'),
+                          onPressed: () => navigateGuarded('license'),
                           child: Text('upgrade-text'.i18n()),
                         ),
                       ],
@@ -190,6 +222,24 @@ class _AiChatPanelState extends State<AiChatPanel> {
                       fontSize: 11, color: secondaryTextColor(context)),
                 ),
               ],
+            ),
+          ),
+
+        // Why Send did nothing, said in the panel instead of by navigating
+        // away from it (PS-33).
+        if (_blockedReasonKey != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: InfoBar(
+              key: const ValueKey('test-aichat-blocked'),
+              title: Text(_blockedReasonKey!.i18n()),
+              severity: InfoBarSeverity.warning,
+              onClose: _unblock,
+              action: Button(
+                key: const ValueKey('test-aichat-blocked-action'),
+                onPressed: () => navigateGuarded(_blockedRouteName!),
+                child: Text(_blockedActionKey!.i18n()),
+              ),
             ),
           ),
 

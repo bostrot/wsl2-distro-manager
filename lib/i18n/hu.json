@@ -152,7 +152,7 @@
   "saveastemplate-text": "Mentés sablonként",
   "savingastemplate-text": "Mentés sablonként...",
   "language-text": "Nyelv (language)",
-  "languagechange-text": "A nyelvváltás a program újraindítása után lép életbe.",
+  "languagechange-text": "A nyelv azonnal megváltozik. A megtartásához mentsd el.",
   "notemplates-text": "Nem található sablon",
   "cleanuptitle-text": "WSL példány takarítása (%s0)",
   "cleanupbody-text": "Valóban meg akarja tisztítani a disztribúciót? Ez tömöríti a virtuális merevlemezt a hely felszabadítása érdekében. Az instance le lesz állítva és nem lesz elérhető a folyamat során.",
@@ -544,5 +544,15 @@
   "startinginstance-text": "%s indítása...",
   "stoppinginstance-text": "%s leállítása...",
   "deletinginstance-text": "%s törlése...",
-  "errorenterusername-text": "Add meg az alapértelmezett felhasználó nevét, vagy kapcsold ki a beállítást."
+  "errorenterusername-text": "Add meg az alapértelmezett felhasználó nevét, vagy kapcsold ki a beállítást.",
+  "unsavedchanges-title": "Nem mentett módosítások",
+  "unsavedchanges-text": "Ezen az oldalon vannak még nem mentett módosítások. Mented őket kilépés előtt?",
+  "unsavedchanges-marker-text": "Nem mentett módosítások",
+  "discardchanges-text": "Elvetés",
+  "settingssaved-text": "A beállítások mentve.",
+  "opensettings-text": "Beállítások megnyitása",
+  "ai-chat-pro-required-text": "Az AI-csevegés Pro funkció.",
+  "distrostopped-text": "Ez a disztró nem fut",
+  "distrostoppedinfo-text": "A(z) %s beállításainak beolvasásához el kell olvasni a benne lévő /etc/wsl.conf fájlt, ami elindítja a disztrót. Addig fut, amíg le nem állítod.",
+  "startandread-text": "Indítás és a beállítások beolvasása"
 }

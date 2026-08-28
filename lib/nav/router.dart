@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:plausible_analytics/navigator_observer.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 import 'package:wsl2distromanager/screens/ai_workspace_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
@@ -12,6 +13,17 @@ import 'package:wsl2distromanager/screens/license_screen.dart';
 import 'package:wsl2distromanager/screens/package_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/screens/template_screen.dart';
+
+/// Go to the route called [name], asking the current screen first when it is
+/// holding unsaved edits (audit ST-01).
+///
+/// Every in-app navigation that replaces the body goes through here; a bare
+/// `router.pushNamed` bypasses the prompt and is what made Settings lose work.
+Future<void> navigateGuarded(String name, {String? path}) async {
+  if (path != null && router.state.uri.toString() == path) return;
+  if (!await UnsavedChangesGuard.confirmLeave()) return;
+  router.pushNamed(name);
+}
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();

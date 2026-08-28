@@ -1,7 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
@@ -15,6 +17,7 @@ import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/components/wsl_size.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
@@ -72,12 +75,133 @@ class SettingsPageState extends State<SettingsPage> {
   String? _tunnelError;
   bool showDocker = false;
   BuildContext? currentContext;
+
+  /// The language the picker currently shows. Held in the draft rather than
+  /// written on pick: it used to be the one control on the screen that ignored
+  /// Save, so a mis-click could not be undone by leaving (audit ST-02).
+  String _draftLanguage = 'en';
+
+  /// The draft as it stood after the last load or Save, so [_isDirty] is a
+  /// comparison rather than a flag every control has to remember to set.
+  Map<String, String> _savedDraft = <String, String>{};
+
+  /// Whether the dirty guard is currently registered, so [_onDraftChanged]
+  /// only rebuilds when the answer actually changes.
+  bool _guardRegistered = false;
   final AiService _aiService = AiService();
   final LicenseManager _licenseManager = LicenseManager();
   final WslMcpService _mcpService = WslMcpService();
   final CloudflareTunnelService _tunnelService = CloudflareTunnelService();
 
   bool _isRemoteWslTargetValid(String target) => isValidRemoteTarget(target);
+
+  /// Every controller whose text Save persists, so dirty tracking and the
+  /// revert path both work off one list instead of a dozen field names.
+  List<TextEditingController> get _draftControllers => <TextEditingController>[
+        _syncIpTextController,
+        _syncPasswordController,
+        _repoTextController,
+        _dockerrepoController,
+        _editorController,
+        _terminalController,
+        _vscodeController,
+        _dockerMirrorController,
+        _remoteWslTargetController,
+        _byokBaseUrlController,
+        _byokApiKeyController,
+        _byokModelController,
+        ..._settings.values,
+      ];
+
+  /// The whole draft as one comparable map.
+  Map<String, String> _draftValues() => <String, String>{
+        for (final entry in _settings.entries)
+          'wslconfig:${entry.key}': entry.value.text,
+        'SyncIP': _syncIpTextController.text,
+        'SyncPassword': _syncPasswordController.text,
+        'RepoLink': _repoTextController.text,
+        'DockerRepoLink': _dockerrepoController.text,
+        'Editor': _editorController.text,
+        'Terminal': _terminalController.text,
+        'VSCodeCmd': _vscodeController.text,
+        'DockerMirror': _dockerMirrorController.text,
+        'RemoteWSLTarget': _remoteWslTargetController.text,
+        'ByokBaseUrl': _byokBaseUrlController.text,
+        'ByokApiKey': _byokApiKeyController.text,
+        'ByokModel': _byokModelController.text,
+        'UseRemoteWSL': _useRemoteWsl.toString(),
+        'language': _draftLanguage,
+      };
+
+  /// True while the screen holds edits the user has not saved.
+  bool get _isDirty => !mapEquals(_savedDraft, _draftValues());
+
+  /// Called by every control in the draft. Registers or releases the exit
+  /// guard and repaints the unsaved marker, but only when dirtiness flips.
+  void _onDraftChanged() {
+    final dirty = _isDirty;
+    if (dirty == _guardRegistered) return;
+    _guardRegistered = dirty;
+    if (dirty) {
+      UnsavedChangesGuard.register(_confirmLeave);
+    } else {
+      UnsavedChangesGuard.release(_confirmLeave);
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// Answer for [UnsavedChangesGuard]: true when the caller may leave.
+  Future<bool> _confirmLeave() async {
+    if (!_isDirty) return true;
+    final context = currentContext;
+    if (context == null || !mounted) return true;
+    switch (await showUnsavedChangesDialog(context)) {
+      case UnsavedChangesChoice.cancel:
+        return false;
+      case UnsavedChangesChoice.discard:
+        _revertDraft();
+        return true;
+      case UnsavedChangesChoice.save:
+        if (!mounted) return true;
+        return saveSettings(currentContext!);
+    }
+  }
+
+  /// Put every control back to the last saved value.
+  void _revertDraft() {
+    final saved = _savedDraft;
+    void restore(TextEditingController controller, String key) {
+      final value = saved[key] ?? '';
+      if (controller.text != value) controller.text = value;
+    }
+
+    for (final entry in _settings.entries) {
+      restore(entry.value, 'wslconfig:${entry.key}');
+    }
+    restore(_syncIpTextController, 'SyncIP');
+    restore(_syncPasswordController, 'SyncPassword');
+    restore(_repoTextController, 'RepoLink');
+    restore(_dockerrepoController, 'DockerRepoLink');
+    restore(_editorController, 'Editor');
+    restore(_terminalController, 'Terminal');
+    restore(_vscodeController, 'VSCodeCmd');
+    restore(_dockerMirrorController, 'DockerMirror');
+    restore(_remoteWslTargetController, 'RemoteWSLTarget');
+    restore(_byokBaseUrlController, 'ByokBaseUrl');
+    restore(_byokApiKeyController, 'ByokApiKey');
+    restore(_byokModelController, 'ByokModel');
+    _useRemoteWsl = saved['UseRemoteWSL'] == 'true';
+    _applyLanguage(saved['language'] ?? _draftLanguage, persist: false);
+    _onDraftChanged();
+    if (mounted) setState(() {});
+  }
+
+  /// Take the current draft as the new baseline and drop the exit guard.
+  void _markSaved() {
+    _savedDraft = _draftValues();
+    _guardRegistered = false;
+    UnsavedChangesGuard.release(_confirmLeave);
+  }
 
   @override
   void initState() {
@@ -87,9 +211,13 @@ class SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
-    // Save settings
-    if (currentContext != null) {
-      saveSettings(currentContext!, dispose: true);
+    // No save-on-dispose. It was meant to make leaving the screen commit and
+    // observably never fired, which is exactly what made ST-01 a blocker: the
+    // code believed in auto-save while the screen discarded everything. The
+    // contract is now the Save button plus the exit prompt.
+    UnsavedChangesGuard.release(_confirmLeave);
+    for (final controller in _draftControllers) {
+      controller.removeListener(_onDraftChanged);
     }
     _byokBaseUrlController.dispose();
     _byokApiKeyController.dispose();
@@ -163,10 +291,51 @@ class SettingsPageState extends State<SettingsPage> {
     _byokApiKeyController.text = _aiService.byokApiKey;
     _byokModelController.text = prefs.getString('ByokModel') ?? '';
     _mcpEnabled = _mcpService.enabled;
+    for (final controller in _draftControllers) {
+      controller.removeListener(_onDraftChanged);
+      controller.addListener(_onDraftChanged);
+    }
+    _savedDraft = _draftValues();
+    _guardRegistered = false;
+    UnsavedChangesGuard.release(_confirmLeave);
     if (!mounted) return;
     setState(() {
       _settings = _settings;
     });
+  }
+
+  bool _languageResolved = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The stored language may be absent, in which case the picker has to show
+    // the locale the app actually resolved to — which needs a context.
+    if (_languageResolved) return;
+    _languageResolved = true;
+    var stored = prefs.getString('language') ??
+        Localizations.localeOf(context).toString();
+    if (!languageOptions.containsKey(stored)) {
+      stored = Localizations.localeOf(context).languageCode;
+    }
+    if (!languageOptions.containsKey(stored)) stored = 'en';
+    _draftLanguage = stored;
+    _savedDraft = _draftValues();
+  }
+
+  /// Show [lang] immediately, and write it only when Save does.
+  ///
+  /// The picker used to call `prefs.setString` from `onChanged` — the one
+  /// control on the screen that ignored Save, with no way to undo a mis-click
+  /// — and then told the user to restart the app to see it (ST-02).
+  void _applyLanguage(String lang, {required bool persist}) {
+    _draftLanguage = lang;
+    if (persist) prefs.setString('language', lang);
+    final parts = lang.split('_');
+    final locale =
+        parts.length == 2 ? Locale(parts[0], parts[1]) : Locale(parts[0]);
+    if (!mounted) return;
+    context.read<AppTheme>().locale = locale;
   }
 
   @override
@@ -205,6 +374,26 @@ class SettingsPageState extends State<SettingsPage> {
               ),
               Row(
                 children: [
+                  if (_isDirty) ...[
+                    Text('unsavedchanges-marker-text'.i18n(),
+                        key: const ValueKey('test-settings-dirty'),
+                        style: FluentTheme.of(context)
+                            .typography
+                            .caption
+                            ?.copyWith(color: secondaryTextColor(context))),
+                    const SizedBox(width: 10.0),
+                    Button(
+                        key: const ValueKey('test-settings-discard'),
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 15.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: _revertDraft,
+                        child: Text('discardchanges-text'.i18n())),
+                    const SizedBox(width: 10.0),
+                  ],
                   Tooltip(
                     message: 'stopwsl-text'.i18n(),
                     child: Button(
@@ -217,8 +406,9 @@ class SettingsPageState extends State<SettingsPage> {
                         onPressed: () {
                           WSLApi().restart();
                           hasPushed = false;
-
-                          Navigator.popAndPushNamed(context, '/');
+                          // Leaving the screen is an exit route like any
+                          // other, so it asks about unsaved edits (ST-01).
+                          navigateGuarded('home');
                         },
                         child: Text('stopwsl-text'.i18n())),
                   ),
@@ -228,6 +418,7 @@ class SettingsPageState extends State<SettingsPage> {
                   Tooltip(
                     message: 'save-text'.i18n(),
                     child: Button(
+                        key: const ValueKey('test-settings-save'),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
@@ -248,15 +439,15 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Future<void> saveSettings(BuildContext context,
-      {bool dispose = false}) async {
+  /// Persist the draft. Answers false when a validation error stopped it, so
+  /// the exit prompt can keep the user on the screen instead of leaving with
+  /// the edits unwritten.
+  Future<bool> saveSettings(BuildContext context) async {
     final remoteTarget = _remoteWslTargetController.text.trim();
     if (_useRemoteWsl && !_isRemoteWslTargetValid(remoteTarget)) {
-      if (!dispose) {
-        Notify.message('remote-wsl-target-required-text'.i18n());
-        return;
-      }
-      _useRemoteWsl = false;
+      Notify.message('remote-wsl-target-required-text'.i18n(),
+          severity: InfoBarSeverity.warning);
+      return false;
     }
 
     plausible.event(name: "global_settings_saved");
@@ -337,10 +528,16 @@ class SettingsPageState extends State<SettingsPage> {
 
     await _saveWslConfig();
     hasPushed = false;
+    _applyLanguage(_draftLanguage, persist: true);
+    _markSaved();
+    if (mounted) setState(() {});
 
-    if (!dispose) {
-      router.pushNamed('home');
-    }
+    // Save used to end with `router.pushNamed('home')`, so pressing it closed
+    // the screen: nothing said what had been written, and a second edit meant
+    // navigating back (ST-03). It confirms in place instead.
+    Notify.message('settingssaved-text'.i18n(),
+        severity: InfoBarSeverity.success);
+    return true;
   }
 
   /// The two `settingsWidget` names that are app preferences rather than
@@ -434,7 +631,7 @@ class SettingsPageState extends State<SettingsPage> {
               },
             ),
             placeholder:
-              prefs.getString("DistroPath") ?? getDefaultStorageRootPath()),
+                prefs.getString("DistroPath") ?? getDefaultStorageRootPath()),
         settingsWidget(context,
             title: 'defaultdatalocation-text'.i18n(),
             name: 'General Data Location',
@@ -457,7 +654,7 @@ class SettingsPageState extends State<SettingsPage> {
             ),
             placeholder: prefs.getString("DataPath") ??
                 prefs.getString("DistroPath") ??
-              getDefaultStorageRootPath()),
+                getDefaultStorageRootPath()),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
@@ -541,6 +738,7 @@ class SettingsPageState extends State<SettingsPage> {
                     setState(() {
                       _useRemoteWsl = value;
                     });
+                    _onDraftChanged();
                   },
                 ),
                 const SizedBox(width: 10.0),
@@ -585,34 +783,24 @@ class SettingsPageState extends State<SettingsPage> {
                     const SizedBox(
                       height: 20.0,
                     ),
-                    Builder(
-                      builder: (context) {
-                        var lang = Localizations.localeOf(context).languageCode;
-                        var selectedLanguage =
-                            prefs.getString('language') ?? lang;
-
-                        // Language menu
-                        // Every zh variant collapsed to the same languageCode
-                        // before, which left the ComboBox with duplicate
-                        // values and showed raw locale codes as labels.
-                        if (!languageOptions.containsKey(selectedLanguage)) {
-                          selectedLanguage = 'en';
-                        }
-                        return ComboBox<String>(
-                            value: selectedLanguage,
-                            items: languageOptions.entries
-                                .map((e) => ComboBoxItem(
-                                    value: e.key, child: Text(e.value)))
-                                .toList(),
-                            onChanged: (language) {
-                              String curLanguage = language ?? lang;
-                              prefs.setString('language', curLanguage);
-                              setState(() {
-                                selectedLanguage = curLanguage;
-                              });
-                            });
-                      },
-                    ),
+                    // Every zh variant collapsed to the same languageCode
+                    // before, which left the ComboBox with duplicate values
+                    // and showed raw locale codes as labels.
+                    ComboBox<String>(
+                        key: const ValueKey('test-language-combo'),
+                        value: languageOptions.containsKey(_draftLanguage)
+                            ? _draftLanguage
+                            : 'en',
+                        items: languageOptions.entries
+                            .map((e) => ComboBoxItem(
+                                value: e.key, child: Text(e.value)))
+                            .toList(),
+                        onChanged: (language) {
+                          if (language == null) return;
+                          _applyLanguage(language, persist: false);
+                          _onDraftChanged();
+                          setState(() {});
+                        }),
                   ],
                 )),
           ),
@@ -652,7 +840,7 @@ class SettingsPageState extends State<SettingsPage> {
               severity: InfoBarSeverity.info,
               action: Button(
                 key: const ValueKey('test-byok-upgrade'),
-                onPressed: () => router.pushNamed('license'),
+                onPressed: () => navigateGuarded('license'),
                 child: Text('upgrade-text'.i18n()),
               ),
             ),
@@ -731,7 +919,7 @@ class SettingsPageState extends State<SettingsPage> {
               severity: InfoBarSeverity.info,
               action: Button(
                 key: const ValueKey('test-mcp-upgrade'),
-                onPressed: () => router.pushNamed('license'),
+                onPressed: () => navigateGuarded('license'),
                 child: Text('upgrade-text'.i18n()),
               ),
             ),
@@ -743,21 +931,26 @@ class SettingsPageState extends State<SettingsPage> {
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Row(
               children: [
+                // A free user's toggle is disabled rather than live: it used to
+                // render exactly like the working switches around it and then
+                // replace the whole screen with the licence page, dropping any
+                // unsaved settings on the way (audit PS-11).
                 ToggleSwitch(
                   key: const ValueKey('test-mcp-toggle'),
                   checked: _mcpEnabled && isPro,
-                  onChanged: (value) {
-                    if (!isPro) {
-                      router.pushNamed('license');
-                      return;
-                    }
-                    setState(() => _mcpEnabled = value);
-                    _mcpService.setEnabled(value);
-                  },
+                  onChanged: isPro
+                      ? (value) {
+                          setState(() => _mcpEnabled = value);
+                          _mcpService.setEnabled(value);
+                        }
+                      : null,
                 ),
                 const SizedBox(width: 10.0),
                 Expanded(
-                  child: Text('mcp-toggle-hint-text'.i18n()),
+                  child: Text('mcp-toggle-hint-text'.i18n(),
+                      style: isPro
+                          ? null
+                          : TextStyle(color: disabledTextColor(context))),
                 ),
               ],
             ),
@@ -810,8 +1003,8 @@ class SettingsPageState extends State<SettingsPage> {
                     icon: Icon(
                         _mcpTokenVisible ? FluentIcons.hide3 : FluentIcons.view,
                         size: 15.0),
-                    onPressed: () => setState(
-                        () => _mcpTokenVisible = !_mcpTokenVisible),
+                    onPressed: () =>
+                        setState(() => _mcpTokenVisible = !_mcpTokenVisible),
                   ),
                   const SizedBox(width: 4),
                   IconButton(

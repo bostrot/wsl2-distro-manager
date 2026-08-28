@@ -153,7 +153,7 @@
   "saveastemplate-text": "Salvar como modelo",
   "savingastemplate-text": "Salvando como modelo ...",
   "language-text": "Idioma",
-  "languagechange-text": "A alteração de idioma terá efeito após o reinício.",
+  "languagechange-text": "O idioma muda imediatamente. Guarde para manter a alteração.",
   "notemplates-text": "Nenhum modelo encontrado",
   "cleanuptitle-text": "Limpar instância WSL (%s0)",
   "cleanupbody-text": "Deseja realmente limpar a distribuição? Isso compactará o disco rígido virtual para recuperar espaço. A instância será parada e ficará indisponível durante este processo.",
@@ -546,5 +546,15 @@
   "startinginstance-text": "Iniciando %s...",
   "stoppinginstance-text": "Parando %s...",
   "deletinginstance-text": "Excluindo %s...",
-  "errorenterusername-text": "Insira um nome para o usuário padrão ou desative a opção."
+  "errorenterusername-text": "Insira um nome para o usuário padrão ou desative a opção.",
+  "unsavedchanges-title": "Alterações não guardadas",
+  "unsavedchanges-text": "Esta página tem alterações que ainda não guardou. Guardar antes de sair?",
+  "unsavedchanges-marker-text": "Alterações não guardadas",
+  "discardchanges-text": "Descartar",
+  "settingssaved-text": "Definições guardadas.",
+  "opensettings-text": "Abrir definições",
+  "ai-chat-pro-required-text": "O chat de IA é uma funcionalidade Pro.",
+  "distrostopped-text": "Esta distro não está em execução",
+  "distrostoppedinfo-text": "Ler as definições de %s implica ler o /etc/wsl.conf no seu interior, o que inicia a distro. Fica em execução até a terminar.",
+  "startandread-text": "Iniciar e ler as definições"
 }

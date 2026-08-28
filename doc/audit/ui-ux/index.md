@@ -400,7 +400,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 |:---|---:|---:|:---|
 | FIX-03 -- One honest notification surface | 9 | 0 | 2026-08-28 |
 | FIX-02 -- Report what actually happened | 5 | 5 | 2026-08-28 (partial) |
-| all others | 0 | 195 | -- |
+| FIX-01 -- Stop discarding what the user typed | 7 | 0 | 2026-08-28 |
+| all others | 0 | 188 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -434,15 +435,38 @@ above is shared, not additive.
 Two blockers. The app throws away typed input on a navigation the user did not
 understand to be destructive, and in one case navigates *itself*.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| ST-01 | blocker | Track a dirty flag on the Settings draft and intercept every exit route (nav pane, back, window close) with a Save / Discard / Cancel prompt |
-| PS-33 | blocker | Keep the typed question when Send hits a missing API key; offer the key inline or return to the panel with the text intact |
-| ST-02 | major | Route language through the same draft-and-Save path as everything else, and apply it live rather than requiring a restart |
-| ST-03 | major | Save stays on the Settings page and confirms in place; it must not navigate to Home |
-| ST-27 | major | Read `wsl.conf` without booting the distro, or say up front that opening settings will start it |
-| ST-28 | major | Buffer per-distro `wsl.conf` edits and write them on Save, so Cancel actually cancels |
-| PS-11 | major | The free MCP toggle must upsell in place; it may not navigate to License and drop unsaved settings on the way |
+**Status: all 7 fixed.** The screen-level piece is a new
+`UnsavedChangesGuard` (`lib/components/unsaved_changes.dart`): a dirty screen
+registers a guard, and every exit route -- each nav-pane item, the app-bar back
+button, the window X, and the two in-screen buttons that used to navigate on
+their own -- goes through `navigateGuarded` / `confirmLeave` before the next
+screen is built. `SettingsPageState` compares a draft snapshot against the last
+saved one rather than asking a dozen controls to remember to set a flag, so the
+"Unsaved changes" marker and the Discard button appear from the same source of
+truth the prompt uses. The save-on-`dispose()` that was supposed to make leaving
+commit -- and observably never fired, which is what made ST-01 a blocker rather
+than a design choice -- is gone; the contract is now the Save button plus the
+prompt. Regression tests: `test/unsaved_changes_test.dart`,
+`test/settings_dialog_test.dart` ("Cancel actually cancels").
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| ST-01 | blocker | Track a dirty flag on the Settings draft and intercept every exit route (nav pane, back, window close) with a Save / Discard / Cancel prompt | `unsaved_changes.dart:14`, `unsaved_changes.dart:45`, `router.dart:22`, `panelist.dart:19`, `root_screen.dart:173`, `root_screen.dart:320`, `settings_screen.dart:137`, `settings_screen.dart:154` |
+| PS-33 | blocker | Keep the typed question when Send hits a missing API key; offer the key inline or return to the panel with the text intact | `ai_chat_panel.dart:31`, `ai_chat_panel.dart:73`, `ai_chat_panel.dart:234` |
+| ST-02 | major | Route language through the same draft-and-Save path as everything else, and apply it live rather than requiring a restart | `settings_screen.dart:331`, `settings_screen.dart:790`, `main.dart:226`, `en.json:154` |
+| ST-03 | major | Save stays on the Settings page and confirms in place; it must not navigate to Home | `settings_screen.dart:531`, `settings_screen.dart:538` |
+| ST-27 | major | Read `wsl.conf` without booting the distro, or say up front that opening settings will start it | `settings_dialog.dart:794`, `settings_dialog.dart:816` |
+| ST-28 | major | Buffer per-distro `wsl.conf` edits and write them on Save, so Cancel actually cancels | `settings_dialog.dart:508`, `settings_dialog.dart:540`, `settings_dialog.dart:79`, `settings_dialog.dart:89` |
+| PS-11 | major | The free MCP toggle must upsell in place; it may not navigate to License and drop unsaved settings on the way | `settings_screen.dart:941` |
+
+Two carried consequences worth recording. **ST-27 is answered by asking, not by
+avoiding the boot**: there is no way to read `/etc/wsl.conf` without `wsl.exe`,
+so a stopped distro now gets a warning InfoBar and a "Start it and read the
+settings" button instead of a silently started virtual machine. And **the
+language picker previews without persisting**, which needed
+`localeResolutionCallback` to prefer `AppTheme.locale` over the stored
+preference -- otherwise the stored value would have overridden the preview on
+the very rebuild the preview triggers.
 
 ### FIX-02 -- Report what actually happened
 

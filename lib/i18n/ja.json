@@ -152,7 +152,7 @@
   "saveastemplate-text": "テンプレートとして保存",
   "savingastemplate-text": "テンプレートとして保存中...",
   "language-text": "言語",
-  "languagechange-text": "言語の変更は再起動後に有効になります。",
+  "languagechange-text": "言語はすぐに切り替わります。保存すると設定が保持されます。",
   "notemplates-text": "テンプレートが見つかりません",
   "cleanuptitle-text": "WSL インスタンスをクリーンアップ (%s0)",
   "cleanupbody-text": "本当にディストリビューションをクリーンアップしますか？ これにより、仮想ハードディスクが圧縮され、空き容量が確保されます。 このプロセス中、インスタンスは停止され、使用できなくなります。",
@@ -544,5 +544,15 @@
   "startinginstance-text": "%s を起動しています...",
   "stoppinginstance-text": "%s を停止しています...",
   "deletinginstance-text": "%s を削除しています...",
-  "errorenterusername-text": "デフォルトユーザーのユーザー名を入力するか、このオプションをオフにしてください。"
+  "errorenterusername-text": "デフォルトユーザーのユーザー名を入力するか、このオプションをオフにしてください。",
+  "unsavedchanges-title": "保存されていない変更",
+  "unsavedchanges-text": "このページには保存されていない変更があります。移動する前に保存しますか？",
+  "unsavedchanges-marker-text": "保存されていない変更",
+  "discardchanges-text": "破棄",
+  "settingssaved-text": "設定を保存しました。",
+  "opensettings-text": "設定を開く",
+  "ai-chat-pro-required-text": "AI チャットは Pro 機能です。",
+  "distrostopped-text": "このディストロは実行されていません",
+  "distrostoppedinfo-text": "%s の設定を読むには内部の /etc/wsl.conf を読む必要があり、ディストロが起動します。終了させるまで実行され続けます。",
+  "startandread-text": "起動して設定を読み込む"
 }

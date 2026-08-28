@@ -153,7 +153,7 @@
   "saveastemplate-text": "Als Vorlage speichern",
   "savingastemplate-text": "Speichern als Vorlage ...",
   "language-text": "Sprache",
-  "languagechange-text": "Die Sprachänderung wird nach dem Neustart wirksam.",
+  "languagechange-text": "Die Sprache wird sofort umgestellt. Zum Beibehalten speichern.",
   "notemplates-text": "Keine Vorlagen gefunden",
   "cleanuptitle-text": "WSL Instanz bereinigen (%s0)",
   "cleanupbody-text": "Möchten Sie die Distribution wirklich bereinigen? Dies wird die virtuelle Festplatte komprimieren, um Speicherplatz freizugeben. Die Instanz wird angehalten und ist während dieses Vorgangs nicht verfügbar.",
@@ -545,5 +545,15 @@
   "startinginstance-text": "%s wird gestartet ...",
   "stoppinginstance-text": "%s wird gestoppt ...",
   "deletinginstance-text": "%s wird gelöscht ...",
-  "errorenterusername-text": "Bitte geben Sie einen Benutzernamen für den Standardbenutzer ein oder deaktivieren Sie die Option."
+  "errorenterusername-text": "Bitte geben Sie einen Benutzernamen für den Standardbenutzer ein oder deaktivieren Sie die Option.",
+  "unsavedchanges-title": "Nicht gespeicherte Änderungen",
+  "unsavedchanges-text": "Auf dieser Seite gibt es noch nicht gespeicherte Änderungen. Vor dem Verlassen speichern?",
+  "unsavedchanges-marker-text": "Nicht gespeicherte Änderungen",
+  "discardchanges-text": "Verwerfen",
+  "settingssaved-text": "Einstellungen gespeichert.",
+  "opensettings-text": "Einstellungen öffnen",
+  "ai-chat-pro-required-text": "KI-Chat ist eine Pro-Funktion.",
+  "distrostopped-text": "Diese Distro läuft nicht",
+  "distrostoppedinfo-text": "Um die Einstellungen von %s zu lesen, muss /etc/wsl.conf darin gelesen werden — dadurch wird die Distro gestartet. Sie läuft, bis du sie beendest.",
+  "startandread-text": "Starten und Einstellungen lesen"
 }

@@ -54,6 +54,11 @@ settingsDialog(item) {
   userController.text = prefs.getString('StartUser_$item') ?? '';
   plausible.event(page: 'settings_dialog');
 
+  // Every `wsl.conf` control writes here rather than straight to the distro,
+  // so Cancel is a cancel and Save is the only thing that changes anything
+  // (audit ST-28).
+  final draft = WslConfDraft();
+
   showDialog(
     context: context,
     builder: (childcontext) {
@@ -65,20 +70,26 @@ settingsDialog(item) {
           pathController: pathController,
           startCmdController: startCmdController,
           userController: userController,
+          draft: draft,
         ),
         actions: [
           Button(
               child: Text('cancel-text'.i18n()),
               onPressed: () {
+                draft.clear();
                 Navigator.pop(childcontext);
               }),
           Button(
               child: Text('save-text'.i18n()),
-              onPressed: () {
+              onPressed: () async {
+                final navigator = Navigator.of(childcontext);
                 prefs.setString('StartPath_$item', pathController.text);
                 prefs.setString('StartCmd_$item', startCmdController.text);
                 prefs.setString('StartUser_$item', userController.text);
-                Navigator.pop(childcontext);
+                for (final setting in await draft.flush(item)) {
+                  _reportWrite(false, setting);
+                }
+                navigator.pop();
               }),
         ],
       );
@@ -112,7 +123,8 @@ Column settingsColumn(
     context,
     item,
     bool isSyncing,
-    Function setState) {
+    Function setState,
+    WslConfDraft draft) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -161,11 +173,11 @@ Column settingsColumn(
       // The real one: `[user] default` in /etc/wsl.conf, which the app wrote
       // at creation and then never let anyone see again (audit CC-6).
       Text('user-text'.i18n()),
-      settingText(item, setState, userDefaultSetting),
+      settingText(item, setState, userDefaultSetting, draft),
       const SizedBox(
         height: 8.0,
       ),
-      wslSettings(context, item, setState),
+      wslSettings(context, item, setState, draft),
       const SizedBox(
         height: 12.0,
       ),
@@ -436,7 +448,8 @@ const Map<String, String> wslConfSectionLabels = <String, String>{
 };
 
 /// The `wsl.conf` editor: one Expander per documented section.
-Widget wslSettings(BuildContext context, String item, Function setState) {
+Widget wslSettings(
+    BuildContext context, String item, Function setState, WslConfDraft draft) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -457,7 +470,7 @@ Widget wslSettings(BuildContext context, String item, Function setState) {
             children: [
               for (final setting
                   in wslConfSettings.where((s) => s.section == section.key))
-                wslConfField(item, setState, setting),
+                wslConfField(item, setState, setting, draft),
             ],
           ),
         ),
@@ -484,19 +497,82 @@ Widget wslSettings(BuildContext context, String item, Function setState) {
   );
 }
 
-/// The widget [setting] is rendered by.
-Widget wslConfField(String item, Function setState, WslConfSetting setting) {
-  return setting.isToggle
-      ? settingSwitch(item, setState, setting)
-      : settingText(item, setState, setting);
+/// Edits to `/etc/wsl.conf` the user has made but not saved.
+///
+/// Every control in the editor used to write to the distro the moment it
+/// changed or lost focus, while the dialog's Save button persisted only the
+/// three app-side start preferences. A user who flipped `[boot] systemd`,
+/// thought better of it and pressed **Cancel** had already changed their
+/// distro (audit ST-28). Edits land here instead, and [flush] is what Save
+/// calls.
+class WslConfDraft {
+  /// Pending value per `prefKey`; `null` means "remove the line".
+  final Map<String, String?> _pending = <String, String?>{};
+
+  /// True while there is something Save would write.
+  bool get isDirty => _pending.isNotEmpty;
+
+  /// The settings this draft would touch, in the order they were edited.
+  Iterable<String> get editedKeys => _pending.keys;
+
+  void setValue(WslConfSetting setting, String value) =>
+      _pending[setting.prefKey] = value;
+
+  void unset(WslConfSetting setting) => _pending[setting.prefKey] = null;
+
+  void clear() => _pending.clear();
+
+  /// What the editor shows for [setting]: the pending edit when there is one,
+  /// otherwise the value `loadDistroSettings` read out of the file.
+  String? read(String item, WslConfSetting setting) {
+    if (_pending.containsKey(setting.prefKey)) return _pending[setting.prefKey];
+    return prefs.get('$item-${setting.prefKey}')?.toString();
+  }
+
+  /// Whether [setting] would have a line in `wsl.conf` once this draft is
+  /// written.
+  bool isSet(String item, WslConfSetting setting) =>
+      read(item, setting) != null;
+
+  /// Write every pending edit to [item]'s `/etc/wsl.conf` and mirror it into
+  /// the preference cache the editor renders from. Returns the settings whose
+  /// write failed, for the caller to report.
+  Future<List<WslConfSetting>> flush(String item) async {
+    final failed = <WslConfSetting>[];
+    for (final entry in _pending.entries) {
+      final setting = wslConfSettings.firstWhere((s) => s.prefKey == entry.key);
+      final value = entry.value;
+      final bool ok;
+      if (value == null) {
+        // An emptied box means "unset", which has to delete the line: writing
+        // `hostname =` back would pin the distro to an empty value instead of
+        // letting WSL fall back to the Windows computer name.
+        await prefs.remove('$item-${setting.prefKey}');
+        ok = await wslApiBuilder()
+            .removeSetting(item, setting.section, setting.key);
+      } else {
+        if (setting.isToggle) {
+          await prefs.setBool('$item-${setting.prefKey}', value == 'true');
+        } else {
+          await prefs.setString('$item-${setting.prefKey}', value);
+        }
+        ok = await wslApiBuilder()
+            .setSetting(item, setting.section, setting.key, value);
+      }
+      if (!ok) failed.add(setting);
+    }
+    _pending.clear();
+    return failed;
+  }
 }
 
-/// True when [setting] has a line in this distro's `wsl.conf`.
-///
-/// `loadDistroSettings` clears every known key and then writes back only the
-/// ones physically present, so the preference's existence *is* the key's.
-bool _isSet(String item, WslConfSetting setting) =>
-    prefs.containsKey('$item-${setting.prefKey}');
+/// The widget [setting] is rendered by.
+Widget wslConfField(String item, Function setState, WslConfSetting setting,
+    WslConfDraft draft) {
+  return setting.isToggle
+      ? settingSwitch(item, setState, setting, draft)
+      : settingText(item, setState, setting, draft);
+}
 
 /// Report a failed write. The old writer returned `true` unconditionally and
 /// ran with `showOutput: false`, so a `sed` that never fired still showed as
@@ -510,10 +586,10 @@ void _reportWrite(bool ok, WslConfSetting setting) {
 /// Label, description and — when the key is actually in the file — the
 /// control that takes it back out again.
 Widget _settingHeader(BuildContext context, String item, Function setState,
-    WslConfSetting setting,
+    WslConfSetting setting, WslConfDraft draft,
     {Widget? leading}) {
   final theme = FluentTheme.of(context);
-  final isSet = _isSet(item, setting);
+  final isSet = draft.isSet(item, setting);
   return Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -537,13 +613,9 @@ Widget _settingHeader(BuildContext context, String item, Function setState,
           message: 'settingdefault-text'.i18n(),
           child: IconButton(
             icon: const Icon(FluentIcons.undo),
-            onPressed: () async {
-              await prefs.remove('$item-${setting.prefKey}');
+            onPressed: () {
+              draft.unset(setting);
               setState(() {});
-              _reportWrite(
-                  await wslApiBuilder()
-                      .removeSetting(item, setting.section, setting.key),
-                  setting);
             },
           ),
         ),
@@ -558,9 +630,11 @@ Widget _settingHeader(BuildContext context, String item, Function setState,
 /// distro whose `wsl.conf` is absent or near-empty, which is most of them
 /// (audit CC-3). Turning a key back to unset removes its line, so there is a
 /// real third state rather than a relabelled `false`.
-Widget settingSwitch(String item, Function setState, WslConfSetting setting) {
-  final stored = prefs.get('$item-${setting.prefKey}');
-  final checked = stored is bool ? stored : (setting.defaultOn ?? false);
+Widget settingSwitch(String item, Function setState, WslConfSetting setting,
+    WslConfDraft draft) {
+  final stored = draft.read(item, setting);
+  final checked =
+      stored != null ? stored == 'true' : (setting.defaultOn ?? false);
   return Padding(
     padding: const EdgeInsets.all(8.0),
     child: Builder(
@@ -569,17 +643,14 @@ Widget settingSwitch(String item, Function setState, WslConfSetting setting) {
         item,
         setState,
         setting,
+        draft,
         leading: Padding(
           padding: const EdgeInsets.only(top: 2.0),
           child: ToggleSwitch(
             checked: checked,
-            onChanged: (value) async {
-              await prefs.setBool('$item-${setting.prefKey}', value);
+            onChanged: (value) {
+              draft.setValue(setting, value.toString());
               setState(() {});
-              _reportWrite(
-                  await wslApiBuilder().setSetting(
-                      item, setting.section, setting.key, value.toString()),
-                  setting);
             },
           ),
         ),
@@ -589,33 +660,36 @@ Widget settingSwitch(String item, Function setState, WslConfSetting setting) {
 }
 
 /// A free-text `wsl.conf` key.
-Widget settingText(String item, Function setState, WslConfSetting setting) {
+Widget settingText(String item, Function setState, WslConfSetting setting,
+    WslConfDraft draft) {
   return _WslConfTextField(
     key: ValueKey('$item-${setting.prefKey}'),
     item: item,
     setting: setting,
     setState: setState,
+    draft: draft,
   );
 }
 
-/// A text key that writes once the value settles instead of once per
+/// A text key that records the value once it settles instead of once per
 /// keystroke.
 ///
 /// `onChanged` used to run a full in-distro script execution per character
 /// typed (audit CC-5). The debounce plus the commit on blur means a
-/// twelve-character hostname is one write, and the write still happens without
-/// the user hunting for a Save button — which is the behaviour the dialog has
-/// always had.
+/// twelve-character hostname is one entry in the draft — and, since ST-28, one
+/// write when the dialog is saved rather than one the moment the box is left.
 class _WslConfTextField extends StatefulWidget {
   final String item;
   final WslConfSetting setting;
   final Function setState;
+  final WslConfDraft draft;
 
   const _WslConfTextField({
     super.key,
     required this.item,
     required this.setting,
     required this.setState,
+    required this.draft,
   });
 
   @override
@@ -623,24 +697,13 @@ class _WslConfTextField extends StatefulWidget {
 }
 
 class _WslConfTextFieldState extends State<_WslConfTextField> {
-  String get _prefKey => '${widget.item}-${widget.setting.prefKey}';
-
   Future<void> _commit(String value) async {
-    // An emptied box means "unset", which has to delete the line: writing
-    // `hostname =` back would pin the distro to an empty value instead of
-    // letting WSL fall back to the Windows computer name.
-    final bool ok;
     if (value.isEmpty) {
-      await prefs.remove(_prefKey);
-      ok = await wslApiBuilder().removeSetting(
-          widget.item, widget.setting.section, widget.setting.key);
+      widget.draft.unset(widget.setting);
     } else {
-      await prefs.setString(_prefKey, value);
-      ok = await wslApiBuilder().setSetting(
-          widget.item, widget.setting.section, widget.setting.key, value);
+      widget.draft.setValue(widget.setting, value);
     }
     if (mounted) widget.setState(() {});
-    _reportWrite(ok, widget.setting);
   }
 
   @override
@@ -650,10 +713,11 @@ class _WslConfTextFieldState extends State<_WslConfTextField> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _settingHeader(context, widget.item, widget.setState, widget.setting),
+          _settingHeader(context, widget.item, widget.setState, widget.setting,
+              widget.draft),
           const SizedBox(height: 4.0),
           DebouncedTextBox(
-            initialValue: prefs.getString(_prefKey) ?? '',
+            initialValue: widget.draft.read(widget.item, widget.setting) ?? '',
             placeholder: widget.setting.placeholder,
             onCommit: _commit,
           ),
@@ -694,6 +758,7 @@ class SettingsDialogContent extends StatefulWidget {
   final TextEditingController pathController;
   final TextEditingController startCmdController;
   final TextEditingController userController;
+  final WslConfDraft draft;
 
   const SettingsDialogContent({
     Key? key,
@@ -701,6 +766,7 @@ class SettingsDialogContent extends StatefulWidget {
     required this.pathController,
     required this.startCmdController,
     required this.userController,
+    required this.draft,
   }) : super(key: key);
 
   @override
@@ -708,25 +774,80 @@ class SettingsDialogContent extends StatefulWidget {
 }
 
 class _SettingsDialogContentState extends State<SettingsDialogContent> {
-  late Future<void> _loadFuture;
+  /// Null until the settings have actually been asked for — which, on a
+  /// stopped distro, is only after the user has agreed to start it.
+  Future<void>? _loadFuture;
   bool isSyncing = false;
+  bool _checkingRunning = true;
 
   @override
   void initState() {
     super.initState();
-    _loadFuture = loadDistroSettings(widget.item);
+    _checkRunning();
+  }
+
+  /// Reading `/etc/wsl.conf` goes through `wsl.exe`, which boots the distro.
+  /// Opening this dialog on a stopped `Ubuntu` therefore started a virtual
+  /// machine, with nothing anywhere saying it would (audit ST-27). A running
+  /// distro costs nothing and loads straight away; a stopped one is asked
+  /// about first.
+  Future<void> _checkRunning() async {
+    List<String> running;
+    try {
+      running = await wslApiBuilder().listRunning();
+    } catch (_) {
+      running = const <String>[];
+    }
+    if (!mounted) return;
+    setState(() {
+      _checkingRunning = false;
+      if (running.contains(widget.item)) {
+        _loadFuture = loadDistroSettings(widget.item);
+      }
+    });
+  }
+
+  Widget _spinner() => const SizedBox(
+        height: 200,
+        child: Center(child: ProgressRing()),
+      );
+
+  /// Say what opening the editor costs, and let the user decide.
+  Widget _startNotice(BuildContext context) {
+    return SizedBox(
+      height: 200,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InfoBar(
+            title: Text('distrostopped-text'.i18n()),
+            content: Text('distrostoppedinfo-text'.i18n([widget.item])),
+            severity: InfoBarSeverity.warning,
+            isLong: true,
+          ),
+          const SizedBox(height: 12.0),
+          Button(
+            key: const ValueKey('test-settings-start-distro'),
+            onPressed: () =>
+                setState(() => _loadFuture = loadDistroSettings(widget.item)),
+            child: Text('startandread-text'.i18n()),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingRunning) return _spinner();
+    final loadFuture = _loadFuture;
+    if (loadFuture == null) return _startNotice(context);
     return FutureBuilder(
-      future: _loadFuture,
+      future: loadFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
-            height: 200,
-            child: Center(child: ProgressRing()),
-          );
+          return _spinner();
         }
         return SingleChildScrollView(
           // Keeps the scrollbar off the input fields it would otherwise
@@ -740,7 +861,8 @@ class _SettingsDialogContentState extends State<SettingsDialogContent> {
                 context,
                 widget.item,
                 isSyncing,
-                setState),
+                setState,
+                widget.draft),
           ),
         );
       },

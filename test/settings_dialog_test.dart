@@ -23,6 +23,10 @@ WslConfSetting _setting(String prefKey) =>
 void main() {
   late MockShell mockShell;
 
+  /// The buffer the editor writes into. Since ST-28 nothing reaches the distro
+  /// until it is flushed, which is what the dialog's Save button does.
+  late WslConfDraft draft;
+
   Future<void> pump(WidgetTester tester, WslConfSetting setting) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -30,10 +34,18 @@ void main() {
       home: ScaffoldPage(
         content: StatefulBuilder(
           builder: (context, setState) =>
-              wslConfField(_distro, setState, setting),
+              wslConfField(_distro, setState, setting, draft),
         ),
       ),
     ));
+  }
+
+  /// What the dialog's Save button does. Settles afterwards: a fresh
+  /// [WSLApi] kicks off the distro-links fetch, whose timer would otherwise
+  /// still be pending when the test ends.
+  Future<void> save(WidgetTester tester) async {
+    await draft.flush(_distro);
+    await tester.pumpAndSettle();
   }
 
   /// How many `printf … | base64 -d > /etc/wsl.conf` the mock has seen.
@@ -45,7 +57,7 @@ void main() {
     Notify();
     Notify.message = (msg,
         {duration,
-         severity = InfoBarSeverity.info,
+        severity = InfoBarSeverity.info,
         loading = false,
         useWidget = false,
         leadingIcon = true,
@@ -57,6 +69,7 @@ void main() {
     prefs = await SharedPreferences.getInstance();
     mockShell = MockShell();
     mockShell.wslConfContents = '';
+    draft = WslConfDraft();
     wslApiBuilder = () => WSLApi(shell: mockShell);
   });
 
@@ -129,10 +142,13 @@ void main() {
       expect(find.text('settingunset-text'), findsOneWidget);
     });
 
-    testWidgets('toggling writes the key', (tester) async {
+    testWidgets('toggling writes the key on Save', (tester) async {
       await pump(tester, _setting('gpu-enabled'));
       await tester.tap(find.byType(ToggleSwitch));
       await tester.pumpAndSettle();
+
+      expect(writes(), 0, reason: 'nothing reaches the distro before Save');
+      await save(tester);
 
       expect(mockShell.wslConfContents, '[gpu]\nenabled = false\n');
       expect(prefs.getBool('$_distro-gpu-enabled'), false);
@@ -148,15 +164,77 @@ void main() {
       await tester.tap(find.byIcon(FluentIcons.undo));
       await tester.pumpAndSettle();
 
-      expect(mockShell.wslConfContents, '[automount]\nroot = /mnt/\n');
-      expect(prefs.containsKey('$_distro-automount-enabled'), false);
+      // The switch already reads as the documented default, but the file is
+      // untouched until Save.
       expect(
           tester.widget<ToggleSwitch>(find.byType(ToggleSwitch)).checked, true);
+      expect(mockShell.wslConfContents,
+          '[automount]\nenabled = false\nroot = /mnt/\n');
+
+      await save(tester);
+
+      expect(mockShell.wslConfContents, '[automount]\nroot = /mnt/\n');
+      expect(prefs.containsKey('$_distro-automount-enabled'), false);
+    });
+  });
+
+  /// ST-28: every control used to write to the distro the moment it changed,
+  /// so the dialog's Cancel button undid nothing.
+  group('Cancel actually cancels (ST-28)', () {
+    testWidgets('a toggle flipped and then abandoned never reaches the distro',
+        (tester) async {
+      mockShell.wslConfContents = '[boot]\nsystemd = true\n';
+      await prefs.setBool('$_distro-boot-systemd', true);
+      await pump(tester, _setting('boot-systemd'));
+
+      await tester.tap(find.byType(ToggleSwitch));
+      await tester.pumpAndSettle();
+      expect(draft.isDirty, true);
+
+      // What Cancel does.
+      draft.clear();
+
+      expect(writes(), 0);
+      expect(mockShell.wslConfContents, '[boot]\nsystemd = true\n');
+      expect(prefs.getBool('$_distro-boot-systemd'), true);
+    });
+
+    testWidgets('a typed value abandoned never reaches the distro',
+        (tester) async {
+      await pump(tester, _setting('network-hostname'));
+
+      await tester.enterText(find.byType(TextBox), 'abandoned');
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pumpAndSettle();
+
+      draft.clear();
+      await save(tester);
+
+      expect(writes(), 0);
+      expect(prefs.containsKey('$_distro-network-hostname'), false);
+    });
+
+    testWidgets('two edits to different keys both survive one Save',
+        (tester) async {
+      await pump(tester, _setting('network-hostname'));
+      await tester.enterText(find.byType(TextBox), 'box');
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pumpAndSettle();
+
+      await pump(tester, _setting('boot-systemd'));
+      await tester.tap(find.byType(ToggleSwitch));
+      await tester.pumpAndSettle();
+
+      await save(tester);
+
+      expect(mockShell.wslConfContents,
+          '[network]\nhostname = box\n\n[boot]\nsystemd = true\n');
     });
   });
 
   /// CC-5: `onChanged` ran a full in-distro script execution per character
-  /// typed.
+  /// typed. The debounce still holds; since ST-28 the settled value goes into
+  /// the draft and Save is what writes it.
   group('one write per value, not per keystroke (CC-5)', () {
     testWidgets('a twelve-character hostname is written once', (tester) async {
       await pump(tester, _setting('network-hostname'));
@@ -168,18 +246,23 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 800));
       await tester.pumpAndSettle();
+      await save(tester);
 
       expect(writes(), 1);
       expect(mockShell.wslConfContents, '[network]\nhostname = my-host-name\n');
     });
 
-    testWidgets('leaving the box commits immediately', (tester) async {
+    testWidgets('leaving the box commits the value to the draft',
+        (tester) async {
       await pump(tester, _setting('network-hostname'));
 
       await tester.enterText(find.byType(TextBox), 'committed');
       // Focus moves away before the debounce would have fired.
       tester.binding.focusManager.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
+
+      expect(draft.isDirty, true);
+      await save(tester);
 
       expect(writes(), 1);
       expect(mockShell.wslConfContents, '[network]\nhostname = committed\n');
@@ -194,6 +277,7 @@ void main() {
       await tester.enterText(find.byType(TextBox), '');
       await tester.pump(const Duration(milliseconds: 800));
       await tester.pumpAndSettle();
+      await save(tester);
 
       expect(mockShell.wslConfContents, '[network]\n');
       expect(prefs.containsKey('$_distro-network-hostname'), false);
@@ -207,6 +291,7 @@ void main() {
       await tester.enterText(find.byType(TextBox), 'same');
       await tester.pump(const Duration(milliseconds: 800));
       await tester.pumpAndSettle();
+      await save(tester);
 
       expect(writes(), 0);
     });
@@ -224,6 +309,7 @@ void main() {
       await tester.enterText(find.byType(TextBox), 'tester');
       await tester.pump(const Duration(milliseconds: 800));
       await tester.pumpAndSettle();
+      await save(tester);
 
       expect(mockShell.wslConfContents, '[user]\ndefault = tester\n');
     });

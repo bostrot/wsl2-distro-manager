@@ -152,7 +152,7 @@
   "saveastemplate-text": "另存为模板",
   "savingastemplate-text": "正在另存为模板...",
   "language-text": "语言",
-  "languagechange-text": "语言更改将在重启后生效。",
+  "languagechange-text": "语言会立即切换。保存后才会保留。",
   "notemplates-text": "未找到模板",
   "cleanuptitle-text": "清理 WSL 实例（%s）",
   "cleanupbody-text": "您确定要清理此发行版吗？此操作会导出并重新导入发行版。这可能需要一些时间。",
@@ -545,5 +545,15 @@
   "startinginstance-text": "正在启动 %s...",
   "stoppinginstance-text": "正在停止 %s...",
   "deletinginstance-text": "正在删除 %s...",
-  "errorenterusername-text": "请输入默认用户的用户名，或关闭该选项。"
+  "errorenterusername-text": "请输入默认用户的用户名，或关闭该选项。",
+  "unsavedchanges-title": "未保存的更改",
+  "unsavedchanges-text": "此页面有尚未保存的更改。离开前要保存吗？",
+  "unsavedchanges-marker-text": "未保存的更改",
+  "discardchanges-text": "放弃",
+  "settingssaved-text": "设置已保存。",
+  "opensettings-text": "打开设置",
+  "ai-chat-pro-required-text": "AI 聊天是 Pro 功能。",
+  "distrostopped-text": "该发行版未在运行",
+  "distrostoppedinfo-text": "读取 %s 的设置需要读取其中的 /etc/wsl.conf，这会启动该发行版。在你终止它之前会一直运行。",
+  "startandread-text": "启动并读取设置"
 }

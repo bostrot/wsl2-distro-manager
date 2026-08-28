@@ -152,7 +152,7 @@
   "saveastemplate-text": "Şablon olarak kaydet",
   "savingastemplate-text": "Şablon olarak kaydediliyor ...",
   "language-text": "Dil",
-  "languagechange-text": "Dil değişikliği yeniden başlatıldıktan sonra etkili olacaktır.",
+  "languagechange-text": "Dil hemen değişir. Kalıcı olması için kaydedin.",
   "notemplates-text": "Şablon bulunamadı",
   "cleanuptitle-text": "WSL örneğini (%s0) temizle",
   "cleanupbody-text": "Dağıtımı gerçekten temizlemek istiyor musunuz? Bu işlem, alan kazanmak için sanal sabit diski sıkıştıracaktır. Örnek durdurulacak ve bu işlem sırasında kullanılamayacaktır.",
@@ -544,5 +544,15 @@
   "startinginstance-text": "%s başlatılıyor...",
   "stoppinginstance-text": "%s durduruluyor...",
   "deletinginstance-text": "%s siliniyor...",
-  "errorenterusername-text": "Lütfen varsayılan kullanıcı için bir kullanıcı adı girin veya seçeneği kapatın."
+  "errorenterusername-text": "Lütfen varsayılan kullanıcı için bir kullanıcı adı girin veya seçeneği kapatın.",
+  "unsavedchanges-title": "Kaydedilmemiş değişiklikler",
+  "unsavedchanges-text": "Bu sayfada henüz kaydedilmemiş değişiklikler var. Çıkmadan önce kaydedilsin mi?",
+  "unsavedchanges-marker-text": "Kaydedilmemiş değişiklikler",
+  "discardchanges-text": "Vazgeç",
+  "settingssaved-text": "Ayarlar kaydedildi.",
+  "opensettings-text": "Ayarları aç",
+  "ai-chat-pro-required-text": "Yapay zekâ sohbeti bir Pro özelliğidir.",
+  "distrostopped-text": "Bu dağıtım çalışmıyor",
+  "distrostoppedinfo-text": "%s ayarlarını okumak, içindeki /etc/wsl.conf dosyasını okumak demektir ve bu dağıtımı başlatır. Siz sonlandırana kadar çalışmaya devam eder.",
+  "startandread-text": "Başlat ve ayarları oku"
 }

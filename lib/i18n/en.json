@@ -151,7 +151,7 @@
   "saveastemplate-text": "Save as template",
   "savingastemplate-text": "Saving as template ...",
   "language-text": "Language",
-  "languagechange-text": "Language change will take effect after restart.",
+  "languagechange-text": "The language changes straight away. Save to keep it.",
   "notemplates-text": "No templates found",
   "cleanuptitle-text": "Clean up WSL instance (%s0)",
   "cleanupbody-text": "Do you really want to clean up the distribution? This will compact the virtual hard disk to reclaim space. The instance will be stopped and unavailable during this process.",
@@ -544,5 +544,15 @@
   "startinginstance-text": "Starting %s...",
   "stoppinginstance-text": "Stopping %s...",
   "deletinginstance-text": "Deleting %s...",
-  "errorenterusername-text": "Please enter a username for the default user, or turn the option off."
+  "errorenterusername-text": "Please enter a username for the default user, or turn the option off.",
+  "unsavedchanges-title": "Unsaved changes",
+  "unsavedchanges-text": "This page has changes you have not saved yet. Save them before leaving?",
+  "unsavedchanges-marker-text": "Unsaved changes",
+  "discardchanges-text": "Discard",
+  "settingssaved-text": "Settings saved.",
+  "opensettings-text": "Open settings",
+  "ai-chat-pro-required-text": "AI Chat is a Pro feature.",
+  "distrostopped-text": "This distro is not running",
+  "distrostoppedinfo-text": "Reading the settings of %s means reading /etc/wsl.conf from inside it, which starts the distro. It stays running until you terminate it.",
+  "startandread-text": "Start it and read the settings"
 }
