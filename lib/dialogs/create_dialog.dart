@@ -10,6 +10,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
@@ -696,9 +697,9 @@ class _CreateWidgetState extends State<CreateWidget> {
                 },
                 trailingIcon: sourceType == CreateSourceType.local ||
                         sourceType == CreateSourceType.vhdx
-                    ? IconButton(
-                        icon: const Icon(FluentIcons.open_folder_horizontal,
-                            size: 15.0),
+                    ? NamedIconButton(
+                        label: 'choosefile-text'.i18n(),
+                        icon: FluentIcons.open_folder_horizontal,
                         onPressed: () async {
                           FilePickerResult? result =
                               await FilePicker.platform.pickFiles(

@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/recommender_service.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
 class RecommendationsPanel extends StatelessWidget {
@@ -112,8 +113,10 @@ class RecommendationsPanel extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: Icon(FluentIcons.cancel, size: 12),
+          NamedIconButton(
+            label: 'dismissrecommendation-text'.i18n(),
+            icon: FluentIcons.cancel,
+            iconSize: 12,
             onPressed: () {
               RecommenderService.clearDismissed(rec.key);
             },

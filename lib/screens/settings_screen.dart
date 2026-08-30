@@ -17,6 +17,7 @@ import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/components/wsl_size.dart';
@@ -360,7 +361,7 @@ class SettingsPageState extends State<SettingsPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Tooltip(
-                message: 'editwslconfig-text'.i18n(),
+                message: 'editwslconfighint-text'.i18n(),
                 child: Button(
                     style: ButtonStyle(
                         padding: ButtonState.all(const EdgeInsets.only(
@@ -396,7 +397,7 @@ class SettingsPageState extends State<SettingsPage> {
                     const SizedBox(width: 10.0),
                   ],
                   Tooltip(
-                    message: 'stopwsl-text'.i18n(),
+                    message: 'stopwslhint-text'.i18n(),
                     child: Button(
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
@@ -416,21 +417,18 @@ class SettingsPageState extends State<SettingsPage> {
                   const SizedBox(
                     width: 10.0,
                   ),
-                  Tooltip(
-                    message: 'save-text'.i18n(),
-                    child: Button(
-                        key: const ValueKey('test-settings-save'),
-                        style: ButtonStyle(
-                            padding: ButtonState.all(const EdgeInsets.only(
-                                left: 15.0,
-                                right: 20.0,
-                                top: 10.0,
-                                bottom: 10.0))),
-                        onPressed: () {
-                          saveSettings(context);
-                        },
-                        child: Text('save-text'.i18n())),
-                  ),
+                  Button(
+                      key: const ValueKey('test-settings-save'),
+                      style: ButtonStyle(
+                          padding: ButtonState.all(const EdgeInsets.only(
+                              left: 15.0,
+                              right: 20.0,
+                              top: 10.0,
+                              bottom: 10.0))),
+                      onPressed: () {
+                        saveSettings(context);
+                      },
+                      child: Text('save-text'.i18n())),
                 ],
               ),
             ],
@@ -616,8 +614,9 @@ class SettingsPageState extends State<SettingsPage> {
             title: 'defaultdistrolocation-text'.i18n(),
             name: 'Default Distro Location',
             tooltip: 'distropath-text'.i18n(),
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+            suffix: NamedIconButton(
+              label: 'choosefolder-text'.i18n(),
+              icon: FluentIcons.open_folder_horizontal,
               onPressed: () async {
                 String? path = await FilePicker.platform.getDirectoryPath(
                   initialDirectory: prefs.getString("DistroPath") ??
@@ -637,8 +636,9 @@ class SettingsPageState extends State<SettingsPage> {
             title: 'defaultdatalocation-text'.i18n(),
             name: 'General Data Location',
             tooltip: 'datapath-text'.i18n(),
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+            suffix: NamedIconButton(
+              label: 'choosefolder-text'.i18n(),
+              icon: FluentIcons.open_folder_horizontal,
               onPressed: () async {
                 String? path = await FilePicker.platform.getDirectoryPath(
                   initialDirectory: prefs.getString("DataPath") ??
@@ -661,25 +661,22 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'defaulteditor-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'defaulteditor-text'.i18n(),
-              child: TextBox(
-                controller: _editorController,
-                placeholder: 'notepad.exe',
-                suffix: IconButton(
-                  icon: const Icon(FluentIcons.open_folder_horizontal,
-                      size: 15.0),
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['exe'],
-                    );
-                    if (result != null) {
-                      _editorController.text = result.files.single.path!;
-                    }
-                  },
-                ),
+            child: TextBox(
+              controller: _editorController,
+              placeholder: 'notepad.exe',
+              suffix: NamedIconButton(
+                label: 'choosefile-text'.i18n(),
+                icon: FluentIcons.open_folder_horizontal,
+                onPressed: () async {
+                  FilePickerResult? result =
+                      await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['exe'],
+                  );
+                  if (result != null) {
+                    _editorController.text = result.files.single.path!;
+                  }
+                },
               ),
             ),
           ),
@@ -689,25 +686,22 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'defaultterminal-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'defaultterminal-text'.i18n(),
-              child: TextBox(
-                controller: _terminalController,
-                placeholder: 'wt.exe',
-                suffix: IconButton(
-                  icon: const Icon(FluentIcons.open_folder_horizontal,
-                      size: 15.0),
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['exe'],
-                    );
-                    if (result != null) {
-                      _terminalController.text = result.files.single.path!;
-                    }
-                  },
-                ),
+            child: TextBox(
+              controller: _terminalController,
+              placeholder: 'wt.exe',
+              suffix: NamedIconButton(
+                label: 'choosefile-text'.i18n(),
+                icon: FluentIcons.open_folder_horizontal,
+                onPressed: () async {
+                  FilePickerResult? result =
+                      await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['exe'],
+                  );
+                  if (result != null) {
+                    _terminalController.text = result.files.single.path!;
+                  }
+                },
               ),
             ),
           ),
@@ -717,12 +711,9 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'defaultvscode-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'defaultvscode-text'.i18n(),
-              child: TextBox(
-                controller: _vscodeController,
-                placeholder: 'code',
-              ),
+            child: TextBox(
+              controller: _vscodeController,
+              placeholder: 'code',
             ),
           ),
         ),
@@ -771,39 +762,37 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'language-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-                message: 'language-text'.i18n(),
-                // Menu
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'languagechange-text'.i18n(),
-                    ),
-                    const SizedBox(
-                      height: 20.0,
-                    ),
-                    // Every zh variant collapsed to the same languageCode
-                    // before, which left the ComboBox with duplicate values
-                    // and showed raw locale codes as labels.
-                    ComboBox<String>(
-                        key: const ValueKey('test-language-combo'),
-                        value: languageOptions.containsKey(_draftLanguage)
-                            ? _draftLanguage
-                            : 'en',
-                        items: languageOptions.entries
-                            .map((e) => ComboBoxItem(
-                                value: e.key, child: Text(e.value)))
-                            .toList(),
-                        onChanged: (language) {
-                          if (language == null) return;
-                          _applyLanguage(language, persist: false);
-                          _onDraftChanged();
-                          setState(() {});
-                        }),
-                  ],
-                )),
+            // Menu
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'languagechange-text'.i18n(),
+                ),
+                const SizedBox(
+                  height: 20.0,
+                ),
+                // Every zh variant collapsed to the same languageCode
+                // before, which left the ComboBox with duplicate values
+                // and showed raw locale codes as labels.
+                ComboBox<String>(
+                    key: const ValueKey('test-language-combo'),
+                    value: languageOptions.containsKey(_draftLanguage)
+                        ? _draftLanguage
+                        : 'en',
+                    items: languageOptions.entries
+                        .map((e) => ComboBoxItem(
+                            value: e.key, child: Text(e.value)))
+                        .toList(),
+                    onChanged: (language) {
+                      if (language == null) return;
+                      _applyLanguage(language, persist: false);
+                      _onDraftChanged();
+                      setState(() {});
+                    }),
+              ],
+            ),
           ),
         ),
       ],
@@ -974,8 +963,9 @@ class SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(FluentIcons.copy, size: 15.0),
+                  NamedIconButton(
+                    label: 'copyendpoint-text'.i18n(),
+                    icon: FluentIcons.copy,
                     onPressed: () => Clipboard.setData(
                         ClipboardData(text: _mcpService.endpointUrl)),
                   ),
@@ -1000,23 +990,29 @@ class SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(
+                  NamedIconButton(
+                    label: _mcpTokenVisible
+                        ? 'hidetoken-text'.i18n()
+                        : 'showtoken-text'.i18n(),
+                    icon:
                         _mcpTokenVisible ? FluentIcons.hide3 : FluentIcons.view,
-                        size: 15.0),
                     onPressed: () =>
                         setState(() => _mcpTokenVisible = !_mcpTokenVisible),
                   ),
                   const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(FluentIcons.copy, size: 15.0),
+                  // Two identical copy glyphs 60 px apart: only the name
+                  // tells them apart (audit ST-18).
+                  NamedIconButton(
+                    label: 'copytoken-text'.i18n(),
+                    icon: FluentIcons.copy,
                     onPressed: () => Clipboard.setData(
                         ClipboardData(text: _mcpService.token)),
                   ),
                   const SizedBox(width: 4),
-                  IconButton(
+                  NamedIconButton(
                     key: const ValueKey('test-mcp-regenerate-token'),
-                    icon: const Icon(FluentIcons.refresh, size: 15.0),
+                    label: 'regeneratetoken-text'.i18n(),
+                    icon: FluentIcons.refresh,
                     onPressed: () =>
                         setState(() => _mcpService.regenerateToken()),
                   ),
@@ -1105,8 +1101,9 @@ class SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(FluentIcons.copy, size: 15.0),
+                    NamedIconButton(
+                      label: 'copytunnelurl-text'.i18n(),
+                      icon: FluentIcons.copy,
                       onPressed: () => Clipboard.setData(
                           ClipboardData(text: _tunnelService.publicUrl!)),
                     ),
@@ -1147,17 +1144,15 @@ class SettingsPageState extends State<SettingsPage> {
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Row(
               children: [
-                Tooltip(
-                    message: 'showdockershort-text'.i18n(),
-                    child: ToggleSwitch(
-                      checked: showDocker,
-                      onChanged: (value) {
-                        setState(() {
-                          showDocker = value;
-                          prefs.setBool('showDocker', value);
-                        });
-                      },
-                    )),
+                ToggleSwitch(
+                  checked: showDocker,
+                  onChanged: (value) {
+                    setState(() {
+                      showDocker = value;
+                      prefs.setBool('showDocker', value);
+                    });
+                  },
+                ),
                 const SizedBox(
                   width: 10.0,
                 ),
@@ -1185,12 +1180,9 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'dockerrepo-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'dockerrepo-text'.i18n(),
-              child: TextBox(
-                controller: _dockerrepoController,
-                placeholder: 'https://registry-1.docker.io',
-              ),
+            child: TextBox(
+              controller: _dockerrepoController,
+              placeholder: 'https://registry-1.docker.io',
             ),
           ),
         ),
@@ -1207,12 +1199,9 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'syncipaddress-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'syncipaddress-text'.i18n(),
-              child: TextBox(
-                controller: _syncIpTextController,
-                placeholder: '192.168.1.20',
-              ),
+            child: TextBox(
+              controller: _syncIpTextController,
+              placeholder: '192.168.1.20',
             ),
           ),
         ),
@@ -1236,12 +1225,9 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'repofordistro-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'repofordistro-text'.i18n(),
-              child: TextBox(
-                controller: _repoTextController,
-                placeholder: defaultRepoLink,
-              ),
+            child: TextBox(
+              controller: _repoTextController,
+              placeholder: defaultRepoLink,
             ),
           ),
         ),
@@ -1530,8 +1516,9 @@ class SettingsPageState extends State<SettingsPage> {
   /// The folder-picker button shared by every `.wslconfig` path key. Restricted
   /// to [extensions] where the documentation names a file type.
   Widget _filePickerSuffix(String name, {List<String>? extensions}) {
-    return IconButton(
-      icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+    return NamedIconButton(
+      label: 'choosefile-text'.i18n(),
+      icon: FluentIcons.open_folder_horizontal,
       onPressed: () async {
         FilePickerResult? result = await FilePicker.platform.pickFiles(
           type: extensions == null ? FileType.any : FileType.custom,
@@ -1731,17 +1718,16 @@ class SettingsPageState extends State<SettingsPage> {
         if (isSet && enabled)
           Padding(
             padding: const EdgeInsets.only(left: 8.0),
-            child: Tooltip(
-              message: 'settingunset-text'.i18n(),
-              child: IconButton(
-                icon: const Icon(FluentIcons.undo, size: 14.0),
-                onPressed: () {
-                  _settings[name]!.text = '';
-                  setState(() {
-                    _settings = _settings;
-                  });
-                },
-              ),
+            child: NamedIconButton(
+              label: 'resettodefault-text'.i18n(),
+              icon: FluentIcons.undo,
+              iconSize: 14.0,
+              onPressed: () {
+                _settings[name]!.text = '';
+                setState(() {
+                  _settings = _settings;
+                });
+              },
             ),
           ),
         if (!isSet)

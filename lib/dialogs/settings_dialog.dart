@@ -8,6 +8,7 @@ import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/debounced_text_box.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/sync.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
@@ -186,7 +187,7 @@ Column settingsColumn(
           ? MouseRegion(
               cursor: SystemMouseCursors.click,
               child: Tooltip(
-                message: 'upload-text'.i18n(),
+                message: 'startstopservinghint-text'.i18n(),
                 child: Button(
                   style: ButtonStyle(
                       padding: ButtonState.all(const EdgeInsets.only(
@@ -219,7 +220,7 @@ Column settingsColumn(
           ? MouseRegion(
               cursor: SystemMouseCursors.click,
               child: Tooltip(
-                message: 'download-text'.i18n(),
+                message: 'downloadoverridehint-text'.i18n(),
                 child: Button(
                   style: ButtonStyle(
                       padding: ButtonState.all(const EdgeInsets.only(
@@ -612,15 +613,13 @@ Widget _settingHeader(BuildContext context, String item, Function setState,
         ),
       ),
       if (isSet)
-        Tooltip(
-          message: 'settingdefault-text'.i18n(),
-          child: IconButton(
-            icon: const Icon(FluentIcons.undo),
-            onPressed: () {
-              draft.unset(setting);
-              setState(() {});
-            },
-          ),
+        NamedIconButton(
+          label: 'resettodefault-text'.i18n(),
+          icon: FluentIcons.undo,
+          onPressed: () {
+            draft.unset(setting);
+            setState(() {});
+          },
         ),
     ],
   );

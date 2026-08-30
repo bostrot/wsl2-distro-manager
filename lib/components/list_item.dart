@@ -61,6 +61,12 @@ class _ListItemState extends State<ListItem> {
   bool isRunning(String distroName, List<String> runningList) =>
       runningList.contains(distroName);
 
+  /// What the row calls itself. LN-01 cuts this at half the row width, so
+  /// the same string is also the header's tooltip (audit LN-23).
+  String headerLabel() => isRunning(widget.item, widget.running)
+      ? '${distroLabel(widget.item)} (${'running-text'.i18n()})'
+      : distroLabel(widget.item);
+
   /// Watches a region of the row for focus without becoming a tab stop itself.
   Widget watchFocus(Widget child, ValueChanged<bool> onChanged) => Focus(
         canRequestFocus: false,
@@ -152,12 +158,13 @@ class _ListItemState extends State<ListItem> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  isRunning(widget.item, widget.running)
-                      ? '${distroLabel(widget.item)} (${'running-text'.i18n()})'
-                      : distroLabel(widget.item),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Tooltip(
+                  message: headerLabel(),
+                  child: Text(
+                    headerLabel(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

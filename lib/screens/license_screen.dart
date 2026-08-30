@@ -257,10 +257,15 @@ class _LicenseScreenState extends State<LicenseScreen> {
     const columnWidth = 64.0;
     Widget cell(bool included) => SizedBox(
           width: columnWidth,
-          child: Icon(
-            included ? FluentIcons.check_mark : FluentIcons.cancel,
-            size: 14,
-            color: included ? accent : disabledTextColor(context),
+          child: Semantics(
+            label: included
+                ? 'included-text'.i18n()
+                : 'notincluded-text'.i18n(),
+            child: Icon(
+              included ? FluentIcons.check_mark : FluentIcons.cancel,
+              size: 14,
+              color: included ? accent : disabledTextColor(context),
+            ),
           ),
         );
 

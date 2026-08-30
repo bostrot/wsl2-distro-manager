@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 
 /// Template Screen
@@ -179,8 +180,9 @@ class _TemplatePageState extends State<TemplatePage> {
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(FluentIcons.delete),
+                    NamedIconButton(
+                      label: 'deletetemplate-text'.i18n(),
+                      icon: FluentIcons.delete,
                       onPressed: () {
                         dialog(
                             item: name,

@@ -11,22 +11,27 @@ class BetaBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'beta-info-text'.i18n(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
-        ),
-        child: const Text(
-          'BETA',
-          style: TextStyle(
-            fontSize: 8,
-            fontWeight: FontWeight.bold,
-            color: color,
-            letterSpacing: 0.5,
+    return Semantics(
+      label: 'beta-badge-label-text'.i18n(),
+      excludeSemantics: true,
+      child: Tooltip(
+        message: 'beta-info-text'.i18n(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(3),
+            border:
+                Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
+          ),
+          child: const Text(
+            'BETA',
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+              color: color,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),

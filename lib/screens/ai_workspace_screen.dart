@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
@@ -588,13 +589,12 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                   ),
                   // Without this a sticky failure has no way out: the status
                   // probe deliberately leaves it alone until the user acts.
-                  Tooltip(
-                    message: 'close-text'.i18n(),
-                    child: IconButton(
-                      key: ValueKey('test-ai-dismiss-error-${tool.name}'),
-                      icon: const Icon(FluentIcons.cancel, size: 10),
-                      onPressed: () => _handleDismissError(tool),
-                    ),
+                  NamedIconButton(
+                    key: ValueKey('test-ai-dismiss-error-${tool.name}'),
+                    label: 'close-text'.i18n(),
+                    icon: FluentIcons.cancel,
+                    iconSize: 10,
+                    onPressed: () => _handleDismissError(tool),
                   ),
                 ],
               ),
@@ -666,11 +666,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 if (state?.status == ToolStatus.running ||
                     state?.status == ToolStatus.starting) ...[
                   const SizedBox(width: 8),
-                  Tooltip(
-                    message: state?.status == ToolStatus.starting
+                  _maybeTooltip(
+                    state?.status == ToolStatus.starting
                         ? 'ai-workspace-startingup-hint-text'.i18n()
-                        : 'ai-workspace-open-dashboard-text'.i18n(),
-                    child: Button(
+                        : null,
+                    Button(
                       key: ValueKey('test-ai-open-dashboard-${tool.name}'),
                       onPressed:
                           (!isBusy && state?.status == ToolStatus.running)
@@ -754,6 +754,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     if (status == ToolStatus.error) return Colors.red;
     return Colors.grey;
   }
+
+  /// A tooltip only where it says something the label does not (audit
+  /// PS-30). A null [message] leaves [child] bare.
+  Widget _maybeTooltip(String? message, Widget child) =>
+      message == null ? child : Tooltip(message: message, child: child);
 
   String _statusLabel(ToolStatus? status) {
     if (status == ToolStatus.running) return 'running-text'.i18n();

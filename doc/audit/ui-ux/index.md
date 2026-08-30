@@ -403,7 +403,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-01 -- Stop discarding what the user typed | 7 | 0 | 2026-08-28 |
 | FIX-05 -- Error text a user can act on | 12 | 0 | 2026-08-28 |
 | FIX-06 -- Keyboard operability | 9 | 0 | 2026-08-30 |
-| all others | 0 | 167 | -- |
+| FIX-07 -- Accessible names and honest tooltips | 10 | 0 | 2026-08-30 |
+| all others | 0 | 157 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -634,18 +635,47 @@ The codebase contains **no `Semantics(label:)` at all** and 22 of 38 tap targets
 no accessible name. `list_item.dart` already does it right 11 times out of 11 -- copy
 that pattern.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| IA-09 | blocker | `MergeSemantics(Tooltip(...))` on the 22 unnamed tap targets; 11 are in `settings_screen.dart`, which has zero `MergeSemantics` today. Watch the trap at `:471` and `:499` -- those sit inside a `Tooltip` that describes the *TextBox*, not the button |
-| IA-10 | major | Add `Semantics(label:)` where a visible tooltip is not appropriate |
-| IA-11 | major | Tooltip the seven icon-only buttons that have none -- they are unlabelled for sighted users too |
-| ST-18 | major | Name the four MCP icon buttons and differentiate the two identical copy glyphs |
-| ST-44 | major | Give the mount confirmation the full disk identity, with a tooltip on the truncated form |
-| ST-14 | nit | A tooltip that repeats its own label is noise -- make it explain or remove it |
-| PS-30 | nit | Same for the Open Dashboard tooltip |
-| ST-30 | nit | Make the sync buttons' tooltips match their labels |
-| LN-23 | nit | Tooltip the truncated distro name |
-| ST-51 | nit | One folder glyph across all pickers, with a tooltip |
+**Landed 2026-08-30.** The pattern is now one widget, `NamedIconButton`
+(`lib/components/named_button.dart`), rather than eleven inline repetitions of it. It
+exists because a `fluent_ui` `IconButton` opens its own semantics container: a
+`Tooltip` wrapped round one is a sibling node, not a name, until `MergeSemantics`
+folds the two together. The nineteen controls that were missing one half of that pair
+or both went through the wrapper; the `list_item.dart` eleven that already did it by
+hand were left alone, since rewriting them would have disturbed the per-region
+`FocusTheme` work FIX-06 had just landed there.
+
+**IA-09's trap was real and it was the tooltip, not the missing merge.** The editor
+and terminal pickers sat inside a `Tooltip` whose message was the field's own
+`InfoLabel` -- "Default editor" -- so merging the pair as written would have named the
+*button* after the text box. Both tooltips were ST-14 offenders anyway (they restated
+the label directly above them), so removing them fixed the naming and the noise in one
+edit. Nine more tooltips on that screen said exactly what the control they wrapped
+already said and are gone; the two that had something to add -- Stop WSL, which shuts
+down every distro, and Edit .wslconfig, which opens a file in an external editor --
+were rewritten to say it.
+
+**IA-10 is three places, not a sweep.** An `Icon` carries no name, so anything that is
+an icon and *not* a button was silent by construction: the licence table's check/cross
+column, and the BETA and NEW pills, which announced four letters and no meaning. The
+status pills were already `Text`. Both badges use `excludeSemantics: true` so the name
+replaces the literal glyph rather than trailing it.
+
+Regression tests: `test/accessible_names_test.dart` (5), including a tree-wide source
+scan that fails if an icon-only tap target comes back without a name -- the same count
+the audit made by hand, now enforced.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| IA-09 | blocker | `MergeSemantics(Tooltip(...))` on the 22 unnamed tap targets; 11 are in `settings_screen.dart`, which has zero `MergeSemantics` today. Watch the trap at `:471` and `:499` -- those sit inside a `Tooltip` that describes the *TextBox*, not the button | `named_button.dart:15`, `settings_screen.dart:617` `:639` `:667` `:692` `:966` `:993` `:1005` `:1012` `:1104` `:1519` `:1721`, `mount_dialog.dart:448`, `template_screen.dart:183`, `ai_chat_panel.dart:159`, `recommendations_panel.dart:116`, `create_dialog.dart:700`, `settings_dialog.dart:616`, `package_screen.dart:509`, `ai_workspace_screen.dart:592` |
+| IA-10 | major | Add `Semantics(label:)` where a visible tooltip is not appropriate | `license_screen.dart:260`, `beta_badge.dart:14`, `panelist.dart:95` |
+| IA-11 | major | Tooltip the seven icon-only buttons that have none -- they are unlabelled for sighted users too | `named_button.dart:39` (label is the tooltip), call sites as IA-09 |
+| ST-18 | major | Name the four MCP icon buttons and differentiate the two identical copy glyphs | `settings_screen.dart:966` `:993` `:1005` `:1012` |
+| ST-44 | major | Give the mount confirmation the full disk identity, with a tooltip on the truncated form | `mount_dialog.dart:342`, `mount_dialog.dart:361` |
+| ST-14 | nit | A tooltip that repeats its own label is noise -- make it explain or remove it | `settings_screen.dart:364`, `:400`; nine removed at `:421` `:662` `:687` `:712` `:763` `:1143` `:1181` `:1200` `:1226` |
+| PS-30 | nit | Same for the Open Dashboard tooltip | `ai_workspace_screen.dart:669`, `ai_workspace_screen.dart:760` |
+| ST-30 | nit | Make the sync buttons' tooltips match their labels | `settings_dialog.dart:190`, `settings_dialog.dart:223` |
+| LN-23 | nit | Tooltip the truncated distro name | `list_item.dart:66`, `list_item.dart:162` |
+| ST-51 | nit | One folder glyph across all pickers, with a tooltip | `mount_dialog.dart:448` |
 
 ### FIX-08 -- Destructive actions must look and behave destructive
 

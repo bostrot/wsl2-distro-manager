@@ -90,18 +90,25 @@ List<NavigationPaneItem> get footerItems => [
             : 'upgrade-pro-text'.i18n()),
         infoBadge: LicenseManager().isPro
             ? null
-            : Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: const Text(
-                  'NEW',
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFFBF00),
+            // IA-10: the pill is decoration next to the pane label, so it
+            // needs a name of its own to be announced as anything.
+            : Semantics(
+                label: 'new-badge-label-text'.i18n(),
+                excludeSemantics: true,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: const Text(
+                    'NEW',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFFBF00),
+                    ),
                   ),
                 ),
               ),

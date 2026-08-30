@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -155,8 +156,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
               // No quota counter anymore — chat runs on the user's own API
               // key, so usage is between them and their provider.
               const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(FluentIcons.delete, size: 14),
+              NamedIconButton(
+                label: 'clearchat-text'.i18n(),
+                icon: FluentIcons.delete,
+                iconSize: 14,
                 onPressed: () {
                   _ai.clearHistory();
                   setState(() {});

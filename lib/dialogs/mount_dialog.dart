@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/api/mount_service.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
 void showMountDialog() {
@@ -341,9 +342,12 @@ class _MountDialogState extends State<MountDialog> {
             items: _disks
                 .map((e) => ComboBoxItem(
                       value: e,
-                      child: Text(
-                        e.toString(),
-                        overflow: TextOverflow.ellipsis,
+                      child: Tooltip(
+                        message: e.toString(),
+                        child: Text(
+                          e.toString(),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ))
                 .toList(),
@@ -351,6 +355,20 @@ class _MountDialogState extends State<MountDialog> {
             onChanged: (v) => setState(() => _selectedDisk = v),
           ),
         ),
+        // The device id is the only thing that separates two disks of the
+        // same model, and it is the first thing the combo ellipsises away
+        // (audit ST-44).
+        if (_selectedDisk != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              '${'deviceid-text'.i18n()}: ${_selectedDisk!.deviceId}',
+              style: TextStyle(
+                fontSize: 12.0,
+                color: secondaryTextColor(context),
+              ),
+            ),
+          ),
         if (_selectedDisk != null && _selectedDisk!.isUsb)
           Padding(
             padding: const EdgeInsets.only(top: 10),
@@ -427,23 +445,23 @@ class _MountDialogState extends State<MountDialog> {
                 child: TextBox(
                   controller: _vhdPathController,
                   placeholder: 'examplepath-text'.i18n(),
+                  suffix: NamedIconButton(
+                    label: 'choosefile-text'.i18n(),
+                    icon: FluentIcons.open_folder_horizontal,
+                    onPressed: () async {
+                      FilePickerResult? result =
+                          await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['vhdx', 'vhd'],
+                      );
+                      if (result != null) {
+                        setState(() {
+                          _vhdPathController.text = result.files.single.path!;
+                        });
+                      }
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Button(
-                child: const Icon(FluentIcons.folder_open),
-                onPressed: () async {
-                  FilePickerResult? result =
-                      await FilePicker.platform.pickFiles(
-                    type: FileType.custom,
-                    allowedExtensions: ['vhdx', 'vhd'],
-                  );
-                  if (result != null) {
-                    setState(() {
-                      _vhdPathController.text = result.files.single.path!;
-                    });
-                  }
-                },
               ),
             ],
           ),

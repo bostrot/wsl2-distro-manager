@@ -31,6 +31,7 @@ import 'package:wsl2distromanager/api/wsl_distribution_conf.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/debounced_text_box.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
 /// How this screen reaches WSL and the filesystem. The seam the widget tests
@@ -505,12 +506,10 @@ class PackagePageState extends State<PackagePage> {
         // The third state: removing the line is what lets WSL's own default
         // apply again. Writing the default back is not the same thing.
         if (isSet)
-          Tooltip(
-            message: 'settingdefault-text'.i18n(),
-            child: IconButton(
-              icon: const Icon(FluentIcons.undo),
-              onPressed: _busy ? null : () => _write(setting, null),
-            ),
+          NamedIconButton(
+            label: 'resettodefault-text'.i18n(),
+            icon: FluentIcons.undo,
+            onPressed: _busy ? null : () => _write(setting, null),
           ),
       ],
     );

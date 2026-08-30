@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 42 of 214 findings closed (7 blockers, 28 majors, 7 nits).** Running
+  **In progress — 52 of 214 findings closed (8 blockers, 32 majors, 12 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -99,11 +99,32 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     `main.dart` were near-identical) and widens the ring's inner stroke to match
     its outer one, which is what made it read as a hairline.
 
-  **Next up:** FIX-07 (accessible names and honest tooltips), then FIX-04, then
-  the five open FIX-02 items. Verification for this slice:
-  `flutter analyze` clean (the same two pre-existing warnings, untouched),
-  `flutter test` 767 passing (was 755), `dart run scripts/check_translations.dart`
-  exit 0. `dart format` was deliberately **not** run: the toolchain here ships the
+  - **FIX-07 — accessible names and honest tooltips: complete (10/10).** One new
+    file, `lib/components/named_button.dart`, holds `NamedIconButton`: the
+    `MergeSemantics(Tooltip(IconButton))` pair as a widget instead of as eleven
+    inline repetitions. It has to be that pair, because a fluent_ui `IconButton`
+    opens its own semantics container and a `Tooltip` around one is a sibling node
+    rather than a name. Nineteen controls across nine files went through it; the
+    eleven in `list_item.dart` that already did it by hand were left as they are,
+    since rewriting them would disturb the per-region `FocusTheme` FIX-06 had just
+    landed there. IA-09's documented trap turned out to be the tooltip, not the
+    missing merge: the editor and terminal pickers sat inside a `Tooltip` whose
+    message was the field's own `InfoLabel`, so merging the pair as written would
+    have named the *button* "Default editor". Both were ST-14 offenders anyway, so
+    deleting them closed the naming and the noise together — eleven tooltips on
+    that screen restated the label directly above them and are gone, and the two
+    that had something to add (Stop WSL, which shuts down every distro, and Edit
+    .wslconfig) were rewritten to say it. IA-10 is three places rather than a
+    sweep: an `Icon` carries no name, so the licence table's check/cross column and
+    the BETA and NEW pills were silent by construction; the status pills were
+    already `Text`. 21 new keys landed in all nine locales with real translations.
+
+  **Next up:** FIX-04, then the five open FIX-02 items. Verification for this
+  slice: `flutter analyze` clean (the same two pre-existing warnings, untouched),
+  `flutter test` 772 passing (was 767), `dart run scripts/check_translations.dart`
+  exit 0, and a tree-wide source scan in `test/accessible_names_test.dart` that now
+  fails if an icon-only tap target comes back without a name. `dart format` was
+  deliberately **not** run: the toolchain here ships the
   3.7 "tall style" formatter and the repo is formatted with the older one, so a
   format pass rewrites every touched file end to end. Edits match the surrounding
   style by hand instead.
