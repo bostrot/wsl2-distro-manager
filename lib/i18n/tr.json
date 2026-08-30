@@ -622,5 +622,19 @@
   "notincluded-text": "Dahil değil",
   "beta-badge-label-text": "Beta özelliği",
   "new-badge-label-text": "Yeni",
-  "resettodefault-text": "Varsayılana sıfırla"
+  "resettodefault-text": "Varsayılana sıfırla",
+  "creating-text": "Oluşturuluyor...",
+  "stopinstall-text": "Kurulumu durdur",
+  "stayonpage-text": "Bu sayfada kal",
+  "keepinstalling-text": "Kuruluma devam et",
+  "createrunning-title": "Kurulum hâlâ sürüyor",
+  "createrunning-text": "Bu örneğin oluşturulması henüz bitmedi. Sayfadan ayrılırsanız arka planda çalışmaya devam eder.",
+  "createkeepsrunning-text": "Bu birkaç dakika sürebilir. Bu sayfadan ayrılmak işlemi durdurmaz.",
+  "createcancelled-text": "Kurulum durduruldu.",
+  "passwordwindowhint-text": "Kurulumdan sonra bu kullanıcının parolasını belirlemeniz için bir terminal penceresi açılır.",
+  "passwordwindowopen-text": "Terminal penceresinde %s için bir parola belirleyin, sonra pencereyi kapatın.",
+  "createdinstancenopassword-text": "Örnek oluşturuldu, ancak %s için henüz parola yok.",
+  "ai-workspace-install-cancelled-text": "%s kurulumu durduruldu",
+  "checkingdistrostate-text": "%s çalışıyor mu diye bakılıyor...",
+  "readingwslconf-text": "/etc/wsl.conf %s içinden okunuyor..."
 }

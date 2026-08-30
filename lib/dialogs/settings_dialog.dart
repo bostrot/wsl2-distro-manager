@@ -61,6 +61,18 @@ settingsDialog(item) {
   // (audit ST-28).
   final draft = WslConfDraft();
 
+  // False until `/etc/wsl.conf` has actually been read. Save wrote the three
+  // pref-backed fields and flushed an empty draft over settings it had not
+  // loaded yet, and it was live for the four-plus seconds that read takes
+  // (audit ST-36). Cancel stays enabled throughout — backing out of a dialog
+  // that has not loaded is exactly what a user should be able to do.
+  //
+  // Not disposed: `showDialog`'s future resolves as the pop begins, while the
+  // builder below is still listening, so disposing from there is a
+  // use-after-dispose. Nothing outside this closure holds it, so it goes when
+  // the route does.
+  final loaded = ValueNotifier<bool>(false);
+
   showDialog(
     context: context,
     builder: (childcontext) {
@@ -73,6 +85,7 @@ settingsDialog(item) {
           startCmdController: startCmdController,
           userController: userController,
           draft: draft,
+          loaded: loaded,
         ),
         actions: [
           Button(
@@ -81,18 +94,25 @@ settingsDialog(item) {
                 draft.clear();
                 Navigator.pop(childcontext);
               }),
-          Button(
-              child: Text('save-text'.i18n()),
-              onPressed: () async {
-                final navigator = Navigator.of(childcontext);
-                prefs.setString('StartPath_$item', pathController.text);
-                prefs.setString('StartCmd_$item', startCmdController.text);
-                prefs.setString('StartUser_$item', userController.text);
-                for (final setting in await draft.flush(item)) {
-                  _reportWrite(false, setting);
-                }
-                navigator.pop();
-              }),
+          ValueListenableBuilder<bool>(
+            valueListenable: loaded,
+            builder: (context, isLoaded, _) => Button(
+                key: const ValueKey('test-settings-dialog-save'),
+                onPressed: !isLoaded
+                    ? null
+                    : () async {
+                        final navigator = Navigator.of(childcontext);
+                        prefs.setString('StartPath_$item', pathController.text);
+                        prefs.setString(
+                            'StartCmd_$item', startCmdController.text);
+                        prefs.setString('StartUser_$item', userController.text);
+                        for (final setting in await draft.flush(item)) {
+                          _reportWrite(false, setting);
+                        }
+                        navigator.pop();
+                      },
+                child: Text('save-text'.i18n())),
+          ),
         ],
       );
     },
@@ -762,6 +782,10 @@ class SettingsDialogContent extends StatefulWidget {
   final TextEditingController userController;
   final WslConfDraft draft;
 
+  /// Flipped true once `/etc/wsl.conf` has been read, so the dialog's Save
+  /// button knows there is something to save (audit ST-36).
+  final ValueNotifier<bool>? loaded;
+
   const SettingsDialogContent({
     Key? key,
     required this.item,
@@ -769,6 +793,7 @@ class SettingsDialogContent extends StatefulWidget {
     required this.startCmdController,
     required this.userController,
     required this.draft,
+    this.loaded,
   }) : super(key: key);
 
   @override
@@ -804,14 +829,41 @@ class _SettingsDialogContentState extends State<SettingsDialogContent> {
     setState(() {
       _checkingRunning = false;
       if (running.contains(widget.item)) {
-        _loadFuture = loadDistroSettings(widget.item);
+        _loadFuture = _load();
       }
     });
   }
 
-  Widget _spinner() => const SizedBox(
+  /// The read, plus the one signal the dialog's Save button waits on.
+  ///
+  /// `whenComplete` rather than `then`: a read that failed still puts the form
+  /// on screen, so Save has to be usable over it — what must not happen is
+  /// Save flushing a draft while the read is still in flight (audit ST-36).
+  Future<void> _load() {
+    final future = loadDistroSettings(widget.item);
+    future.whenComplete(() {
+      if (mounted) widget.loaded?.value = true;
+    });
+    return future;
+  }
+
+  /// A spinner that says what it is waiting for.
+  ///
+  /// Four-plus seconds of a bare [ProgressRing] in an otherwise empty dialog
+  /// left the user with nothing to read and no idea that a distro was being
+  /// booted to answer the question (audit ST-36, ST-27).
+  Widget _spinner(String label) => SizedBox(
         height: 200,
-        child: Center(child: ProgressRing()),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ProgressRing(),
+              const SizedBox(height: 12.0),
+              Text(label, key: const ValueKey('test-settings-loading-label')),
+            ],
+          ),
+        ),
       );
 
   /// Say what opening the editor costs, and let the user decide.
@@ -831,8 +883,7 @@ class _SettingsDialogContentState extends State<SettingsDialogContent> {
           const SizedBox(height: 12.0),
           Button(
             key: const ValueKey('test-settings-start-distro'),
-            onPressed: () =>
-                setState(() => _loadFuture = loadDistroSettings(widget.item)),
+            onPressed: () => setState(() => _loadFuture = _load()),
             child: Text('startandread-text'.i18n()),
           ),
         ],
@@ -842,14 +893,16 @@ class _SettingsDialogContentState extends State<SettingsDialogContent> {
 
   @override
   Widget build(BuildContext context) {
-    if (_checkingRunning) return _spinner();
+    if (_checkingRunning) {
+      return _spinner('checkingdistrostate-text'.i18n([widget.item]));
+    }
     final loadFuture = _loadFuture;
     if (loadFuture == null) return _startNotice(context);
     return FutureBuilder(
       future: loadFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return _spinner();
+          return _spinner('readingwslconf-text'.i18n([widget.item]));
         }
         return SingleChildScrollView(
           // Keeps the scrollbar off the input fields it would otherwise

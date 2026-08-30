@@ -404,7 +404,11 @@ void main() {
       await wslApi.exec('Ubuntu', ['passwd']);
 
       expect(mockShell.lastStartExecutable, 'start');
-      expect(mockShell.lastStartArguments.first, 'ssh');
+      // `start`'s own switches come first — an empty console title and
+      // `/wait`, which is what makes the password prompt awaited at all
+      // (audit CI-13) — and the literal `ssh` token still leads the command.
+      expect(mockShell.lastStartArguments,
+          containsAllInOrder(['', '/wait', 'ssh']));
       expect(mockShell.lastStartArguments, contains('user@192.168.1.20'));
     });
 

@@ -624,5 +624,19 @@
   "notincluded-text": "Não incluído",
   "beta-badge-label-text": "Recurso beta",
   "new-badge-label-text": "Novo",
-  "resettodefault-text": "Restaurar o padrão"
+  "resettodefault-text": "Restaurar o padrão",
+  "creating-text": "Criando...",
+  "stopinstall-text": "Parar a instalação",
+  "stayonpage-text": "Permanecer nesta página",
+  "keepinstalling-text": "Continuar instalando",
+  "createrunning-title": "A instalação ainda está em andamento",
+  "createrunning-text": "A criação desta instância ainda não terminou. Sair da página a mantém em execução em segundo plano.",
+  "createkeepsrunning-text": "Isso pode levar vários minutos. Sair desta página não interrompe o processo.",
+  "createcancelled-text": "A instalação foi interrompida.",
+  "passwordwindowhint-text": "Após a instalação, uma janela de terminal abre para você definir a senha deste usuário.",
+  "passwordwindowopen-text": "Defina uma senha para %s na janela de terminal e depois feche-a.",
+  "createdinstancenopassword-text": "A instância foi criada, mas %s ainda não tem senha.",
+  "ai-workspace-install-cancelled-text": "Instalação de %s interrompida",
+  "checkingdistrostate-text": "Verificando se %s está em execução...",
+  "readingwslconf-text": "Lendo /etc/wsl.conf de %s..."
 }

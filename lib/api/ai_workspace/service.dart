@@ -9,6 +9,7 @@ import 'package:localization/localization.dart';
 
 import '../../components/helpers.dart';
 import '../../components/notify.dart';
+import '../cancellation.dart';
 import '../execution/broker.dart';
 import '../execution/models.dart';
 import '../wsl_args.dart';
@@ -492,6 +493,18 @@ class AiWorkspaceService {
   // card, so once the install is over this replaces [_installProgress].
   final Map<AiWorkspaceTool, String> _installLastLine = {};
 
+  // How long each running install has been going. A Hermes install measured
+  // six minutes with its one progress line frozen for two of them — 0 pixels
+  // changed over 120 seconds — and a frozen line beside a ticking clock is at
+  // least unambiguous (audit PS-18).
+  final Map<AiWorkspaceTool, Stopwatch> _installElapsed = {};
+
+  // Cancels a running install by killing its `wsl` child. There was no way
+  // out of one at all: Install was a spinner and Start, Stop and Uninstall
+  // were all disabled, so a wedged `curl | bash` could only be escaped by
+  // killing the app (audit PS-18).
+  final Map<AiWorkspaceTool, CancelSignal> _installCancels = {};
+
   // WSL shuts a distro down once its last session exits, which takes systemd
   // user services with it — measured: a started gateway is listening while a
   // session is held open and gone ~20s after the last one closes. Every action
@@ -529,6 +542,23 @@ class AiWorkspaceService {
   /// has not printed anything yet. Kept after the install ends so a failure
   /// card can still show where it got to.
   String? installProgress(AiWorkspaceTool tool) => _installProgress[tool];
+
+  /// How long [tool]'s install has been running, or null when none is.
+  ///
+  /// Read once a second by the card. The clock, not the streamed line, is what
+  /// tells a slow install from a wedged one.
+  Duration? installElapsed(AiWorkspaceTool tool) =>
+      _installElapsed[tool]?.elapsed;
+
+  /// Stops a running install for [tool] by killing its `wsl` child.
+  ///
+  /// Safe to call when nothing is running. The install itself reports the
+  /// cancel, so this returns nothing.
+  void cancelInstall(AiWorkspaceTool tool) => _installCancels[tool]?.cancel();
+
+  /// True while [tool]'s install can still be stopped.
+  bool canCancelInstall(AiWorkspaceTool tool) =>
+      _installCancels.containsKey(tool);
 
   /// Holds one WSL session open so long-running tools survive between the
   /// one-shot calls that start, probe and use them. Safe to call repeatedly.
@@ -788,10 +818,13 @@ class AiWorkspaceService {
     // clearError, which every user action goes through).
     clearError(tool);
     _installing.add(tool);
+    _installElapsed[tool] = Stopwatch()..start();
     try {
       return await _install(tool);
     } finally {
       _installing.remove(tool);
+      _installElapsed.remove(tool);
+      _installCancels.remove(tool);
       // The install is over, so nothing is going to redraw the progress-bar
       // frame that may be sitting in _installProgress. Fall back to the last
       // line the installer actually committed, which is what a failed card
@@ -825,17 +858,29 @@ class AiWorkspaceService {
       loading: true,
     );
 
+    final cancelSignal = CancelSignal();
+    _installCancels[tool] = cancelSignal;
     try {
       final result = await _runStreamed(
         // pipefail: `curl ... | sh` otherwise exits 0 even when curl fails.
         'set -o pipefail; ${config.installCommand}',
         silenceTimeout: _installSilenceTimeout,
         maxDuration: _installMaxDuration,
+        cancelSignal: cancelSignal,
         onLine: (line, {required transient}) {
           _installProgress[tool] = line;
           if (!transient) _installLastLine[tool] = line;
         },
       );
+      if (cancelSignal.isCancelled) {
+        // The user stopped it; that is not a failure to report as one. The
+        // card goes back to whatever it knew before the attempt.
+        clearError(tool);
+        _toolStates[tool]?.status = ToolStatus.notInstalled;
+        Notify.message('ai-workspace-install-cancelled-text'.i18n([config.name]),
+            severity: InfoBarSeverity.warning);
+        return false;
+      }
       if (result.isSuccess) {
         final state = _toolStates[tool];
         state?.status = ToolStatus.stopped;
@@ -885,6 +930,7 @@ class AiWorkspaceService {
     required Duration silenceTimeout,
     required Duration maxDuration,
     required InstallOutputSink onLine,
+    CancelSignal? cancelSignal,
   }) async {
     final stopwatch = Stopwatch()..start();
     final process = await _broker.startPersistent(
@@ -927,6 +973,10 @@ class AiWorkspaceService {
         'so the command was stopped.',
       ),
     );
+    // A user cancel takes the same route as a timeout — the child has to be
+    // reaped either way — and the caller tells the two apart by asking the
+    // token, not by reading the reason back out of the result.
+    cancelSignal?.onCancel(() => abandon('Stopped at your request.'));
     resetSilence();
 
     final drained = <Future<void>>[];

@@ -623,5 +623,19 @@
   "notincluded-text": "Nicht enthalten",
   "beta-badge-label-text": "Beta-Funktion",
   "new-badge-label-text": "Neu",
-  "resettodefault-text": "Auf den Standard zurücksetzen"
+  "resettodefault-text": "Auf den Standard zurücksetzen",
+  "creating-text": "Wird erstellt...",
+  "stopinstall-text": "Installation abbrechen",
+  "stayonpage-text": "Auf dieser Seite bleiben",
+  "keepinstalling-text": "Weiter installieren",
+  "createrunning-title": "Die Installation läuft noch",
+  "createrunning-text": "Das Erstellen dieser Instanz ist noch nicht fertig. Wenn Sie die Seite verlassen, läuft sie im Hintergrund weiter.",
+  "createkeepsrunning-text": "Das kann einige Minuten dauern. Die Seite zu verlassen bricht den Vorgang nicht ab.",
+  "createcancelled-text": "Die Installation wurde abgebrochen.",
+  "passwordwindowhint-text": "Nach der Installation öffnet sich ein Terminalfenster, in dem Sie das Passwort für diesen Benutzer setzen.",
+  "passwordwindowopen-text": "Setzen Sie im Terminalfenster ein Passwort für %s und schließen Sie es danach.",
+  "createdinstancenopassword-text": "Die Instanz wurde erstellt, aber %s hat noch kein Passwort.",
+  "ai-workspace-install-cancelled-text": "Installation von %s abgebrochen",
+  "checkingdistrostate-text": "Es wird geprüft, ob %s läuft...",
+  "readingwslconf-text": "/etc/wsl.conf wird aus %s gelesen..."
 }

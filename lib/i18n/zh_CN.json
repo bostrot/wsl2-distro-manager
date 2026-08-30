@@ -623,5 +623,19 @@
   "notincluded-text": "不包含",
   "beta-badge-label-text": "Beta 功能",
   "new-badge-label-text": "新增",
-  "resettodefault-text": "恢复为默认值"
+  "resettodefault-text": "恢复为默认值",
+  "creating-text": "正在创建...",
+  "stopinstall-text": "停止安装",
+  "stayonpage-text": "留在此页面",
+  "keepinstalling-text": "继续安装",
+  "createrunning-title": "安装仍在进行",
+  "createrunning-text": "此实例尚未创建完成。离开此页面后，它会在后台继续运行。",
+  "createkeepsrunning-text": "这可能需要几分钟。离开此页面不会中断它。",
+  "createcancelled-text": "安装已停止。",
+  "passwordwindowhint-text": "安装完成后会打开一个终端窗口，用于为该用户设置密码。",
+  "passwordwindowopen-text": "请在终端窗口中为 %s 设置密码，然后关闭该窗口。",
+  "createdinstancenopassword-text": "实例已创建，但 %s 尚未设置密码。",
+  "ai-workspace-install-cancelled-text": "已停止安装 %s",
+  "checkingdistrostate-text": "正在检查 %s 是否在运行...",
+  "readingwslconf-text": "正在从 %s 读取 /etc/wsl.conf..."
 }

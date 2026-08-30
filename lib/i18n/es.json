@@ -622,5 +622,19 @@
   "notincluded-text": "No incluido",
   "beta-badge-label-text": "Función beta",
   "new-badge-label-text": "Nuevo",
-  "resettodefault-text": "Restablecer al valor predeterminado"
+  "resettodefault-text": "Restablecer al valor predeterminado",
+  "creating-text": "Creando...",
+  "stopinstall-text": "Detener la instalación",
+  "stayonpage-text": "Permanecer en esta página",
+  "keepinstalling-text": "Seguir instalando",
+  "createrunning-title": "La instalación sigue en curso",
+  "createrunning-text": "La creación de esta instancia no ha terminado. Si sale de la página, continuará en segundo plano.",
+  "createkeepsrunning-text": "Esto puede tardar varios minutos. Salir de esta página no lo detiene.",
+  "createcancelled-text": "Se detuvo la instalación.",
+  "passwordwindowhint-text": "Al terminar la instalación se abrirá una ventana de terminal para que establezca la contraseña de este usuario.",
+  "passwordwindowopen-text": "Establezca una contraseña para %s en la ventana de terminal y ciérrela después.",
+  "createdinstancenopassword-text": "Se creó la instancia, pero %s todavía no tiene contraseña.",
+  "ai-workspace-install-cancelled-text": "Se detuvo la instalación de %s",
+  "checkingdistrostate-text": "Comprobando si %s está en ejecución...",
+  "readingwslconf-text": "Leyendo /etc/wsl.conf de %s..."
 }

@@ -623,5 +623,19 @@
   "notincluded-text": "不包含",
   "beta-badge-label-text": "Beta 功能",
   "new-badge-label-text": "新增",
-  "resettodefault-text": "還原為預設值"
+  "resettodefault-text": "還原為預設值",
+  "creating-text": "正在建立...",
+  "stopinstall-text": "停止安裝",
+  "stayonpage-text": "留在此頁面",
+  "keepinstalling-text": "繼續安裝",
+  "createrunning-title": "安裝仍在進行",
+  "createrunning-text": "此執行個體尚未建立完成。離開此頁面後，它會在背景繼續執行。",
+  "createkeepsrunning-text": "這可能需要幾分鐘。離開此頁面不會中斷它。",
+  "createcancelled-text": "安裝已停止。",
+  "passwordwindowhint-text": "安裝完成後會開啟一個終端機視窗，用於為此使用者設定密碼。",
+  "passwordwindowopen-text": "請在終端機視窗中為 %s 設定密碼，然後關閉該視窗。",
+  "createdinstancenopassword-text": "執行個體已建立，但 %s 尚未設定密碼。",
+  "ai-workspace-install-cancelled-text": "已停止安裝 %s",
+  "checkingdistrostate-text": "正在檢查 %s 是否執行中...",
+  "readingwslconf-text": "正在從 %s 讀取 /etc/wsl.conf..."
 }

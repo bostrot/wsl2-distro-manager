@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 52 of 214 findings closed (8 blockers, 32 majors, 12 nits).** Running
+  **In progress — 59 of 214 findings closed (8 blockers, 36 majors, 15 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -119,12 +119,41 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     the BETA and NEW pills were silent by construction; the status pills were
     already `Text`. 21 new keys landed in all nine locales with real translations.
 
-  **Next up:** FIX-04, then the five open FIX-02 items. Verification for this
+  - **FIX-04 — long operations: complete (7/7).** One new file,
+    `lib/api/cancellation.dart`, holds the `CancelSignal` a UI control and the
+    work it stops both hold; it is not `CancelableOperation`, because what has
+    to be cancelled is a child process and a socket reached through a callback
+    the worker registers while it owns them, and it is not called `CancelToken`
+    because `dio` already exports one into both files that needed it. Create
+    now takes a signal end to end: the download is stopped at the socket, the
+    `wsl --import` is a killable child rather than a `Process.run`, and the
+    cancel path unregisters the half-imported distro — a distro that lists,
+    will not start, and whose name cannot be reused is worse than none. Cancel
+    is enabled *during* the install instead of being the one labelled exit the
+    app took away, and the nav pane, back button and window X now ask (via the
+    `UnsavedChangesGuard` FIX-01 landed) rather than silently abandoning the
+    page with the install still running. A cancelled download does **not**
+    throw — `ChunkedDownloader.stop()` breaks its loop and lets `start()`
+    return normally — so reading it as an exception reported the user's own
+    cancel as "the server returned an empty file"; it is detected, not caught.
+    CI-16's stall is gone because the phase itself moves: the page draws a bar
+    with bytes and a transfer rate, and the import reports `Importing 2:14`
+    with a null fraction rather than a made-up percentage. CI-13 turned out to
+    be that `start` is not a program: `cmd /c start` hands its child to a new
+    console and exits, so the `await result.exitCode` already there awaited
+    nothing — `start "" /wait` makes it real, the form says a terminal will
+    open, and `WSLApi.hasPassword` asks afterwards, because closing that
+    window without typing left the account passwordless in silence. 14 new
+    keys in all nine locales.
+
+  **Next up:** the five open FIX-02 items, then FIX-08. Verification for this
   slice: `flutter analyze` clean (the same two pre-existing warnings, untouched),
-  `flutter test` 772 passing (was 767), `dart run scripts/check_translations.dart`
-  exit 0, and a tree-wide source scan in `test/accessible_names_test.dart` that now
-  fails if an icon-only tap target comes back without a name. `dart format` was
-  deliberately **not** run: the toolchain here ships the
+  `flutter test` 787 passing (was 772), `dart run scripts/check_translations.dart`
+  exit 0. `flutter test integration_test/` could not be run here — the harness
+  builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
+  and then fails with "Unable to start the app on the device" / "The log reader
+  stopped unexpectedly", which is the environment, not the change. `dart format`
+  was deliberately **not** run: the toolchain here ships the
   3.7 "tall style" formatter and the repo is formatted with the older one, so a
   format pass rewrites every touched file end to end. Edits match the surrounding
   style by hand instead.

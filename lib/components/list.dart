@@ -199,8 +199,12 @@ class DistroListState extends State<DistroList> {
         }
 
         // By default, show a loading spinner.
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20.0),
+        //
+        // `Expanded`, like the data and error branches: a bare `Padding` has
+        // no height to centre within, so the spinner drew at y=90 and the
+        // error that replaced it at y=420 — 330 px of jump when the load
+        // resolved (audit LN-20).
+        return Expanded(
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -211,6 +215,24 @@ class DistroListState extends State<DistroList> {
                   Text('connectingtoremote-text'.i18n([
                     remoteTarget.isEmpty ? 'remotenotset-text'.i18n() : remoteTarget
                   ])),
+                  const SizedBox(height: 12),
+                  // `getSshClientOptions` sets no ConnectTimeout, so an
+                  // unreachable host holds this for the OS default TCP
+                  // timeout. Going back to the local WSL is the one action
+                  // that ends the wait, and it is the same remedy the error
+                  // branch offers.
+                  Button(
+                    key: const ValueKey('test-list-loading-use-local'),
+                    onPressed: () async {
+                      await prefs.setBool('UseRemoteWSL', false);
+                      if (mounted) {
+                        setState(() {
+                          reloadTick++;
+                        });
+                      }
+                    },
+                    child: Text('uselocalwsl-text'.i18n()),
+                  ),
                 ],
               ],
             ),

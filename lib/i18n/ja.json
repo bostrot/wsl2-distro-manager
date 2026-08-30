@@ -622,5 +622,19 @@
   "notincluded-text": "利用不可",
   "beta-badge-label-text": "ベータ機能",
   "new-badge-label-text": "新着",
-  "resettodefault-text": "既定値に戻す"
+  "resettodefault-text": "既定値に戻す",
+  "creating-text": "作成中...",
+  "stopinstall-text": "インストールを停止",
+  "stayonpage-text": "このページに留まる",
+  "keepinstalling-text": "インストールを続ける",
+  "createrunning-title": "インストールはまだ実行中です",
+  "createrunning-text": "このインスタンスの作成はまだ終わっていません。ページを離れてもバックグラウンドで続行します。",
+  "createkeepsrunning-text": "数分かかることがあります。このページを離れても中断されません。",
+  "createcancelled-text": "インストールを停止しました。",
+  "passwordwindowhint-text": "インストール後にターミナル ウィンドウが開き、このユーザーのパスワードを設定できます。",
+  "passwordwindowopen-text": "ターミナル ウィンドウで %s のパスワードを設定し、ウィンドウを閉じてください。",
+  "createdinstancenopassword-text": "インスタンスは作成されましたが、%s にはまだパスワードがありません。",
+  "ai-workspace-install-cancelled-text": "%s のインストールを停止しました",
+  "checkingdistrostate-text": "%s が実行中かどうかを確認しています...",
+  "readingwslconf-text": "%s から /etc/wsl.conf を読み込んでいます..."
 }

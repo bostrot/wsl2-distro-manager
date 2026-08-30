@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/busy_button.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/app.dart';
@@ -96,8 +98,11 @@ createDialog() {
               ),
               Tooltip(
                 message: 'create-text'.i18n(),
-                child: Button(
+                child: BusyButton(
                   key: const ValueKey('test-create-button'),
+                  label: 'create-text'.i18n(),
+                  busyLabel: 'creating-text'.i18n(),
+                  busy: isCreating,
                   onPressed: isCreating
                       ? null
                       : () async {
@@ -120,12 +125,6 @@ createDialog() {
                             creating.value = false;
                           }
                         },
-                  child: isCreating
-                      ? SizedBox.square(
-                          dimension: 16,
-                          child: const ProgressRing(),
-                        )
-                      : Text('create-text'.i18n()),
                 ),
               ),
             ],
@@ -136,15 +135,40 @@ createDialog() {
   );
 }
 
-progressFn(current, total, currentStep, totalStep) {
+progressFn(current, total, currentStep, totalStep) =>
+    _layerProgress(current, total, currentStep, totalStep, null);
+
+/// Docker layer progress, for the status bar and — when the caller has one —
+/// for the create screen's bar as well.
+///
+/// The layer path always had the richer text; it was only ever pushed to the
+/// corner toast, which is what left the page itself with nothing to draw
+/// (audit CI-16).
+void _layerProgress(int current, int total, int currentStep, int totalStep,
+    void Function(CreateProgress)? onProgress) {
   if (currentStep != -1) {
     String progressInMB = (currentStep / 1024 / 1024).toStringAsFixed(2);
-    // String totalInMB = (total / 1024 / 1024).toStringAsFixed(2);
     String percentage = (currentStep / totalStep * 100).toStringAsFixed(0);
-    Notify.message('${'downloading-text'.i18n()}'
-        ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB)');
+    final label = '${'downloading-text'.i18n()}'
+        ' Layer ${current + 1}/$total: $percentage% ($progressInMB MB)';
+    Notify.message(label);
+    onProgress?.call(CreateProgress(
+      phase: CreatePhase.downloading,
+      label: label,
+      // Across all layers, not within one: a bar that restarts at zero N
+      // times reads as N failed downloads.
+      fraction: total > 0 && totalStep > 0
+          ? ((current + (currentStep / totalStep)) / total).clamp(0.0, 1.0)
+          : null,
+    ));
   } else {
-    Notify.message('extractinglayers-text'.i18n(['$current', '$total']));
+    final label = 'extractinglayers-text'.i18n(['$current', '$total']);
+    Notify.message(label);
+    onProgress?.call(CreateProgress(
+      phase: CreatePhase.extracting,
+      label: label,
+      fraction: total > 0 ? (current / total).clamp(0.0, 1.0) : null,
+    ));
   }
 }
 
@@ -172,6 +196,18 @@ bool _failCreate(
   return false;
 }
 
+/// Reports a cancelled create and always returns false.
+///
+/// Not routed through [_failCreate]: a cancel is the user getting what they
+/// asked for, so it clears the error banner rather than filling it, and the
+/// status bar says so once instead of leaving the spinner turning.
+bool _cancelCreate(ValueNotifier<CreateFailure?>? onError) {
+  onError?.value = null;
+  Notify.message('createcancelled-text'.i18n(),
+      severity: InfoBarSeverity.warning);
+  return false;
+}
+
 /// Returns true on success, false on any error so the caller can keep the dialog open.
 Future<bool> createInstance(
   TextEditingController nameController,
@@ -185,9 +221,26 @@ Future<bool> createInstance(
   bool isVhdx = false,
   bool requireUser = false,
   ValueNotifier<CreateFailure?>? onError,
+  ValueNotifier<CreateProgress?>? onProgress,
+  CancelSignal? cancelSignal,
 }) async {
   plausible.event(name: "wsl_create");
   DockerImage docker = dockerImage ?? DockerImage();
+  void report(CreateProgress progress) {
+    if (onProgress != null) onProgress.value = progress;
+  }
+
+  // The layer download runs inside `package:chunked_downloader`'s read loop,
+  // which has no cancel hook of its own; the progress callback is the one
+  // place this code gets control back per chunk, so that is where the token
+  // is checked. Throwing unwinds `_downloadBlob`, which deletes its own
+  // partial `.tmp` on the way out.
+  void layerProgress(int current, int total, int currentStep, int totalStep) {
+    cancelSignal?.throwIfCancelled();
+    _layerProgress(
+        current, total, currentStep, totalStep, onProgress == null ? null : report);
+  }
+
   final useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
   String label = nameController.text;
   // Replace all special characters with _
@@ -264,7 +317,9 @@ Future<bool> createInstance(
         Notify.message('${'downloading-text'.i18n()}...');
         docker.distroName = distroName;
         try {
-          await docker.getRootfs(name, image, tag: tag, progress: progressFn);
+          await docker.getRootfs(name, image, tag: tag, progress: layerProgress);
+        } on CancelledException {
+          return _cancelCreate(onError);
         } catch (e) {
           final msg = e.toString().replaceAll('Exception: ', '');
           final err = '${'errordownloading-text'.i18n()}: $msg';
@@ -295,10 +350,13 @@ Future<bool> createInstance(
       }
 
       try {
-        await docker.getRootfsFromLocalImage(name, localImagePath, progress: progressFn);
+        await docker.getRootfsFromLocalImage(name, localImagePath,
+            progress: layerProgress);
         distroName = docker.filename(
             localImagePath.split(':')[0],
             localImagePath.contains(':') ? localImagePath.split(':')[1] : null);
+      } on CancelledException {
+        return _cancelCreate(onError);
       } catch (e) {
         final failure = WslFailure.from(e);
         return _failCreate(
@@ -312,9 +370,17 @@ Future<bool> createInstance(
     // Navigator.of(context, rootNavigator: true).pop();
 
     // Create instance
-    ProcessResult result = await api.create(
-      name, distroName, effectiveLocation, (String msg) => Notify.message(msg),
-        image: isDockerImage, isVhd: isVhdx);
+    final ProcessResult result;
+    try {
+      result = await api.create(
+        name, distroName, effectiveLocation, (String msg) => Notify.message(msg),
+          image: isDockerImage,
+          isVhd: isVhdx,
+          onProgress: onProgress == null ? null : report,
+          cancelSignal: cancelSignal);
+    } on CancelledException {
+      return _cancelCreate(onError);
+    }
 
     // Check if instance was created then handle postprocessing
     if (result.exitCode != 0) {
@@ -355,15 +421,33 @@ Future<bool> createInstance(
         // other thirteen catalogue entries — see WSLApi.buildUserSetupScript.
         final setup = await api.createUser(name, user);
         if (setup.exitCode == 0) {
-          // Only worth prompting for a password once the account exists.
+          // Only worth prompting for a password once the account exists. This
+          // opens a console window outside the app, so say so first — and the
+          // call now waits for that window to close rather than racing past it
+          // (audit CI-13).
+          report(CreateProgress(
+            phase: CreatePhase.importing,
+            label: 'passwordwindowopen-text'.i18n([user]),
+          ));
+          Notify.message('passwordwindowopen-text'.i18n([user]),
+              loading: true);
           await api.exec(name, ['passwd $user']);
           // Use setSetting so existing wsl.conf sections (e.g. [boot] systemd=true) are preserved
           await api.setSetting(name, 'user', 'default', user);
           prefs.setString('StartPath_$name', '/home/$user');
           prefs.setString('StartUser_$name', user);
 
-          Notify.message('createdinstance-text'.i18n(),
-              severity: InfoBarSeverity.success);
+          // Closing that window without typing anything used to leave the
+          // account passwordless in silence. Null means the distro could not
+          // answer, which is not the same as "no password" and is not warned
+          // about.
+          if (await api.hasPassword(name, user) == false) {
+            Notify.message('createdinstancenopassword-text'.i18n([user]),
+                severity: InfoBarSeverity.warning);
+          } else {
+            Notify.message('createdinstance-text'.i18n(),
+                severity: InfoBarSeverity.success);
+          }
         } else {
           // Deliberately no `default=<user>` in wsl.conf on this path: naming
           // a user that does not exist stops the distro from starting at all,
@@ -793,6 +877,18 @@ class _CreateWidgetState extends State<CreateWidget> {
                     child: TextBox(
                       controller: widget.userController,
                       placeholder: 'optionaluser-text'.i18n(),
+                    ),
+                  ),
+                  const SizedBox(height: 6.0),
+                  // The password step opens a console window outside the app
+                  // and nothing said so, which is half of audit CI-13 — the
+                  // other half is that the create no longer races past it.
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'passwordwindowhint-text'.i18n(),
+                      key: const ValueKey('test-create-password-hint'),
+                      style: TextStyle(color: secondaryTextColor(context)),
                     ),
                   ),
                 ],

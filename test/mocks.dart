@@ -138,6 +138,14 @@ class MockShell implements Shell {
   /// Arbitrary in-distro files this shell has been asked to write, by path.
   final Map<String, String> writtenDistroFiles = <String, String>{};
 
+  /// Canned stdout for an in-distro script, keyed by the script itself.
+  ///
+  /// The escape hatch for commands that do not deserve a hand-written branch
+  /// below — one caller, one fixed answer. Consulted only when nothing more
+  /// specific matched, so it cannot shadow the simulated `wsl.conf`
+  /// read/write pair.
+  final Map<String, String> commandOutputs = <String, String>{};
+
   /// `wsl --manage` fails with this message instead of succeeding.
   String? manageFailure;
 
@@ -296,6 +304,11 @@ class MockShell implements Shell {
           }
           existingDistroFiles.add(path);
         }
+      } else if (commandOutputs.containsKey(cmd)) {
+        stdout = commandOutputs[cmd]!;
+        // An empty answer is a command the distro does not have — busybox
+        // `passwd` has no `-S` — which is a failure, not an empty success.
+        if (stdout.isEmpty) exitCode = 1;
       }
     }
 

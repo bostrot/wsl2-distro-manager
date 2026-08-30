@@ -622,5 +622,19 @@
   "notincluded-text": "Nem tartalmazza",
   "beta-badge-label-text": "Béta funkció",
   "new-badge-label-text": "Új",
-  "resettodefault-text": "Visszaállítás az alapértelmezettre"
+  "resettodefault-text": "Visszaállítás az alapértelmezettre",
+  "creating-text": "Létrehozás...",
+  "stopinstall-text": "Telepítés leállítása",
+  "stayonpage-text": "Maradok ezen az oldalon",
+  "keepinstalling-text": "Telepítés folytatása",
+  "createrunning-title": "A telepítés még fut",
+  "createrunning-text": "A példány létrehozása még nem fejeződött be. Ha elhagyja az oldalt, a háttérben tovább fut.",
+  "createkeepsrunning-text": "Ez több percig is eltarthat. Az oldal elhagyása nem állítja le.",
+  "createcancelled-text": "A telepítés leállt.",
+  "passwordwindowhint-text": "A telepítés után megnyílik egy terminálablak, ahol beállíthatja a felhasználó jelszavát.",
+  "passwordwindowopen-text": "Állítson be jelszót %s számára a terminálablakban, majd zárja be.",
+  "createdinstancenopassword-text": "A példány elkészült, de %s felhasználónak még nincs jelszava.",
+  "ai-workspace-install-cancelled-text": "%s telepítése leállítva",
+  "checkingdistrostate-text": "%s futásának ellenőrzése...",
+  "readingwslconf-text": "Az /etc/wsl.conf beolvasása innen: %s..."
 }

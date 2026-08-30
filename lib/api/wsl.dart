@@ -10,6 +10,7 @@ import 'package:localization/localization.dart';
 
 import 'package:path/path.dart' as p;
 import 'package:wsl2distromanager/api/app.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
@@ -43,6 +44,58 @@ class _ShellResult {
       _ShellResult(r.exitCode, r.stdout, r.stderr);
   factory _ShellResult.fromProcess(ProcessResult r) =>
       _ShellResult(r.exitCode, (r.stdout as String?).toString(), (r.stderr as String?).toString());
+}
+
+/// Which part of a create is running.
+///
+/// The phase is what the old status line could not express: it reported
+/// `Downloading 100%` and then said nothing for the whole `wsl --import`,
+/// which is the slowest part of a create (audit CI-16). A phase change is the
+/// signal that the download is over even when nothing else moves.
+enum CreatePhase { downloading, extracting, importing }
+
+/// One repaint of a running create, as the UI needs to draw it.
+///
+/// [fraction] is 0..1 where a real proportion is known and null where it is
+/// not — an import has no percentage, and inventing one would be worse than a
+/// bar that says so.
+class CreateProgress {
+  const CreateProgress({
+    required this.phase,
+    required this.label,
+    this.fraction,
+  });
+
+  final CreatePhase phase;
+
+  /// Already translated: this is rendered verbatim.
+  final String label;
+
+  final double? fraction;
+}
+
+/// Formats [bytes] the way the progress line shows it.
+///
+/// MB below a gigabyte and GB above it, because a rootfs is hundreds of MB and
+/// a VHDX is tens of GB, and one unit for both is unreadable at one end.
+String formatTransferSize(int bytes) {
+  if (bytes < 0) return '';
+  const int mb = 1024 * 1024;
+  if (bytes >= 1024 * mb) {
+    return '${(bytes / (1024 * mb)).toStringAsFixed(2)} GB';
+  }
+  return '${(bytes / mb).toStringAsFixed(1)} MB';
+}
+
+/// `m:ss`, or `h:mm:ss` past an hour. Used by the elapsed counter that runs
+/// beside a progress line which can legitimately sit still for minutes.
+String formatElapsed(Duration elapsed) {
+  final seconds = elapsed.inSeconds;
+  final s = (seconds % 60).toString().padLeft(2, '0');
+  final m = (seconds ~/ 60) % 60;
+  final h = seconds ~/ 3600;
+  if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:$s';
+  return '$m:$s';
 }
 
 /// Used to store the instances of WSL in a list.
@@ -1277,7 +1330,16 @@ class WSLApi {
     );
   }
 
-  /// Executes a command in a WSL distro. passwd will open a shell
+  /// Executes a command in a WSL distro. passwd will open a shell.
+  ///
+  /// The `passwd` branch opens a console window *outside* the app, and it used
+  /// to be fire-and-forget: `start` hands its child to a new console and exits
+  /// at once, so awaiting its exit code awaited nothing. The create flow
+  /// reported success while the user was still typing into a window the app
+  /// does not own, and closing that window without setting a password left the
+  /// account passwordless with no sign of it (audit CI-13). `start /wait`
+  /// makes the await real; the caller checks afterwards whether a password was
+  /// actually set.
   Future<List<int>> exec(String distribution, List<String> cmds) async {
     List<String> args;
     List<int> processes = [];
@@ -1299,7 +1361,10 @@ class WSLApi {
           await _startLinuxTerminal(args);
           exitCode = 0;
         } else {
-          Process result = await shell.start('start', args,
+          // `""` is the console title `start` would otherwise take the first
+          // quoted argument for; `/wait` is what makes the exit code below
+          // belong to the password prompt rather than to `start` itself.
+          Process result = await shell.start('start', ['', '/wait', ...args],
               mode: ProcessStartMode.normal, runInShell: true);
           exitCode = await result.exitCode;
         }
@@ -1370,10 +1435,20 @@ class WSLApi {
     return utf8Convert(results.stdout);
   }
 
-  /// Import a WSL distro by name
+  /// Import a WSL distro by name.
+  ///
+  /// [status] is the one-line status bar text and stays as it was. [onProgress]
+  /// is the structured version the create screen draws a bar from, and
+  /// [cancelSignal] makes the whole thing abortable: the download is stopped at
+  /// the socket and the `wsl --import` child is killed and unregistered, which
+  /// is the only way out of a multi-GB install that does not involve killing
+  /// the app (audit CI-14, CI-16).
   Future<dynamic> create(String distribution, String filename,
       String installPath, Function(String) status,
-      {bool image = false, bool isVhd = false}) async {
+      {bool image = false,
+      bool isVhd = false,
+      void Function(CreateProgress)? onProgress,
+      CancelSignal? cancelSignal}) async {
     if (_useRemoteWsl) {
       if (installPath.trim().isEmpty) {
         installPath = _remoteDefaultInstallPath(distribution);
@@ -1395,7 +1470,13 @@ class WSLApi {
     if (!image && distroRootfsLinks[filename] != null && !fileExists) {
       String url = distroRootfsLinks[filename]!;
       try {
-        await _downloadRootfs(url, downloadPath, status);
+        await _downloadRootfs(url, downloadPath, status,
+            onProgress: onProgress, cancelSignal: cancelSignal);
+      } on CancelledException {
+        // Nothing was registered and the package deleted its own `.tmp`, so
+        // there is nothing to undo — and nothing to report as a failure
+        // either. The caller distinguishes this from an error.
+        rethrow;
       } catch (error) {
         // Strip the leading exception class only. A blanket
         // `replaceAll('Exception: ', '')` turns `HttpException: HTTP 404`
@@ -1426,15 +1507,92 @@ class WSLApi {
       );
     }
 
+    cancelSignal?.throwIfCancelled();
+
     // Create from local file
     List<String> args = ['--import', distribution, installPath, downloadPath];
     if (isVhd) {
       args.add('--vhd');
     }
 
-    ProcessResult results = await _runWsl(args, stdoutEncoding: null);
+    return _runImport(distribution, args,
+        onProgress: onProgress, cancelSignal: cancelSignal);
+  }
 
-    return results;
+  /// Runs `wsl --import` so that it can be watched and stopped.
+  ///
+  /// Two things [_runWsl] cannot do. The import is the slowest step of a
+  /// create and reports nothing at all, so the caller was left showing
+  /// `Downloading 100%` for minutes (audit CI-16); an elapsed counter ticking
+  /// once a second beside a phase that says "Importing" is the cheapest
+  /// honest signal, and a frozen line next to a moving clock is unambiguous.
+  /// And `Process.run` hands back no handle, so there was nothing to kill when
+  /// the user asked to stop (audit CI-14).
+  ///
+  /// A killed import can leave the distro half-registered, so the cancel path
+  /// unregisters it — best effort, because there is nothing useful to say if
+  /// that fails too.
+  Future<ProcessResult> _runImport(
+    String distribution,
+    List<String> args, {
+    void Function(CreateProgress)? onProgress,
+    CancelSignal? cancelSignal,
+  }) async {
+    if (onProgress == null && cancelSignal == null) {
+      // Nothing to watch and nothing to stop: keep the cheap path, which is
+      // also the one every existing test exercises.
+      return _runWsl(args, stdoutEncoding: null);
+    }
+
+    final stopwatch = Stopwatch()..start();
+    void report() => onProgress?.call(CreateProgress(
+          phase: CreatePhase.importing,
+          label: '${'importing-text'.i18n()} '
+              '${formatElapsed(stopwatch.elapsed)}',
+        ));
+    report();
+    final ticker = onProgress == null
+        ? null
+        : Timer.periodic(const Duration(seconds: 1), (_) => report());
+
+    final Process process = await _startWsl(args);
+    var cancelled = false;
+    void kill() {
+      cancelled = true;
+      unawaited(ExecutionBroker.terminate(process));
+    }
+
+    cancelSignal?.onCancel(kill);
+    try {
+      // Collected before the exit code is awaited: a child whose pipes fill up
+      // blocks instead of exiting.
+      final stdoutBytes = <int>[];
+      final stderrBytes = <int>[];
+      final drained = <Future<void>>[
+        process.stdout.forEach(stdoutBytes.addAll),
+        process.stderr.forEach(stderrBytes.addAll),
+      ];
+      final exitCode = await process.exitCode;
+      await Future.wait(drained)
+          .timeout(const Duration(seconds: 2), onTimeout: () => <void>[]);
+      if (cancelled) {
+        // The import got as far as registering the name on some paths, and a
+        // half-imported distro is worse than none: it lists, it will not
+        // start, and the same name cannot be used again.
+        try {
+          await _runWsl(['--unregister', distribution]);
+        } catch (_) {
+          // Never registered, or WSL is unreachable — either way the create
+          // is over and this is the last thing it does.
+        }
+        throw const CancelledException();
+      }
+      return ProcessResult(process.pid, exitCode, stdoutBytes, stderrBytes);
+    } finally {
+      ticker?.cancel();
+      stopwatch.stop();
+      if (cancelSignal != null) cancelSignal.removeListener(kill);
+    }
   }
 
   /// Fetches [url] to [savePath], or throws with a reason the UI can show.
@@ -1458,8 +1616,16 @@ class WSLApi {
   ///   connection cut mid-transfer renames a partial file into place and
   ///   reports success; `wsl --import` then fails on a truncated archive with
   ///   no hint that the download was the problem.
+  /// * A [cancelSignal] stops it at the socket. [ChunkedDownloader.stop]
+  ///   breaks the read loop and deletes its own `.tmp`, and it returns
+  ///   *normally* afterwards — so the cancel has to be detected here rather
+  ///   than caught, or the size check below reports the user's own cancel as
+  ///   "the server returned an empty file".
   Future<void> _downloadRootfs(
-      String url, String savePath, Function(String) status) async {
+      String url, String savePath, Function(String) status,
+      {void Function(CreateProgress)? onProgress,
+      CancelSignal? cancelSignal}) async {
+    cancelSignal?.throwIfCancelled();
     final tmpFile = File('$savePath.tmp');
     if (await tmpFile.exists()) {
       await tmpFile.delete();
@@ -1482,9 +1648,32 @@ class WSLApi {
                 '${(count / total * 100).toStringAsFixed(0)}%'
             : '${'downloading-text'.i18n()} '
                 '${(count / 1024 / 1024).toStringAsFixed(0)} MB');
+        // The bar gets bytes and a rate as well as the percentage: a
+        // percentage alone cannot tell a slow download from a stopped one,
+        // which is half of what CI-16 measured.
+        onProgress?.call(CreateProgress(
+          phase: CreatePhase.downloading,
+          fraction: total > 0 ? (count / total).clamp(0.0, 1.0) : null,
+          label: total > 0
+              ? '${'downloading-text'.i18n()} '
+                  '${(count / total * 100).toStringAsFixed(0)}% '
+                  '(${formatTransferSize(count)} / '
+                  '${formatTransferSize(total)}, '
+                  '${formatTransferSize(speed.round())}/s)'
+              : '${'downloading-text'.i18n()} '
+                  '${formatTransferSize(count)} '
+                  '(${formatTransferSize(speed.round())}/s)',
+        ));
       },
     );
-    await downloader.start();
+    void stop() => downloader.stop();
+    cancelSignal?.onCancel(stop);
+    try {
+      await downloader.start();
+    } finally {
+      if (cancelSignal != null) cancelSignal.removeListener(stop);
+    }
+    cancelSignal?.throwIfCancelled();
 
     final file = File(savePath);
     final actualBytes = await file.exists() ? await file.length() : -1;
@@ -1582,6 +1771,29 @@ exit 0''';
           user: 'root', shell: 'sh'),
       runInShell: false,
     );
+  }
+
+  /// Whether [user] in [distribution] actually has a password set.
+  ///
+  /// The password is typed into a console window the app does not own, so the
+  /// only way to know whether the user set one — rather than closing the
+  /// window — is to ask afterwards (audit CI-13). `passwd -S` prints
+  /// `<user> P ...` for a usable password and `NP` (none) or `L` (locked) for
+  /// the two ways of having none.
+  ///
+  /// Null when the question cannot be answered: busybox `passwd` has no `-S`,
+  /// and guessing "no password" there would warn about a distro that is fine.
+  Future<bool?> hasPassword(String distribution, String user) async {
+    if (!isPlainUserName(user)) return null;
+    final result = await _runWsl(
+      wslShellArgs(distribution, 'passwd -S $user 2>/dev/null',
+          user: 'root', shell: 'sh'),
+      runInShell: false,
+    );
+    if (result.exitCode != 0) return null;
+    final fields = result.stdout.toString().trim().split(RegExp(r'\s+'));
+    if (fields.length < 2) return null;
+    return fields[1] == 'P';
   }
 
   var lastDistroList = Instances([], []);

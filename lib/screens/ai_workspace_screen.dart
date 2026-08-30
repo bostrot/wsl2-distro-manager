@@ -8,7 +8,9 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/wsl.dart' show formatElapsed;
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/busy_button.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -604,13 +606,40 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             // and steady progress look exactly alike.
             if (_service.isInstalling(tool)) ...[
               const SizedBox(height: 8),
-              KeyedSubtree(
-                key: ValueKey('test-ai-install-progress-${tool.name}'),
-                child: _buildInlineStatus(
-                  _service.installProgress(tool) ??
-                      'ai-workspace-install-progress-text'.i18n(),
-                  fill: true,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: KeyedSubtree(
+                      key: ValueKey('test-ai-install-progress-${tool.name}'),
+                      child: _buildInlineStatus(
+                        _service.installProgress(tool) ??
+                            'ai-workspace-install-progress-text'.i18n(),
+                        fill: true,
+                      ),
+                    ),
+                  ),
+                  // The clock is the point: the streamed line above it sat
+                  // unchanged for two minutes of a six-minute install, and a
+                  // still line next to a moving one is a stall, while a still
+                  // line on its own is unreadable (audit PS-18).
+                  const SizedBox(width: 8),
+                  Text(
+                    formatElapsed(_service.installElapsed(tool) ?? Duration.zero),
+                    key: ValueKey('test-ai-install-elapsed-${tool.name}'),
+                    style: TextStyle(
+                        fontSize: 12, color: secondaryTextColor(context)),
+                  ),
+                  const SizedBox(width: 8),
+                  NamedIconButton(
+                    key: ValueKey('test-ai-install-cancel-${tool.name}'),
+                    label: 'stopinstall-text'.i18n(),
+                    icon: FluentIcons.stop,
+                    iconSize: 12,
+                    onPressed: _service.canCancelInstall(tool)
+                        ? () => _service.cancelInstall(tool)
+                        : null,
+                  ),
+                ],
               ),
             ] else if (lastOutput != null) ...[
               const SizedBox(height: 4),
@@ -721,12 +750,15 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     required bool busy,
     required VoidCallback onPressed,
   }) {
-    return FilledButton(
+    // Same reason as the create screen's Create button: a button that becomes
+    // a bare spinner loses both its width and its name (audit CI-15).
+    return BusyButton(
       key: key,
+      filled: true,
+      label: label,
+      busy: busy,
+      minWidth: 72.0,
       onPressed: enabled ? onPressed : null,
-      child: busy
-          ? SizedBox.square(dimension: 16, child: ProgressRing())
-          : Text(label),
     );
   }
 

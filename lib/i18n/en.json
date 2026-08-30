@@ -622,5 +622,19 @@
   "notincluded-text": "Not included",
   "beta-badge-label-text": "Beta feature",
   "new-badge-label-text": "New",
-  "resettodefault-text": "Reset to the default"
+  "resettodefault-text": "Reset to the default",
+  "creating-text": "Creating...",
+  "stopinstall-text": "Stop the install",
+  "stayonpage-text": "Stay on this page",
+  "keepinstalling-text": "Keep installing",
+  "createrunning-title": "The install is still running",
+  "createrunning-text": "Creating this instance has not finished. Leaving the page keeps it running in the background.",
+  "createkeepsrunning-text": "This can take several minutes. Leaving this page will not stop it.",
+  "createcancelled-text": "The install was stopped.",
+  "passwordwindowhint-text": "After the install a terminal window opens so you can set this user's password.",
+  "passwordwindowopen-text": "Set a password for %s in the terminal window, then close it.",
+  "createdinstancenopassword-text": "The instance was created, but %s still has no password.",
+  "ai-workspace-install-cancelled-text": "Stopped installing %s",
+  "checkingdistrostate-text": "Checking whether %s is running...",
+  "readingwslconf-text": "Reading /etc/wsl.conf from %s..."
 }

@@ -404,7 +404,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-05 -- Error text a user can act on | 12 | 0 | 2026-08-28 |
 | FIX-06 -- Keyboard operability | 9 | 0 | 2026-08-30 |
 | FIX-07 -- Accessible names and honest tooltips | 10 | 0 | 2026-08-30 |
-| all others | 0 | 157 | -- |
+| FIX-04 -- Long operations: moving progress and a way out | 7 | 0 | 2026-08-30 |
+| all others | 0 | 150 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -521,15 +522,44 @@ decoration with one flat colour. Regression tests: `test/notify_test.dart`.
 Every operation over ~30 seconds in this app is uncancellable, and two of them freeze
 their only progress indicator for minutes.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| CI-14 | major | Make Cancel work for the whole install; if it genuinely cannot, disable the nav pane too and say why |
-| CI-16 | major | Report real progress across download *and* import instead of stalling at "Downloading 100%" |
-| PS-18 | major | Add cancel to the AI Workspace install and keep its progress line moving (measured: 2 minutes, 0 px changed) |
-| CI-13 | major | Warn before spawning the external `passwd` console, and await it |
-| LN-20 | nit | Centre the loading state where the results will land so content does not jump 330px; translate the string; offer cancel |
-| CI-15 | nit | Keep the Create button's width when it becomes a spinner |
-| ST-36 | nit | Label the per-distro dialog's 4s+ spinner and disable Save while it runs |
+**Status: all 7 fixed.** The root of it is one new file, `lib/api/cancellation.dart`:
+a `CancelSignal` that a UI control and the work it stops both hold. Deliberately not
+`package:async`'s `CancelableOperation` -- what has to be cancelled here is a *child
+process* and a *socket*, reached through a callback the worker registers while it owns
+them, and a token is the only shape that survives being handed down four call levels
+(screen → `createInstance` → `WSLApi.create` → the downloader) without each of them
+returning a different type. It is named `CancelSignal` and not `CancelToken` because
+`dio` exports a `CancelToken` of its own into both `wsl.dart` and the AI Workspace
+service, and an ambiguous import is not a name worth defending.
+
+Three things are worth recording. **A cancelled download does not throw**:
+`ChunkedDownloader.stop()` breaks the read loop, deletes its own `.tmp` and lets
+`start()` return *normally*, so the cancel has to be detected rather than caught -- read
+as an exception it came out the far end as "the server returned an empty file", the
+user's own cancel reported as a server fault. **A killed `wsl --import` can leave the
+distro half-registered** -- it lists, it will not start, and its name cannot be reused --
+so the cancel path unregisters it; that is also why the import moved off `Process.run`,
+which hands back no handle to kill. And **`start` is not a program**: the `passwd`
+console was spawned through `cmd /c start`, which hands its child to a new console and
+exits at once, so the `await result.exitCode` that was already there awaited nothing.
+`start "" /wait` makes it real, and `WSLApi.hasPassword` then asks the distro whether a
+password was actually set, because closing that window without typing is silent.
+
+The cheap paths are kept: `create` with no progress sink and no signal still goes
+through `_runWsl`, and `CreateProgress.fraction` is null for an import rather than a
+number, since an import has no percentage and inventing one is the CI-16 bug in a new
+place. 14 new keys landed in all nine locales with real translations. Regression tests:
+`test/long_operations_test.dart`.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| CI-14 | major | Make Cancel work for the whole install; if it genuinely cannot, disable the nav pane too and say why | `create_screen.dart:271` (Cancel stops the install), `:95` (the nav pane, back button and window X now ask, via `UnsavedChangesGuard`), `wsl.dart:1535` (`_runImport` kills and unregisters), `cancellation.dart` |
+| CI-16 | major | Report real progress across download *and* import instead of stalling at "Downloading 100%" | `create_screen.dart:186` (bar + phase line on the page), `wsl.dart:1654` (bytes and rate, not just a %), `wsl.dart:1548` (the import phase, with an elapsed clock) |
+| PS-18 | major | Add cancel to the AI Workspace install and keep its progress line moving (measured: 2 minutes, 0 px changed) | `ai_workspace_screen.dart:628` (elapsed clock), `:634` (Stop), `ai_workspace/service.dart` (`installElapsed`, `cancelInstall`, cancel wired into `_runStreamed`) |
+| CI-13 | major | Warn before spawning the external `passwd` console, and await it | `create_dialog.dart:890` (the form says a terminal will open), `wsl.dart:1367` (`start "" /wait`), `wsl.dart:1786` + `create_dialog.dart:444` (a passwordless account is reported, not silent) |
+| LN-20 | nit | Centre the loading state where the results will land so content does not jump 330px; translate the string; offer cancel | `list.dart:207` (`Expanded`, like the other two branches), `:225` (Use local WSL); the string was already translated by FIX-05 |
+| CI-15 | nit | Keep the Create button's width when it becomes a spinner | `components/busy_button.dart` (new), used at `create_screen.dart:258`, `create_dialog.dart:101`, `ai_workspace_screen.dart:755` |
+| ST-36 | nit | Label the per-distro dialog's 4s+ spinner and disable Save while it runs | `settings_dialog.dart:863` (the spinner says what it is reading), `:100` (Save is disabled until `wsl.conf` has been read; Cancel stays live) |
 
 ### FIX-05 -- Error text a user can act on
 
