@@ -656,5 +656,7 @@
   "byok-locked-text": "Pro funkció",
   "settinginvalidvalue-text": "A(z) '%s' olyan értéket tartalmaz, amit a WSL elutasítana. Javítsd ki mentés előtt.",
   "copied-text": "Vágólapra másolva.",
-  "sync-info-text": "A szinkronizálás egy teljes példányt másol át két, ezt az alkalmazást futtató gép között ugyanazon a hálózaton: az egyik kiszolgálja, a másik letölti. A jelszó ezt az átvitelt védi."
+  "sync-info-text": "A szinkronizálás egy teljes példányt másol át két, ezt az alkalmazást futtató gép között ugyanazon a hálózaton: az egyik kiszolgálja, a másik letölti. A jelszó ezt az átvitelt védi.",
+  "loading-text": "Betöltés...",
+  "namewillbe-text": "Létrehozva mint: '%s'"
 }

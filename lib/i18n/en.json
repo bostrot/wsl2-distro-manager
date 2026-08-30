@@ -656,5 +656,7 @@
   "byok-locked-text": "Pro feature",
   "settinginvalidvalue-text": "'%s' holds a value WSL would reject. Fix it before saving.",
   "copied-text": "Copied to the clipboard.",
-  "sync-info-text": "Sync copies a whole instance between two PCs running this app on the same network: one serves it, the other downloads it. The password protects that transfer."
+  "sync-info-text": "Sync copies a whole instance between two PCs running this app on the same network: one serves it, the other downloads it. The password protects that transfer.",
+  "loading-text": "Loading...",
+  "namewillbe-text": "Will be created as '%s'"
 }

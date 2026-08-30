@@ -557,3 +557,12 @@ int hostPhysicalMemoryBytes() {
     calloc.free(status);
   }
 }
+
+/// One sanitiser for new instance names, shared by Create and Copy.
+///
+/// The two flows used to disagree — Create replaced `[^A-Za-z0-9]`, Copy
+/// replaced `[^a-zA-Z0-9_-]` — so the same typed name could produce two
+/// different distros (audit CI-05). Underscore and hyphen are legal in WSL
+/// distribution names and are kept.
+String sanitizeDistroName(String label) =>
+    label.replaceAll(RegExp('[^A-Za-z0-9_-]'), '_');

@@ -156,7 +156,7 @@ Future<bool> createInstance(
   final useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
   String label = nameController.text;
   // Replace all special characters with _
-  String name = label.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
+  String name = sanitizeDistroName(label);
   // "Create default user" with an empty name used to import the distro, skip
   // the account silently and still report success.
   if (requireUser && userController.text.trim().isEmpty) {
@@ -408,6 +408,7 @@ class CreateWidget extends StatefulWidget {
     this.creating,
     this.createError,
     this.createUserEnabled,
+    this.nameTaken,
   }) : super(key: key);
 
   final TextEditingController nameController;
@@ -422,6 +423,11 @@ class CreateWidget extends StatefulWidget {
   /// Mirrors the "create default user" toggle so the owning page can require a
   /// username before it starts the install.
   final ValueNotifier<bool>? createUserEnabled;
+
+  /// Mirrors the live duplicate check, so the owning page can disable Create
+  /// while the inline message is showing — pressing it used to add a second
+  /// copy of the same complaint in a second visual style (audit CI-02).
+  final ValueNotifier<bool>? nameTaken;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -464,6 +470,12 @@ class _CreateWidgetState extends State<CreateWidget> {
     if (mounted) {
       setState(() {
         sourceType = widget.sourceType.value;
+        // A value typed for the previous type is meaningless for the new
+        // one — a rootfs path is not a Docker tag (audit CI-08).
+        widget.autoSuggestBox.clear();
+        // And a failure raised against the old input is stale (CI-01).
+        widget.createError?.value = null;
+        _sourceOptions = _fetchSourceOptions();
       });
     }
   }
@@ -480,17 +492,60 @@ class _CreateWidgetState extends State<CreateWidget> {
 
   void _checkName() {
     String name = widget.nameController.text;
-    String sanitizedName = name.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
+    String sanitizedName = sanitizeDistroName(name);
     bool exists = false;
     if (sanitizedName.isNotEmpty) {
       exists = existingDistros.any(
           (element) => element.toLowerCase() == sanitizedName.toLowerCase());
     }
 
-    if (exists != nameExists) {
-      setState(() {
-        nameExists = exists;
-      });
+    // The banner complains about the submit that failed; a keystroke makes
+    // that complaint stale (audit CI-01).
+    widget.createError?.value = null;
+    widget.nameTaken?.value = exists;
+    if (mounted) setState(() => nameExists = exists);
+  }
+
+  /// The suggestion list for the current source type (audit CI-11: held in
+  /// state — a fresh future per build re-ran the whole fetch on every
+  /// keystroke).
+  late Future<List<String>> _sourceOptions = _fetchSourceOptions();
+
+  Future<List<String>> _fetchSourceOptions() async {
+    if (sourceType == CreateSourceType.repo) {
+      var map = await App().getDistroLinks();
+      return map.keys.toList();
+    } else if (sourceType == CreateSourceType.turnkey) {
+      var repo = await App().getDistroLinks();
+      var all = await widget.api.getDownloadable(
+          (prefs.getString('RepoLink') ?? defaultRepoLink),
+          (e) => Notify.message(e));
+      return all.where((x) => !repo.containsKey(x)).toList();
+    } else if (sourceType == CreateSourceType.dockerLocalImage) {
+      try {
+        return await DockerImage.listLocalImages();
+      } catch (_) {
+        return <String>[];
+      }
+    }
+    return <String>[];
+  }
+
+  /// What hovering the source field should actually say for this source
+  /// (audit CI-09: one rootfs-path tooltip covered all six types).
+  String _sourceTooltip() {
+    switch (sourceType) {
+      case CreateSourceType.docker:
+        return 'dockerimageplaceholder-text'.i18n();
+      case CreateSourceType.dockerLocalImage:
+        return 'localdockerimageplaceholder-text'.i18n();
+      case CreateSourceType.local:
+        return 'pathtorootfsarchive-text'.i18n();
+      case CreateSourceType.vhdx:
+        return 'pathtovhdxfile-text'.i18n();
+      case CreateSourceType.repo:
+      case CreateSourceType.turnkey:
+        return 'pathtorootfshint-text'.i18n();
     }
   }
 
@@ -564,22 +619,49 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 5.0,
         ),
-        MergeSemantics(
-          child: Tooltip(
-            message: 'namehint-text'.i18n(),
-            child: TextBox(
-              key: const ValueKey('test-create-name-input'),
-              controller: widget.nameController,
-              placeholder: 'name-text'.i18n(),
-              suffix: IconButton(
-                icon: const Icon(FluentIcons.chrome_close, size: 11.0),
-                onPressed: () {
-                  widget.nameController.clear();
-                },
+        // An InfoLabel like the field below it (audit CI-06).
+        InfoLabel(
+          label: 'name-text'.i18n(),
+          child: MergeSemantics(
+            child: Tooltip(
+              message: 'namehint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-create-name-input'),
+                controller: widget.nameController,
+                placeholder: 'name-text'.i18n(),
+                // The clear X only while there is something to clear
+                // (audit CI-07).
+                suffix: widget.nameController.text.isEmpty
+                    ? null
+                    : NamedIconButton(
+                        label: 'clear-text'.i18n(),
+                        icon: FluentIcons.chrome_close,
+                        iconSize: 11.0,
+                        onPressed: () {
+                          widget.nameController.clear();
+                        },
+                      ),
               ),
             ),
           ),
         ),
+        // A live preview whenever sanitising would change the typed name —
+        // `[^A-Za-z0-9_-]` becomes `_`, and nothing said so, so an
+        // all-non-ASCII name silently became underscores (audit CI-04).
+        if (!nameExists &&
+            widget.nameController.text.isNotEmpty &&
+            sanitizeDistroName(widget.nameController.text) !=
+                widget.nameController.text)
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+            child: Text(
+              'namewillbe-text'
+                  .i18n([sanitizeDistroName(widget.nameController.text)]),
+              key: const ValueKey('test-create-name-preview'),
+              style:
+                  TextStyle(color: secondaryTextColor(context), fontSize: 12.0),
+            ),
+          ),
         if (nameExists)
           Padding(
             padding: const EdgeInsets.only(top: 4.0, left: 4.0),
@@ -634,26 +716,37 @@ class _CreateWidgetState extends State<CreateWidget> {
         ),
         MergeSemantics(
           child: Tooltip(
-            message: 'pathtorootfshint-text'.i18n(),
-            child: FutureBuilder<List<String>>(future: () async {
-              if (sourceType == CreateSourceType.repo) {
-                var map = await App().getDistroLinks();
-                return map.keys.toList();
-              } else if (sourceType == CreateSourceType.turnkey) {
-                var repo = await App().getDistroLinks();
-                var all = await widget.api.getDownloadable(
-                    (prefs.getString('RepoLink') ?? defaultRepoLink),
-                    (e) => Notify.message(e));
-                return all.where((x) => !repo.containsKey(x)).toList();
-              } else if (sourceType == CreateSourceType.dockerLocalImage) {
-                try {
-                  return await DockerImage.listLocalImages();
-                } catch (_) {
-                  return <String>[];
-                }
+            // Says what this source actually takes, not "path to rootfs"
+            // for all six types (audit CI-09).
+            message: _sourceTooltip(),
+            child: FutureBuilder<List<String>>(
+                future: _sourceOptions,
+                builder: (context, snapshot) {
+              // A load that failed used to hit a branch whose entire body
+              // was `{}`, so the box offered nothing with no reason
+              // (audit CI-11).
+              if (snapshot.hasError) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('snippetsloadfailed-text'.i18n(),
+                        style: TextStyle(
+                            color: destructiveColor(context), fontSize: 12.0)),
+                    const SizedBox(height: 4.0),
+                    Button(
+                      key: const ValueKey('test-create-source-retry'),
+                      onPressed: () => setState(
+                          () => _sourceOptions = _fetchSourceOptions()),
+                      child: Text('retry-text'.i18n()),
+                    ),
+                  ],
+                );
               }
-              return <String>[];
-            }(), builder: (context, snapshot) {
+              final loading =
+                  snapshot.connectionState != ConnectionState.done &&
+                      (sourceType == CreateSourceType.repo ||
+                          sourceType == CreateSourceType.turnkey ||
+                          sourceType == CreateSourceType.dockerLocalImage);
               List<AutoSuggestBoxItem<String>> list = [];
               if (snapshot.hasData) {
                 for (var i = 0; i < snapshot.data!.length; i++) {
@@ -662,7 +755,19 @@ class _CreateWidgetState extends State<CreateWidget> {
                     label: snapshot.data![i],
                   ));
                 }
-              } else if (snapshot.hasError) {}
+              }
+              if (loading) {
+                return Row(
+                  children: [
+                    const SizedBox.square(
+                        dimension: 16, child: ProgressRing(strokeWidth: 2.0)),
+                    const SizedBox(width: 8.0),
+                    Text('loading-text'.i18n(),
+                        style:
+                            TextStyle(color: secondaryTextColor(context))),
+                  ],
+                );
+              }
               return AutoSuggestBox(
                 key: _autoSuggestBoxKey,
                 focusNode: node,

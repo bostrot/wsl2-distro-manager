@@ -658,5 +658,7 @@
   "byok-locked-text": "Recurso Pro",
   "settinginvalidvalue-text": "'%s' contém um valor que o WSL rejeitaria. Corrija antes de salvar.",
   "copied-text": "Copiado para a área de transferência.",
-  "sync-info-text": "A sincronização copia uma instância inteira entre dois PCs com este aplicativo na mesma rede: um a serve, o outro a baixa. A senha protege essa transferência."
+  "sync-info-text": "A sincronização copia uma instância inteira entre dois PCs com este aplicativo na mesma rede: um a serve, o outro a baixa. A senha protege essa transferência.",
+  "loading-text": "Carregando...",
+  "namewillbe-text": "Será criado como '%s'"
 }

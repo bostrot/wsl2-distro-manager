@@ -656,5 +656,7 @@
   "byok-locked-text": "Función Pro",
   "settinginvalidvalue-text": "'%s' contiene un valor que WSL rechazaría. Corrígelo antes de guardar.",
   "copied-text": "Copiado al portapapeles.",
-  "sync-info-text": "Sync copia una instancia completa entre dos PC con esta aplicación en la misma red: uno la sirve y el otro la descarga. La contraseña protege esa transferencia."
+  "sync-info-text": "Sync copia una instancia completa entre dos PC con esta aplicación en la misma red: uno la sirve y el otro la descarga. La contraseña protege esa transferencia.",
+  "loading-text": "Cargando...",
+  "namewillbe-text": "Se creará como '%s'"
 }

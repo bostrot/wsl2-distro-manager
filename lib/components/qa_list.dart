@@ -151,6 +151,9 @@ class QaListState extends State<QaList> {
             onChanged: (value) {
               setState(() {
                 filter = value;
+                // A selection the filter hides would still be downloaded —
+                // invisible cargo on the Download button (audit CI-35).
+                selectedList.removeWhere((item) => !_matchesFilter(item));
               });
             },
           ),
@@ -160,6 +163,14 @@ class QaListState extends State<QaList> {
     );
   }
 
+  /// Whether [item] survives the current search filter.
+  bool _matchesFilter(QuickActionItem item) {
+    final f = filter;
+    if (f == null || f.isEmpty) return true;
+    return item.name.toLowerCase().contains(f.toLowerCase()) ||
+        item.description.toLowerCase().contains(f.toLowerCase());
+  }
+
   FutureBuilder<List<QuickActionItem?>> listView({String? filter}) {
     return FutureBuilder(
         future: _future,
@@ -167,18 +178,24 @@ class QaListState extends State<QaList> {
             AsyncSnapshot<List<QuickActionItem?>> snapshot) {
           if (snapshot.connectionState == ConnectionState.done &&
               snapshot.hasData) {
+            // A search with no hits says so instead of rendering an empty
+            // scroll area (audit CI-35).
+            final visible = snapshot.data!
+                .whereType<QuickActionItem>()
+                .where(_matchesFilter)
+                .toList();
+            if (visible.isEmpty) {
+              return Center(
+                child: Text('noresultsfound-text'.i18n(),
+                    key: const ValueKey('test-qa-no-results'),
+                    style: TextStyle(color: secondaryTextColor(context))),
+              );
+            }
             return ListView.builder(
                 itemCount: snapshot.data!.length,
                 itemBuilder: (BuildContext context, int index) {
                   if (snapshot.data![index] == null ||
-                      (filter != null &&
-                          filter.isNotEmpty &&
-                          (!snapshot.data![index]!.name
-                                  .toLowerCase()
-                                  .contains(filter.toLowerCase()) &&
-                              !snapshot.data![index]!.description
-                                  .toLowerCase()
-                                  .contains(filter.toLowerCase())))) {
+                      !_matchesFilter(snapshot.data![index]!)) {
                     return Container();
                   }
                   var data = snapshot.data![index]!;

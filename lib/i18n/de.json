@@ -657,5 +657,7 @@
   "byok-locked-text": "Pro-Funktion",
   "settinginvalidvalue-text": "'%s' enthält einen Wert, den WSL ablehnen würde. Korrigieren Sie ihn vor dem Speichern.",
   "copied-text": "In die Zwischenablage kopiert.",
-  "sync-info-text": "Sync kopiert eine ganze Instanz zwischen zwei PCs mit dieser App im selben Netzwerk: einer stellt sie bereit, der andere lädt sie herunter. Das Passwort schützt diese Übertragung."
+  "sync-info-text": "Sync kopiert eine ganze Instanz zwischen zwei PCs mit dieser App im selben Netzwerk: einer stellt sie bereit, der andere lädt sie herunter. Das Passwort schützt diese Übertragung.",
+  "loading-text": "Wird geladen...",
+  "namewillbe-text": "Wird als '%s' erstellt"
 }

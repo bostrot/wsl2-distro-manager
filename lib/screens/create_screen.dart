@@ -40,6 +40,9 @@ class _CreatePageState extends State<CreatePage> {
   final ValueNotifier<CreateProgress?> _progress =
       ValueNotifier<CreateProgress?>(null);
 
+  /// Mirrors the form's live duplicate check (audit CI-02).
+  final ValueNotifier<bool> _nameTaken = ValueNotifier<bool>(false);
+
   /// Live only while a create is running.
   CancelSignal? _cancelSignal;
 
@@ -69,6 +72,7 @@ class _CreatePageState extends State<CreatePage> {
     _userController.dispose();
     _sourceType.dispose();
     _createUser.dispose();
+    _nameTaken.dispose();
     if (_creating.value) {
       _detached = true;
     } else {
@@ -243,6 +247,7 @@ class _CreatePageState extends State<CreatePage> {
                   creating: _creating,
                   createError: _createError,
                   createUserEnabled: _createUser,
+                  nameTaken: _nameTaken,
                 ),
               ),
               if (isCreating)
@@ -255,13 +260,19 @@ class _CreatePageState extends State<CreatePage> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  BusyButton(
-                    key: const ValueKey('test-create-button'),
-                    filled: true,
-                    label: 'create-text'.i18n(),
-                    busyLabel: 'creating-text'.i18n(),
-                    busy: isCreating,
-                    onPressed: isCreating ? null : _create,
+                  // Disabled while the inline duplicate message shows, so
+                  // submitting cannot add a second copy of the same
+                  // complaint in a second visual style (audit CI-02).
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _nameTaken,
+                    builder: (context, taken, _) => BusyButton(
+                      key: const ValueKey('test-create-button'),
+                      filled: true,
+                      label: 'create-text'.i18n(),
+                      busyLabel: 'creating-text'.i18n(),
+                      busy: isCreating,
+                      onPressed: (isCreating || taken) ? null : _create,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   // Enabled throughout: while creating it stops the install,

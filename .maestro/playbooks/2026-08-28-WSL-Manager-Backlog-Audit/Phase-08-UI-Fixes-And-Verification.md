@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 168 of 214 findings closed (16 blockers, 89 majors, 63 nits).** Running
+  **In progress — 179 of 214 findings closed (16 blockers, 96 majors, 67 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -285,9 +285,20 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     defaults; the unset booleans say their fact once; the Sync group explains
     itself, drops its example password, and hands the distro repo to Docker.
 
-  **Next up:** FIX-16/17, then FIX-19/20. Verification for this slice:
+  - **FIX-16 — the create/install form: complete (11/11).** One shared
+    sanitiser (Create and Copy disagreed on the legal characters), a live
+    "Will be created as" preview when it would change the typed name, Copy
+    running the duplicate check it always skipped, the failure banner
+    clearing on the keystroke that makes it stale, Create disabled while the
+    inline duplicate message shows, source value + suggestions reset on
+    source-type change, suggestions held in state with a real error/loading
+    state, per-source tooltips, an InfoLabel on the name field, and the
+    clear X only when there is something to clear. The community list says
+    when a search has no hits and drops selections the filter hides.
+
+  **Next up:** FIX-17, then FIX-19/20. Verification for this slice:
   `flutter analyze` clean (the same two pre-existing warnings), `flutter test`
-  825 passing, `dart run scripts/check_translations.dart` exit 0. 3 new keys
+  825 passing, `dart run scripts/check_translations.dart` exit 0. 2 new keys
   in all nine locales. `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader

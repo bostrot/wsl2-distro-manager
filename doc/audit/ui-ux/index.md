@@ -414,7 +414,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-12 -- Copy, casing and terminology | 14 | 0 | 2026-08-30 |
 | FIX-13 -- Sell only what exists, gate it once | 13 | 0 | 2026-08-30 |
 | FIX-15 -- Settings: validate `.wslconfig`, restore the missing controls | 12 | 0 | 2026-08-30 |
-| all others | 0 | 46 | -- |
+| FIX-16 -- The create / install form | 11 | 0 | 2026-08-30 |
+| all others | 0 | 35 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -1131,19 +1132,45 @@ field to the Docker group it belongs with (ST-23).
 
 ### FIX-16 -- The create / install form
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| CI-04 | major | Show the sanitised name, or reject the input -- silently rewriting `[^A-Za-z0-9]` to `_` turns an all-non-ASCII name into `___` |
-| CI-05 | major | One sanitiser and one duplicate check shared by Create and Copy; Copy currently skips the duplicate check entirely |
-| CI-01 | major | Clear the error banner when the input that caused it changes |
-| CI-02 | major | One duplicate-name message, not two simultaneously in two visual styles |
-| CI-08 | major | Reset the source value when Source Type changes |
-| CI-35 | major | An empty search must say so, and only visibly-selected snippets may be downloaded |
-| CI-38 | major | Make `wsl --install` a button that states it needs elevation, not a hyperlink described as text to copy |
-| CI-06 | nit | Give the name field an `InfoLabel`, like the field below it |
-| CI-07 | nit | Hide the clear (X) button when the field is empty |
-| CI-09 | nit | Per-source-type tooltip text, positioned off the Source Type box |
-| CI-11 | nit | Implement the empty `snapshot.hasError` branch, add a loading state, and hoist the future out of `build` |
+**Landed 2026-08-30.** One sanitiser now, `sanitizeDistroName()` in
+`helpers.dart`: Create replaced `[^A-Za-z0-9]` while Copy replaced
+`[^a-zA-Z0-9_-]`, so the same typed name could produce two different distros
+(CI-05) — and Copy runs the duplicate check it always skipped, against a list
+fetched before its dialog opens. When sanitising would change the typed name,
+a live preview says what will actually be created, so an all-non-ASCII name no
+longer silently becomes underscores (CI-04).
+
+The failure banner clears on the keystroke that makes it stale (CI-01), and
+Create disables while the inline duplicate message is showing, so submitting
+cannot add a second copy of the same complaint in a second visual style
+(CI-02). Changing the source type clears the source value — a rootfs path is
+not a Docker tag (CI-08) — and refetches the suggestions, which live in state
+now instead of being a fresh future per build re-running the whole fetch on
+every keystroke; a failed load shows the reason with a Retry, and a pending
+one a spinner (CI-11). The source field's tooltip says what the chosen source
+takes (CI-09), the name field has an `InfoLabel` like the field below it
+(CI-06), and its clear X only exists while there is something to clear
+(CI-07).
+
+In the community list, a search with no hits says so instead of rendering an
+empty scroll area, and a selection the filter hides is dropped — it used to
+ride along invisibly on the Download button (CI-35). CI-38 landed earlier
+with the FIX-12 slice: the WSL install panel is a real button that names the
+elevation prompt, with the command kept beside it for terminal users.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| CI-04 | major | Show the sanitised name, or reject the input -- silently rewriting `[^A-Za-z0-9]` to `_` turns an all-non-ASCII name into `___` | `create_dialog.dart:658` (`namewillbe-text` preview) |
+| CI-05 | major | One sanitiser and one duplicate check shared by Create and Copy; Copy currently skips the duplicate check entirely | `helpers.dart` (`sanitizeDistroName`), `copy_dialog.dart:18` |
+| CI-01 | major | Clear the error banner when the input that caused it changes | `create_dialog.dart:503` |
+| CI-02 | major | One duplicate-name message, not two simultaneously in two visual styles | `create_screen.dart:44` (`_nameTaken`), Create disabled at `:262` |
+| CI-08 | major | Reset the source value when Source Type changes | `create_dialog.dart:475` |
+| CI-35 | major | An empty search must say so, and only visibly-selected snippets may be downloaded | `qa_list.dart:156`, `:190` |
+| CI-38 | major | Make `wsl --install` a button that states it needs elevation, not a hyperlink described as text to copy | `install_dialog.dart` (with the FIX-12 slice) |
+| CI-06 | nit | Give the name field an `InfoLabel`, like the field below it | `create_dialog.dart:623` |
+| CI-07 | nit | Hide the clear (X) button when the field is empty | `create_dialog.dart:634` |
+| CI-09 | nit | Per-source-type tooltip text, positioned off the Source Type box | `create_dialog.dart:536` (`_sourceTooltip`) |
+| CI-11 | nit | Implement the empty `snapshot.hasError` branch, add a loading state, and hoist the future out of `build` | `create_dialog.dart:512`, `:737` |
 
 ### FIX-17 -- Home list and navigation layout
 
