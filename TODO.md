@@ -9,12 +9,19 @@ reports under `doc/audit/` and the playbook under
 ## Now
 
 ### Push `images.json` to the CDN — the one manual step left from the audit
-The repo copy of `images.json` is **not** the runtime source: the app fetches
-`https://n8n.aachen.dev/webhook/cdn/images.json` first and falls back to the
-bundled asset only when that request fails. Until the re-sourced catalogue is
-uploaded there, none of Phase 06's vendor-infrastructure URLs reach an online
-user. The exact payload and steps:
+The repo copy of `images.json` is **not** the runtime source in release: the
+app fetches `https://n8n.aachen.dev/webhook/cdn/images.json` first and falls
+back to the bundled asset only when that request fails. Measured 2026-08-31:
+the endpoint currently answers **HTTP 200 with an empty body**, so release
+users are living on their installer's bundled copy anyway — one more reason
+the upload matters. The exact payload and steps:
 `.maestro/playbooks/2026-08-28-WSL-Manager-Backlog-Audit/Working/cdn-upload.md`.
+
+Debug builds now skip the CDN entirely and read the repo's own `images.json`
+(`App.preferBundledCatalogue`, on under `kDebugMode`, off under
+`flutter test`), so a catalogue edit is testable in `flutter run` before the
+push — verified live 2026-08-31 in a `WSLM_FORCE_PRO` debug run: the create
+screen's suggestion list served the repo's 19 entries (Ubuntu 26.04 first).
 
 ### Keep-alive survives a hard kill of the app
 `dispose()` releases the held `wsl … sleep infinity` session on a clean exit,

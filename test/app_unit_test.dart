@@ -98,5 +98,32 @@ void main() {
       final result = await app.getDistroLinks();
       expect(result, isA<Map<String, String>>());
     });
+
+    // Debug builds read the repo's own images.json instead of the CDN, so a
+    // catalogue edit is testable before the manual CDN push. The flag is off
+    // under `flutter test` by default; forcing it on here must serve the
+    // bundled asset without a single network request.
+    testWidgets('the bundled catalogue is preferred when the flag is on',
+        (tester) async {
+      App.preferBundledCatalogue = true;
+      addTearDown(() => App.preferBundledCatalogue = false);
+
+      final dio = Dio();
+      dio.httpClientAdapter = MockFailureAdapter();
+      final app = App(dio: dio);
+
+      // runAsync: the asset read is real I/O, which a fake-async test body
+      // would deadlock on.
+      final result = await tester.runAsync(() => app.getDistroLinks());
+      // The repo catalogue, not the mocked network (which would have thrown
+      // its way into the empty-map fallback).
+      expect(result, isNotEmpty);
+      expect(result!.keys.any((k) => k.startsWith('Ubuntu')), true);
+    });
+
+    test('the flag defaults off under flutter test', () {
+      expect(App.preferBundledCatalogue, false,
+          reason: 'the remote-path tests above rely on the CDN being asked');
+    });
   });
 }
