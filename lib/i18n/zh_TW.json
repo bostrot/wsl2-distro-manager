@@ -672,5 +672,7 @@
   "dockerimage-desc": "從 Docker Hub 或其他登錄檔取得",
   "localrootfsfile-desc": "本機上已有的 rootfs 封存檔（.tar / .tar.gz）",
   "localdockerimage-desc": "本機 Docker 中已有的映像",
-  "importvhdx-desc": "本機上已有的 WSL 虛擬磁碟（.vhdx）"
+  "importvhdx-desc": "本機上已有的 WSL 虛擬磁碟（.vhdx）",
+  "snippetauthor-text": "（作者：%s）",
+  "snippetauthoryou-text": "（我的）"
 }

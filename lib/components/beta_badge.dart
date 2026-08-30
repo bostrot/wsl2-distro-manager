@@ -7,10 +7,19 @@ import 'package:localization/localization.dart';
 class BetaBadge extends StatelessWidget {
   const BetaBadge({super.key});
 
+  /// The badge's wash and border colour.
   static const Color color = Color(0xFFFFBF00);
+
+  /// The text colour, per brightness. Raw amber on its own wash measured
+  /// **1.40:1** over a light background and 5.89:1 over a dark one — the one
+  /// defect in the theme pass that dark mode passed and light mode failed
+  /// (audit TL-05, PS-09). The darkened amber clears AA on the light wash.
+  static Color foregroundFor(Brightness brightness) =>
+      brightness == Brightness.dark ? color : const Color(0xFF7A5C00);
 
   @override
   Widget build(BuildContext context) {
+    final foreground = foregroundFor(FluentTheme.of(context).brightness);
     return Semantics(
       label: 'beta-badge-label-text'.i18n(),
       excludeSemantics: true,
@@ -24,12 +33,12 @@ class BetaBadge extends StatelessWidget {
             border:
                 Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
           ),
-          child: const Text(
+          child: Text(
             'BETA',
             style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: foreground,
               letterSpacing: 0.5,
             ),
           ),

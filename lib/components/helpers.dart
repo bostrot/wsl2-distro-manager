@@ -519,3 +519,19 @@ Color disabledTextColor(BuildContext context) =>
 /// LN-04).
 Color destructiveColor(BuildContext context) =>
     Colors.red.defaultBrushFor(FluentTheme.of(context).brightness);
+
+/// Border and divider colour that follows the theme.
+///
+/// Dividers, card borders and code-chip outlines were drawn with
+/// `Colors.grey` at six different alphas across five files, and every one of
+/// them sank into the dark background (audit TL-02, TL-08).
+Color surfaceBorderColor(BuildContext context) =>
+    FluentTheme.of(context).resources.dividerStrokeColorDefault;
+
+/// Subtle fill for chips, message bubbles and card washes (audit TL-08).
+Color subtleFillColor(BuildContext context) =>
+    FluentTheme.of(context).resources.subtleFillColorSecondary;
+
+/// Card fill that follows the theme (audit TL-08).
+Color cardFillColor(BuildContext context) =>
+    FluentTheme.of(context).resources.cardBackgroundFillColorDefault;

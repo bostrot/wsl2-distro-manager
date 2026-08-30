@@ -1683,12 +1683,16 @@ class SettingsPageState extends State<SettingsPage> {
             // The documented "Only applicable when…" conditions. The control is
             // disabled rather than hidden, so the key stays discoverable and
             // the reason says why WSL would ignore it right now.
+            // Secondary, not disabled, text: this line is the one sentence
+            // that explains why the control below will not move, and in the
+            // disabled colour it measured 2.51:1 — the least legible text on
+            // the screen doing the most necessary job (audit ST-10).
             if (!enabled && disabledReason.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Text(disabledReason,
                     style: TextStyle(
-                        color: disabledTextColor(context),
+                        color: secondaryTextColor(context),
                         fontSize: 12,
                         fontStyle: FontStyle.italic)),
               ),

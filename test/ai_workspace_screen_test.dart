@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
+import 'package:wsl2distromanager/components/busy_button.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/screens/ai_workspace_screen.dart';
@@ -382,5 +383,63 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('test-ai-uninstall-cancel')));
     await tester.pump(const Duration(milliseconds: 100));
+  });
+
+  // One primary action per state (FIX-14). The old row kept every button
+  // visible with the wrong ones disabled: an installed tool wore a dead
+  // "Installed" button (PS-22), a running tool's only filled button was Stop
+  // (PS-23), and a tool stuck in `starting` could only be uninstalled
+  // (PS-16).
+  testWidgets('a stopped tool offers Start, not a dead Installed button',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.stopped);
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byKey(const ValueKey('test-ai-start-hermesAgent')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('test-ai-install-hermesAgent')),
+        findsNothing,
+        reason: 'an installed tool must not carry an Install/Installed button');
+    expect(find.text('installed-text'), findsNothing);
+  });
+
+  testWidgets('on a running tool the dashboard is primary and Stop is not',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.running);
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    // Open Dashboard renders filled (the accent primary); Stop plain.
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('test-ai-open-dashboard-hermesAgent')),
+            matching: find.byType(FilledButton)),
+        findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('test-ai-stop-hermesAgent')),
+            matching: find.byType(FilledButton)),
+        findsNothing);
+  });
+
+  testWidgets('Stop stays live on a tool stuck in Starting up', (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.starting);
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    final stop = tester.widget<BusyButton>(
+        find.byKey(const ValueKey('test-ai-stop-hermesAgent')));
+    expect(stop.onPressed, isNotNull,
+        reason: 'Uninstall must not be the only way out of a stuck start');
   });
 }

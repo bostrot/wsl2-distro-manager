@@ -130,7 +130,7 @@ class _HomePageState extends State<HomePage> {
                   if (showAi) ...[
                     Container(
                       width: 1,
-                      color: Colors.grey.withValues(alpha: 0.2),
+                      color: surfaceBorderColor(context),
                     ),
                     SizedBox(
                       width: 360,
@@ -161,23 +161,26 @@ class _HomePageState extends State<HomePage> {
                           !GlobalVariable.aiPanelVisible;
                     });
                   },
+                  // Accent-filled in both states. The closed state used to be
+                  // a grey wash over the page — 1.25:1 in light, 1.02:1 in
+                  // dark — so the only entry point to the AI panel was close
+                  // to invisible in both themes (audit TL-06, PS-14, LN-24).
                   style: ButtonStyle(
                     padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-                    backgroundColor: WidgetStatePropertyAll(showAi
-                        ? FluentTheme.of(context).accentColor
-                        : Colors.grey.withValues(alpha: 0.12)),
+                    backgroundColor: WidgetStatePropertyAll(
+                        FluentTheme.of(context).accentColor),
                     shape: WidgetStatePropertyAll(CircleBorder(
                       side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: FluentTheme.of(context).accentColor.darker,
                         width: 1,
                       ),
                     )),
                   ),
-                  child: SizedBox.square(
+                  child: const SizedBox.square(
                     dimension: 48,
                     child: Icon(
                       FluentIcons.chat,
-                      color: showAi ? Colors.white : null,
+                      color: Colors.white,
                       size: 20,
                     ),
                   ),

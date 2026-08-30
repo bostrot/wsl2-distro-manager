@@ -671,5 +671,7 @@
   "dockerimage-desc": "Docker Hub などのレジストリから取得",
   "localrootfsfile-desc": "この PC 上にある rootfs アーカイブ（.tar / .tar.gz）",
   "localdockerimage-desc": "ローカルの Docker にすでにあるイメージ",
-  "importvhdx-desc": "この PC 上にある WSL 仮想ディスク（.vhdx）"
+  "importvhdx-desc": "この PC 上にある WSL 仮想ディスク（.vhdx）",
+  "snippetauthor-text": "（作成者: %s）",
+  "snippetauthoryou-text": "（自分）"
 }

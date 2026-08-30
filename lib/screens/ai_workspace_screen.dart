@@ -16,6 +16,10 @@ import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
+/// The five things a card can be asked to do, for per-action busy state
+/// (audit PS-15).
+enum _CardAction { install, start, stop, dashboard, uninstall }
+
 /// How often a tool still reporting [ToolStatus.starting] is re-probed.
 /// Open WebUI's migrations take ~2 minutes, so this runs a good few times;
 /// each tick is one cheap `docker inspect`.
@@ -40,6 +44,13 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   bool _preparingDistro = true;
   String? _error;
   final Set<AiWorkspaceTool> _busyTools = {};
+
+  /// Which action is in flight per tool. One shared busy flag used to put
+  /// the spinner on every enabled button on the card at once — Start spun
+  /// Uninstall, opening the dashboard spun Stop and Uninstall (audit PS-15).
+  /// The other controls still disable while something runs; only the pressed
+  /// one spins.
+  final Map<AiWorkspaceTool, _CardAction> _busyAction = {};
   // Each tool clears independently as its own check resolves.
   final Set<AiWorkspaceTool> _checkingTools = {...AiWorkspaceTool.values};
   // Re-attaches this page to an install that a previous instance started.
@@ -224,6 +235,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       // what makes the card update on the same frame as the button press.
       _service.clearError(tool);
       _busyTools.add(tool);
+      _busyAction[tool] = _CardAction.install;
     });
     // install() marks the tool as installing before its first await, so by
     // the time this returns the future the service already knows about it and
@@ -234,7 +246,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       await install;
     } finally {
       if (context.mounted) {
-        setState(() => _busyTools.remove(tool));
+        setState(() {
+          _busyTools.remove(tool);
+          _busyAction.remove(tool);
+        });
       }
     }
   }
@@ -244,6 +259,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     setState(() {
       _service.clearError(tool);
       _busyTools.add(tool);
+      _busyAction[tool] = _CardAction.start;
     });
     try {
       await _service.start(tool);
@@ -277,19 +293,28 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   Future<void> _handleStop(AiWorkspaceTool tool) async {
     if (!context.mounted) return;
-    setState(() => _busyTools.add(tool));
+    setState(() {
+      _busyTools.add(tool);
+      _busyAction[tool] = _CardAction.stop;
+    });
     try {
       await _service.stop(tool);
     } finally {
       if (context.mounted) {
-        setState(() => _busyTools.remove(tool));
+        setState(() {
+          _busyTools.remove(tool);
+          _busyAction.remove(tool);
+        });
       }
     }
   }
 
   Future<void> _handleOpenDashboard(AiWorkspaceTool tool) async {
     if (!context.mounted) return;
-    setState(() => _busyTools.add(tool));
+    setState(() {
+      _busyTools.add(tool);
+      _busyAction[tool] = _CardAction.dashboard;
+    });
     try {
       final url = await _service.getDashboardUrl(tool);
       if (url == null) {
@@ -310,7 +335,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       }
     } finally {
       if (context.mounted) {
-        setState(() => _busyTools.remove(tool));
+        setState(() {
+          _busyTools.remove(tool);
+          _busyAction.remove(tool);
+        });
       }
     }
   }
@@ -348,7 +376,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     if (confirmed != true) return;
 
     if (!context.mounted) return;
-    setState(() => _busyTools.add(tool));
+    setState(() {
+      _busyTools.add(tool);
+      _busyAction[tool] = _CardAction.uninstall;
+    });
     try {
       final success = await _service.uninstall(tool);
       if (mounted) {
@@ -362,7 +393,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       }
     } finally {
       if (mounted) {
-        setState(() => _busyTools.remove(tool));
+        setState(() {
+          _busyTools.remove(tool);
+          _busyAction.remove(tool);
+        });
       }
     }
   }
@@ -538,8 +572,8 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // the dot stayed grey, directly above a live spinner (audit PS-19): the
     // one element whose job is to say what state the tool is in said the
     // wrong thing for the entire operation.
-    final statusColor =
-        isInstalling ? Colors.blue : _statusToColor(state?.status);
+    final statusColors =
+        _statusColors(state?.status, installing: isInstalling);
     final isBusy = _busyTools.contains(tool) || isInstalling;
     // `error` means the last attempt failed, not that the tool is present —
     // a retry has to stay reachable.
@@ -565,7 +599,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: statusColor,
+                    color: statusColors.dot,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -578,7 +612,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                     : isInstalling
                         ? _badge(
                             'installing-text'.i18n(),
-                            Colors.blue,
+                            statusColors,
                             key: ValueKey('test-ai-installing-badge-'
                                 '${tool.name}'),
                           )
@@ -667,87 +701,84 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               ),
             ],
             const SizedBox(height: 12),
+            // One primary action per state, and only the actions that state
+            // can ever run. The old row kept Install, Start and Stop all
+            // visible with every non-applicable one disabled, so an installed
+            // tool wore a permanently dead "Installed" button repeating the
+            // badge beside it (audit PS-22), a running tool's only filled
+            // button was Stop (PS-23), and each disabled `FilledButton`
+            // painted white on grey at 1.71:1 (PS-21) — plain `Button`s keep
+            // their disabled foreground legible.
             Row(
               children: [
-                _buildAction(
-                  key: ValueKey('test-ai-install-${tool.name}'),
-                  // A failed install leaves the tool in `error`, which is not
-                  // "installed" — labelling it that way and greying the
-                  // button out strands the user with no way to try again.
-                  label: canInstall
-                      ? (state?.status == ToolStatus.error
-                          ? 'retry-text'.i18n()
-                          : 'install-text'.i18n())
-                      : 'installed-text'.i18n(),
-                  enabled: canInstall && !isBusy && !isChecking,
-                  busy: isBusy && canInstall,
-                  onPressed: () => _handleInstall(tool),
-                ),
-                const SizedBox(width: 8),
-                _buildAction(
-                  key: ValueKey('test-ai-start-${tool.name}'),
-                  label: 'start-text'.i18n(),
-                  enabled: state?.status == ToolStatus.stopped &&
-                      !isBusy &&
-                      !isChecking,
-                  busy: isBusy && state?.status == ToolStatus.stopped,
-                  onPressed: () => _handleStart(tool),
-                ),
-                const SizedBox(width: 8),
-                _buildAction(
-                  key: ValueKey('test-ai-stop-${tool.name}'),
-                  label: 'stop-text'.i18n(),
-                  enabled: state?.status == ToolStatus.running &&
-                      !isBusy &&
-                      !isChecking,
-                  busy: isBusy && state?.status == ToolStatus.running,
-                  onPressed: () => _handleStop(tool),
-                ),
-                // Shown but disabled while starting: the tool is on its way
-                // up, and hiding the button entirely reads as "this tool has
-                // no dashboard" rather than "not yet".
+                if (canInstall)
+                  _buildAction(
+                    key: ValueKey('test-ai-install-${tool.name}'),
+                    // A failed install leaves the tool in `error`, which is
+                    // not "installed" — a retry has to stay reachable.
+                    label: state?.status == ToolStatus.error
+                        ? 'retry-text'.i18n()
+                        : 'install-text'.i18n(),
+                    enabled: !isBusy && !isChecking,
+                    busy: _busyAction[tool] == _CardAction.install,
+                    onPressed: () => _handleInstall(tool),
+                  ),
+                if (state?.status == ToolStatus.stopped)
+                  _buildAction(
+                    key: ValueKey('test-ai-start-${tool.name}'),
+                    label: 'start-text'.i18n(),
+                    enabled: !isBusy && !isChecking,
+                    busy: _busyAction[tool] == _CardAction.start,
+                    onPressed: () => _handleStart(tool),
+                  ),
                 if (state?.status == ToolStatus.running ||
                     state?.status == ToolStatus.starting) ...[
-                  const SizedBox(width: 8),
+                  // The thing to do with a running AI tool is to open it —
+                  // Open Dashboard is the primary, not Stop (PS-23). Shown
+                  // but disabled while starting: hiding it entirely reads as
+                  // "this tool has no dashboard" rather than "not yet".
                   _maybeTooltip(
                     state?.status == ToolStatus.starting
                         ? 'ai-workspace-startingup-hint-text'.i18n()
                         : null,
-                    Button(
+                    BusyButton(
                       key: ValueKey('test-ai-open-dashboard-${tool.name}'),
+                      filled: true,
+                      label: 'ai-workspace-open-dashboard-text'.i18n(),
+                      busy: _busyAction[tool] == _CardAction.dashboard,
+                      minWidth: 72.0,
                       onPressed:
                           (!isBusy && state?.status == ToolStatus.running)
                               ? () => _handleOpenDashboard(tool)
                               : null,
-                      child: isBusy
-                          ? SizedBox.square(
-                              dimension: 16, child: ProgressRing())
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(FluentIcons.open_in_new_window,
-                                    size: 12),
-                                const SizedBox(width: 6),
-                                Text('ai-workspace-open-dashboard-text'.i18n()),
-                              ],
-                            ),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Live while starting too: a tool stuck mid-migration used
+                  // to leave Uninstall as the only enabled way out (PS-16).
+                  BusyButton(
+                    key: ValueKey('test-ai-stop-${tool.name}'),
+                    label: 'stop-text'.i18n(),
+                    busy: _busyAction[tool] == _CardAction.stop,
+                    minWidth: 72.0,
+                    onPressed: (!isBusy &&
+                            (state?.status == ToolStatus.running ||
+                                state?.status == ToolStatus.starting))
+                        ? () => _handleStop(tool)
+                        : null,
                   ),
                 ],
                 const Spacer(),
-                Button(
+                BusyButton(
                   key: ValueKey('test-ai-uninstall-${tool.name}'),
+                  label: 'uninstall-text'.i18n(),
+                  busy: _busyAction[tool] == _CardAction.uninstall,
+                  minWidth: 72.0,
                   onPressed: (state?.status != ToolStatus.notInstalled &&
                           !isBusy &&
                           !isChecking)
                       ? () => _handleUninstall(tool)
                       : null,
-                  child: isBusy && state?.status != ToolStatus.notInstalled
-                      ? SizedBox.square(
-                          dimension: 16,
-                          child: ProgressRing(),
-                        )
-                      : Text('uninstall-text'.i18n()),
                 ),
               ],
             ),
@@ -777,35 +808,64 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   Widget _statusBadge(ToolStatus? status) =>
-      _badge(_statusLabel(status), _statusToColor(status));
+      _badge(_statusLabel(status), _statusColors(status));
 
   /// The pill itself. Taken out of [_statusBadge] because an install is not a
   /// [ToolStatus] — it is a transition between two of them — and it still has
   /// to be able to say so (audit PS-19).
-  Widget _badge(String label, Color color, {Key? key}) {
+  Widget _badge(String label, _StatusColors colors, {Key? key}) {
     return Container(
       key: key,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: colors.tint,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 12,
-          color: color,
+          color: colors.foreground,
         ),
       ),
     );
   }
 
-  Color _statusToColor(ToolStatus? status) {
-    if (status == ToolStatus.running) return Colors.green;
-    if (status == ToolStatus.starting) return Colors.blue;
-    if (status == ToolStatus.stopped) return Colors.orange;
-    if (status == ToolStatus.error) return Colors.red;
-    return Colors.grey;
+  /// The palette a status renders with, per theme brightness.
+  ///
+  /// The old single-colour version painted `Colors.orange` on 10% of itself —
+  /// 2.70:1 in light, and the `Colors.grey` fallback was **1.03:1** against a
+  /// dark card, an invisible pill (audit TL-01, TL-04, PS-20). Each
+  /// brightness now gets a text shade measured against its own tint; every
+  /// pair below clears AA's 4.5:1 on both page colours. `notInstalled` uses
+  /// the theme's own secondary text instead of a status colour, so the state
+  /// that means "nothing here" stops being the most assertive of the four
+  /// (PS-24).
+  _StatusColors _statusColors(ToolStatus? status, {bool installing = false}) {
+    final dark = FluentTheme.of(context).brightness.isDark;
+    _StatusColors of(AccentColor base, Color darkFg) => _StatusColors(
+          foreground: dark ? darkFg : base.darkest,
+          tint: base.normal.withValues(alpha: 0.15),
+          dot: base.defaultBrushFor(
+              dark ? Brightness.dark : Brightness.light),
+        );
+    if (installing || status == ToolStatus.starting) {
+      return of(Colors.blue, Colors.blue.lightest);
+    }
+    switch (status) {
+      case ToolStatus.running:
+        return of(Colors.green, const Color(0xFF8FC48F));
+      case ToolStatus.stopped:
+        return of(Colors.orange, Colors.orange.lightest);
+      case ToolStatus.error:
+        return of(Colors.red, const Color(0xFFF4949C));
+      default:
+        return _StatusColors(
+          foreground: secondaryTextColor(context),
+          tint: subtleFillColor(context),
+          dot: disabledTextColor(context),
+        );
+    }
   }
 
   /// A tooltip only where it says something the label does not (audit
@@ -820,4 +880,14 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     if (status == ToolStatus.error) return 'error-text'.i18n();
     return 'notinstalled-text'.i18n();
   }
+}
+
+/// The colours one status pill needs: an AA-checked text colour for the
+/// current brightness, the tint behind it, and the dot beside the tool name.
+class _StatusColors {
+  const _StatusColors(
+      {required this.foreground, required this.tint, required this.dot});
+  final Color foreground;
+  final Color tint;
+  final Color dot;
 }

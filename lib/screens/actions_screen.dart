@@ -5,9 +5,9 @@ import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
-import 'package:wsl2distromanager/theme.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:re_highlight/languages/bash.dart';
+import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
 
 class QuickPage extends StatefulWidget {
@@ -101,7 +101,7 @@ class QuickPageState extends State<QuickPage> {
                       child: Text(
                         saveError!,
                         key: const ValueKey('test-action-save-error'),
-                        style: TextStyle(color: Colors.red, fontSize: 12.0),
+                        style: TextStyle(color: destructiveColor(context), fontSize: 12.0),
                       ),
                     ),
                   ),
@@ -304,37 +304,47 @@ class QuickPageState extends State<QuickPage> {
           if (opened[i] == null) {
             opened[i] = false;
           }
-          final version = quickActions[i].version.isNotEmpty
-              ? quickActions[i].version
-              : '0.0.0';
-          final author = quickActions[i].author.isNotEmpty
-              ? quickActions[i].author
-              : 'you';
+          // No invented "[v0.0.0]" on a snippet that has no version, and no
+          // hardcoded English "you" — the byline is a key like every other
+          // word on this screen (audit ST-57).
+          final version = quickActions[i].version;
+          final author = quickActions[i].author;
           quickSettings.add(Padding(
             padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 8.0),
             child: Column(
               children: [
                 Expander(
                     initiallyExpanded: false,
+                    // The old spans took their colour from a getter that read
+                    // the *preference*, so `system` rendered black on the dark
+                    // theme (audit TL-03), and the accent-blue "(by you)"
+                    // measured 4.41:1 and read as an author link that went
+                    // nowhere (ST-57).
                     header: RichText(
                       text: TextSpan(children: [
                         TextSpan(
                           text: quickActions[i].name,
                           style: TextStyle(
-                            color: AppTheme().textColor,
+                            color: FluentTheme.of(context)
+                                .resources
+                                .textFillColorPrimary,
                           ),
                         ),
-                        TextSpan(
-                          text: ' [v$version] ',
-                          style: TextStyle(
-                            color: AppTheme().textColor.withValues(alpha: 0.5),
+                        if (version.isNotEmpty)
+                          TextSpan(
+                            text: ' [v$version]',
+                            style: TextStyle(
+                              color: secondaryTextColor(context),
+                            ),
                           ),
-                        ),
                         TextSpan(
-                          text: '(by $author)',
+                          text:
+                              ' ${author.isNotEmpty ? 'snippetauthor-text'.i18n([
+                                  author
+                                ]) : 'snippetauthoryou-text'.i18n()}',
                           style: TextStyle(
                             fontSize: 13.0,
-                            color: AppTheme().color,
+                            color: secondaryTextColor(context),
                           ),
                         ),
                       ]),
@@ -491,9 +501,13 @@ class Editor extends StatelessWidget {
               );
             },
             style: CodeEditorStyle(
+              // The editor was pinned to the light syntax palette in both
+              // themes (audit ST-59).
               codeTheme: CodeHighlightTheme(
                   languages: {'bash': CodeHighlightThemeMode(mode: langBash)},
-                  theme: atomOneLightTheme),
+                  theme: FluentTheme.of(context).brightness.isDark
+                      ? atomOneDarkTheme
+                      : atomOneLightTheme),
             ),
             controller: contentController));
   }

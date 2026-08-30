@@ -671,5 +671,7 @@
   "dockerimage-desc": "A Docker Hubról vagy más registryből letöltve",
   "localrootfsfile-desc": "Egy rootfs-archívum (.tar / .tar.gz), ami már ezen a gépen van",
   "localdockerimage-desc": "Egy kép, ami már a helyi Docker-telepítésedben van",
-  "importvhdx-desc": "Egy WSL virtuális lemez (.vhdx), ami már ezen a gépen van"
+  "importvhdx-desc": "Egy WSL virtuális lemez (.vhdx), ami már ezen a gépen van",
+  "snippetauthor-text": "(szerző: %s)",
+  "snippetauthoryou-text": "(saját)"
 }

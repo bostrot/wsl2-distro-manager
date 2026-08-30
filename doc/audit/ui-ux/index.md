@@ -407,7 +407,9 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-04 -- Long operations: moving progress and a way out | 7 | 0 | 2026-08-30 |
 | FIX-08 -- Destructive actions must look and behave destructive | 12 | 0 | 2026-08-30 |
 | FIX-09 -- One dialog contract | 11 | 0 | 2026-08-30 |
-| all others | 0 | 127 | -- |
+| FIX-10 -- Contrast and theme tokens | 21 | 0 | 2026-08-30 |
+| FIX-14 -- AI Workspace card lifecycle | 4 | 0 | 2026-08-30 |
+| all others | 0 | 102 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -832,29 +834,74 @@ Twenty-one findings, one root cause: hardcoded `Colors.grey` / `Colors.orange` /
 `Colors.red` literals spread across eleven files, plus a `systemTextColor` that assumes
 light. Introduce the tokens once and most of this collapses.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| TL-01 | blocker | The AI Workspace status pill is **1.03:1** in dark (`#323130` on `#333333`) -- replace with a theme resource |
-| TL-02 | blocker | The chat empty state is **1.07:1** in dark; the dividers and bubble fills vanish with it |
-| TL-03 | major | `systemTextColor` returns black under the default `ThemeMode.system` -- resolve the *effective* brightness at all five call sites |
-| TL-04 | major | The `stopped` pill fails AA in both themes (2.70:1 / 3.60:1) -- hardcoded `Colors.orange` |
-| TL-05 | major | The amber BETA pill is **1.40:1** in light; move the colour to a token (it is also duplicated as a raw literal in the nav) |
-| TL-06 | major | The AI Assistant FAB is **1.02:1** in dark -- only its border ring makes it findable |
-| PS-14 | major | Same control in light (1.29:1); fix once |
-| LN-24 | nit | Same control's hardcoded `Colors.grey` / `Colors.white` |
-| PS-09 | major | The BETA/NEW badges measure 1.35:1 / 1.37:1 -- and amber means two different things |
-| PS-20 | major | "stopped" (2.70:1) and "Starting up..." (3.84:1) both fail AA; stopped is the most-shown state |
-| PS-21 | major | Disabled `FilledButton` labels are white on `#C6C6C6` (1.71:1), and two of three are always disabled |
-| PS-36 | major | Chat empty-state hint at 3.69:1; remove the five `Colors.grey` literals in that file |
-| ST-10 | major | The disabled-control explanation renders at 2.51:1 while the line above it is 6.00:1 |
-| CI-34 | major | Selecting a snippet drops its contrast from 17.4:1 to 2.49:1 |
-| TL-08 | nit | One shared set of surface/border greys -- currently six alphas across five files |
-| TL-07 | nit | Delete `systemBackgroundColor`: 30 lines nothing consumes, carrying TL-03's bug |
-| PS-24 | nit | The `notInstalled` dot is darker than running or stopped and reads as a bullet |
-| ST-57 | nit | "(by you)" and "[v0.0.0]" at 4.41:1 and 3.96:1, both sub-AA |
-| CI-03 | nit | Inline validation uses hardcoded `Colors.red` bold 12px, unlike every other error in the app |
-| CI-40 | nit | The 20%-black chip is invisible in dark theme |
-| ST-59 | nit | The code editor hardcodes `atomOneLightTheme`, so syntax colours ignore the app theme |
+**Landed 2026-08-30.** Three tokens joined the two that already existed in
+`helpers.dart`: `surfaceBorderColor` (dividers, card borders, chip outlines),
+`subtleFillColor` (bubbles, chips, washes) and `cardFillColor`, each resolving a
+fluent theme resource. Every `Colors.grey.withValues(alpha: ...)` in
+`ai_chat_panel.dart`, `home_screen.dart`, `recommendations_panel.dart`,
+`license_screen.dart` and `install_dialog.dart` went through them, which is
+what closes TL-02's invisible chat panel and TL-08's eleven ways of writing
+grey together.
+
+**The status pill got a palette, not a colour.** `_statusColors()` in
+`ai_workspace_screen.dart` returns text + tint + dot per status *per
+brightness*, with every text/tint pair measured against both page colours
+before landing — the shades in the source each clear AA's 4.5:1 (green
+7.73/5.67, blue 6.92/4.51, orange 5.46/5.12, red 6.86/5.44). `notInstalled`
+uses the theme's own secondary text and a dimmed dot, so the state that means
+"nothing here" stops being the most assertive of the four (TL-01, TL-04,
+PS-20, PS-24).
+
+**`systemTextColor` and `systemBackgroundColor` are gone.** The getter read
+the *preference*, so the default `ThemeMode.system` returned black to a dark
+UI (TL-03); its five call sites now resolve `FluentTheme.of(context)` (or
+inherit `DefaultTextStyle` — `init.dart`'s update banner became a `Text.rich`
+for exactly that). `systemBackgroundColor` had no readers and carried the same
+bug; deleted with the `AppTheme` members that held them (TL-07).
+
+**The two amber pills split.** `BetaBadge.foregroundFor(brightness)` darkens
+the amber to `#7A5C00` on the light wash (5.66:1; raw amber measured 1.40:1
+there while passing in dark — the one light-fails/dark-passes defect in the
+audit, TL-05). The nav's NEW upsell badge stopped being a duplicated amber
+literal and became accent-blue, so "immature" and "buy this" no longer share a
+colour (PS-09). The AI chat FAB is accent-filled in both states instead of a
+grey wash that measured 1.02:1 in dark (TL-06, PS-14, LN-24).
+
+Rest of the sweep: the disabled-control explanation renders in secondary
+rather than disabled text (ST-10); selecting a community snippet uses fluent's
+own selectable tile plus a check mark instead of a 50% accent wash that
+dropped the title to 2.49:1 (CI-34); `(by you)` / `[v0.0.0]` are keyed,
+real-version-only, and secondary-coloured (ST-57); every inline validation
+message shares one style, `destructiveColor` at 12px, no bold (CI-03); the
+install panel's chip is `subtleFillColor` (CI-40); and the snippet editor
+picks `atomOneDarkTheme` in dark (ST-59). PS-21 (disabled `FilledButton`
+labels at 1.71:1) landed with FIX-14's action-row rework: the non-primary
+actions are plain `Button`s now, so no disabled control keeps a white
+foreground.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| TL-01 | blocker | The AI Workspace status pill is **1.03:1** in dark (`#323130` on `#333333`) -- replace with a theme resource | `ai_workspace_screen.dart:844` |
+| TL-02 | blocker | The chat empty state is **1.07:1** in dark; the dividers and bubble fills vanish with it | `ai_chat_panel.dart` (8 sites, via `helpers.dart:528-537`) |
+| TL-03 | major | `systemTextColor` returns black under the default `ThemeMode.system` -- resolve the *effective* brightness at all five call sites | `actions_screen.dart:322`, `create_dialog.dart:712`, `init.dart:103` |
+| TL-04 | major | The `stopped` pill fails AA in both themes (2.70:1 / 3.60:1) -- hardcoded `Colors.orange` | `ai_workspace_screen.dart:844` |
+| TL-05 | major | The amber BETA pill is **1.40:1** in light; move the colour to a token (it is also duplicated as a raw literal in the nav) | `beta_badge.dart:17`, `panelist.dart` |
+| TL-06 | major | The AI Assistant FAB is **1.02:1** in dark -- only its border ring makes it findable | `home_screen.dart:164` |
+| PS-14 | major | Same control in light (1.29:1); fix once | `home_screen.dart:164` |
+| LN-24 | nit | Same control's hardcoded `Colors.grey` / `Colors.white` | `home_screen.dart:164` |
+| PS-09 | major | The BETA/NEW badges measure 1.35:1 / 1.37:1 -- and amber means two different things | `beta_badge.dart:17`, `panelist.dart:108` (NEW is accent now) |
+| PS-20 | major | "stopped" (2.70:1) and "Starting up..." (3.84:1) both fail AA; stopped is the most-shown state | `ai_workspace_screen.dart:844` |
+| PS-21 | major | Disabled `FilledButton` labels are white on `#C6C6C6` (1.71:1), and two of three are always disabled | with FIX-14: non-primary actions are plain `Button`s |
+| PS-36 | major | Chat empty-state hint at 3.69:1; remove the five `Colors.grey` literals in that file | `ai_chat_panel.dart:207`, `:214` |
+| ST-10 | major | The disabled-control explanation renders at 2.51:1 while the line above it is 6.00:1 | `settings_screen.dart:1690` |
+| CI-34 | major | Selecting a snippet drops its contrast from 17.4:1 to 2.49:1 | `qa_list.dart:190` (`ListTile.selectable` + check mark) |
+| TL-08 | nit | One shared set of surface/border greys -- currently six alphas across five files | `helpers.dart:528`, `:532`, `:536` |
+| TL-07 | nit | Delete `systemBackgroundColor`: 30 lines nothing consumes, carrying TL-03's bug | deleted, with `AppTheme.backgroundColor` / `.textColor` |
+| PS-24 | nit | The `notInstalled` dot is darker than running or stopped and reads as a bullet | `ai_workspace_screen.dart:844` (dimmed `disabledTextColor` dot) |
+| ST-57 | nit | "(by you)" and "[v0.0.0]" at 4.41:1 and 3.96:1, both sub-AA | `actions_screen.dart:311`, keys `snippetauthor-text` / `snippetauthoryou-text` |
+| CI-03 | nit | Inline validation uses hardcoded `Colors.red` bold 12px, unlike every other error in the app | `create_dialog.dart:585`; same style unified in `mount_dialog.dart`, `qa_dialog.dart`, `actions_screen.dart` |
+| CI-40 | nit | The 20%-black chip is invisible in dark theme | `install_dialog.dart:25` |
+| ST-59 | nit | The code editor hardcodes `atomOneLightTheme`, so syntax colours ignore the app theme | `actions_screen.dart:513` |
 
 ### FIX-11 -- Close the localization holes
 
@@ -923,12 +970,26 @@ a price. Separately, there are four gating components of which three have no cal
 One shared `isBusy` flag drives every button on every card, so the spinner appears on
 the wrong control in three of four cases.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| PS-15 | blocker | Per-action busy state: Start currently spins Uninstall, the dashboard spins Stop+Uninstall, and uninstall spins Start |
-| PS-16 | major | Allow Stop on a tool stuck in "Starting up..." -- Uninstall is not an acceptable only option |
-| PS-22 | major | Remove the permanently disabled "Installed" button that repeats the badge on the same row |
-| PS-23 | major | On a running tool, Open Dashboard is the primary action, not Stop |
+**Landed 2026-08-30.** A `_busyAction` map records *which* of the five actions
+is in flight per tool; the pressed control spins, the rest merely disable
+(PS-15). The row itself became one-primary-per-state: `notInstalled`/`error`
+shows Install/Retry (filled), `stopped` shows Start (filled), and a
+running/starting tool shows Open Dashboard (filled) with Stop beside it as a
+plain button — which is PS-23's hierarchy, deletes the permanently disabled
+"Installed" button that repeated the badge on the same row (PS-22), and, since
+the non-primary actions are no longer `FilledButton`s, closes FIX-10's PS-21
+on the way. Stop stays live while a tool is stuck in "Starting up..." so
+Uninstall is not the only way out of a wedged migration (PS-16).
+
+Regression tests: three in `test/ai_workspace_screen_test.dart` (the dead
+button, the primary hierarchy, Stop-while-starting).
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| PS-15 | blocker | Per-action busy state: Start currently spins Uninstall, the dashboard spins Stop+Uninstall, and uninstall spins Start | `ai_workspace_screen.dart:53` (`_busyAction`), spin gates at `:715-780` |
+| PS-16 | major | Allow Stop on a tool stuck in "Starting up..." -- Uninstall is not an acceptable only option | `ai_workspace_screen.dart:760` |
+| PS-22 | major | Remove the permanently disabled "Installed" button that repeats the badge on the same row | `ai_workspace_screen.dart:714` (`if (canInstall)`) |
+| PS-23 | major | On a running tool, Open Dashboard is the primary action, not Stop | `ai_workspace_screen.dart:745` |
 
 ### FIX-15 -- Settings: validate `.wslconfig`, restore the missing controls
 

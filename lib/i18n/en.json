@@ -671,5 +671,7 @@
   "dockerimage-desc": "Pulled from Docker Hub or another registry",
   "localrootfsfile-desc": "A rootfs archive (.tar / .tar.gz) already on this PC",
   "localdockerimage-desc": "An image already in your local Docker installation",
-  "importvhdx-desc": "A WSL virtual disk (.vhdx) already on this PC"
+  "importvhdx-desc": "A WSL virtual disk (.vhdx) already on this PC",
+  "snippetauthor-text": "(by %s)",
+  "snippetauthoryou-text": "(by you)"
 }

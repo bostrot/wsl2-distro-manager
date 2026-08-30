@@ -279,7 +279,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            border: Border.all(color: surfaceBorderColor(context)),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
@@ -288,7 +288,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.06),
+                  color: subtleFillColor(context),
                   borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(8)),
                 ),

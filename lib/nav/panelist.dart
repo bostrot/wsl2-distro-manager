@@ -42,8 +42,26 @@ final List<NavigationPaneItem> originalItems = [
     icon: const Icon(FluentIcons.robot),
     title: Text('ai-workspace-title'.i18n()),
     // infoBadge, not a Row in title — fluent_ui only extracts the pane
-    // label from a literal Text title.
-    infoBadge: const BetaBadge(),
+    // label from a literal Text title. Below fluent's 1008px threshold the
+    // pane is a 48px icon rail and the badge has nowhere to go but *over*
+    // the robot glyph, hiding the page's only affordance (audit LN-10,
+    // PS-10) — so compact mode gets a corner dot instead of the full pill.
+    infoBadge: Builder(
+      builder: (context) => MediaQuery.of(context).size.width < 1008
+          ? Semantics(
+              label: 'beta-badge-label-text'.i18n(),
+              excludeSemantics: true,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: BetaBadge.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            )
+          : const BetaBadge(),
+    ),
     body: const SizedBox.shrink(),
     onTap: () {
       navigateGuarded('ai-workspace', path: '/ai-workspace');
@@ -91,27 +109,34 @@ List<NavigationPaneItem> get footerItems => [
         infoBadge: LicenseManager().isPro
             ? null
             // IA-10: the pill is decoration next to the pane label, so it
-            // needs a name of its own to be announced as anything.
-            : Semantics(
-                label: 'new-badge-label-text'.i18n(),
-                excludeSemantics: true,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFBF00).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: const Text(
-                    'NEW',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFBF00),
+            // needs a name of its own to be announced as anything. Accent,
+            // not amber: the same amber pill used to mean "immature feature"
+            // in five places and "buy this" here, and measured 1.35:1 on the
+            // light wash besides (audit PS-09, TL-05).
+            : Builder(builder: (context) {
+                final dark = FluentTheme.of(context).brightness.isDark;
+                return Semantics(
+                  label: 'new-badge-label-text'.i18n(),
+                  excludeSemantics: true,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.normal.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      'NEW',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            dark ? Colors.blue.lightest : Colors.blue.darkest,
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              }),
         body: const SizedBox.shrink(),
         onTap: () {
           navigateGuarded('license', path: '/license');

@@ -133,7 +133,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: Colors.grey.withValues(alpha: 0.2),
+                color: surfaceBorderColor(context),
                 width: 1,
               ),
             ),
@@ -198,14 +198,14 @@ class _AiChatPanelState extends State<AiChatPanel> {
                       Icon(
                         FluentIcons.chat,
                         size: 48,
-                        color: Colors.grey.withValues(alpha: 0.3),
+                        color: disabledTextColor(context),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         'ai-assistant-hint'.i18n(),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.withValues(alpha: 0.6),
+                          color: secondaryTextColor(context),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -271,7 +271,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
-                color: Colors.grey.withValues(alpha: 0.2),
+                color: surfaceBorderColor(context),
                 width: 1,
               ),
             ),
@@ -335,7 +335,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
                     ? FluentTheme.of(context)
                         .accentColor
                         .withValues(alpha: 0.15)
-                    : Colors.grey.withValues(alpha: 0.1),
+                    : subtleFillColor(context),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: msg.role == 'assistant'
@@ -345,10 +345,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
                         p: const TextStyle(fontSize: 12),
                         code: TextStyle(
                           fontSize: 11,
-                          backgroundColor: Colors.grey.withValues(alpha: 0.15),
+                          backgroundColor: subtleFillColor(context),
                         ),
                         codeblockDecoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.1),
+                          color: subtleFillColor(context),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -365,7 +365,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.2),
+                color: subtleFillColor(context),
                 borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,

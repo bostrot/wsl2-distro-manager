@@ -673,5 +673,7 @@
   "dockerimage-desc": "Baixada do Docker Hub ou de outro registro",
   "localrootfsfile-desc": "Um arquivo rootfs (.tar / .tar.gz) que já está neste PC",
   "localdockerimage-desc": "Uma imagem que já está na sua instalação local do Docker",
-  "importvhdx-desc": "Um disco virtual do WSL (.vhdx) que já está neste PC"
+  "importvhdx-desc": "Um disco virtual do WSL (.vhdx) que já está neste PC",
+  "snippetauthor-text": "(de %s)",
+  "snippetauthoryou-text": "(seu)"
 }

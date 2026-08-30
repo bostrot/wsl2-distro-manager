@@ -672,5 +672,7 @@
   "dockerimage-desc": "Wird von Docker Hub oder einer anderen Registry geladen",
   "localrootfsfile-desc": "Ein Rootfs-Archiv (.tar / .tar.gz), das bereits auf diesem PC liegt",
   "localdockerimage-desc": "Ein Image aus Ihrer lokalen Docker-Installation",
-  "importvhdx-desc": "Eine virtuelle WSL-Festplatte (.vhdx), die bereits auf diesem PC liegt"
+  "importvhdx-desc": "Eine virtuelle WSL-Festplatte (.vhdx), die bereits auf diesem PC liegt",
+  "snippetauthor-text": "(von %s)",
+  "snippetauthoryou-text": "(von Ihnen)"
 }

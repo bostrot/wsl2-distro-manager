@@ -125,7 +125,7 @@ class _MountDialogState extends State<MountDialog> {
       child: Text(
         _fieldError!,
         key: const ValueKey('test-mount-field-error'),
-        style: TextStyle(color: Colors.red, fontSize: 12.0),
+        style: TextStyle(color: destructiveColor(context), fontSize: 12.0),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/recommender_service.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -23,11 +24,9 @@ class RecommendationsPanel extends StatelessWidget {
       margin: const EdgeInsets.all(8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: FluentTheme.of(context).brightness.isDark
-            ? Colors.white.withValues(alpha: 0.03)
-            : Colors.black.withValues(alpha: 0.02),
+        color: cardFillColor(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+        border: Border.all(color: surfaceBorderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

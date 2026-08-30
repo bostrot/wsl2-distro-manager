@@ -16,7 +16,6 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/error_view.dart';
-import 'package:wsl2distromanager/theme.dart';
 
 enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
 
@@ -582,10 +581,13 @@ class _CreateWidgetState extends State<CreateWidget> {
         if (nameExists)
           Padding(
             padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+            // The one inline message in the app that was bold, and the one
+            // that hardcoded its red instead of resolving it per theme
+            // (audit CI-03).
             child: Text(
               'distroexists-text'.i18n(),
-              style: TextStyle(
-                  color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+              style:
+                  TextStyle(color: destructiveColor(context), fontSize: 12.0),
             ),
           ),
         Container(
@@ -710,12 +712,7 @@ class _CreateWidgetState extends State<CreateWidget> {
                   }
                   return Container(
                     padding: const EdgeInsets.all(10.0),
-                    child: Text(
-                      text,
-                      style: TextStyle(
-                        color: AppTheme().textColor,
-                      ),
-                    ),
+                    child: Text(text),
                   );
                 }),
                 onChanged: (String value, TextChangedReason reason) {

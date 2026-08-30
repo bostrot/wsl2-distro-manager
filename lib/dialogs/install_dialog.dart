@@ -2,6 +2,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
 
 /// Install Dialog
 class InstallDialog extends StatelessWidget {
@@ -20,7 +21,9 @@ class InstallDialog extends StatelessWidget {
               child: Text('wslnotinstalledbody-text'.i18n()),
             ),
             Container(
-              color: const Color.fromRGBO(0, 0, 0, 0.2),
+              // A 20% black wash is near-invisible over the dark surface
+              // (audit CI-40).
+              color: subtleFillColor(context),
               child: Padding(
                   padding: const EdgeInsets.only(left: 4.0, right: 4.0),
                   child: HyperlinkButton(

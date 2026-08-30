@@ -126,7 +126,7 @@ class _CommunityDialogState extends State<CommunityDialog> {
                 child: Text(
                   _validation!,
                   key: const ValueKey('test-qa-validation'),
-                  style: TextStyle(color: Colors.red, fontSize: 12.0),
+                  style: TextStyle(color: destructiveColor(context), fontSize: 12.0),
                 ),
               ),
             if (_error != null)
@@ -141,7 +141,7 @@ class _CommunityDialogState extends State<CommunityDialog> {
                     children: [
                       Text(
                         'snippetdownloadfailed-text'.i18n(),
-                        style: TextStyle(color: Colors.red, fontSize: 12.0),
+                        style: TextStyle(color: destructiveColor(context), fontSize: 12.0),
                       ),
                       ErrorDetails(details: _error!),
                     ],

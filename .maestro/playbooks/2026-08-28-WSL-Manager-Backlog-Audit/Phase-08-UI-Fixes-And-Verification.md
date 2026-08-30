@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 87 of 214 findings closed (8 blockers, 52 majors, 27 nits).** Running
+  **In progress — 112 of 214 findings closed (11 blockers, 66 majors, 35 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -211,14 +211,34 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     CI-26 early). Community dialog: titled, content-sized, primary-first.
     Per-distro dialog: 640x720, titled with the distro name.
 
-  **Next up:** FIX-10 (contrast and theme tokens), then FIX-11. Verification for
-  the FIX-09 slice: `flutter analyze` clean (the same two pre-existing warnings,
-  untouched), `flutter test` 819 passing (was 815; one flaky timing-dependent
-  failure in the streamed-install suite passed on re-run),
-  `dart run scripts/check_translations.dart` exit 0. 7 new keys in all nine
-  locales. New tests: `test/dialog_contract_test.dart` (4, covering the button
-  order, the placeholder, the validate-before-pop contract and the deleted
-  `createDialog()`). `flutter test integration_test/` could not be run here — the harness
+  - **FIX-10 — contrast and theme tokens: complete (21/21).** Three new tokens
+    in `helpers.dart` (`surfaceBorderColor`, `subtleFillColor`, `cardFillColor`)
+    absorbed every `Colors.grey.withValues(...)` in five files; the AI
+    Workspace status pill renders from an AA-measured per-brightness palette
+    (`_statusColors`); `systemTextColor`/`systemBackgroundColor` — the getters
+    that read the *preference* and so handed black text to the dark theme under
+    the default `ThemeMode.system` — are deleted with their `AppTheme` fields;
+    `BetaBadge` darkens its amber on the light wash and the nav's NEW badge is
+    accent-blue so "immature" and "buy this" stop sharing a colour; the AI chat
+    FAB is accent-filled instead of a 1.02:1 grey wash; the snippet editor
+    follows the theme; and every inline validation message shares one style.
+
+  - **FIX-14 — AI Workspace card lifecycle: complete (4/4).** A `_busyAction`
+    map gives each of the five actions its own spinner (Start used to spin
+    Uninstall); the action row is one-primary-per-state — Install/Retry when
+    absent, Start when stopped, Open Dashboard (filled) with a plain Stop when
+    up — which deletes the permanently disabled "Installed" button, puts the
+    hierarchy on the dashboard rather than on Stop, and closes FIX-10's PS-21
+    since non-primary actions are no longer disabled `FilledButton`s. Stop
+    stays live on a tool stuck in "Starting up...".
+
+  **Next up:** FIX-11 (localization holes), then FIX-12. Verification for the
+  FIX-09/10/14 slices: `flutter analyze` clean (the same two pre-existing
+  warnings), `flutter test` 822 passing (was 815),
+  `dart run scripts/check_translations.dart` exit 0. 9 new keys in all nine
+  locales. New tests: `test/dialog_contract_test.dart` (4) and three in
+  `test/ai_workspace_screen_test.dart` (dead button, primary hierarchy,
+  Stop-while-starting). `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`

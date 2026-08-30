@@ -100,15 +100,17 @@ initRoot(NotifyMessage statusMsg) async {
       statusMsg('',
           useWidget: true,
           duration: const Duration(minutes: 1),
-          widget: RichText(
+          // Text.rich rather than RichText: the spans with no colour of
+          // their own inherit the surrounding DefaultTextStyle, where
+          // RichText would need a hardcoded per-theme guess (audit TL-03).
+          widget: Text.rich(
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.clip,
-              text: TextSpan(children: [
+              TextSpan(children: [
                 TextSpan(
                     text: '${'newversion-text'.i18n()} ',
-                    style:
-                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
+                    style: const TextStyle(fontSize: 14.0)),
                 TextSpan(
                     text: '${'downloadnow-text'.i18n()} ',
                     style: TextStyle(
@@ -119,8 +121,7 @@ initRoot(NotifyMessage statusMsg) async {
                       ..onTap = () => launchUrl(Uri.parse(updateUrl))),
                 TextSpan(
                     text: '${'orcheck-text'.i18n()} ',
-                    style:
-                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
+                    style: const TextStyle(fontSize: 14.0)),
                 TextSpan(
                     text: '${'windowsstore-text'.i18n()} ',
                     style: TextStyle(

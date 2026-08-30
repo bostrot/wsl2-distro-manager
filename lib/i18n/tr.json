@@ -671,5 +671,7 @@
   "dockerimage-desc": "Docker Hub'dan veya başka bir kayıt defterinden çekilir",
   "localrootfsfile-desc": "Bu bilgisayarda zaten bulunan bir rootfs arşivi (.tar / .tar.gz)",
   "localdockerimage-desc": "Yerel Docker kurulumunuzda zaten bulunan bir kalıp",
-  "importvhdx-desc": "Bu bilgisayarda zaten bulunan bir WSL sanal diski (.vhdx)"
+  "importvhdx-desc": "Bu bilgisayarda zaten bulunan bir WSL sanal diski (.vhdx)",
+  "snippetauthor-text": "(%s tarafından)",
+  "snippetauthoryou-text": "(size ait)"
 }

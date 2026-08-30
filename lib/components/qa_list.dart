@@ -6,7 +6,6 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/hoverable.dart';
-import 'package:wsl2distromanager/theme.dart';
 
 /// What a download attempt did, so the dialog can tell success from failure.
 ///
@@ -183,14 +182,20 @@ class QaListState extends State<QaList> {
                     return Container();
                   }
                   var data = snapshot.data![index]!;
+                  final selected = selectedList.contains(data);
+                  // fluent's own selected fill keeps the text at full
+                  // contrast; the 50% accent wash it replaces dropped the
+                  // title from 17.4:1 to 2.49:1 (audit CI-34). The check
+                  // mark makes the selection legible as more than a tint.
                   return Hoverable(
-                    child: ListTile(
-                      tileColor: ButtonState.all(selectedList.contains(data)
-                          ? AppTheme().color.withValues(alpha: 0.5)
-                          : Colors.transparent),
+                    child: ListTile.selectable(
+                      selected: selected,
+                      leading: selected
+                          ? const Icon(FluentIcons.check_mark, size: 14)
+                          : const SizedBox.square(dimension: 14),
                       title: Text(data.name),
                       subtitle: Text(data.description),
-                      onPressed: () => toggleItem(data),
+                      onSelectionChange: (_) => toggleItem(data),
                     ),
                   );
                 });

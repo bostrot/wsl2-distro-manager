@@ -34,20 +34,6 @@ class AppTheme extends ChangeNotifier {
     notifyListeners();
   }
 
-  AccentColor _backgroundColor = systemBackgroundColor;
-  AccentColor get backgroundColor => _backgroundColor;
-  set backgroundColor(AccentColor color) {
-    _backgroundColor = color;
-    notifyListeners();
-  }
-
-  Color _textColor = systemTextColor;
-  Color get textColor => _textColor;
-  set textColor(Color color) {
-    _textColor = textColor;
-    notifyListeners();
-  }
-
   ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
   set mode(ThemeMode mode) {
@@ -127,39 +113,6 @@ AccentColor get systemAccentColor {
     });
   }
   return Colors.blue;
-}
-
-AccentColor get systemBackgroundColor {
-  if ((defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.android)) {
-    // Fluent UI background colors (grey)
-    if (AppTheme.themeMode == ThemeMode.dark) {
-      return AccentColor('normal', {
-        'darkest': Colors.grey[200],
-        'darker': Colors.grey[190],
-        'dark': Colors.grey[180],
-        'normal': Colors.grey[170],
-        'light': Colors.grey[160],
-        'lighter': Colors.grey[150],
-        'lightest': Colors.grey[140],
-      });
-    } else {
-      return AccentColor('normal', {
-        'darkest': Colors.grey[40],
-        'darker': Colors.grey[30],
-        'dark': Colors.grey[20],
-        'normal': Colors.grey[10],
-        'light': Colors.grey[10],
-        'lighter': Colors.grey[10],
-        'lightest': Colors.grey[10],
-      });
-    }
-  }
-  return Colors.grey.toAccentColor();
-}
-
-Color get systemTextColor {
-  return AppTheme.themeMode == ThemeMode.dark ? Colors.white : Colors.black;
 }
 
 /// The app's theme, built once per brightness so light and dark cannot drift.
