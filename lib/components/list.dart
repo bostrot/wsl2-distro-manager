@@ -83,12 +83,21 @@ class DistroListState extends State<DistroList> {
           List<String> running = snapshot.data?.running ?? [];
           // Check if there are distros
           if (list.isEmpty) {
+            // Two unrelated states used to share one sentence written from
+            // the code's point of view — "No instances found or there is a
+            // migration in progress" (audit LN-22). A move leaves its marker
+            // in prefs, so the ordinary first-run state can speak to a new
+            // user instead.
+            final moving = prefs.getString('MoveOp_Distro') != null;
             return Expanded(
               child: Stack(
                 children: [
                   const SizedBox.expand(),
                   Center(
-                    child: Text('noinstancesfound-text'.i18n()),
+                    child: Text((moving
+                            ? 'moveinprogress-text'
+                            : 'noinstancesfound-text')
+                        .i18n()),
                   ),
                   Positioned(
                     right: 20,

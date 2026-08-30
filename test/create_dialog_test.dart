@@ -106,7 +106,7 @@ void main() {
       );
 
       expect(ok, isFalse);
-      expect(error.value!.message, 'entername-text');
+      expect(error.value!.message, 'errorentername-text');
       error.dispose();
     });
   });

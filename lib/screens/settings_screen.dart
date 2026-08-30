@@ -1404,7 +1404,7 @@ class SettingsPageState extends State<SettingsPage> {
             type: SettingsType.bool,
             enabled: _networkingMode() == 'nat',
             disabledReason:
-                'onlyapplieswhen-text'.i18n(['networkingMode = nat'])),
+                'onlyapplieswhen-text'.i18n(['${'networkingmode-text'.i18n()} = nat'])),
         settingsWidget(context,
             title: 'networkingMode',
             tooltip: 'networkingmodeinfo-text'.i18n(),
@@ -1603,14 +1603,14 @@ class SettingsPageState extends State<SettingsPage> {
             type: SettingsType.bool,
             enabled: _configBool('dnsTunneling'),
             disabledReason:
-                'onlyapplieswhen-text'.i18n(['dnsTunneling = true'])),
+                'onlyapplieswhen-text'.i18n(['${'dnstunneling-text'.i18n()} = true'])),
         settingsWidget(context,
             title: 'dnsTunnelingIpAddress',
             tooltip: 'dnstunnelingipaddressinfo-text'.i18n(),
             placeholder: '10.255.255.254',
             enabled: _configBool('dnsTunneling'),
             disabledReason:
-                'onlyapplieswhen-text'.i18n(['dnsTunneling = true'])),
+                'onlyapplieswhen-text'.i18n(['${'dnstunneling-text'.i18n()} = true'])),
         settingsWidget(context,
             title: 'initialAutoProxyTimeout',
             tooltip: 'initialautoproxytimeoutinfo-text'.i18n(),
@@ -1618,21 +1618,21 @@ class SettingsPageState extends State<SettingsPage> {
             unitLabel: 'milliseconds-text'.i18n(),
             placeholder: '1000',
             enabled: _configBool('autoProxy'),
-            disabledReason: 'onlyapplieswhen-text'.i18n(['autoProxy = true'])),
+            disabledReason: 'onlyapplieswhen-text'.i18n(['${'autoproxy-text'.i18n()} = true'])),
         settingsWidget(context,
             title: 'ignoredPorts',
             tooltip: 'ignoredportsinfo-text'.i18n(),
             placeholder: '3000,9000,9090',
             enabled: _networkingMode() == 'mirrored',
             disabledReason:
-                'onlyapplieswhen-text'.i18n(['networkingMode = mirrored'])),
+                'onlyapplieswhen-text'.i18n(['${'networkingmode-text'.i18n()} = mirrored'])),
         settingsWidget(context,
             title: 'hostAddressLoopback',
             tooltip: 'hostaddressloopbackinfo-text'.i18n(),
             type: SettingsType.bool,
             enabled: _networkingMode() == 'mirrored',
             disabledReason:
-                'onlyapplieswhen-text'.i18n(['networkingMode = mirrored'])),
+                'onlyapplieswhen-text'.i18n(['${'networkingmode-text'.i18n()} = mirrored'])),
       ],
     );
   }
@@ -1660,8 +1660,16 @@ class SettingsPageState extends State<SettingsPage> {
     if (_settings[name] == null) {
       _settings[name] = TextEditingController(text: '');
     }
-    // First letter to capital
-    title = title.replaceFirst(title[0], title[0].toUpperCase());
+    // A prose label where one exists, with the raw `.wslconfig` key kept as a
+    // small annotation. The control used to be titled with the bare camelCase
+    // key — "MaxCrashDumpCount" — while the prose labels sat unrendered in
+    // en.json (audit ST-09).
+    final rawKey = title;
+    final labelKey = '${title.toLowerCase()}-text';
+    final prose = labelKey.i18n();
+    title = prose == labelKey
+        ? title.replaceFirst(title[0], title[0].toUpperCase())
+        : '$prose ($rawKey)';
     if (unitLabel.isNotEmpty) {
       title = '$title ($unitLabel)';
     }

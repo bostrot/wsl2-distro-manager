@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 129 of 214 findings closed (13 blockers, 75 majors, 41 nits).** Running
+  **In progress — 143 of 214 findings closed (13 blockers, 79 majors, 51 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -249,12 +249,24 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     longer dismisses as a side effect; an all-dismissed panel disappears
     entirely; the X is pinned to the card edge and the 11px/10px text raised.
 
-  **Next up:** FIX-12 (copy and casing), then FIX-13. Verification for the
-  FIX-11/18 slices: `flutter analyze` clean (the same two pre-existing
-  warnings), `flutter test` 825 passing (was 822),
-  `dart run scripts/check_translations.dart` exit 0. New tests:
-  `test/recommendations_panel_test.dart` (2) and the widened gate in
-  `test/locales_test.dart`. `flutter test integration_test/` could not be run here — the harness
+  - **FIX-12 — copy, casing and terminology: complete (14/14).** English settled
+    on sentence case (~60 Title Case labels rewritten, proper nouns kept); the
+    status badges read Running/Stopped/Not installed everywhere; "(optional)"
+    is one spelling. ST-09's prose labels for the `.wslconfig` settings turned
+    out to half-exist unrendered — `settingsWidget` now resolves them and shows
+    "Networking mode (networkingMode)", with the 11 missing labels added in all
+    nine locales; the disabled reasons name the prose label. 46 dead keys
+    deleted from all nine locales (the Stripe-era subscription flow among
+    them); `entername-text` merged away. The home empty state separates
+    first-run from move-in-progress and says what to do next; the Turnkey
+    warning is a one-sentence InfoBar; a snippet is a snippet everywhere.
+    FIX-16's CI-38 landed with this slice: the WSL install panel is a real
+    button that names the elevation prompt, with the command kept beside it.
+
+  **Next up:** FIX-13 (the paid surface), then FIX-15/16/17. Verification for
+  this slice: `flutter analyze` clean (the same two pre-existing warnings),
+  `flutter test` 825 passing, `dart run scripts/check_translations.dart`
+  exit 0. `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`

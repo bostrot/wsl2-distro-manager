@@ -389,7 +389,9 @@ Future<bool> createInstance(
     }
     // Download distro check
   } else {
-    final msg = 'entername-text'.i18n();
+    // One message for one situation — 'entername-text' was a duplicate of
+    // this string minus its full stop (audit CI-21).
+    final msg = 'errorentername-text'.i18n();
     return _failCreate(msg, onError, diagnosable: false);
   }
 }
@@ -794,9 +796,17 @@ class _CreateWidgetState extends State<CreateWidget> {
         Container(
           height: 10.0,
         ),
+        // An InfoBar with one sentence. The old form was five italic lines
+        // naming `fake_systemd` and an `ip a | grep inet` pipeline — a
+        // changelog entry, a troubleshooting note and a shell tutorial in one
+        // string (audit CI-27).
         sourceType == CreateSourceType.turnkey
-            ? Text('turnkeywarning-text'.i18n(),
-                style: const TextStyle(fontStyle: FontStyle.italic))
+            ? InfoBar(
+                title: Text('turnkeywarningtitle-text'.i18n()),
+                content: Text('turnkeywarning-text'.i18n()),
+                severity: InfoBarSeverity.warning,
+                isLong: true,
+              )
             : Container(),
         supportsDefaultUser(sourceType)
             ? ToggleSwitch(

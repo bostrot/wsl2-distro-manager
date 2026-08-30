@@ -411,7 +411,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-14 -- AI Workspace card lifecycle | 4 | 0 | 2026-08-30 |
 | FIX-11 -- Close the localization holes | 13 | 0 | 2026-08-30 |
 | FIX-18 -- Recommendations panel | 4 | 0 | 2026-08-30 |
-| all others | 0 | 85 | -- |
+| FIX-12 -- Copy, casing and terminology | 14 | 0 | 2026-08-30 |
+| all others | 0 | 71 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -953,22 +954,56 @@ genuinely mean *sample*. German's two English nav entries are translated
 
 ### FIX-12 -- Copy, casing and terminology
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| TL-17 | major | Pick sentence case (98 Title Case vs 91 sentence case short labels in `en.json`) and apply it across the locales that inherited the drift |
-| LN-22 | major | Rewrite the empty-state copy: split the two unrelated states it merges and give a next step |
-| ST-09 | major | Label the 26 `.wslconfig` settings in prose instead of the raw camelCase key |
-| CI-27 | major | Rewrite the turnkey warning -- five italic lines containing `fake_systemd` and a shell pipeline |
-| TL-15 | nit | Delete the 59 English keys nothing renders (19 of them an unshipped subscription flow), and their nine translations each |
-| TL-18 | nit | One spelling of "(Optional)" -- currently three, including both on the same field |
-| PS-25 | nit | One casing convention in the status badge column ("Not Installed" / "Starting up..." / "running") |
-| LN-15 | nit | Nav pane labels to one case convention |
-| CI-39 | nit | "install it with **the** following command" -- fix in all nine locales |
-| CI-21 | nit | Merge `entername-text` and `errorentername-text` |
-| ST-11 | nit | Stop repeating the description verbatim 20px below itself as the disabled reason |
-| ST-12 | nit | Name the label, not the raw key, in the disabled reason |
-| CI-26 | nit | Group the six source types and give each a description line instead of bare developer jargon |
-| ST-56 | nit | One name for a snippet -- currently Snippets / snippet / "Name of setting" / quick action |
+**Landed 2026-08-30.** The English source settled on **sentence case** for
+short labels: ~60 Title Case values rewrote ("Mount Disk" → "Mount disk",
+"Select File" → "Select file"), keeping proper nouns (Docker, VHD, DNS, WSLg,
+GitHub, TurnKey). The status badge column reads Running / Stopped /
+Not installed / Starting up... in every locale that had drifted (PS-25), the
+nav pane follows the same convention (LN-15), and "(Optional)" — previously
+three spellings, twice on one field — is "(optional)", trailing (TL-18).
+
+**ST-09 turned out to be half-built already**: prose labels for 16 of the 26
+`.wslconfig` settings sat unrendered in `en.json` while the screen titled its
+controls with the bare camelCase key. `settingsWidget` now resolves
+`<key>-text` and shows "Networking mode (networkingMode)" — prose first, the
+raw key kept as the annotation a power user greps the file for; the 11
+missing labels (memory, processors, swap...) landed in all nine locales. The
+disabled reason names that prose label instead of the raw key (ST-12), and
+`localhostForwarding`'s description no longer repeats its own disabled reason
+word for word (ST-11).
+
+**TL-15's dead keys are gone**: 46 keys nothing renders — 19 of them the
+unshipped Stripe-era subscription flow (`plan-monthly`, `open-billing-portal-
+text`...), plus orphans like `installed-text` (freed by FIX-14) and
+`selectsourcetype-text` (freed by FIX-09) — deleted from all nine locales,
+and the five that were pinned in `locales_test.dart`'s audit list unpinned
+with them. `entername-text` merged into `errorentername-text` (CI-21).
+
+The two rewrites: the home empty state separates first-run from
+move-in-progress — the marker is already in prefs — and tells a new user what
+to do next instead of mentioning "a migration" (LN-22); the Turnkey warning is
+an `InfoBar` with one sentence instead of five italic lines naming
+`fake_systemd` and an `ip a | grep inet` pipeline (CI-27). A snippet is a
+snippet everywhere now — the name box said "Name of setting" (ST-56). CI-39's
+"with following command" string was replaced wholesale by FIX-16's CI-38
+rework of the install panel, landed with this slice.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| TL-17 | major | Pick sentence case (98 Title Case vs 91 sentence case short labels) and apply it across the locales that inherited the drift | `en.json`, ~60 values |
+| LN-22 | major | Rewrite the empty-state copy: split the two unrelated states it merges and give a next step | `list.dart:85`, keys `noinstancesfound-text` / `moveinprogress-text` |
+| ST-09 | major | Label the 26 `.wslconfig` settings in prose instead of the raw camelCase key | `settings_screen.dart:1652` (`settingsWidget`), 11 new keys |
+| CI-27 | major | Rewrite the turnkey warning -- five italic lines containing `fake_systemd` and a shell pipeline | `create_dialog.dart:797`, keys rewritten |
+| TL-15 | nit | Delete the 59 English keys nothing renders (19 of them an unshipped subscription flow), and their nine translations each | 46 deleted from all nine locales (16 of the audit's 61 became ST-09's labels instead) |
+| TL-18 | nit | One spelling of "(Optional)" -- currently three, including both on the same field | `en.json`: `(optional)`, trailing |
+| PS-25 | nit | One casing convention in the status badge column ("Not Installed" / "Starting up..." / "running") | `en.json` + de, es, hu, pt, tr |
+| LN-15 | nit | Nav pane labels to one case convention | `en.json` (`addinstance-text`, `mountdisk-text`) |
+| CI-39 | nit | "install it with **the** following command" -- fix in all nine locales | replaced by CI-38's rework (`install_dialog.dart`) |
+| CI-21 | nit | Merge `entername-text` and `errorentername-text` | `create_dialog.dart:392`; `entername-text` deleted |
+| ST-11 | nit | Stop repeating the description verbatim 20px below itself as the disabled reason | `wildcardinfo-text` rewritten, all nine locales |
+| ST-12 | nit | Name the label, not the raw key, in the disabled reason | `settings_screen.dart:1407` `:1606` `:1613` `:1621` `:1628` `:1635` |
+| CI-26 | nit | Group the six source types and give each a description line instead of bare developer jargon | closed with FIX-09 (`create_dialog.dart:605`) |
+| ST-56 | nit | One name for a snippet -- currently Snippets / snippet / "Name of setting" / quick action | `settingname-text` → "Snippet name", all nine locales |
 
 ### FIX-13 -- Sell only what exists, gate it once
 

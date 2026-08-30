@@ -92,8 +92,6 @@ void main() {
       'defaultuserinfo-text',
       'wslconfrestart-text',
       'terminatedistro-text',
-      'restartwslnow-text',
-      'restartwslprompt-text',
       'deprecatedvalue-text',
       'onlyapplieswhen-text',
       'ignoredinmirrored-text',
@@ -130,9 +128,6 @@ void main() {
       'usewindowstimezoneinfo-text',
       'protectbinfmt-text',
       'protectbinfmtinfo-text',
-      'setdefaultdistro-text',
-      'setwslversion-text',
-      'microsoftwslsettings-text',
       'startuserinfo-text',
       'wslconfwritefailed-text',
       // P05-02, P05-08, P05-15, P05-16, P05-23 — the M-sized surfaces.
