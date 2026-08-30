@@ -510,3 +510,12 @@ Color secondaryTextColor(BuildContext context) =>
 /// Colour for something present but inactive, e.g. a "not included" marker.
 Color disabledTextColor(BuildContext context) =>
     FluentTheme.of(context).resources.textFillColorDisabled;
+
+/// Foreground colour for a control that destroys something.
+///
+/// A flat [Colors.red] is one value for both themes: it reads against the
+/// light background and turns muddy against the dark one. fluent's own
+/// per-brightness brush picks the shade that stays legible in each (audit
+/// LN-04).
+Color destructiveColor(BuildContext context) =>
+    Colors.red.defaultBrushFor(FluentTheme.of(context).brightness);

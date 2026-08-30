@@ -21,6 +21,7 @@ import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/components/wsl_size.dart';
+import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/theme.dart';
@@ -30,6 +31,27 @@ import 'package:wsl2distromanager/theme.dart';
 /// `number` is a plain count, and `enumeration` is a closed set of values that
 /// must not be typeable by hand (doc/audit/wsl-docs/ P05-09, P05-11).
 enum SettingsType { bool, text, size, number, enumeration }
+
+/// Asks before `wsl --shutdown`, then runs [onConfirmed].
+///
+/// Both buttons that call `WSLApi().restart()` stop *every* running instance
+/// and kill every process inside them, including an editor open over `\\wsl$`.
+/// Neither said so and neither asked (audit ST-04).
+void confirmStopWsl(BuildContext context, VoidCallback onConfirmed) {
+  dialog(
+    hostContext: context,
+    item: '',
+    title: 'stopwslquestion-text'.i18n(),
+    body: 'stopwslbody-text'.i18n(),
+    submitText: 'stopwsl-text'.i18n(),
+    submitInput: false,
+    submitStyle: ButtonStyle(
+      backgroundColor: ButtonState.all(Colors.red),
+      foregroundColor: ButtonState.all(Colors.white),
+    ),
+    onSubmit: (_) => onConfirmed(),
+  );
+}
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -360,16 +382,49 @@ class SettingsPageState extends State<SettingsPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Tooltip(
-                message: 'editwslconfighint-text'.i18n(),
-                child: Button(
-                    style: ButtonStyle(
-                        padding: ButtonState.all(const EdgeInsets.only(
-                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                    onPressed: () {
-                      WSLApi().editConfig();
-                    },
-                    child: Text('editwslconfig-text'.i18n())),
+              Row(
+                children: [
+                  Tooltip(
+                    message: 'editwslconfighint-text'.i18n(),
+                    child: Button(
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 15.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () {
+                          WSLApi().editConfig();
+                        },
+                        child: Text('editwslconfig-text'.i18n())),
+                  ),
+                  const SizedBox(width: 10.0),
+                  // Stop WSL used to sit 10px from Save, styled identically,
+                  // and shut every running instance down on one click with no
+                  // confirmation (audit ST-04). It is now on the opposite side
+                  // of the footer and asks first.
+                  Tooltip(
+                    message: 'stopwslhint-text'.i18n(),
+                    child: Button(
+                        key: const ValueKey('test-settings-stopwsl'),
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 15.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: () => confirmStopWsl(context, () {
+                              WSLApi().restart();
+                              Notify.message('shuttingdownwsl-text'.i18n(),
+                                  severity: InfoBarSeverity.success);
+                              hasPushed = false;
+                              // Leaving the screen is an exit route like any
+                              // other, so it asks about unsaved edits (ST-01).
+                              navigateGuarded('home');
+                            }),
+                        child: Text('stopwsl-text'.i18n())),
+                  ),
+                ],
               ),
               const SizedBox(
                 width: 10.0,
@@ -396,27 +451,6 @@ class SettingsPageState extends State<SettingsPage> {
                         child: Text('discardchanges-text'.i18n())),
                     const SizedBox(width: 10.0),
                   ],
-                  Tooltip(
-                    message: 'stopwslhint-text'.i18n(),
-                    child: Button(
-                        style: ButtonStyle(
-                            padding: ButtonState.all(const EdgeInsets.only(
-                                left: 15.0,
-                                right: 15.0,
-                                top: 10.0,
-                                bottom: 10.0))),
-                        onPressed: () {
-                          WSLApi().restart();
-                          hasPushed = false;
-                          // Leaving the screen is an exit route like any
-                          // other, so it asks about unsaved edits (ST-01).
-                          navigateGuarded('home');
-                        },
-                        child: Text('stopwsl-text'.i18n())),
-                  ),
-                  const SizedBox(
-                    width: 10.0,
-                  ),
                   Button(
                       key: const ValueKey('test-settings-save'),
                       style: ButtonStyle(
@@ -1009,12 +1043,30 @@ class SettingsPageState extends State<SettingsPage> {
                         ClipboardData(text: _mcpService.token)),
                   ),
                   const SizedBox(width: 4),
+                  // Rotating the token silently broke every client already
+                  // configured with the old one — no confirmation, no notice,
+                  // no undo, one click from a copy button (audit ST-19).
                   NamedIconButton(
                     key: const ValueKey('test-mcp-regenerate-token'),
                     label: 'regeneratetoken-text'.i18n(),
                     icon: FluentIcons.refresh,
-                    onPressed: () =>
-                        setState(() => _mcpService.regenerateToken()),
+                    onPressed: () => dialog(
+                      hostContext: context,
+                      item: '',
+                      title: 'regeneratetokenquestion-text'.i18n(),
+                      body: 'regeneratetokenbody-text'.i18n(),
+                      submitText: 'regeneratetoken-text'.i18n(),
+                      submitInput: false,
+                      submitStyle: ButtonStyle(
+                        backgroundColor: ButtonState.all(Colors.red),
+                        foregroundColor: ButtonState.all(Colors.white),
+                      ),
+                      onSubmit: (_) {
+                        setState(() => _mcpService.regenerateToken());
+                        Notify.message('tokenregenerated-text'.i18n(),
+                            severity: InfoBarSeverity.success);
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -1259,11 +1311,11 @@ class SettingsPageState extends State<SettingsPage> {
                 message: 'restartwslinfo-text'.i18n(),
                 child: Button(
                   key: const ValueKey('test-globalconfig-restart-wsl'),
-                  onPressed: () {
+                  onPressed: () => confirmStopWsl(context, () {
                     WSLApi().restart();
                     Notify.message('shuttingdownwsl-text'.i18n(),
                         severity: InfoBarSeverity.success);
-                  },
+                  }),
                   child: Text('restartwsl-text'.i18n()),
                 ),
               ),

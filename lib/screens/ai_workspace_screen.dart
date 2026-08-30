@@ -318,25 +318,26 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   Future<void> _handleUninstall(AiWorkspaceTool tool) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      // The tool's name used to float on a bare line above a sentence that
+      // called it "this tool" (PS-28), and the button that removes it was the
+      // accent-blue primary every harmless dialog uses, while every other
+      // destructive confirmation in the app submits in red (PS-27).
       builder: (dialogContext) => ContentDialog(
-        title: Text('ai-workspace-uninstall-title'.i18n()),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_toolName(tool)),
-            const SizedBox(height: 8),
-            Text('ai-workspace-uninstall-confirm'.i18n()),
-          ],
-        ),
+        title: Text('ai-workspace-uninstall-title'.i18n([_toolName(tool)])),
+        content: Text('ai-workspace-uninstall-confirm'.i18n([_toolName(tool)])),
         actions: [
           FilledButton(
             key: const ValueKey('test-ai-uninstall-confirm'),
+            style: ButtonStyle(
+              backgroundColor: ButtonState.all(Colors.red),
+              foregroundColor: ButtonState.all(Colors.white),
+            ),
             onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(true),
             child: Text('ai-workspace-uninstall-btn'.i18n()),
           ),
           Button(
             key: const ValueKey('test-ai-uninstall-cancel'),
+            autofocus: true,
             onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(false),
             child: Text('cancel-text'.i18n()),
           ),

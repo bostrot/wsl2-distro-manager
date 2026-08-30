@@ -14,7 +14,12 @@ copyDialog(item) {
   dialog(
       item: item,
       title: '${'copy-text'.i18n()} \'$item\'',
-      body: 'copyinstance-text'.i18n([distroLabel(item)]),
+      // A copy is an export + import (or a VHD copy) of the whole distro, and
+      // it stops the source first. None of that was said anywhere before the
+      // user committed to it (audit CI-31).
+      body: '${'copyinstance-text'.i18n([
+            distroLabel(item)
+          ])}\n\n${'copyinstancewarning-text'.i18n()}',
       submitText: 'copy-text'.i18n(),
       submitStyle: const ButtonStyle(),
       onSubmit: (inputText) async {

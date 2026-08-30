@@ -376,10 +376,23 @@ class _MountDialogState extends State<MountDialog> {
     );
   }
 
+  /// `wsl --mount \\.\PHYSICALDRIVE0` needs an elevated process and takes the
+  /// disk away from Windows for as long as it stays mounted. The form used to
+  /// say neither: the only text covering any of it was appended to the *error*
+  /// message, after the attempt had already failed (audit ST-46).
+  Widget _physicalMountWarning() => InfoBar(
+        key: const ValueKey('test-mount-physical-warning'),
+        title: Text('physicalmountwarning-title'.i18n()),
+        content: Text('physicalmountwarning-text'.i18n()),
+        severity: InfoBarSeverity.warning,
+      );
+
   Widget _buildPhysicalDiskForm() {
     if (_disks.isEmpty) {
       return Column(
         children: [
+          _physicalMountWarning(),
+          const SizedBox(height: 10),
           Text('nodisksfound-text'.i18n()),
           _fieldErrorText(),
           const SizedBox(height: 10),
@@ -394,6 +407,8 @@ class _MountDialogState extends State<MountDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _physicalMountWarning(),
+        const SizedBox(height: 10),
         InfoLabel(
           label: 'selectdisk-text'.i18n(),
           child: ComboBox<PhysicalDisk>(

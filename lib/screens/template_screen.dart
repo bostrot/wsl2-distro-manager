@@ -2,7 +2,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
-import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 
 /// Template Screen
@@ -141,8 +140,10 @@ class _TemplatePageState extends State<TemplatePage> {
                       ),
                   ],
                 ),
+                // Delete used to be pushed 900px to the far right by a
+                // `spaceBetween`, an unlabelled icon nowhere near the two
+                // labelled buttons it belongs with (audit ST-40).
                 content: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
@@ -180,15 +181,31 @@ class _TemplatePageState extends State<TemplatePage> {
                         ),
                       ],
                     ),
-                    NamedIconButton(
-                      label: 'deletetemplate-text'.i18n(),
-                      icon: FluentIcons.delete,
+                    const SizedBox(width: 10),
+                    Button(
+                      key: ValueKey('test-template-delete-$name'),
+                      style: ButtonStyle(
+                        foregroundColor:
+                            ButtonState.all(destructiveColor(context)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(FluentIcons.delete,
+                              color: destructiveColor(context)),
+                          const SizedBox(width: 10.0),
+                          Text('deletetemplate-text'.i18n()),
+                        ],
+                      ),
                       onPressed: () {
+                        // A template is an archive file, not a WSL instance.
+                        // This asked "Delete instance … permanently? / If you
+                        // delete this Distro …" — the distro string, reused
+                        // for a third kind of object (audit ST-38).
                         dialog(
                             item: name,
-                            title: 'deleteinstancequestion-text'
-                                .i18n([distroLabel(name)]),
-                            body: 'deleteinstancebody-text'.i18n(),
+                            title: 'deletetemplatequestion-text'.i18n([name]),
+                            body: 'deletetemplatebody-text'.i18n(),
                             submitText: 'delete-text'.i18n(),
                             submitInput: false,
                             submitStyle: ButtonStyle(

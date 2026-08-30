@@ -405,7 +405,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-06 -- Keyboard operability | 9 | 0 | 2026-08-30 |
 | FIX-07 -- Accessible names and honest tooltips | 10 | 0 | 2026-08-30 |
 | FIX-04 -- Long operations: moving progress and a way out | 7 | 0 | 2026-08-30 |
-| all others | 0 | 150 | -- |
+| FIX-08 -- Destructive actions must look and behave destructive | 12 | 0 | 2026-08-30 |
+| all others | 0 | 138 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -705,7 +706,7 @@ the audit made by hand, now enforced.
 | ST-44 | major | Give the mount confirmation the full disk identity, with a tooltip on the truncated form | `mount_dialog.dart:342`, `mount_dialog.dart:361` |
 | ST-14 | nit | A tooltip that repeats its own label is noise -- make it explain or remove it | `settings_screen.dart:364`, `:400`; nine removed at `:421` `:662` `:687` `:712` `:763` `:1143` `:1181` `:1200` `:1226` |
 | PS-30 | nit | Same for the Open Dashboard tooltip | `ai_workspace_screen.dart:669`, `ai_workspace_screen.dart:760` |
-| ST-30 | nit | Make the sync buttons' tooltips match their labels | `settings_dialog.dart:190`, `settings_dialog.dart:223` |
+| ST-30 | nit | Make the sync buttons' tooltips match their labels | `settings_dialog.dart:236`, `settings_dialog.dart:256` (moved by FIX-08's ST-29) |
 | LN-23 | nit | Tooltip the truncated distro name | `list_item.dart:66`, `list_item.dart:162` |
 | ST-51 | nit | One folder glyph across all pickers, with a tooltip | `mount_dialog.dart:448` |
 
@@ -714,20 +715,65 @@ the audit made by hand, now enforced.
 Nothing in this app that destroys data is styled differently from anything that does
 not, and three destructive actions have no confirmation at all.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| ST-04 | major | Confirm "Stop WSL" (it shuts down every distro), move it away from Save, and write a tooltip that adds information |
-| ST-19 | major | Confirm MCP token regeneration and state that existing clients break |
-| LN-04 | major | Label the row's nine icon buttons, group them, move Delete out of the middle, and style it destructively |
-| ST-29 | major | Style the four irreversible per-distro actions as actions, not as the Expander headers above them |
-| PS-27 | major | Use the red destructive button for uninstall, as every other destructive dialog does |
-| PS-35 | major | Confirm clear-chat-history, disable it when the history is empty, and give it a label |
-| ST-38 | major | Write template-delete copy instead of reusing the distro string ("Delete instance ... permanently?") |
-| ST-54 | major | Same for snippet delete |
-| ST-46 | major | State that a physical mount needs elevation and detaches the disk from Windows -- before it fails |
-| ST-40 | nit | Move the template delete next to the labelled buttons, give it a tooltip and destructive styling |
-| PS-28 | nit | Name the tool inside the uninstall sentence rather than on a bare line above "this tool" |
-| CI-31 | nit | Say that a copy duplicates the whole disk and stops the source distro |
+**Landed 2026-08-30.** Three of the twelve were one control that ran an
+irreversible command on a single click with nothing in between: Stop WSL
+(`wsl --shutdown` -- every instance on the machine, every process inside them),
+the MCP token refresh, and the chat panel's Clear. All three now go through the
+house `dialog()` with a red submit, and the copy says what breaks: which
+clients stop working, that unsaved work inside a running instance is lost.
+`dialog()` gained a `hostContext` parameter to make that possible --
+`GlobalVariable.infobox` is the *home* screen's key, so the settings screen and
+the chat panel were resolving it to an element that is not mounted while they
+are on screen.
+
+**Three delete confirmations, one string.** `deleteinstancequestion-text` /
+`deleteinstancebody-text` were shown over templates and snippets as well as
+distros, so deleting a saved archive asked "Delete instance test-4
+permanently? / If you delete this Distro you won't be able to recover it"
+(ST-38, ST-54). Each object now has its own pair, and a test asserts the distro
+strings are reachable from `list_item.dart` alone -- a fourth reuse would fail
+it. The template one says the instances already stamped from it survive,
+because that is the question the old copy made a user ask.
+
+**Styling was one colour and one layout decision.** `destructiveColor()` in
+`helpers.dart` resolves fluent's per-brightness red brush, because the flat
+`Colors.red` those dialogs submit with is the light-theme shade and goes muddy
+against the dark background. In the distro row, Delete moved out from between
+the broom and the gear -- two controls a user reaches for routinely, 32px away
+on each side -- to last, behind a vertical separator, in that colour. In the
+per-distro dialog the four action buttons were full-width rows with a 16px
+glyph on the right, i.e. the exact shape of the three `wsl.conf` Expanders
+stacked above them; they are content-sized now, under their own heading, icon
+leading the label, with Terminate, Download/Override and Move in the
+destructive colour. Terminate moved up out of `wslSettings()` to join them.
+
+**The two dialogs that needed words, not styling.** A physical-disk mount needs
+an elevated process and takes the disk away from Windows for the duration; the
+only text that said any of it was appended to the *error*, after the attempt
+had failed (ST-46). It is an InfoBar on the form now, before the disk is even
+picked. And a copy is an export + import of the whole distro that stops the
+source first -- 16.63 GB for `ai-workspace` on this host -- which the dialog
+now says before the user commits (CI-31).
+
+Regression tests: `test/destructive_actions_test.dart` (14) and one in
+`test/ai_workspace_screen_test.dart` (PS-27/PS-28), plus `destructiveColor` in
+`test/helpers_test.dart`. 17 new keys in all nine locales; the two
+`ai-workspace-uninstall-*` strings were rewritten to take the tool's name.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| ST-04 | major | Confirm "Stop WSL" (it shuts down every distro), move it away from Save, and write a tooltip that adds information | `settings_screen.dart:40` (`confirmStopWsl`), `:409` (moved to the left group, beside Edit .wslconfig), `:1314` (the second, unconfirmed `restart()`); tooltip rewritten in FIX-07 |
+| ST-19 | major | Confirm MCP token regeneration and state that existing clients break | `settings_screen.dart:1050`, message at `:1066` |
+| LN-04 | major | Label the row's nine icon buttons, group them, move Delete out of the middle, and style it destructively | `list_item.dart:530` (separator), `:549` (destructive colour, now last); the nine labels were already `MergeSemantics(Tooltip(...))` |
+| ST-29 | major | Style the four irreversible per-distro actions as actions, not as the Expander headers above them | `settings_dialog.dart:203` (heading + group), `:505` (`distroActionButton`), terminate moved from `wslSettings()` to `:221` |
+| PS-27 | major | Use the red destructive button for uninstall, as every other destructive dialog does | `ai_workspace_screen.dart:329` |
+| PS-35 | major | Confirm clear-chat-history, disable it when the history is empty, and give it a label | `ai_chat_panel.dart:163`; the label landed in FIX-07 |
+| ST-38 | major | Write template-delete copy instead of reusing the distro string ("Delete instance ... permanently?") | `template_screen.dart:207`, keys `deletetemplatequestion-text` / `deletetemplatebody-text` |
+| ST-54 | major | Same for snippet delete | `actions_screen.dart:374`, keys `deletesnippetquestion-text` / `deletesnippetbody-text` |
+| ST-46 | major | State that a physical mount needs elevation and detaches the disk from Windows -- before it fails | `mount_dialog.dart:383`, rendered at `:394` and `:410` |
+| ST-40 | nit | Move the template delete next to the labelled buttons, give it a tooltip and destructive styling | `template_screen.dart:185` -- it is a labelled button now, so the tooltip it needed as an icon is gone |
+| PS-28 | nit | Name the tool inside the uninstall sentence rather than on a bare line above "this tool" | `ai_workspace_screen.dart:326`, `:327` |
+| CI-31 | nit | Say that a copy duplicates the whole disk and stops the source distro | `copy_dialog.dart:22`, key `copyinstancewarning-text` |
 
 ### FIX-09 -- One dialog contract
 

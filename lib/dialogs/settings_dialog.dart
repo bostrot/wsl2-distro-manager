@@ -200,93 +200,84 @@ Column settingsColumn(
         height: 8.0,
       ),
       wslSettings(context, item, setState, draft),
-      const SizedBox(
-        height: 12.0,
-      ),
-      Sync().hasPath(item)
-          ? MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Tooltip(
-                message: 'startstopservinghint-text'.i18n(),
-                child: Button(
-                  style: ButtonStyle(
-                      padding: ButtonState.all(const EdgeInsets.only(
-                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('startstopserving-text'.i18n()),
-                        const Icon(FluentIcons.upload),
-                      ]),
-                  onPressed: () {
-                    plausible.event(name: "network_uploaded");
-                    Sync sync = Sync.instance(item);
-                    if (!isSyncing) {
-                      isSyncing = true;
-                      sync.startServer();
-                      Notify.message('startedserving-text'.i18n([item]));
-                    } else {
-                      isSyncing = false;
-                      sync.stopServer();
-                      Notify.message('stoppedserving-text'.i18n([item]));
-                    }
-                  },
-                ),
-              ),
-            )
-          : Container(),
-      const SizedBox(height: 8.0),
-      Sync().hasPath(item)
-          ? MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Tooltip(
-                message: 'downloadoverridehint-text'.i18n(),
-                child: Button(
-                  style: ButtonStyle(
-                      padding: ButtonState.all(const EdgeInsets.only(
-                          left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('downloadoverride-text'.i18n()),
-                        const Icon(FluentIcons.download),
-                      ]),
-                  onPressed: () {
-                    plausible.event(name: "network_downloaded");
-                    dialog(
-                        item: item,
-                        title: 'syncfromserver-text'.i18n([distroLabel(item)]),
-                        body: 'syncwarning-text'.i18n([item]),
-                        submitText: 'yesoverride-text'.i18n(),
-                        submitInput: false,
-                        submitStyle: ButtonStyle(
-                          backgroundColor: ButtonState.all(Colors.red),
-                          foregroundColor: ButtonState.all(Colors.white),
-                        ),
-                        onSubmit: (inputText) {
-                          Sync sync = Sync.instance(item);
-                          sync.download();
-                        });
-                  },
-                ),
-              ),
-            )
-          : Container(),
-      const SizedBox(height: 8.0),
-      MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Tooltip(
-          message: 'move-text'.i18n(),
-          child: Button(
-            style: ButtonStyle(
-                padding: ButtonState.all(const EdgeInsets.only(
-                    left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('move-text'.i18n()),
-                  const Icon(FluentIcons.move),
-                ]),
+      const SizedBox(height: 16.0),
+      const Divider(),
+      const SizedBox(height: 12.0),
+      // Everything above edits a setting; the four buttons below act on the
+      // distro itself. As full-width rows with a 16px glyph on the right they
+      // were the same shape, height and border as the `wsl.conf` expanders
+      // directly above them, so "Move" — export → unregister → import — read
+      // as one more section to open (audit ST-29).
+      Text('distroactions-text'.i18n(),
+          style: FluentTheme.of(context).typography.bodyStrong),
+      const SizedBox(height: 4.0),
+      Text('distroactionsinfo-text'.i18n(),
+          style: FluentTheme.of(context).typography.caption),
+      const SizedBox(height: 10.0),
+      Wrap(
+        spacing: 8.0,
+        runSpacing: 8.0,
+        children: [
+          distroActionButton(
+            context,
+            label: 'terminatedistro-text'.i18n(),
+            icon: FluentIcons.power_button,
+            destructive: true,
+            onPressed: () async {
+              await wslApiBuilder().stop(item);
+              Notify.message('terminatedistro-text'.i18n());
+            },
+          ),
+          if (Sync().hasPath(item))
+            distroActionButton(
+              context,
+              label: 'startstopserving-text'.i18n(),
+              icon: FluentIcons.upload,
+              tooltip: 'startstopservinghint-text'.i18n(),
+              onPressed: () {
+                plausible.event(name: "network_uploaded");
+                Sync sync = Sync.instance(item);
+                if (!isSyncing) {
+                  isSyncing = true;
+                  sync.startServer();
+                  Notify.message('startedserving-text'.i18n([item]));
+                } else {
+                  isSyncing = false;
+                  sync.stopServer();
+                  Notify.message('stoppedserving-text'.i18n([item]));
+                }
+              },
+            ),
+          if (Sync().hasPath(item))
+            distroActionButton(
+              context,
+              label: 'downloadoverride-text'.i18n(),
+              icon: FluentIcons.download,
+              tooltip: 'downloadoverridehint-text'.i18n(),
+              destructive: true,
+              onPressed: () {
+                plausible.event(name: "network_downloaded");
+                dialog(
+                    item: item,
+                    title: 'syncfromserver-text'.i18n([distroLabel(item)]),
+                    body: 'syncwarning-text'.i18n([item]),
+                    submitText: 'yesoverride-text'.i18n(),
+                    submitInput: false,
+                    submitStyle: ButtonStyle(
+                      backgroundColor: ButtonState.all(Colors.red),
+                      foregroundColor: ButtonState.all(Colors.white),
+                    ),
+                    onSubmit: (inputText) {
+                      Sync sync = Sync.instance(item);
+                      sync.download();
+                    });
+              },
+            ),
+          distroActionButton(
+            context,
+            label: 'move-text'.i18n(),
+            icon: FluentIcons.move,
+            destructive: true,
             onPressed: () async {
               // Pick directory
               String? selectedDirectory =
@@ -339,8 +330,8 @@ Column settingsColumn(
                   });
             },
           ),
-        ),
-      )
+        ],
+      ),
     ],
   );
 }
@@ -500,24 +491,47 @@ Widget wslSettings(
         ),
         const SizedBox(height: 8.0),
       ],
-      MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Button(
-          style: ButtonStyle(
-              padding: ButtonState.all(const EdgeInsets.only(
-                  left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-          child:
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('terminatedistro-text'.i18n()),
-            const Icon(FluentIcons.power_button),
-          ]),
-          onPressed: () async {
-            await wslApiBuilder().stop(item);
-            Notify.message('terminatedistro-text'.i18n());
-          },
-        ),
-      ),
     ],
+  );
+}
+
+/// A button in the per-distro dialog that *does* something to the distro.
+///
+/// All four used to be full-width rows with the label on the left and a 16px
+/// glyph on the right — the shape of the `wsl.conf` expanders stacked
+/// immediately above them (audit ST-29). They are sized to their content now,
+/// the icon leads the label, and the three that cannot be undone carry the
+/// destructive colour.
+Widget distroActionButton(
+  BuildContext context, {
+  required String label,
+  required IconData icon,
+  required VoidCallback onPressed,
+  String? tooltip,
+  bool destructive = false,
+  Key? key,
+}) {
+  final color = destructive ? destructiveColor(context) : null;
+  final button = Button(
+    key: key,
+    style: ButtonStyle(
+      padding: ButtonState.all(
+          const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0)),
+      foregroundColor: color == null ? null : ButtonState.all(color),
+    ),
+    onPressed: onPressed,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16.0, color: color),
+        const SizedBox(width: 8.0),
+        Text(label),
+      ],
+    ),
+  );
+  return MouseRegion(
+    cursor: SystemMouseCursors.click,
+    child: tooltip == null ? button : Tooltip(message: tooltip, child: button),
   );
 }
 

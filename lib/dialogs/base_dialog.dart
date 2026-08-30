@@ -23,9 +23,12 @@ dialog({
   bool centerText = false,
   String cancelText = '',
   Function? onCancel,
+  BuildContext? hostContext,
 }) {
-  // Get root context by Key
-  final context = GlobalVariable.infobox.currentContext!;
+  // Get root context by Key. `GlobalVariable.infobox` is the *home* screen's
+  // key, so a caller on another route has to hand over its own context or the
+  // key resolves to an unmounted element (audit ST-04).
+  final context = hostContext ?? GlobalVariable.infobox.currentContext!;
   final controller = TextEditingController();
   plausible.event(page: 'base_dialog');
   showDialog(

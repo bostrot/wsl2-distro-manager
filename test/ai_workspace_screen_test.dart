@@ -348,4 +348,39 @@ void main() {
     expect(find.byKey(const ValueKey('test-ai-installing-badge-hermesAgent')),
         findsNothing);
   });
+
+  // Every other destructive confirmation in the app submits in red; this one
+  // used the accent-blue primary, so the dialog that removes a tool looked
+  // less dangerous than the one that saves a template (audit PS-27). The name
+  // also floated on a bare line above a sentence calling it "this tool"
+  // (PS-28).
+  testWidgets('the uninstall confirmation is red and names the tool',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.stopped);
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester
+        .tap(find.byKey(const ValueKey('test-ai-uninstall-hermesAgent')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final confirm = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('test-ai-uninstall-confirm')));
+    expect(confirm.style?.backgroundColor?.resolve({}), Colors.red);
+
+    // One sentence, with the tool in it: the dialog no longer carries a
+    // stray caption line of its own.
+    expect(find.text('ai-workspace-uninstall-confirm'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(ContentDialog), matching: find.text('Hermes Agent')),
+        findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('test-ai-uninstall-cancel')));
+    await tester.pump(const Duration(milliseconds: 100));
+  });
 }

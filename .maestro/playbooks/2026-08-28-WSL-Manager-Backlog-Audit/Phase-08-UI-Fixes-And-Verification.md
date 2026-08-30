@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 64 of 214 findings closed (8 blockers, 40 majors, 16 nits).** Running
+  **In progress — 76 of 214 findings closed (8 blockers, 49 majors, 19 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -167,15 +167,45 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     window without typing left the account passwordless in silence. 14 new
     keys in all nine locales.
 
-  **Next up:** FIX-08 (destructive actions), then FIX-09. Verification for this
+  - **FIX-08 — destructive actions: complete (12/12).** Three of the twelve were
+    one control running an irreversible command on a single click with nothing
+    in between: Stop WSL (`wsl --shutdown` — every instance on the machine and
+    every process inside them), the MCP token refresh, and the chat panel's
+    Clear. All three go through the house `dialog()` with a red submit now, and
+    the copy names the consequence — which clients stop working, that unsaved
+    work inside a running instance is lost. `dialog()` gained a `hostContext`
+    parameter to make that possible: `GlobalVariable.infobox` is the *home*
+    screen's key, so the settings screen and the chat panel were resolving it
+    to an element that is not mounted while they are on screen. ST-38 and
+    ST-54 were one string used for three different objects — deleting a saved
+    template archive asked "Delete instance test-4 permanently? / If you delete
+    this Distro you won't be able to recover it" — so each object got its own
+    pair, guarded by a test that fails if the distro strings are referenced
+    outside `list_item.dart`. The styling half is one colour and one layout
+    call: `destructiveColor()` resolves fluent's per-brightness red brush,
+    because the flat `Colors.red` those dialogs submit with is the light-theme
+    shade and goes muddy against the dark background. Delete moved out from
+    between the broom and the gear — two controls a user reaches for routinely,
+    32px away on each side — to last in the row, behind a separator, in that
+    colour; and the per-distro dialog's four action buttons, which were
+    full-width rows with a 16px glyph on the right (the exact shape of the
+    three `wsl.conf` Expanders above them), are content-sized under their own
+    heading with the three irreversible ones coloured. ST-46 and CI-31 needed
+    words rather than styling: a physical mount needs elevation and takes the
+    disk away from Windows, which was only ever said *after* the mount failed,
+    and a copy duplicates the whole disk and stops the source first, which was
+    not said anywhere.
+
+  **Next up:** FIX-09 (one dialog contract), then FIX-10. Verification for this
   slice: `flutter analyze` clean (the same two pre-existing warnings, untouched),
-  `flutter test` 799 passing (was 787), `dart run scripts/check_translations.dart`
-  exit 0. 11 new keys in all nine locales. New tests:
-  `test/required_fields_test.dart` (six, covering ST-45 and ST-53 including the
-  clear-on-edit behaviour) and `test/qa_dialog_test.dart` (four, covering the
-  CI-36 success, failure, empty-selection and retry paths), plus one each in
-  `test/ai_workspace_screen_test.dart` (PS-19) and
-  `test/ai_workspace_service_test.dart` (PS-32). `flutter test integration_test/` could not be run here — the harness
+  `flutter test` 815 passing (was 799), `dart run scripts/check_translations.dart`
+  exit 0. 17 new keys in all nine locales, plus the two
+  `ai-workspace-uninstall-*` strings rewritten to take the tool's name. New
+  tests: `test/destructive_actions_test.dart` (14, covering LN-04, ST-04,
+  ST-19, ST-29, ST-46, ST-38/ST-54 and the locale placeholder count), one in
+  `test/ai_workspace_screen_test.dart` (PS-27/PS-28) and one in
+  `test/helpers_test.dart` (`destructiveColor` across both
+  brightnesses). `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`

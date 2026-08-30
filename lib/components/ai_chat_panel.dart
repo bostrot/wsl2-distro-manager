@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
 class AiChatPanel extends StatefulWidget {
@@ -156,14 +157,32 @@ class _AiChatPanelState extends State<AiChatPanel> {
               // No quota counter anymore — chat runs on the user's own API
               // key, so usage is between them and their provider.
               const SizedBox(width: 8),
+              // One mis-click used to erase the whole conversation with no
+              // undo, and the control stayed live over an empty history
+              // (audit PS-35).
               NamedIconButton(
+                key: const ValueKey('test-chat-clear'),
                 label: 'clearchat-text'.i18n(),
                 icon: FluentIcons.delete,
                 iconSize: 14,
-                onPressed: () {
-                  _ai.clearHistory();
-                  setState(() {});
-                },
+                onPressed: history.isEmpty
+                    ? null
+                    : () => dialog(
+                          hostContext: context,
+                          item: '',
+                          title: 'clearchatquestion-text'.i18n(),
+                          body: 'clearchatbody-text'.i18n(),
+                          submitText: 'clear-text'.i18n(),
+                          submitInput: false,
+                          submitStyle: ButtonStyle(
+                            backgroundColor: ButtonState.all(Colors.red),
+                            foregroundColor: ButtonState.all(Colors.white),
+                          ),
+                          onSubmit: (_) {
+                            _ai.clearHistory();
+                            setState(() {});
+                          },
+                        ),
               ),
             ],
           ),

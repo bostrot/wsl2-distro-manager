@@ -516,11 +516,37 @@ class Bar extends StatelessWidget {
               ),
               MergeSemantics(
                 child: Tooltip(
+                  message: 'settings-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        icon: const Icon(FluentIcons.settings, size: 16.0),
+                        onPressed: () {
+                          settingsDialog(widget.item);
+                        }),
+                  ),
+                ),
+              ),
+              // Delete is the only control in this strip that destroys the
+              // distro, and it used to sit between the broom and the gear —
+              // 32px from two buttons a user reaches for routinely (audit
+              // LN-04). It is last now, behind a separator, and carries the
+              // same destructive colour its confirmation's submit button has.
+              const Divider(
+                direction: Axis.vertical,
+                size: 20.0,
+                style: DividerThemeData(
+                  verticalMargin: EdgeInsets.symmetric(horizontal: 6.0),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
                   message: 'delete-text'.i18n(),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
-                        icon: const Icon(FluentIcons.delete, size: 16.0),
+                        icon: Icon(FluentIcons.delete,
+                            size: 16.0, color: destructiveColor(context)),
                         onPressed: () {
                           dialog(
                               item: widget.item,
@@ -554,19 +580,6 @@ class Bar extends StatelessWidget {
                                   diagnoseWithAi(failure.details);
                                 }
                               });
-                        }),
-                  ),
-                ),
-              ),
-              MergeSemantics(
-                child: Tooltip(
-                  message: 'settings-text'.i18n(),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: IconButton(
-                        icon: const Icon(FluentIcons.settings, size: 16.0),
-                        onPressed: () {
-                          settingsDialog(widget.item);
                         }),
                   ),
                 ),

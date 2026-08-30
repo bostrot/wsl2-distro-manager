@@ -361,14 +361,19 @@ class QuickPageState extends State<QuickPage> {
                           child: Tooltip(
                             message: 'delete-text'.i18n(),
                             child: IconButton(
-                              icon: const Icon(FluentIcons.delete),
+                              icon: Icon(FluentIcons.delete,
+                                  color: destructiveColor(context)),
                               onPressed: () {
-                                // Open remove dialog
+                                // A snippet is two SharedPreferences entries.
+                                // This asked "Delete instance … permanently? /
+                                // If you delete this Distro …" — the third
+                                // object to be offered the distro copy
+                                // (audit ST-54).
                                 dialog(
                                     item: quickActions[i],
-                                    title: 'deleteinstancequestion-text'
+                                    title: 'deletesnippetquestion-text'
                                         .i18n([quickActions[i].name]),
-                                    body: 'deleteinstancebody-text'.i18n(),
+                                    body: 'deletesnippetbody-text'.i18n(),
                                     submitText: 'delete-text'.i18n(),
                                     submitInput: false,
                                     submitStyle: ButtonStyle(
