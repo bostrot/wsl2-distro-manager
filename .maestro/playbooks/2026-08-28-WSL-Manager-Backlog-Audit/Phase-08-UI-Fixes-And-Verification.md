@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 143 of 214 findings closed (13 blockers, 79 majors, 51 nits).** Running
+  **In progress — 156 of 214 findings closed (15 blockers, 85 majors, 56 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -263,10 +263,21 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     FIX-16's CI-38 landed with this slice: the WSL install panel is a real
     button that names the elevation prompt, with the command kept beside it.
 
-  **Next up:** FIX-13 (the paid surface), then FIX-15/16/17. Verification for
-  this slice: `flutter analyze` clean (the same two pre-existing warnings),
-  `flutter test` 825 passing, `dart run scripts/check_translations.dart`
-  exit 0. `flutter test integration_test/` could not be run here — the harness
+  - **FIX-13 — sell only what exists: complete (13/13).** The purchase table
+    dropped Script Generation (does not exist) and Smart Recommendations
+    (ships free); the price is on the screen (US$ 9.99 one-time, read off the
+    live Store listing); Pro users see the feature table too; a restore row
+    re-runs the entitlement probe visibly and links the issue tracker. The
+    three call-site-less gate components are deleted. "Diagnose with AI"
+    renders nothing without Pro and a key, and a diagnosis opens in a
+    selectable dialog, not a 30-second toast. BYOK fields carry their lock
+    per-field; the paywall keeps its BETA badge; the chat panel's unreachable
+    Upgrade button is gone.
+
+  **Next up:** FIX-15/16/17, then FIX-19/20. Verification for this slice:
+  `flutter analyze` clean (the same two pre-existing warnings), `flutter test`
+  825 passing, `dart run scripts/check_translations.dart` exit 0. 7 new keys
+  and 4 dead keys deleted in all nine locales. `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`

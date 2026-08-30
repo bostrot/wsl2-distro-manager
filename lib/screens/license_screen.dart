@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:provider/provider.dart';
 
 class LicenseScreen extends StatefulWidget {
@@ -38,10 +39,13 @@ class _LicenseScreenState extends State<LicenseScreen> {
   }
 
   Future<void> _openStorePage() async {
-    final uri = Uri.parse(windowsStoreUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    // No canLaunchUrl gate: on Windows it reports false for perfectly
+    // launchable https URLs, which silently disabled the one thing this
+    // screen asks the user to do (audit PS-07).
+    try {
+      await launchUrl(Uri.parse(windowsStoreUrl),
+          mode: LaunchMode.externalApplication);
+    } catch (_) {}
   }
 
   @override
@@ -68,16 +72,27 @@ class _LicenseScreenState extends State<LicenseScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildHeader(),
+                          _buildHeader(manager),
                           const SizedBox(height: 24),
 
                           if (manager.isPro) ...[
                             _buildStatusCard(manager),
+                            const SizedBox(height: 20),
+                            // The feature list used to live only in the
+                            // non-Pro branch, so a paying user could never
+                            // see what their plan includes (audit PS-04).
+                            Card(
+                              padding: const EdgeInsets.all(20),
+                              borderRadius: BorderRadius.circular(10),
+                              child: _buildComparisonTable(),
+                            ),
                           ] else ...[
                             // Not Pro: lead with the pitch, status after.
                             _buildStoreSection(),
                             const SizedBox(height: 20),
                             _buildStatusCard(manager),
+                            const SizedBox(height: 12),
+                            _buildRestoreRow(),
                           ],
                         ],
                       ),
@@ -92,7 +107,46 @@ class _LicenseScreenState extends State<LicenseScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  /// "Already bought Pro but the app shows Free?" — the entitlement probe is
+  /// a single package-identity check with, before this, no way to re-run it
+  /// visibly and no support path when it is wrong (audit PS-05).
+  Widget _buildRestoreRow() {
+    return Row(
+      children: [
+        Text('restore-hint-text'.i18n(),
+            style: TextStyle(
+                fontSize: 12, color: secondaryTextColor(context))),
+        const SizedBox(width: 8),
+        Button(
+          key: const ValueKey('test-license-recheck'),
+          onPressed: () async {
+            await _loadStatus();
+            if (!mounted) return;
+            Notify.message(
+                LicenseManager().isPro
+                    ? 'restore-found-text'.i18n()
+                    : 'restore-notfound-text'.i18n(),
+                severity: LicenseManager().isPro
+                    ? InfoBarSeverity.success
+                    : InfoBarSeverity.warning);
+          },
+          child: Text('restore-check-text'.i18n()),
+        ),
+        const SizedBox(width: 8),
+        HyperlinkButton(
+          onPressed: () async {
+            try {
+              await launchUrl(Uri.parse(githubIssues),
+                  mode: LaunchMode.externalApplication);
+            } catch (_) {}
+          },
+          child: Text('restore-support-text'.i18n()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(LicenseManager manager) {
     final accent = FluentTheme.of(context).accentColor;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -116,8 +170,12 @@ class _LicenseScreenState extends State<LicenseScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // The nav item and the page it opens now share a name — the nav
+            // said "Upgrade to Pro" and the page said "License" (audit PS-06).
             Text(
-              'license-text'.i18n(),
+              manager.isPro
+                  ? 'license-text'.i18n()
+                  : 'upgrade-pro-text'.i18n(),
               style: FluentTheme.of(context).typography.titleLarge,
             ),
             const SizedBox(height: 2),
@@ -215,7 +273,16 @@ class _LicenseScreenState extends State<LicenseScreen> {
             'store-buy-detail-text'.i18n(),
             style: TextStyle(fontSize: 13, color: secondaryTextColor(context)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          // The one question every buyer has first was the one thing the
+          // screen never answered (audit PS-02). The number is the US Store
+          // price; the button's Store page shows the buyer's own.
+          Text(
+            'store-price-text'.i18n(),
+            key: const ValueKey('test-license-price'),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
@@ -248,8 +315,10 @@ class _LicenseScreenState extends State<LicenseScreen> {
     final rows = <List<Object>>[
       ['core-wsl-management-feature', true, true],
       ['ai-config-assistant-feature', false, true],
-      ['smart-recommendations-feature', false, true],
-      ['script-generation-feature', false, true],
+      // "Smart Recommendations" and "Script Generation" are gone: the first
+      // ships in the free tier and the second does not exist anywhere in the
+      // app, so both rows were selling something other than what Pro is
+      // (audit PS-01).
       ['error-diagnosis-feature', false, true],
       ['ai-workspace-feature', false, true],
     ];
@@ -264,7 +333,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
             child: Icon(
               included ? FluentIcons.check_mark : FluentIcons.cancel,
               size: 14,
-              color: included ? accent : disabledTextColor(context),
+              color: included ? accent : secondaryTextColor(context),
             ),
           ),
         );

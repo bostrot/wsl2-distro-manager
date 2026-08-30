@@ -266,7 +266,6 @@
   "localdockerimage-text": "Imagen Docker local",
   "localdockerimageplaceholder-text": "Nombre de la imagen (p. ej. ubuntu:latest)",
   "localdockerimagenotfound-text": "Imagen Docker local no encontrada",
-  "pro-feature-text": "Función Pro",
   "recommendations-title": "Recomendaciones",
   "savedastemplate-text": "guardado como plantilla",
   "beta-banner-title": "Función beta",
@@ -308,8 +307,6 @@
   "plan-free": "Plan Gratuito",
   "plan-pro": "Plan Pro",
   "ai-config-assistant-feature": "Asistente de configuración con IA *",
-  "smart-recommendations-feature": "Recomendaciones inteligentes *",
-  "script-generation-feature": "Generación de scripts *",
   "error-diagnosis-feature": "Diagnóstico de errores *",
   "compare-plans-text": "Comparar Planes",
   "core-wsl-management-feature": "Gestionar distros WSL localmente",
@@ -343,7 +340,6 @@
   "install-text": "Instalar",
   "upgrade-text": "Mejorar",
   "upgrade-pro-text": "Actualizar a Pro",
-  "upgrade-prompt-error": "El diagnóstico de errores con IA es una función Pro. Actualiza para desbloquearla.",
   "reportbug-text": "Informar de un error",
   "compact-nospace-text": "No hay suficiente espacio libre para compactar: el disco ocupa %s0 y solo hay %s1 disponibles. Libera espacio o mueve la instancia a una unidad más grande.",
   "plan-free-short": "Gratis",
@@ -650,5 +646,12 @@
   "vmidletimeout-text": "Tiempo de inactividad de la VM",
   "moveinprogress-text": "Se está moviendo una instancia. La lista vuelve cuando termine el traslado.",
   "turnkeywarningtitle-text": "Los dispositivos TurnKey son experimentales",
-  "installwsl-text": "Instalar WSL (pide aprobación de administrador)"
+  "installwsl-text": "Instalar WSL (pide aprobación de administrador)",
+  "store-price-text": "9,99 US$, pago único; tu página de la Store muestra el precio en tu moneda.",
+  "restore-hint-text": "¿Ya compraste Pro pero aparece Free?",
+  "restore-check-text": "Comprobar de nuevo",
+  "restore-found-text": "Pro encontrado. ¡Gracias por tu compra!",
+  "restore-notfound-text": "No se encontró una licencia de la Store. Pro requiere la versión de Microsoft Store de esta aplicación.",
+  "restore-support-text": "Obtener ayuda",
+  "byok-locked-text": "Función Pro"
 }

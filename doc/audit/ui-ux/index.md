@@ -412,7 +412,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-11 -- Close the localization holes | 13 | 0 | 2026-08-30 |
 | FIX-18 -- Recommendations panel | 4 | 0 | 2026-08-30 |
 | FIX-12 -- Copy, casing and terminology | 14 | 0 | 2026-08-30 |
-| all others | 0 | 71 | -- |
+| FIX-13 -- Sell only what exists, gate it once | 13 | 0 | 2026-08-30 |
+| all others | 0 | 58 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -1010,21 +1011,49 @@ rework of the install panel, landed with this slice.
 The purchase screen sells two features with no reachable implementation and never shows
 a price. Separately, there are four gating components of which three have no call sites.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| PS-01 | blocker | Remove Script Generation and Smart Recommendations from the purchase table, or ship them (the L in this list) |
-| PS-02 | blocker | Show the price on the purchase screen |
-| PS-04 | major | Show the feature list to Pro users too -- it currently lives only in the non-Pro branch |
-| PS-05 | major | Add a restore-purchase / support path for a wrong MSIX entitlement result |
-| PS-08 | major | One gate component with one vocabulary; delete `ProBadge` / `ProFeatureWrapper` / `UpgradePrompt` or use them |
-| PS-03 | major | Give the comparison glyphs text or semantics; the "not included" mark measures 1.85:1 |
-| CI-23 | major | Offer a non-AI remedy first -- with no key, the only remedy answers with a go-to-Settings toast |
-| LN-19 | nit | Do not show "Diagnose with AI" to users who cannot use it |
-| PS-06 | nit | One name: the nav says "Upgrade to Pro", the page says "License" |
-| PS-07 | nit | Drop the `canLaunchUrl` gate on the store button -- the codebase works around that bug everywhere else |
-| PS-12 | nit | Per-field reason on the disabled BYOK fields, and placeholders that do not read as filled-in values |
-| PS-13 | nit | Keep the BETA badge on the paywall that the Pro build shows on the same page |
-| PS-39 | nit | Remove the chat panel's unreachable Upgrade button (the FAB that opens it is Pro-only) |
+**Landed 2026-08-30.** The comparison table stopped selling what Pro is not:
+"Script Generation" does not exist anywhere in the app and "Smart
+Recommendations" ships in the free tier, so both rows are gone (PS-01, the S
+option). The price is on the screen — US$ 9.99 one-time, with a note that the
+Store shows the buyer's own currency (PS-02; the number was read off the live
+Store listing for product 9NWS9K95NMJB). Pro users see the feature table too,
+in a card under their status (PS-04). Under the free tier's status card sits a
+restore row: "Already bought Pro but it shows Free?" with a **Check again**
+button that re-runs the entitlement probe *visibly* and reports the result,
+and a **Get help** link to the issue tracker (PS-05).
+
+`lib/components/pro_badge.dart` — `ProBadge`, `ProFeatureWrapper` and
+`UpgradePrompt`, three gate components with zero call sites — is deleted with
+the keys only it used (PS-08). The nav item and the page share a name now:
+"Upgrade to Pro" for free users, "License" for Pro (PS-06). The Store button
+lost its `canLaunchUrl` gate, which reports false on Windows for launchable
+https URLs (PS-07).
+
+**The AI affordance that could not do its job is not shown.** `AiDiagnoseButton`
+renders nothing without Pro *and* a configured key — clicking it used to
+answer with a go-configure-something-else toast (LN-19, CI-23) — and a
+diagnosis that does run opens in a dialog with selectable text instead of a
+30-second toast. The BYOK fields carry their lock on the field itself ("API
+key — Pro feature") and drop the placeholders that made empty locked boxes
+read as filled in (PS-12). The AI Workspace paywall keeps the BETA badge the
+Pro build shows on the same page (PS-13), and the chat panel's unreachable
+Upgrade button — the FAB that opens the panel is Pro-only — is gone (PS-39).
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| PS-01 | blocker | Remove Script Generation and Smart Recommendations from the purchase table, or ship them (the L in this list) | `license_screen.dart:307` (removed) |
+| PS-02 | blocker | Show the price on the purchase screen | `license_screen.dart:281`, key `store-price-text` |
+| PS-04 | major | Show the feature list to Pro users too -- it currently lives only in the non-Pro branch | `license_screen.dart:84` |
+| PS-05 | major | Add a restore-purchase / support path for a wrong MSIX entitlement result | `license_screen.dart:113` (`_buildRestoreRow`) |
+| PS-08 | major | One gate component with one vocabulary; delete `ProBadge` / `ProFeatureWrapper` / `UpgradePrompt` or use them | `pro_badge.dart` deleted |
+| PS-03 | major | Give the comparison glyphs text or semantics; the "not included" mark measures 1.85:1 | semantics landed with FIX-07; mark raised to `secondaryTextColor` (`license_screen.dart:327`) |
+| CI-23 | major | Offer a non-AI remedy first -- with no key, the only remedy answers with a go-to-Settings toast | `ai_diagnosis.dart:13` (`canDiagnoseWithAi`), diagnosis in a dialog at `:38` |
+| LN-19 | nit | Do not show "Diagnose with AI" to users who cannot use it | `ai_diagnosis.dart:70` |
+| PS-06 | nit | One name: the nav says "Upgrade to Pro", the page says "License" | `license_screen.dart:176` |
+| PS-07 | nit | Drop the `canLaunchUrl` gate on the store button -- the codebase works around that bug everywhere else | `license_screen.dart:41` |
+| PS-12 | nit | Per-field reason on the disabled BYOK fields, and placeholders that do not read as filled-in values | `settings_screen.dart:877` `:897` `:916` |
+| PS-13 | nit | Keep the BETA badge on the paywall that the Pro build shows on the same page | `ai_workspace_screen.dart:431` |
+| PS-39 | nit | Remove the chat panel's unreachable Upgrade button (the FAB that opens it is Pro-only) | `ai_chat_panel.dart:211` (removed) |
 
 ### FIX-14 -- AI Workspace card lifecycle
 

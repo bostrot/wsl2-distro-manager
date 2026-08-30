@@ -267,7 +267,6 @@
   "localdockerimage-text": "本機 Docker 映像",
   "localdockerimageplaceholder-text": "映像名稱（例如 ubuntu:latest）",
   "localdockerimagenotfound-text": "找不到本機 Docker 映像",
-  "pro-feature-text": "Pro 功能",
   "recommendations-title": "推薦",
   "savedastemplate-text": "已儲存為範本",
   "beta-banner-title": "Beta 功能",
@@ -309,8 +308,6 @@
   "plan-free": "免费方案",
   "plan-pro": "专业方案",
   "ai-config-assistant-feature": "AI 設定助理 *",
-  "smart-recommendations-feature": "智慧推薦 *",
-  "script-generation-feature": "指令碼產生 *",
   "error-diagnosis-feature": "錯誤診斷 *",
   "compare-plans-text": "比較方案",
   "core-wsl-management-feature": "本機管理 WSL 發行版",
@@ -344,7 +341,6 @@
   "install-text": "安裝",
   "upgrade-text": "升級",
   "upgrade-pro-text": "升級至 Pro",
-  "upgrade-prompt-error": "AI 錯誤診斷是 Pro 功能。升級以解鎖。",
   "reportbug-text": "回報問題",
   "compact-nospace-text": "空間不足，無法壓縮：磁碟為 %s0，但僅有 %s1 可用。請釋放空間或將實例移至更大的磁碟機。",
   "plan-free-short": "免費",
@@ -651,5 +647,12 @@
   "vmidletimeout-text": "VM 閒置逾時",
   "moveinprogress-text": "正在移動一個安裝實體。移動完成後清單會恢復。",
   "turnkeywarningtitle-text": "TurnKey 裝置屬於實驗性功能",
-  "installwsl-text": "安裝 WSL（會要求系統管理員核准）"
+  "installwsl-text": "安裝 WSL（會要求系統管理員核准）",
+  "store-price-text": "9.99 美元，一次性購買——商店頁面會以您的貨幣顯示價格。",
+  "restore-hint-text": "已購買 Pro 卻顯示 Free？",
+  "restore-check-text": "重新檢查",
+  "restore-found-text": "已找到 Pro——感謝您的購買！",
+  "restore-notfound-text": "找不到商店授權。Pro 需要本應用程式的 Microsoft Store 版本。",
+  "restore-support-text": "取得協助",
+  "byok-locked-text": "Pro 功能"
 }

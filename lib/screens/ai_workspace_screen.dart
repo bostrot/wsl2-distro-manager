@@ -428,10 +428,19 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               child: Icon(FluentIcons.robot, size: 36, color: accent),
             ),
             const SizedBox(height: 20),
-            Text(
-              'ai-workspace-title'.i18n(),
-              style: FluentTheme.of(context).typography.titleLarge,
-              textAlign: TextAlign.center,
+            // The badge stays on the paywall: the one moment the app asks
+            // for money must not be the one moment it stops saying the
+            // feature is beta (audit PS-13).
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'ai-workspace-title'.i18n(),
+                  style: FluentTheme.of(context).typography.titleLarge,
+                ),
+                const SizedBox(width: 8),
+                const BetaBadge(),
+              ],
             ),
             const SizedBox(height: 8),
             Text(

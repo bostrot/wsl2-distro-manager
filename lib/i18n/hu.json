@@ -266,7 +266,6 @@
   "localdockerimage-text": "Helyi Docker-image",
   "localdockerimageplaceholder-text": "Image neve (pl. ubuntu:latest)",
   "localdockerimagenotfound-text": "A helyi Docker-image nem található",
-  "pro-feature-text": "Pro funkció",
   "recommendations-title": "Ajánlások",
   "savedastemplate-text": "sablonként mentve",
   "beta-banner-title": "Béta funkció",
@@ -308,8 +307,6 @@
   "plan-free": "Ingyenes csomag",
   "plan-pro": "Pro csomag",
   "ai-config-assistant-feature": "MI konfigurációs asszisztens *",
-  "smart-recommendations-feature": "Intelligens ajánlások *",
-  "script-generation-feature": "Szkriptgenerálás *",
   "error-diagnosis-feature": "Hibadiagnosztika *",
   "compare-plans-text": "Csomagok összehasonlítása",
   "core-wsl-management-feature": "WSL disztribúciók helyi kezelése",
@@ -343,7 +340,6 @@
   "install-text": "Telepítés",
   "upgrade-text": "Frissítés",
   "upgrade-pro-text": "Frissítés Pro-ra",
-  "upgrade-prompt-error": "Az AI hibadiagnosztika Pro funkció. Frissítsen a feloldásához.",
   "reportbug-text": "Hiba jelentése",
   "compact-nospace-text": "Nincs elég szabad hely a tömörítéshez: a lemez %s0, és csak %s1 érhető el. Szabadíts fel helyet, vagy helyezd át a példányt egy nagyobb meghajtóra.",
   "plan-free-short": "Ingyenes",
@@ -650,5 +646,12 @@
   "vmidletimeout-text": "VM tétlenségi időkorlát",
   "moveinprogress-text": "Egy példány áthelyezése folyamatban van. A lista visszatér, amint az áthelyezés befejeződik.",
   "turnkeywarningtitle-text": "A TurnKey-készülékek kísérleti jellegűek",
-  "installwsl-text": "WSL telepítése (rendszergazdai jóváhagyást kér)"
+  "installwsl-text": "WSL telepítése (rendszergazdai jóváhagyást kér)",
+  "store-price-text": "9,99 USD, egyszeri díj — a Store-oldalad a saját pénznemedben mutatja az árat.",
+  "restore-hint-text": "Már megvetted a Prót, mégis Free-t mutat?",
+  "restore-check-text": "Ellenőrzés újra",
+  "restore-found-text": "Pro megtalálva — köszönjük a vásárlást!",
+  "restore-notfound-text": "Nem található Store-licenc. A Próhoz az alkalmazás Microsoft Store-os változata kell.",
+  "restore-support-text": "Segítségkérés",
+  "byok-locked-text": "Pro funkció"
 }

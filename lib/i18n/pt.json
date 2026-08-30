@@ -268,7 +268,6 @@
   "localdockerimage-text": "Imagem Docker local",
   "localdockerimageplaceholder-text": "Nome da imagem (ex.: ubuntu:latest)",
   "localdockerimagenotfound-text": "Imagem Docker local não encontrada",
-  "pro-feature-text": "Recurso Pro",
   "recommendations-title": "Recomendações",
   "savedastemplate-text": "salvo como modelo",
   "beta-banner-title": "Recurso beta",
@@ -310,8 +309,6 @@
   "plan-free": "Plano Gratuito",
   "plan-pro": "Plano Pro",
   "ai-config-assistant-feature": "Assistente de configuração com IA *",
-  "smart-recommendations-feature": "Recomendações inteligentes *",
-  "script-generation-feature": "Geração de scripts *",
   "error-diagnosis-feature": "Diagnóstico de erros *",
   "compare-plans-text": "Comparar Planos",
   "core-wsl-management-feature": "Gerenciar distros WSL localmente",
@@ -345,7 +342,6 @@
   "install-text": "Instalar",
   "upgrade-text": "Atualizar",
   "upgrade-pro-text": "Atualizar para Pro",
-  "upgrade-prompt-error": "O diagnóstico de erros por IA é um recurso Pro. Atualize para desbloqueá-lo.",
   "reportbug-text": "Reportar um erro",
   "compact-nospace-text": "Espaço livre insuficiente para compactar: o disco tem %s0 e apenas %s1 estão disponíveis. Libere espaço ou mova a instância para uma unidade maior.",
   "plan-free-short": "Grátis",
@@ -652,5 +648,12 @@
   "vmidletimeout-text": "Tempo ocioso da VM",
   "moveinprogress-text": "Uma instância está sendo movida. A lista volta quando a mudança terminar.",
   "turnkeywarningtitle-text": "Appliances TurnKey são experimentais",
-  "installwsl-text": "Instalar o WSL (pede aprovação de administrador)"
+  "installwsl-text": "Instalar o WSL (pede aprovação de administrador)",
+  "store-price-text": "US$ 9,99, pagamento único — sua página da Store mostra o preço na sua moeda.",
+  "restore-hint-text": "Já comprou o Pro mas aparece Free?",
+  "restore-check-text": "Verificar de novo",
+  "restore-found-text": "Pro encontrado — obrigado pela compra!",
+  "restore-notfound-text": "Nenhuma licença da Store encontrada. O Pro exige a versão da Microsoft Store deste aplicativo.",
+  "restore-support-text": "Obter ajuda",
+  "byok-locked-text": "Recurso Pro"
 }

@@ -266,7 +266,6 @@
   "localdockerimage-text": "ローカルDockerイメージ",
   "localdockerimageplaceholder-text": "イメージ名（例：ubuntu:latest）",
   "localdockerimagenotfound-text": "ローカルDockerイメージが見つかりません",
-  "pro-feature-text": "Pro機能",
   "recommendations-title": "おすすめ",
   "savedastemplate-text": "をテンプレートとして保存しました",
   "beta-banner-title": "ベータ機能",
@@ -308,8 +307,6 @@
   "plan-free": "フリープラン",
   "plan-pro": "プロプラン",
   "ai-config-assistant-feature": "AI 設定アシスタント *",
-  "smart-recommendations-feature": "スマートな推奨 *",
-  "script-generation-feature": "スクリプト生成 *",
   "error-diagnosis-feature": "エラー診断 *",
   "compare-plans-text": "プランを比較",
   "core-wsl-management-feature": "WSLディストロをローカルで管理",
@@ -343,7 +340,6 @@
   "install-text": "インストール",
   "upgrade-text": "アップグレード",
   "upgrade-pro-text": "Proにアップグレード",
-  "upgrade-prompt-error": "AIエラー診断はPro機能です。アップグレードして利用を開始してください。",
   "reportbug-text": "バグを報告",
   "compact-nospace-text": "圧縮に必要な空き容量が足りません: ディスクは %s0 ですが、空き容量は %s1 のみです。空き容量を増やすか、インスタンスをより大きなドライブに移動してください。",
   "plan-free-short": "無料",
@@ -650,5 +646,12 @@
   "vmidletimeout-text": "VM アイドルタイムアウト",
   "moveinprogress-text": "インスタンスを移動しています。移動が完了すると一覧が戻ります。",
   "turnkeywarningtitle-text": "TurnKey アプライアンスは実験的な機能です",
-  "installwsl-text": "WSL をインストール（管理者の承認を求めます）"
+  "installwsl-text": "WSL をインストール（管理者の承認を求めます）",
+  "store-price-text": "9.99 米ドル（買い切り）。ストアページではお住まいの通貨で価格が表示されます。",
+  "restore-hint-text": "Pro を購入済みなのに Free と表示されますか？",
+  "restore-check-text": "再確認",
+  "restore-found-text": "Pro を確認しました。ご購入ありがとうございます！",
+  "restore-notfound-text": "ストアのライセンスが見つかりません。Pro には本アプリの Microsoft Store 版が必要です。",
+  "restore-support-text": "サポートを受ける",
+  "byok-locked-text": "Pro 機能"
 }

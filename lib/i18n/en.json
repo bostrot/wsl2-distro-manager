@@ -267,7 +267,6 @@
   "localdockerimage-text": "Local Docker image",
   "localdockerimageplaceholder-text": "Image name (e.g. ubuntu:latest)",
   "localdockerimagenotfound-text": "Local Docker image not found",
-  "pro-feature-text": "Pro feature",
   "recommendations-title": "Recommendations",
   "savedastemplate-text": "saved as template",
   "beta-banner-title": "Beta feature",
@@ -308,8 +307,6 @@
   "plan-free": "Free plan",
   "plan-pro": "Pro plan",
   "ai-config-assistant-feature": "AI Configuration Assistant *",
-  "smart-recommendations-feature": "Smart Recommendations *",
-  "script-generation-feature": "Script Generation *",
   "error-diagnosis-feature": "Error Diagnosis *",
   "compare-plans-text": "Compare plans",
   "core-wsl-management-feature": "Manage WSL distros locally",
@@ -343,7 +340,6 @@
   "install-text": "Install",
   "upgrade-text": "Upgrade",
   "upgrade-pro-text": "Upgrade to Pro",
-  "upgrade-prompt-error": "AI error diagnosis is a Pro feature. Upgrade to unlock it.",
   "reportbug-text": "Report a bug",
   "compact-nospace-text": "Not enough free space to compact: the disk is %s0 but only %s1 is available. Free up space or move the instance to a larger drive.",
   "plan-free-short": "Free",
@@ -650,5 +646,12 @@
   "vmidletimeout-text": "VM idle timeout",
   "moveinprogress-text": "An instance is being moved. The list comes back when the move finishes.",
   "turnkeywarningtitle-text": "TurnKey appliances are experimental",
-  "installwsl-text": "Install WSL (asks for administrator approval)"
+  "installwsl-text": "Install WSL (asks for administrator approval)",
+  "store-price-text": "US$ 9.99, one-time — your Store page shows the price in your currency.",
+  "restore-hint-text": "Already bought Pro but it shows Free?",
+  "restore-check-text": "Check again",
+  "restore-found-text": "Pro found — thank you for your purchase!",
+  "restore-notfound-text": "No Store licence found. Pro needs the Microsoft Store build of this app.",
+  "restore-support-text": "Get help",
+  "byok-locked-text": "Pro feature"
 }

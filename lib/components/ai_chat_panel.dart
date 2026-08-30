@@ -209,13 +209,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      if (!_license.isPro) ...[
-                        const SizedBox(height: 16),
-                        Button(
-                          onPressed: () => navigateGuarded('license'),
-                          child: Text('upgrade-text'.i18n()),
-                        ),
-                      ],
+                      // No Upgrade button here: the FAB that opens this panel
+                      // is Pro-only, so the only people who could ever see
+                      // one are already Pro (audit PS-39). If the panel needs
+                      // a key instead, Send says so inline (PS-34).
                     ],
                   ),
                 )

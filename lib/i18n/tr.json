@@ -266,7 +266,6 @@
   "localdockerimage-text": "Yerel Docker İmajı",
   "localdockerimageplaceholder-text": "İmaj adı (örn. ubuntu:latest)",
   "localdockerimagenotfound-text": "Yerel Docker imajı bulunamadı",
-  "pro-feature-text": "Pro özelliği",
   "recommendations-title": "Öneriler",
   "savedastemplate-text": "şablon olarak kaydedildi",
   "beta-banner-title": "Beta özellik",
@@ -308,8 +307,6 @@
   "plan-free": "Ücretsiz Plan",
   "plan-pro": "Pro Plan",
   "ai-config-assistant-feature": "Yapay zekâ yapılandırma asistanı *",
-  "smart-recommendations-feature": "Akıllı öneriler *",
-  "script-generation-feature": "Betik oluşturma *",
   "error-diagnosis-feature": "Hata teşhisi *",
   "compare-plans-text": "Planları Karşılaştır",
   "core-wsl-management-feature": "WSL dağıtımlarını yerel olarak yönet",
@@ -343,7 +340,6 @@
   "install-text": "Yükle",
   "upgrade-text": "Yükselt",
   "upgrade-pro-text": "Pro'ya Yükselt",
-  "upgrade-prompt-error": "AI hata tanılama bir Pro özelliğidir. Kilidini açmak için yükseltin.",
   "reportbug-text": "Hata bildir",
   "compact-nospace-text": "Sıkıştırmak için yeterli boş alan yok: disk %s0 boyutunda ancak yalnızca %s1 kullanılabilir. Yer açın veya örneği daha büyük bir sürücüye taşıyın.",
   "plan-free-short": "Ücretsiz",
@@ -650,5 +646,12 @@
   "vmidletimeout-text": "VM boşta kalma süresi",
   "moveinprogress-text": "Bir dağıtım taşınıyor. Taşıma bitince liste geri gelir.",
   "turnkeywarningtitle-text": "TurnKey aygıtları deneyseldir",
-  "installwsl-text": "WSL'i kur (yönetici onayı ister)"
+  "installwsl-text": "WSL'i kur (yönetici onayı ister)",
+  "store-price-text": "9,99 ABD doları, tek seferlik — Store sayfanız fiyatı kendi para biriminizde gösterir.",
+  "restore-hint-text": "Pro'yu satın aldınız ama Free mi görünüyor?",
+  "restore-check-text": "Yeniden denetle",
+  "restore-found-text": "Pro bulundu — satın aldığınız için teşekkürler!",
+  "restore-notfound-text": "Store lisansı bulunamadı. Pro, bu uygulamanın Microsoft Store sürümünü gerektirir.",
+  "restore-support-text": "Yardım al",
+  "byok-locked-text": "Pro özelliği"
 }

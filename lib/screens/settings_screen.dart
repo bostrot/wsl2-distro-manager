@@ -873,7 +873,11 @@ class SettingsPageState extends State<SettingsPage> {
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
-            label: 'byok-baseurl-text'.i18n(),
+            // The lock and its reason sit on the field itself, not in a
+            // notice 90px above it (audit PS-12).
+            label: isPro
+                ? 'byok-baseurl-text'.i18n()
+                : '${'byok-baseurl-text'.i18n()} — ${'byok-locked-text'.i18n()}',
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Tooltip(
               message: 'byok-baseurl-hint-text'.i18n(),
@@ -881,7 +885,9 @@ class SettingsPageState extends State<SettingsPage> {
                 key: const ValueKey('test-byok-baseurl-input'),
                 controller: _byokBaseUrlController,
                 enabled: isPro,
-                placeholder: AiService.defaultByokBaseUrl,
+                // No placeholder while locked: near-normal-weight example
+                // text made the disabled fields read as filled in (PS-12).
+                placeholder: isPro ? AiService.defaultByokBaseUrl : null,
               ),
             ),
           ),
@@ -889,7 +895,9 @@ class SettingsPageState extends State<SettingsPage> {
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
-            label: 'byok-apikey-text'.i18n(),
+            label: isPro
+                ? 'byok-apikey-text'.i18n()
+                : '${'byok-apikey-text'.i18n()} — ${'byok-locked-text'.i18n()}',
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Tooltip(
               message: 'byok-apikey-hint-text'.i18n(),
@@ -898,7 +906,7 @@ class SettingsPageState extends State<SettingsPage> {
                 controller: _byokApiKeyController,
                 enabled: isPro,
                 obscureText: true,
-                placeholder: 'sk-...',
+                placeholder: isPro ? 'sk-...' : null,
               ),
             ),
           ),
@@ -906,7 +914,9 @@ class SettingsPageState extends State<SettingsPage> {
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
-            label: 'byok-model-text'.i18n(),
+            label: isPro
+                ? 'byok-model-text'.i18n()
+                : '${'byok-model-text'.i18n()} — ${'byok-locked-text'.i18n()}',
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Tooltip(
               message: 'byok-model-hint-text'.i18n(),
@@ -914,7 +924,7 @@ class SettingsPageState extends State<SettingsPage> {
                 key: const ValueKey('test-byok-model-input'),
                 controller: _byokModelController,
                 enabled: isPro,
-                placeholder: AiService.defaultByokModel,
+                placeholder: isPro ? AiService.defaultByokModel : null,
               ),
             ),
           ),

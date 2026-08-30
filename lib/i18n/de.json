@@ -268,7 +268,6 @@
   "localdockerimage-text": "Lokales Docker-Image",
   "localdockerimageplaceholder-text": "Image-Name (z. B. ubuntu:latest)",
   "localdockerimagenotfound-text": "Lokales Docker-Image nicht gefunden",
-  "pro-feature-text": "Pro-Funktion",
   "recommendations-title": "Empfehlungen",
   "savedastemplate-text": "als Vorlage gespeichert",
   "beta-banner-title": "Beta-Funktion",
@@ -310,8 +309,6 @@
   "plan-free": "Kostenloser Plan",
   "plan-pro": "Pro-Plan",
   "ai-config-assistant-feature": "KI-Konfigurationsassistent *",
-  "smart-recommendations-feature": "Intelligente Empfehlungen *",
-  "script-generation-feature": "Skripterstellung *",
   "error-diagnosis-feature": "Fehlerdiagnose *",
   "compare-plans-text": "Pläne vergleichen",
   "core-wsl-management-feature": "WSL-Distros lokal verwalten",
@@ -344,7 +341,6 @@
   "install-text": "Installieren",
   "upgrade-text": "Upgrade",
   "upgrade-pro-text": "Auf Pro upgraden",
-  "upgrade-prompt-error": "KI-Fehlerdiagnose ist eine Pro-Funktion. Führen Sie ein Upgrade durch, um sie freizuschalten.",
   "reportbug-text": "Fehler melden",
   "compact-nospace-text": "Nicht genug freier Speicherplatz zum Komprimieren: Die Festplatte ist %s0 groß, aber nur %s1 sind verfügbar. Gib Speicherplatz frei oder verschiebe die Instanz auf ein größeres Laufwerk.",
   "plan-free-short": "Gratis",
@@ -651,5 +647,12 @@
   "vmidletimeout-text": "VM-Leerlaufzeit",
   "moveinprogress-text": "Eine Instanz wird gerade verschoben. Die Liste erscheint wieder, sobald die Verschiebung abgeschlossen ist.",
   "turnkeywarningtitle-text": "TurnKey-Appliances sind experimentell",
-  "installwsl-text": "WSL installieren (fragt nach Administratorrechten)"
+  "installwsl-text": "WSL installieren (fragt nach Administratorrechten)",
+  "store-price-text": "9,99 US-Dollar, einmalig — Ihre Store-Seite zeigt den Preis in Ihrer Währung.",
+  "restore-hint-text": "Pro bereits gekauft, aber es wird Free angezeigt?",
+  "restore-check-text": "Erneut prüfen",
+  "restore-found-text": "Pro gefunden — danke für Ihren Kauf!",
+  "restore-notfound-text": "Keine Store-Lizenz gefunden. Pro erfordert die Microsoft-Store-Version dieser App.",
+  "restore-support-text": "Hilfe erhalten",
+  "byok-locked-text": "Pro-Funktion"
 }
