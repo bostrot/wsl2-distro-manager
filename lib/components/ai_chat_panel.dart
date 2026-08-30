@@ -11,7 +11,11 @@ import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
 class AiChatPanel extends StatefulWidget {
-  const AiChatPanel({Key? key}) : super(key: key);
+  const AiChatPanel({Key? key, this.onClose}) : super(key: key);
+
+  /// Closes the panel. Without it the only way to dismiss the panel was the
+  /// FAB behind it (audit PS-34).
+  final VoidCallback? onClose;
 
   @override
   State<AiChatPanel> createState() => _AiChatPanelState();
@@ -23,6 +27,11 @@ class _AiChatPanelState extends State<AiChatPanel> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+
+  /// Incremented on every Send and on Cancel. A reply whose generation is
+  /// stale was cancelled while in flight and is dropped — the panel used to
+  /// have no way out of a hung request at all (audit PS-34).
+  int _requestGeneration = 0;
 
   /// i18n key of the precondition that stopped the last Send, if any.
   ///
@@ -77,6 +86,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
     }
 
     _unblock();
+    final generation = ++_requestGeneration;
     setState(() {
       _isLoading = true;
     });
@@ -85,12 +95,12 @@ class _AiChatPanelState extends State<AiChatPanel> {
 
     try {
       await _ai.sendMessage(text);
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _isLoading = false;
       });
@@ -184,9 +194,36 @@ class _AiChatPanelState extends State<AiChatPanel> {
                           },
                         ),
               ),
+              if (widget.onClose != null) ...[
+                const SizedBox(width: 4),
+                NamedIconButton(
+                  key: const ValueKey('test-chat-close'),
+                  label: 'close-text'.i18n(),
+                  icon: FluentIcons.chrome_close,
+                  iconSize: 12,
+                  onPressed: widget.onClose,
+                ),
+              ],
             ],
           ),
         ),
+
+        // Said before the first keystroke, not after the first Send: with no
+        // key the panel used to be indistinguishable from a working one until
+        // the button revealed the precondition (audit PS-34).
+        if (!_ai.hasByokConfigured && _blockedReasonKey == null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: InfoBar(
+              key: const ValueKey('test-aichat-needs-key'),
+              title: Text('byok-required-text'.i18n()),
+              severity: InfoBarSeverity.info,
+              action: Button(
+                onPressed: () => navigateGuarded('settings'),
+                child: Text('opensettings-text'.i18n()),
+              ),
+            ),
+          ),
 
         // Messages
         Expanded(
@@ -239,6 +276,17 @@ class _AiChatPanelState extends State<AiChatPanel> {
                   'ai-generating-text'.i18n(),
                   style: TextStyle(
                       fontSize: 11, color: secondaryTextColor(context)),
+                ),
+                const Spacer(),
+                // The way out of a hung request (PS-34). The orphaned reply
+                // is dropped by the generation check in _sendMessage.
+                Button(
+                  key: const ValueKey('test-chat-cancel-request'),
+                  onPressed: () => setState(() {
+                    _requestGeneration++;
+                    _isLoading = false;
+                  }),
+                  child: Text('cancel-text'.i18n()),
                 ),
               ],
             ),
@@ -366,8 +414,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
                 borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,
+              // A person glyph — the user avatar rendered as a plus sign
+              // (audit PS-37).
               child: Icon(
-                FluentIcons.add,
+                FluentIcons.contact,
                 size: 14,
                 color: secondaryTextColor(context),
               ),

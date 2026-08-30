@@ -76,7 +76,6 @@
   "wsldefaultuser-text": "(Optional) Zu verwendender WSL-Standardbenutzer",
   "emptyfieldsfordefault-text": "(leeren Sie die Felder, um die Standardwerte zu verwenden)",
   "runquickaction-text": "Codeausschnitte ausführen",
-  "startstopserving-text": "Bereitstellung im Netzwerk starten/beenden",
   "startedserving-text": "Bereitstellung von %s im Netzwerk",
   "stoppedserving-text": "Lieferung von %s im Netzwerk gestoppt",
   "download-text": "Herunterladen",
@@ -195,7 +194,7 @@
   "customname-text": "Benutzerdefinierter Name (Optional)",
   "customnamehint-text": "Leer lassen für automatisch generierten Namen",
   "mountoptions-text": "Mount-Optionen (Optional)",
-  "mountoptionshint-text": "z.B. data=ordered (Generische Optionen wie ro/rw werden NICHT unterstützt)",
+  "mountoptionshint-text": "Mount-Optionen des Dateisystems, z. B. data=ordered. Allgemeine Optionen wie ro oder rw akzeptiert WSL hier nicht.",
   "diskofflinehint-text": "Hinweis: Der Datenträger ist in Windows vermutlich online. Setze ihn in der Datenträgerverwaltung auf Offline und versuche es erneut.",
   "errorlistingdisks-text": "Fehler beim Auflisten der physischen Datenträger",
   "failedtolistdisks-text": "Fehler beim Auflisten der Datenträger: %s",
@@ -662,5 +661,14 @@
   "namewillbe-text": "Wird als '%s' erstellt",
   "openterminal-text": "Terminal öffnen (läuft bereits)",
   "sizeondiskhint-text": "Größe der virtuellen Festplatte der Instanz unter Windows — ihr Höchststand, nicht der darin belegte Platz",
-  "nosnippetshint-text": "Hinzugefügte Snippets erscheinen hier und laufen in dieser Instanz"
+  "nosnippetshint-text": "Hinzugefügte Snippets erscheinen hier und laufen in dieser Instanz",
+  "templatesinfo-text": "Eine Vorlage ist ein gespeichertes Instanz-Abbild, aus dem Sie neue Instanzen erstellen können. Speichern Sie eine über die Archiv-Schaltfläche einer Distributionszeile auf der Startseite.",
+  "createfromtemplate-text": "Neue Instanz aus der Vorlage '%s' mit diesem Namen erstellen:",
+  "snippetrunsasroot-text": "Dieses Snippet ist ein Bash-Skript, das als root in der gewählten Instanz läuft.",
+  "snippetscript-text": "Skript",
+  "unmountdisk-text": "Datenträger aushängen",
+  "nothingmounted-text": "Derzeit ist über diese App nichts eingebunden.",
+  "mountlanding-text": "Der Datenträger erscheint in jeder Instanz unter /mnt/wsl/.",
+  "startserving-text": "Im Netzwerk bereitstellen",
+  "stopserving-text": "Bereitstellung beenden"
 }

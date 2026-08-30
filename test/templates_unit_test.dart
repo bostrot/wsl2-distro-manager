@@ -147,7 +147,7 @@ void main() {
 
   test('getTemplateSize returns size', () async {
     await templates.saveTemplate('test');
-    // Mock file size is 0
-    expect(templates.getTemplateSize('test'), '0.00 GB');
+    // Mock file size is 0 — formatted per-unit now, not pinned to GB (ST-42).
+    expect(templates.getTemplateSize('test'), '0 B');
   });
 }

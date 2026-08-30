@@ -23,6 +23,11 @@ class Sync {
   late String distroLocation;
   static late HttpServer server;
 
+  /// The distro currently being served, or null. Static like [server] —
+  /// there is one real server — so the per-distro dialog can say which of
+  /// start/stop its button will actually do (audit ST-31).
+  static String? servingDistro;
+
   final WSLApi wslApi;
   final ChunkedDownloaderFactory chunkedDownloaderFactory;
   final ServerFactory serverFactory;
@@ -74,6 +79,7 @@ class Sync {
 
     try {
       server = await serverFactory(finalHandler, '0.0.0.0', 59132);
+      servingDistro = distroName;
     } catch (e) {
       // Do nothing
     }
@@ -82,6 +88,7 @@ class Sync {
   /// Stop the server
   void stopServer() {
     server.close();
+    servingDistro = null;
   }
 
   /// Download from sync IP

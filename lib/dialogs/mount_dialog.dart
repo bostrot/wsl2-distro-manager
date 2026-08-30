@@ -117,6 +117,23 @@ class _MountDialogState extends State<MountDialog> {
     if (_fieldError != null) setState(() => _fieldError = null);
   }
 
+  /// One segment of the mode switch; the active mode renders filled.
+  Widget _modeButton(int index, String labelKey) {
+    final label = Text(labelKey.i18n(),
+        maxLines: 1, overflow: TextOverflow.ellipsis);
+    return Expanded(
+      child: _selectedTab == index
+          ? FilledButton(
+              onPressed: () => _selectTab(index),
+              child: label,
+            )
+          : Button(
+              onPressed: () => _selectTab(index),
+              child: label,
+            ),
+    );
+  }
+
   /// The validation message under the field it is about, or nothing.
   Widget _fieldErrorText() {
     if (_fieldError == null) return const SizedBox.shrink();
@@ -321,31 +338,24 @@ class _MountDialogState extends State<MountDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
-      title: Text('mountdisk-text'.i18n()),
+      // Says which of the two operations it is doing — the title stayed
+      // "Mount Disk" while the primary button said Unmount (audit ST-47).
+      title: Text(_selectedTab == 2
+          ? 'unmountdisk-text'.i18n()
+          : 'mountdisk-text'.i18n()),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Tabs
-            Wrap(
-              spacing: 20,
-              runSpacing: 8,
+            // A segmented mode switch, not three radio buttons posing as a
+            // tab strip whose third member is the inverse operation (ST-47).
+            Row(
               children: [
-                RadioButton(
-                  checked: _selectedTab == 0,
-                  content: Text('physicaldisk-text'.i18n()),
-                  onChanged: (v) => _selectTab(0),
-                ),
-                RadioButton(
-                  checked: _selectedTab == 1,
-                  content: Text('vhdimage-text'.i18n()),
-                  onChanged: (v) => _selectTab(1),
-                ),
-                RadioButton(
-                  checked: _selectedTab == 2,
-                  content: Text('unmount-text'.i18n()),
-                  onChanged: (v) => _selectTab(2),
-                ),
+                _modeButton(0, 'physicaldisk-text'),
+                const SizedBox(width: 4),
+                _modeButton(1, 'vhdimage-text'),
+                const SizedBox(width: 4),
+                _modeButton(2, 'unmount-text'),
               ],
             ),
             const SizedBox(height: 20),
@@ -509,6 +519,11 @@ class _MountDialogState extends State<MountDialog> {
             ),
           ),
         ],
+        const SizedBox(height: 10),
+        // Where the disk actually lands (audit ST-52).
+        Text('mountlanding-text'.i18n(),
+            style:
+                TextStyle(fontSize: 12.0, color: secondaryTextColor(context))),
       ],
     );
   }
@@ -600,6 +615,11 @@ class _MountDialogState extends State<MountDialog> {
             ),
           ),
         ],
+        const SizedBox(height: 10),
+        // Where the disk actually lands (audit ST-52).
+        Text('mountlanding-text'.i18n(),
+            style:
+                TextStyle(fontSize: 12.0, color: secondaryTextColor(context))),
       ],
     );
   }
@@ -615,6 +635,14 @@ class _MountDialogState extends State<MountDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The app knows the list is empty and says so — the picker used to
+        // simply vanish, leaving a free text box and a request to recall the
+        // mount path from memory (audit ST-48).
+        if (_mountedDisks.isEmpty) ...[
+          Text('nothingmounted-text'.i18n(),
+              style: TextStyle(color: secondaryTextColor(context))),
+          const SizedBox(height: 10),
+        ],
         if (_mountedDisks.isNotEmpty) ...[
           InfoLabel(
             label: 'selectmounteddisk-text'.i18n(),

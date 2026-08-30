@@ -416,7 +416,10 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-15 -- Settings: validate `.wslconfig`, restore the missing controls | 12 | 0 | 2026-08-30 |
 | FIX-16 -- The create / install form | 11 | 0 | 2026-08-30 |
 | FIX-17 -- Home list and navigation layout | 15 | 0 | 2026-08-30 |
-| all others | 0 | 20 | -- |
+| FIX-19 -- AI chat panel | 3 | 0 | 2026-08-30 |
+| FIX-20 -- Templates, snippets, mount and the per-distro dialog | 17 | 0 | 2026-08-30 |
+
+**All 214 findings are closed.**
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -1246,36 +1249,79 @@ so the dismiss X sits at the card's right edge, and the 11px/10px text is
 
 ### FIX-19 -- AI chat panel
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| PS-34 | major | Say up front that the panel needs an API key, and give it a close and a cancel |
-| PS-37 | nit | Use a person glyph for the user avatar, not `FluentIcons.add` |
-| PS-38 | nit | Make the 360px panel responsive below ~1000px, where it takes 40% of the window |
+**Landed 2026-08-30.** The panel says up front that it needs an API key — an
+InfoBar with an Open Settings action renders before the first keystroke, where
+the precondition used to be revealed only by pressing Send (PS-34). The header
+gained a close control (the FAB behind the panel used to be the only way out),
+and an in-flight request gained a Cancel: a generation counter orphans the
+hung request so its late reply is dropped. The user avatar is a person glyph
+instead of a plus sign (PS-37), and below 1000px the panel scales with the
+window instead of holding 360px — 40% of a narrow window (PS-38).
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| PS-34 | major | Say up front that the panel needs an API key, and give it a close and a cancel | `ai_chat_panel.dart:211` (notice), `:197` (close), `:34` + `:262` (cancel) |
+| PS-37 | nit | Use a person glyph for the user avatar, not `FluentIcons.add` | `ai_chat_panel.dart` (`FluentIcons.contact`) |
+| PS-38 | nit | Make the 360px panel responsive below ~1000px, where it takes 40% of the window | `home_screen.dart:108` |
 
 ### FIX-20 -- Templates, snippets, mount and the per-distro dialog
 
-Pure polish, but it is where a third of the audit's nits live. Safe to parallelise
-across contributors -- four independent files.
+Pure polish, but it is where a third of the audit's nits live.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| ST-37 | major | Format sub-GB template sizes properly and never silently drop a template from the list because it formats to "0 GB" |
-| ST-39 | major | Title the new-instance dialog for what it does, not "Copy ... the WSL instance" |
-| ST-55 | major | Size the snippet expander to its content instead of a 430px panel that is 97% empty |
-| ST-42 | nit | Same size formatter ("0.01 GB") |
-| ST-41 | nit | Give the templates screen a title, an explanation of what a template is, and a way to create one |
-| ST-47 | nit | Replace the three radio buttons used as a tab strip, and change the title in unmount mode |
-| ST-48 | nit | Say the list is empty rather than making the picker vanish |
-| ST-49 | nit | Finish the mount-options placeholder sentence, or tooltip it |
-| ST-50 | nit | Space the Partition / Filesystem Type labels |
-| ST-52 | nit | Say which distro the disk lands in and where it appears |
-| ST-58 | nit | Frame and label the code editor -- 580px of invisible click target |
-| ST-60 | nit | Say that a snippet is a root bash script in a distro, and let it be run from this screen |
-| ST-61 | nit | One "add" affordance; fix "Add Community snippets" |
-| ST-31 | nit | Show which state "Start/Stop serving on network" is in, and persist `isSyncing` |
-| ST-34 | nit | One visual language for "unset" -- the dialog's currently looks like a hyperlink |
-| ST-35 | nit | Remove the duplicated user-section label and the orphaned parenthetical |
-| IA-22 | nit | Hover must add contrast, not drop the row to 50% opacity |
+**Landed 2026-08-30.** Sizes come from one `formatBytes` — the copy that lived
+in `disk_dialog.dart` moved to `helpers.dart` and the template list shares it,
+so a 40 MB template reads "40 MB" instead of "0.04 GB" (ST-42), and nothing
+under ~5 MB is silently dropped from the list any more: the '0 GB'-means-hide
+branch is gone (ST-37). The templates screen has a title and one sentence
+saying what a template is and where one comes from, in both the list and the
+empty state (ST-41), and its create dialog says "Create a new instance from
+the template ..." instead of "Copy ... the WSL instance" (ST-39).
+
+Snippets: the expanded row is sized to its script, capped at 40% of the
+window, instead of a half-window panel that was 97% empty for a one-liner
+(ST-55); a sentence above the script says a snippet is a bash script run as
+root in an instance, and a Run flyout — listing the instances — makes it
+usable from this screen (ST-60); the editor is framed, filled and labelled
+"Script" instead of 580px of invisible click target (ST-58); and "Add
+community snippets" sits beside "Add a snippet" instead of the opposite
+corner (ST-61). Hover adds a subtle fill instead of dropping the row to 50%
+opacity — the one hover state in the app that made its target harder to read
+(IA-22).
+
+Mount: a segmented mode switch replaces the three radio buttons whose third
+member was the inverse operation, and the title says Unmount when that is
+what the button will do (ST-47); an empty mounted-disk list says "Nothing is
+currently mounted" instead of hiding the picker (ST-48); the mount-options
+hint is a finished sentence (ST-49); and both forms end with where the disk
+actually lands — /mnt/wsl/ in every instance (ST-52). ST-50's label spacing
+had already been fixed by the ST-45 rework (bottom-aligned row, 10px gutter).
+
+Per-distro dialog: the serving button says which of start/stop it will do —
+`Sync` tracks the served distro statically, like its server — and repaints on
+press (ST-31); the "unset" caption is grey like the `.wslconfig` screen's,
+not an accent blue that read as a dead hyperlink (ST-34); and the user
+section labels itself once, with the parenthetical attached to the fields it
+describes (ST-35).
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| ST-37 | major | Format sub-GB template sizes properly and never silently drop a template from the list because it formats to "0 GB" | `templates.dart:146`, `template_screen.dart:154` |
+| ST-39 | major | Title the new-instance dialog for what it does, not "Copy ... the WSL instance" | `template_screen.dart:192` |
+| ST-55 | major | Size the snippet expander to its content instead of a 430px panel that is 97% empty | `actions_screen.dart` (expander content, 40% cap) |
+| ST-42 | nit | Same size formatter ("0.01 GB") | `helpers.dart` (`formatBytes`, shared with `disk_dialog.dart`) |
+| ST-41 | nit | Give the templates screen a title, an explanation of what a template is, and a way to create one | `template_screen.dart:113`, `:128` |
+| ST-47 | nit | Replace the three radio buttons used as a tab strip, and change the title in unmount mode | `mount_dialog.dart` (`_modeButton`, title switch) |
+| ST-48 | nit | Say the list is empty rather than making the picker vanish | `mount_dialog.dart` (`nothingmounted-text`) |
+| ST-49 | nit | Finish the mount-options placeholder sentence, or tooltip it | `mountoptionshint-text` rewritten, all nine locales |
+| ST-50 | nit | Space the Partition / Filesystem Type labels | already spaced by the ST-45 rework (bottom-aligned row, 10px gutter) |
+| ST-52 | nit | Say which distro the disk lands in and where it appears | `mount_dialog.dart` (`mountlanding-text`, both forms) |
+| ST-58 | nit | Frame and label the code editor -- 580px of invisible click target | `actions_screen.dart` (`Editor.build`) |
+| ST-60 | nit | Say that a snippet is a root bash script in a distro, and let it be run from this screen | `actions_screen.dart:44` (`_runSnippetButton`), `snippetrunsasroot-text` |
+| ST-61 | nit | One "add" affordance; fix "Add Community snippets" | `actions_screen.dart:196` (grouped); casing fixed with FIX-12 |
+| ST-31 | nit | Show which state "Start/Stop serving on network" is in, and persist `isSyncing` | `sync.dart` (`servingDistro`), `settings_dialog.dart:243` |
+| ST-34 | nit | One visual language for "unset" -- the dialog's currently looks like a hyperlink | `settings_dialog.dart:665` |
+| ST-35 | nit | Remove the duplicated user-section label and the orphaned parenthetical | `settings_dialog.dart:199` |
+| IA-22 | nit | Hover must add contrast, not drop the row to 50% opacity | `hoverable.dart` (subtle fill) |
 
 ## Not examined
 

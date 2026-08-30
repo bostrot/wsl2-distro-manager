@@ -103,13 +103,20 @@ class _HomePageState extends State<HomePage> {
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
+            // A fixed 360px panel took 40% of a narrow window; below 1000px
+            // it scales with the window instead (audit PS-38).
+            final panelWidth = constraints.maxWidth < 1000
+                ? (constraints.maxWidth * 0.36).roundToDouble()
+                : 360.0;
             return SizedBox(
               height: constraints.maxHeight,
               width: constraints.maxWidth,
               child: Row(
                 children: [
                   SizedBox(
-                    width: showAi ? constraints.maxWidth - 361 : constraints.maxWidth,
+                    width: showAi
+                        ? constraints.maxWidth - panelWidth - 1
+                        : constraints.maxWidth,
                     height: constraints.maxHeight,
                     child: Column(
                       key: (GlobalVariable.infobox = _infoboxKey),
@@ -139,9 +146,14 @@ class _HomePageState extends State<HomePage> {
                       color: surfaceBorderColor(context),
                     ),
                     SizedBox(
-                      width: 360,
+                      width: panelWidth,
                       height: constraints.maxHeight,
-                      child: const AiChatPanel(),
+                      child: AiChatPanel(
+                        // The panel's own close control — the FAB behind it
+                        // used to be the only way out (PS-34).
+                        onClose: () => setState(
+                            () => GlobalVariable.aiPanelVisible = false),
+                      ),
                     ),
                   ],
                 ],
@@ -151,7 +163,14 @@ class _HomePageState extends State<HomePage> {
         ),
         if (isPro)
           Positioned(
-            right: showAi ? 376 : 16,
+            // 16px past the panel's live width (PS-38 made it responsive).
+            right: showAi
+                ? ((MediaQuery.of(context).size.width < 1000
+                        ? (MediaQuery.of(context).size.width * 0.36)
+                            .roundToDouble()
+                        : 360.0) +
+                    16)
+                : 16,
             bottom: 16,
             // A Button rather than a GestureDetector: this is the only entry
             // point to the AI chat panel and a GestureDetector has no focus

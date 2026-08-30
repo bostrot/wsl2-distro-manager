@@ -56,19 +56,6 @@ String? normalizeResizeSize(String text) {
   return '$amount$unit';
 }
 
-/// Human-readable byte count, matching the existing `compact-nospace-text`
-/// formatting so the two disk messages read alike.
-String formatBytes(int bytes) {
-  const units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
-  var value = bytes.toDouble();
-  var unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  return '${value.toStringAsFixed(value >= 10 || unit == 0 ? 0 : 1)} ${units[unit]}';
-}
-
 void diskDialog(String item) {
   final context = GlobalVariable.infobox.currentContext!;
   plausible.event(page: 'disk_dialog');

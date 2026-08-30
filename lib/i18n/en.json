@@ -75,7 +75,6 @@
   "wsldefaultuser-text": "WSL default user to use (optional)",
   "emptyfieldsfordefault-text": "(empty the fields for default or if your WSL version does not support it)",
   "runquickaction-text": "Run a snippet",
-  "startstopserving-text": "Start/stop serving on network",
   "startedserving-text": "Serving %s on network",
   "stoppedserving-text": "Stopped serving %s on network",
   "download-text": "Download",
@@ -194,7 +193,7 @@
   "customname-text": "Custom name (optional)",
   "customnamehint-text": "Leave empty for auto-generated name",
   "mountoptions-text": "Mount options (optional)",
-  "mountoptionshint-text": "e.g. data=ordered (Generic options like ro/rw are NOT supported)",
+  "mountoptionshint-text": "Filesystem mount options, e.g. data=ordered. WSL does not accept generic options like ro or rw here.",
   "diskofflinehint-text": "Hint: The disk might be online in Windows. Set it to Offline in Disk Management and try again.",
   "errorlistingdisks-text": "Error listing physical disks",
   "failedtolistdisks-text": "Failed to list disks: %s",
@@ -661,5 +660,14 @@
   "namewillbe-text": "Will be created as '%s'",
   "openterminal-text": "Open a terminal (already running)",
   "sizeondiskhint-text": "Size of the instance's virtual disk on Windows — its high-water mark, not the space in use inside it",
-  "nosnippetshint-text": "Snippets you add appear here, to run inside this instance"
+  "nosnippetshint-text": "Snippets you add appear here, to run inside this instance",
+  "templatesinfo-text": "A template is a saved instance image you can stamp new instances from. Save one with the archive button in a distro row on Home.",
+  "createfromtemplate-text": "Create a new instance from the template '%s' with this name:",
+  "snippetrunsasroot-text": "This snippet is a bash script that runs as root inside the instance you pick.",
+  "snippetscript-text": "Script",
+  "unmountdisk-text": "Unmount disk",
+  "nothingmounted-text": "Nothing is currently mounted through this app.",
+  "mountlanding-text": "The disk appears in every instance under /mnt/wsl/.",
+  "startserving-text": "Serve on network",
+  "stopserving-text": "Stop serving"
 }

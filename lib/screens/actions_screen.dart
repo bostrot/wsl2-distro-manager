@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:re_editor/re_editor.dart';
@@ -6,12 +7,16 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:re_highlight/languages/bash.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
 
 class QuickPage extends StatefulWidget {
-  const QuickPage({Key? key}) : super(key: key);
+  const QuickPage({Key? key, this.api}) : super(key: key);
+
+  /// Injected in tests; the screen builds its own.
+  final WSLApi? api;
 
   @override
   QuickPageState createState() => QuickPageState();
@@ -30,12 +35,45 @@ class QuickPageState extends State<QuickPage> {
   /// branch whose entire body was the comment `// Error` (audit ST-53).
   String? saveError;
 
+  /// The instances a snippet can be run in from this screen — running used
+  /// to be reachable only from a distro row's dropdown on Home (audit ST-60).
+  List<String> _instances = [];
+
+  /// A snippet runs as root inside a chosen instance; the flyout is that
+  /// choice.
+  Widget _runSnippetButton(QuickActionItem action) {
+    if (_instances.isEmpty) return const SizedBox.shrink();
+    return DropDownButton(
+      leading: const Icon(FluentIcons.play, size: 14.0),
+      title: Text('runquickaction-text'.i18n()),
+      items: [
+        for (final instance in _instances)
+          MenuFlyoutItem(
+            text: Text(distroLabel(instance)),
+            onPressed: () {
+              plausible.event(name: "wsl_quickaction_run");
+              WSLApi().runCmds(instance, action.content.split('\n'),
+                  user: prefs.getString('StartUser_$instance'));
+            },
+          ),
+      ],
+    );
+  }
+
   @override
   void initState() {
     super.initState();
 
     plausible.event(page: 'actions_screen');
     genLineNumbers(0);
+    // Only when injected or in a real app run: a widget test that pumps this
+    // screen must not spawn wsl.exe from initState.
+    if (widget.api != null ||
+        !Platform.environment.containsKey('FLUTTER_TEST')) {
+      (widget.api ?? WSLApi()).list(false).then((instances) {
+        if (mounted) setState(() => _instances = instances.all);
+      }).catchError((_) {});
+    }
     // So a "the script is empty" message goes away as soon as it stops being
     // true, the same way the name one does.
     contentController.addListener(() {
@@ -139,36 +177,6 @@ class QuickPageState extends State<QuickPage> {
       padding: const EdgeInsets.only(top: 8.0),
       child: Column(
         children: [
-          !showInput
-              ? Tooltip(
-                  message: 'addcommunityactions-text'.i18n(),
-                  child: Button(
-                    style: ButtonStyle(
-                        padding: ButtonState.all<EdgeInsets>(
-                            const EdgeInsets.only(
-                                top: 8.0,
-                                bottom: 8.0,
-                                left: 20.0,
-                                right: 20.0))),
-                    onPressed: () {
-                      // Open qa_dialog
-                      communityDialog(() => setState(
-                            () {},
-                          ));
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(FluentIcons.cloud_download),
-                        const SizedBox(
-                          width: 10.0,
-                        ),
-                        Text('addcommunityactions-text'.i18n()),
-                      ],
-                    ),
-                  ),
-                )
-              : Container(),
           Flexible(
               child: SingleChildScrollView(child: quickSettingsListBuilder())),
         ],
@@ -185,6 +193,28 @@ class QuickPageState extends State<QuickPage> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
+            // Beside "Add a snippet", not centred at the top of the content
+            // area in the opposite corner — the two closely related adds
+            // shared no grouping, alignment or wording pattern (audit ST-61).
+            if (!showInput) ...[
+              Button(
+                style: ButtonStyle(
+                    padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
+                        top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
+                onPressed: () {
+                  communityDialog(() => setState(() {}));
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(FluentIcons.cloud_download),
+                    const SizedBox(width: 10.0),
+                    Text('addcommunityactions-text'.i18n()),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10.0),
+            ],
             showInput
                 ? Tooltip(
                     message: 'close-text'.i18n(),
@@ -403,18 +433,44 @@ class QuickPageState extends State<QuickPage> {
                         ),
                       ],
                     ),
-                    content: SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.5,
+                    // Sized to the script, capped at 40% of the window — a
+                    // one-line snippet used to open a 430px panel that was
+                    // 97% empty (audit ST-55). The sentence above the script
+                    // says what a snippet actually is, and Run makes it
+                    // usable from this screen instead of only from a distro
+                    // row on Home (ST-60).
+                    content: ConstrainedBox(
+                      constraints: BoxConstraints(
+                          maxHeight:
+                              MediaQuery.of(context).size.height * 0.4),
                       child: SingleChildScrollView(
-                        child: Opacity(
-                          opacity: 0.7,
-                          child: SizedBox(
-                              width: MediaQuery.of(context).size.width,
-                              child: Padding(
-                                padding: const EdgeInsets.only(
-                                    left: 20.0, right: 20.0, bottom: 4.0),
-                                child: SelectableText(quickActions[i].content),
-                              )),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 20.0, right: 20.0, bottom: 8.0),
+                              child: Text(
+                                'snippetrunsasroot-text'.i18n(),
+                                style: TextStyle(
+                                    fontSize: 12.0,
+                                    color: secondaryTextColor(context)),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 20.0, bottom: 8.0),
+                              child: _runSnippetButton(quickActions[i]),
+                            ),
+                            SizedBox(
+                                width: MediaQuery.of(context).size.width,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                      left: 20.0, right: 20.0, bottom: 4.0),
+                                  child:
+                                      SelectableText(quickActions[i].content),
+                                )),
+                          ],
                         ),
                       ),
                     )),
@@ -480,8 +536,22 @@ class Editor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-        height: MediaQuery.of(context).size.height * 0.68,
+    // Framed and labelled: the editor used to sit directly on the page
+    // background with no border, no fill and no heading — 580px of click
+    // target that did not look like one (audit ST-58). The label also says
+    // what the script *is*: a root bash script run inside an instance
+    // (ST-60).
+    return InfoLabel(
+      label: 'snippetscript-text'.i18n(),
+      labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cardFillColor(context),
+          border: Border.all(color: surfaceBorderColor(context)),
+          borderRadius: BorderRadius.circular(4.0),
+        ),
+        padding: const EdgeInsets.all(4.0),
+        height: MediaQuery.of(context).size.height * 0.62,
         width: MediaQuery.of(context).size.width * 0.9,
         child: CodeEditor(
             hint: '# ${'yourcodehere-text'.i18n()}',
@@ -509,6 +579,8 @@ class Editor extends StatelessWidget {
                       ? atomOneDarkTheme
                       : atomOneLightTheme),
             ),
-            controller: contentController));
+            controller: contentController),
+      ),
+    );
   }
 }

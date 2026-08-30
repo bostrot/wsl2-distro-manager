@@ -76,7 +76,6 @@
   "wsldefaultuser-text": "(İsteğe bağlı) kullanılacak WSL varsayılan kullanıcı",
   "emptyfieldsfordefault-text": "(varsayılan veya WSL sürümünüz desteklemediğinde boş bırakın)",
   "runquickaction-text": "Bir kod parçacığı çalıştır",
-  "startstopserving-text": "Ağda sunumu başlat/durdur",
   "startedserving-text": "%s ağda sunuluyor",
   "stoppedserving-text": "%s ağda sunumu durduruldu",
   "download-text": "İndir",
@@ -194,7 +193,7 @@
   "customname-text": "Özel ad (isteğe bağlı)",
   "customnamehint-text": "Otomatik oluşturulan ad için boş bırakın",
   "mountoptions-text": "Bağlama seçenekleri (isteğe bağlı)",
-  "mountoptionshint-text": "örn. data=ordered (ro/rw gibi genel seçenekler desteklenmez)",
+  "mountoptionshint-text": "Dosya sistemi bağlama seçenekleri, örn. data=ordered. WSL burada ro veya rw gibi genel seçenekleri kabul etmez.",
   "diskofflinehint-text": "İpucu: Disk Windows tarafında çevrimiçi olabilir. Disk Yönetimi'nde Çevrimdışı yapıp yeniden deneyin.",
   "errorlistingdisks-text": "Fiziksel diskler listelenirken hata oluştu",
   "failedtolistdisks-text": "Diskler listelenemedi: %s",
@@ -661,5 +660,14 @@
   "namewillbe-text": "'%s' olarak oluşturulacak",
   "openterminal-text": "Terminal aç (zaten çalışıyor)",
   "sizeondiskhint-text": "Dağıtımın Windows'taki sanal diskinin boyutu — içindeki kullanılan alan değil, ulaştığı en yüksek boyut",
-  "nosnippetshint-text": "Eklediğiniz parçacıklar burada görünür ve bu dağıtımın içinde çalışır"
+  "nosnippetshint-text": "Eklediğiniz parçacıklar burada görünür ve bu dağıtımın içinde çalışır",
+  "templatesinfo-text": "Şablon, yeni dağıtımlar oluşturabileceğiniz kayıtlı bir dağıtım kalıbıdır. Ana sayfadaki bir dağıtım satırının arşiv düğmesiyle bir tane kaydedin.",
+  "createfromtemplate-text": "'%s' şablonundan şu adla yeni bir dağıtım oluştur:",
+  "snippetrunsasroot-text": "Bu parçacık, seçtiğiniz dağıtımın içinde root olarak çalışan bir bash betiğidir.",
+  "snippetscript-text": "Betik",
+  "unmountdisk-text": "Diski ayır",
+  "nothingmounted-text": "Şu anda bu uygulama üzerinden bağlanmış bir şey yok.",
+  "mountlanding-text": "Disk her dağıtımda /mnt/wsl/ altında görünür.",
+  "startserving-text": "Ağda sun",
+  "stopserving-text": "Sunmayı durdur"
 }

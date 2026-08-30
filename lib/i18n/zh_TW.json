@@ -75,7 +75,6 @@
   "wsldefaultuser-text": "(選用) 要使用的 WSL 預設使用者帳戶",
   "emptyfieldsfordefault-text": "(如果您的 WSL 版本不支援，請清空預設字串)",
   "runquickaction-text": "執行片段",
-  "startstopserving-text": "開始/停止在網路上提供服務",
   "startedserving-text": "正在網路上為 %s 提供服務",
   "stoppedserving-text": "停止在網路上為 %s 提供服務",
   "download-text": "下載",
@@ -195,7 +194,7 @@
   "customname-text": "自訂名稱（選填）",
   "customnamehint-text": "留空以自動產生名稱",
   "mountoptions-text": "掛載選項（選填）",
-  "mountoptionshint-text": "例如 data=ordered（不支援 ro/rw 等一般選項）",
+  "mountoptionshint-text": "檔案系統掛載選項，例如 data=ordered。WSL 在此不接受 ro、rw 等一般選項。",
   "diskofflinehint-text": "提示：該磁碟在 Windows 中可能處於連線狀態。請在磁碟管理中將其設為離線後重試。",
   "errorlistingdisks-text": "列出實體磁碟時發生錯誤",
   "failedtolistdisks-text": "無法列出磁碟：%s",
@@ -662,5 +661,14 @@
   "namewillbe-text": "將建立為「%s」",
   "openterminal-text": "開啟終端機（已在執行）",
   "sizeondiskhint-text": "安裝實體虛擬磁碟在 Windows 上的大小——歷史峰值，而非其內部實際占用",
-  "nosnippetshint-text": "您新增的程式碼片段會顯示在這裡，可在此安裝實體內執行"
+  "nosnippetshint-text": "您新增的程式碼片段會顯示在這裡，可在此安裝實體內執行",
+  "templatesinfo-text": "範本是儲存下來的安裝實體映像，可用來建立新的安裝實體。在首頁某個發行版列中按封存按鈕即可儲存一個。",
+  "createfromtemplate-text": "從範本「%s」以此名稱建立新的安裝實體：",
+  "snippetrunsasroot-text": "此程式碼片段是一個 bash 指令碼，會在您選擇的安裝實體中以 root 身分執行。",
+  "snippetscript-text": "指令碼",
+  "unmountdisk-text": "卸載磁碟",
+  "nothingmounted-text": "目前沒有透過本應用程式掛載任何內容。",
+  "mountlanding-text": "磁碟會出現在每個安裝實體的 /mnt/wsl/ 下。",
+  "startserving-text": "在網路上提供",
+  "stopserving-text": "停止提供"
 }

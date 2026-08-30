@@ -6,9 +6,9 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 ## Tasks
 
-- [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
+- [x] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 194 of 214 findings closed (16 blockers, 102 majors, 76 nits).** Running
+  **Complete — all 214 findings closed (14 blockers, 107 majors, 93 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -307,10 +307,29 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     explains itself; Mount Disk and About are PaneItemActions; the
     empty-state CTA moved out from under the AI FAB.
 
-  **Next up:** FIX-19, then FIX-20 — the last two. Verification for this
-  slice: `flutter analyze` clean (the same two pre-existing warnings),
-  `flutter test` 825 passing, `dart run scripts/check_translations.dart`
-  exit 0. 3 new keys in all nine locales. `flutter test integration_test/` could not be run here — the harness
+  - **FIX-19 — AI chat panel: complete (3/3).** The panel says up front that
+    it needs a key (before the first keystroke, with an Open Settings
+    action), has its own close control, and an in-flight request has a
+    Cancel — a generation counter orphans the hung request. Person-glyph
+    avatar; the panel scales below 1000px instead of taking 40% of a narrow
+    window.
+
+  - **FIX-20 — templates, snippets, mount, per-distro dialog: complete
+    (17/17).** One `formatBytes` (consolidated into helpers from
+    disk_dialog); no template silently dropped for formatting to '0 GB'; the
+    templates screen explains itself and its create dialog says create; the
+    snippet expander is content-sized with a run-in-instance flyout and a
+    framed, labelled editor; the two add buttons sit together; hover adds a
+    fill instead of halving opacity; the mount dialog has a segmented mode
+    switch, an honest unmount title, an empty-list message, a finished
+    options hint and a "lands under /mnt/wsl/" line; the per-distro serving
+    button says which of start/stop it will do, the unset caption stopped
+    looking like a hyperlink, and the user section labels itself once.
+
+  Verification for the final slice: `flutter analyze` clean (the same two
+  pre-existing warnings), `flutter test` 825 passing,
+  `dart run scripts/check_translations.dart` exit 0. 12 new keys and one
+  dead key removed in all nine locales. `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`
@@ -319,23 +338,37 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
   format pass rewrites every touched file end to end. Edits match the surrounding
   style by hand instead.
 
-- [ ] Fix the text-quality findings across the app:
+- [x] Fix the text-quality findings across the app (landed inside FIX-02/03/05
+  for the exception-shaped messages, FIX-12 for casing and button-label style;
+  every new key shipped with real translations in all nine locales, and both
+  `check_translations.dart` and `locales_test.dart` — including the widened
+  untranslated-value gate — pass):
   - Replace every user-facing message containing a raw exception, a bare colon, a stack trace or an unactionable shell command with a sentence explaining what failed and what to do next, keeping the technical detail available in an expandable/secondary position
   - Apply consistent capitalisation and button-label style across screens and dialogs
   - Update all nine locale files by appending the new keys (never sorting) with real translations, then run the translation check script in `scripts/` and `flutter test test/locales_test.dart`
 
-- [ ] Fix the theme and layout findings:
+- [x] Fix the theme and layout findings (FIX-10 replaced every hardcoded
+  colour with theme tokens; FIX-17 fixed the header truncation and layout
+  jumps; FIX-19 made the chat panel responsive at the narrow width; equivalent
+  controls were aligned by FIX-08/09's one-dialog-contract and action-row
+  work):
   - Replace every hardcoded `Colors.grey` (and any other non-theme colour flagged) with the helpers from `lib/components/helpers.dart`
   - Fix truncation and overflow at the narrow window width and in the longest locales (typically de and hu)
   - Fix spacing, alignment and button-order inconsistencies so equivalent controls sit in the same place on every screen
 
-- [ ] Fix the accessibility findings:
+- [x] Fix the accessibility findings (FIX-06 keyboard operability, FIX-07
+  names/tooltips — `PaneItem.title` literal-Text rule is pinned by its own
+  test, and `accessible_names_test.dart`'s tree scan fails on any new unnamed
+  icon-only target):
   - Wrap every flagged icon-only button and its `Tooltip` in `MergeSemantics` so the label reaches the button's semantics node
   - Ensure every `PaneItem.title` is a real `Text` widget
   - Fix tab order and keyboard reachability so a keyboard-only user can complete create, start, stop and delete
   - Add semantic labels to any control announced as a bare "button"
 
-- [ ] Fix the remaining **nit** findings, or explicitly defer them:
+- [x] Fix the remaining **nit** findings, or explicitly defer them (all 93
+  nits are fixed — none deferred; the two "already satisfied" rows, ST-50 and
+  parts of PS-03, are recorded as such in their work items' tables rather
+  than dropped):
   - Work them in a single pass grouped by file
   - For any nit deliberately not fixed, mark it deferred in the audit index with a one-line reason — do not silently drop findings
 

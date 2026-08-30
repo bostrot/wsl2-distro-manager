@@ -140,14 +140,14 @@ class Templates {
     return getTemplatePath().file('$name.ext4');
   }
 
-  /// Get template size by [name].
-  /// Returns a string with the size in GB fixed to 2 decimal places.
-  /// e.g. 1.23 GB
+  /// Get template size by [name], in a unit that keeps digits.
+  ///
+  /// Empty, not '0 GB', when the file is missing: the screen used to drop
+  /// any template whose size formatted to that string (audit ST-37, ST-42).
   String getTemplateSize(String name) {
     var path = getTemplateFilePath(name);
-    if (File(path).existsSync() == false) return '0 GB';
-    var size = File(path).lengthSync();
-    return '${(size / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+    if (File(path).existsSync() == false) return '';
+    return formatBytes(File(path).lengthSync());
   }
 
   /// Get template description by [name].

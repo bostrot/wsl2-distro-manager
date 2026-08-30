@@ -76,7 +76,6 @@
   "wsldefaultuser-text": "(Opcionális) WSL alapértelmezett felhasználó",
   "emptyfieldsfordefault-text": "(ha szeretnéd az alapértelmezett értékeket használni, vagy ha a WSL verziód nem támogatja, hagyd üresen a mezőket)",
   "runquickaction-text": "Gyorskód futtatása",
-  "startstopserving-text": "Hálózati szolgáltatás indítása/leállítása",
   "startedserving-text": "%s elérhető a hálózaton",
   "stoppedserving-text": "%s már nem elérhető a hálózaton",
   "download-text": "Letöltés",
@@ -194,7 +193,7 @@
   "customname-text": "Egyéni név (nem kötelező)",
   "customnamehint-text": "Hagyd üresen az automatikusan generált névhez",
   "mountoptions-text": "Csatolási beállítások (nem kötelező)",
-  "mountoptionshint-text": "pl. data=ordered (az általános ro/rw beállítások NEM támogatottak)",
+  "mountoptionshint-text": "Fájlrendszer-csatolási beállítások, pl. data=ordered. Az általános beállításokat, mint a ro vagy rw, a WSL itt nem fogadja el.",
   "diskofflinehint-text": "Tipp: a lemez valószínűleg online állapotban van a Windowsban. Állítsd offline állapotba a Lemezkezelésben, és próbáld újra.",
   "errorlistingdisks-text": "Hiba a fizikai lemezek listázásakor",
   "failedtolistdisks-text": "A lemezek listázása nem sikerült: %s",
@@ -661,5 +660,14 @@
   "namewillbe-text": "Létrehozva mint: '%s'",
   "openterminal-text": "Terminál megnyitása (már fut)",
   "sizeondiskhint-text": "A példány virtuális lemezének mérete Windowson — a valaha elért maximum, nem a benne használt hely",
-  "nosnippetshint-text": "A hozzáadott kódrészletek itt jelennek meg, és ebben a példányban futnak"
+  "nosnippetshint-text": "A hozzáadott kódrészletek itt jelennek meg, és ebben a példányban futnak",
+  "templatesinfo-text": "A sablon egy elmentett példány-lemezkép, amelyből új példányokat hozhatsz létre. Ments egyet a kezdőlapon egy disztribúciósor archívum gombjával.",
+  "createfromtemplate-text": "Új példány létrehozása a(z) '%s' sablonból ezzel a névvel:",
+  "snippetrunsasroot-text": "Ez a kódrészlet egy bash-szkript, amely rootként fut a kiválasztott példányban.",
+  "snippetscript-text": "Szkript",
+  "unmountdisk-text": "Lemez leválasztása",
+  "nothingmounted-text": "Jelenleg semmi sincs csatolva ezen az alkalmazáson keresztül.",
+  "mountlanding-text": "A lemez minden példányban a /mnt/wsl/ alatt jelenik meg.",
+  "startserving-text": "Kiszolgálás a hálózaton",
+  "stopserving-text": "Kiszolgálás leállítása"
 }

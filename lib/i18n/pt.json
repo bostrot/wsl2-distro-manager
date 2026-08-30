@@ -76,7 +76,6 @@
   "wsldefaultuser-text": "(Opcional) Usuário padrão do WSL a ser usado",
   "emptyfieldsfordefault-text": "(esvazie os campos por padrão ou se sua versão do WSL não for compatível)",
   "runquickaction-text": "Executar snippet",
-  "startstopserving-text": "Iniciar/parar a veiculação na rede",
   "startedserving-text": "Servindo %s na rede",
   "stoppedserving-text": "A veiculação de %s na rede foi interrompida",
   "download-text": "Baixar",
@@ -196,7 +195,7 @@
   "customname-text": "Nome personalizado (opcional)",
   "customnamehint-text": "Deixe vazio para um nome gerado automaticamente",
   "mountoptions-text": "Opções de montagem (opcional)",
-  "mountoptionshint-text": "ex.: data=ordered (opções genéricas como ro/rw NÃO são aceitas)",
+  "mountoptionshint-text": "Opções de montagem do sistema de arquivos, ex.: data=ordered. O WSL não aceita aqui opções genéricas como ro ou rw.",
   "diskofflinehint-text": "Sugestão: o disco pode estar online no Windows. Define-o como Offline na Gestão de Discos e tenta novamente.",
   "errorlistingdisks-text": "Erro ao listar os discos físicos",
   "failedtolistdisks-text": "Não foi possível listar os discos: %s",
@@ -663,5 +662,14 @@
   "namewillbe-text": "Será criado como '%s'",
   "openterminal-text": "Abrir um terminal (já em execução)",
   "sizeondiskhint-text": "Tamanho do disco virtual da instância no Windows — o pico histórico, não o espaço usado dentro dela",
-  "nosnippetshint-text": "Os trechos que você adicionar aparecem aqui, para rodar nesta instância"
+  "nosnippetshint-text": "Os trechos que você adicionar aparecem aqui, para rodar nesta instância",
+  "templatesinfo-text": "Um modelo é uma imagem de instância salva da qual você pode criar novas instâncias. Salve um com o botão de arquivo em uma linha de distro na tela inicial.",
+  "createfromtemplate-text": "Criar uma nova instância a partir do modelo '%s' com este nome:",
+  "snippetrunsasroot-text": "Este trecho é um script bash executado como root dentro da instância que você escolher.",
+  "snippetscript-text": "Script",
+  "unmountdisk-text": "Desmontar disco",
+  "nothingmounted-text": "Nada está montado por este aplicativo no momento.",
+  "mountlanding-text": "O disco aparece em todas as instâncias em /mnt/wsl/.",
+  "startserving-text": "Servir na rede",
+  "stopserving-text": "Parar de servir"
 }

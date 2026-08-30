@@ -76,7 +76,6 @@
   "wsldefaultuser-text": "(Opcional) Usuario predeterminado de WSL a usar",
   "emptyfieldsfordefault-text": "(deja los campos vacíos para valores predeterminados o si tu versión de WSL no lo soporta)",
   "runquickaction-text": "Ejecutar un fragmento",
-  "startstopserving-text": "Iniciar/Detener servicio en la red",
   "startedserving-text": "Sirviendo %s en la red",
   "stoppedserving-text": "Servicio de %s en la red detenido",
   "download-text": "Descargar",
@@ -194,7 +193,7 @@
   "customname-text": "Nombre personalizado (opcional)",
   "customnamehint-text": "Déjalo vacío para un nombre generado automáticamente",
   "mountoptions-text": "Opciones de montaje (opcional)",
-  "mountoptionshint-text": "p. ej. data=ordered (opciones genéricas como ro/rw NO se admiten)",
+  "mountoptionshint-text": "Opciones de montaje del sistema de archivos, p. ej. data=ordered. WSL no acepta aquí opciones genéricas como ro o rw.",
   "diskofflinehint-text": "Sugerencia: puede que el disco esté en línea en Windows. Ponlo como Sin conexión en Administración de discos e inténtalo de nuevo.",
   "errorlistingdisks-text": "Error al listar los discos físicos",
   "failedtolistdisks-text": "No se pudieron listar los discos: %s",
@@ -661,5 +660,14 @@
   "namewillbe-text": "Se creará como '%s'",
   "openterminal-text": "Abrir un terminal (ya en ejecución)",
   "sizeondiskhint-text": "Tamaño del disco virtual de la instancia en Windows: su máximo histórico, no el espacio usado dentro",
-  "nosnippetshint-text": "Los fragmentos que agregues aparecen aquí, para ejecutarse en esta instancia"
+  "nosnippetshint-text": "Los fragmentos que agregues aparecen aquí, para ejecutarse en esta instancia",
+  "templatesinfo-text": "Una plantilla es una imagen de instancia guardada desde la que puedes crear nuevas instancias. Guarda una con el botón de archivo en una fila de distro en Inicio.",
+  "createfromtemplate-text": "Crear una nueva instancia desde la plantilla '%s' con este nombre:",
+  "snippetrunsasroot-text": "Este fragmento es un script de bash que se ejecuta como root dentro de la instancia que elijas.",
+  "snippetscript-text": "Script",
+  "unmountdisk-text": "Desmontar disco",
+  "nothingmounted-text": "Actualmente no hay nada montado a través de esta aplicación.",
+  "mountlanding-text": "El disco aparece en todas las instancias bajo /mnt/wsl/.",
+  "startserving-text": "Servir en la red",
+  "stopserving-text": "Dejar de servir"
 }

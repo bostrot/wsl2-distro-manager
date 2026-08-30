@@ -76,7 +76,6 @@
   "wsldefaultuser-text": "(オプション) 使用する WSL デフォルトユーザー",
   "emptyfieldsfordefault-text": "(デフォルトの場合、または WSL バージョンがサポートしていない場合は、フィールドを空にしてください)",
   "runquickaction-text": "スニペットを実行",
-  "startstopserving-text": "ネットワークでの提供を開始/停止",
   "startedserving-text": "ネットワークで %s を提供中",
   "stoppedserving-text": "ネットワークでの %s の提供を停止しました",
   "download-text": "ダウンロード",
@@ -194,7 +193,7 @@
   "customname-text": "カスタム名（省略可）",
   "customnamehint-text": "空のままにすると名前が自動生成されます",
   "mountoptions-text": "マウントオプション（省略可）",
-  "mountoptionshint-text": "例: data=ordered（ro/rw などの汎用オプションは非対応）",
+  "mountoptionshint-text": "ファイルシステムのマウントオプション（例: data=ordered）。ro や rw などの汎用オプションはここでは使えません。",
   "diskofflinehint-text": "ヒント: ディスクが Windows 側でオンラインになっている可能性があります。ディスクの管理でオフラインにしてからもう一度お試しください。",
   "errorlistingdisks-text": "物理ディスクの一覧取得でエラーが発生しました",
   "failedtolistdisks-text": "ディスクの一覧を取得できませんでした: %s",
@@ -661,5 +660,14 @@
   "namewillbe-text": "「%s」として作成されます",
   "openterminal-text": "ターミナルを開く（実行中）",
   "sizeondiskhint-text": "Windows 上のインスタンス仮想ディスクのサイズ（過去最大値であり、内部の使用量ではありません）",
-  "nosnippetshint-text": "追加したスニペットがここに表示され、このインスタンス内で実行できます"
+  "nosnippetshint-text": "追加したスニペットがここに表示され、このインスタンス内で実行できます",
+  "templatesinfo-text": "テンプレートは、新しいインスタンスの元になる保存済みのインスタンスイメージです。ホームのディストリビューション行にあるアーカイブボタンで保存できます。",
+  "createfromtemplate-text": "テンプレート「%s」から次の名前で新しいインスタンスを作成:",
+  "snippetrunsasroot-text": "このスニペットは、選択したインスタンス内で root として実行される bash スクリプトです。",
+  "snippetscript-text": "スクリプト",
+  "unmountdisk-text": "ディスクのマウント解除",
+  "nothingmounted-text": "現在このアプリ経由でマウントされているものはありません。",
+  "mountlanding-text": "ディスクはすべてのインスタンスの /mnt/wsl/ 配下に表示されます。",
+  "startserving-text": "ネットワークで配信",
+  "stopserving-text": "配信を停止"
 }

@@ -196,13 +196,17 @@ Column settingsColumn(
         controller: userController,
         placeholder: 'root',
       ),
+      // A caption tied to the three start fields above, not a bare
+      // parenthetical floating between two unrelated groups (audit ST-35).
       Padding(
-        padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
-        child: Text('emptyfieldsfordefault-text'.i18n()),
+        padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+        child: Text('emptyfieldsfordefault-text'.i18n(),
+            style: FluentTheme.of(context).typography.caption),
       ),
       // The real one: `[user] default` in /etc/wsl.conf, which the app wrote
-      // at creation and then never let anyone see again (audit CC-6).
-      Text('user-text'.i18n()),
+      // at creation and then never let anyone see again (audit CC-6). No
+      // bare "User" heading — the field renders its own label, and the two
+      // together read as one section labelling itself twice (ST-35).
       settingText(item, setState, userDefaultSetting, draft),
       const SizedBox(
         height: 8.0,
@@ -237,23 +241,30 @@ Column settingsColumn(
             },
           ),
           if (Sync().hasPath(item))
+            // Says which of the two it will do. One label used to name both
+            // actions over a state that was invisible, never persisted and
+            // never repainted (audit ST-31).
             distroActionButton(
               context,
-              label: 'startstopserving-text'.i18n(),
-              icon: FluentIcons.upload,
+              label: (Sync.servingDistro == item
+                      ? 'stopserving-text'
+                      : 'startserving-text')
+                  .i18n(),
+              icon: Sync.servingDistro == item
+                  ? FluentIcons.stop
+                  : FluentIcons.upload,
               tooltip: 'startstopservinghint-text'.i18n(),
-              onPressed: () {
+              onPressed: () async {
                 plausible.event(name: "network_uploaded");
                 Sync sync = Sync.instance(item);
-                if (!isSyncing) {
-                  isSyncing = true;
-                  sync.startServer();
+                if (Sync.servingDistro != item) {
+                  await sync.startServer();
                   Notify.message('startedserving-text'.i18n([item]));
                 } else {
-                  isSyncing = false;
                   sync.stopServer();
                   Notify.message('stoppedserving-text'.i18n([item]));
                 }
+                setState(() {});
               },
             ),
           if (Sync().hasPath(item))
@@ -647,10 +658,14 @@ Widget _settingHeader(BuildContext context, String item, Function setState,
             Text(setting.labelKey.i18n()),
             const SizedBox(height: 2.0),
             Text(setting.infoKey.i18n(), style: theme.typography.caption),
+            // Grey like the .wslconfig screen's unset marker, not accent —
+            // in accent it read as a hyperlink that did nothing when
+            // clicked, and the two screens spoke two visual languages for
+            // one concept (audit ST-34).
             if (!isSet)
               Text('settingunset-text'.i18n(),
                   style: theme.typography.caption
-                      ?.copyWith(color: theme.accentColor)),
+                      ?.copyWith(color: secondaryTextColor(context))),
           ],
         ),
       ),

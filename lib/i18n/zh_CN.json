@@ -75,7 +75,6 @@
   "wsldefaultuser-text": "（可选）WSL 默认用户",
   "emptyfieldsfordefault-text": "（如果您的 WSL 版本不支持，请清空默认字段）",
   "runquickaction-text": "运行代码片段",
-  "startstopserving-text": "开始/停止在网络上提供服务",
   "startedserving-text": "正在网络上提供 %s 服务",
   "stoppedserving-text": "已停止在网络上提供 %s 服务",
   "download-text": "下载",
@@ -195,7 +194,7 @@
   "customname-text": "自定义名称（可选）",
   "customnamehint-text": "留空将自动生成名称",
   "mountoptions-text": "挂载选项（可选）",
-  "mountoptionshint-text": "例如 data=ordered（不支持通用选项如 ro/rw）",
+  "mountoptionshint-text": "文件系统挂载选项，例如 data=ordered。WSL 在此不接受 ro、rw 等通用选项。",
   "diskofflinehint-text": "提示：该磁盘在 Windows 中可能处于联机状态。请在磁盘管理中将其设为脱机后重试。",
   "errorlistingdisks-text": "列举物理磁盘出错",
   "failedtolistdisks-text": "列举磁盘失败：%s",
@@ -662,5 +661,14 @@
   "namewillbe-text": "将创建为“%s”",
   "openterminal-text": "打开终端（已在运行）",
   "sizeondiskhint-text": "实例虚拟磁盘在 Windows 上的大小——历史峰值，而非其内部实际占用",
-  "nosnippetshint-text": "您添加的代码片段会显示在这里，可在此实例内运行"
+  "nosnippetshint-text": "您添加的代码片段会显示在这里，可在此实例内运行",
+  "templatesinfo-text": "模板是保存下来的实例镜像，可用来创建新实例。在主页某个发行版行中点击归档按钮即可保存一个。",
+  "createfromtemplate-text": "从模板“%s”以此名称创建新实例：",
+  "snippetrunsasroot-text": "此代码片段是一个 bash 脚本，会在您选择的实例中以 root 身份运行。",
+  "snippetscript-text": "脚本",
+  "unmountdisk-text": "卸载磁盘",
+  "nothingmounted-text": "当前没有通过本应用挂载任何内容。",
+  "mountlanding-text": "磁盘会出现在每个实例的 /mnt/wsl/ 下。",
+  "startserving-text": "在网络上提供",
+  "stopserving-text": "停止提供"
 }

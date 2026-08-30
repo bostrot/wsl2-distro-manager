@@ -566,3 +566,19 @@ int hostPhysicalMemoryBytes() {
 /// distribution names and are kept.
 String sanitizeDistroName(String label) =>
     label.replaceAll(RegExp('[^A-Za-z0-9_-]'), '_');
+
+/// Bytes as a human-readable size, picking the unit that keeps digits.
+///
+/// Moved here from disk_dialog.dart so the template list can share it — its
+/// own formatter was pinned to GB with two decimals, printing "0.04 GB" and
+/// rounding anything under ~5 MB to "0 GB" (audit ST-37, ST-42).
+String formatBytes(int bytes) {
+  const units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
+  var value = bytes.toDouble();
+  var unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return '${value.toStringAsFixed(value >= 10 || unit == 0 ? 0 : 1)} ${units[unit]}';
+}
