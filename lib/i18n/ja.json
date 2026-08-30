@@ -653,5 +653,8 @@
   "restore-found-text": "Pro を確認しました。ご購入ありがとうございます！",
   "restore-notfound-text": "ストアのライセンスが見つかりません。Pro には本アプリの Microsoft Store 版が必要です。",
   "restore-support-text": "サポートを受ける",
-  "byok-locked-text": "Pro 機能"
+  "byok-locked-text": "Pro 機能",
+  "settinginvalidvalue-text": "'%s' には WSL が受け付けない値が入っています。保存する前に修正してください。",
+  "copied-text": "クリップボードにコピーしました。",
+  "sync-info-text": "同期は、同じネットワーク上でこのアプリを実行している 2 台の PC 間でインスタンス全体をコピーします。一方が配信し、もう一方がダウンロードします。パスワードはこの転送を保護します。"
 }

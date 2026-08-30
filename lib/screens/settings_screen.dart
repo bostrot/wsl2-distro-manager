@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
@@ -305,6 +306,19 @@ class SettingsPageState extends State<SettingsPage> {
     if (dockerMirror != null && dockerMirror != '') {
       _dockerMirrorController.text = dockerMirror;
     }
+    // A *chosen* path renders as real text; only the fallback default stays
+    // a placeholder. Both used to render as placeholder grey, so "set" and
+    // "unset" were indistinguishable (audit ST-25).
+    String? distroPath = prefs.getString('DistroPath');
+    if (distroPath != null && distroPath.trim().isNotEmpty) {
+      _settings['Default Distro Location'] =
+          TextEditingController(text: distroPath);
+    }
+    String? dataPath = prefs.getString('DataPath');
+    if (dataPath != null && dataPath.trim().isNotEmpty) {
+      _settings['General Data Location'] =
+          TextEditingController(text: dataPath);
+    }
     _useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
     String? remoteTarget = prefs.getString('RemoteWSLTarget');
     if (remoteTarget != null && remoteTarget.trim().isNotEmpty) {
@@ -475,10 +489,50 @@ class SettingsPageState extends State<SettingsPage> {
   /// Persist the draft. Answers false when a validation error stopped it, so
   /// the exit prompt can keep the user on the screen instead of leaving with
   /// the edits unwritten.
+  /// The `.wslconfig` keys whose values have a shape WSL will reject.
+  /// Save refuses to write an unparseable one: WSL reports a bad value on
+  /// stderr with exit code 0 at every distro start, so writing it means the
+  /// app can never learn it was wrong (audit ST-05).
+  static const Map<String, SettingsType> _numericWslKeys = {
+    'memory': SettingsType.size,
+    'swap': SettingsType.size,
+    'defaultVhdSize': SettingsType.size,
+    'processors': SettingsType.number,
+    'vmIdleTimeout': SettingsType.number,
+    'maxCrashDumpCount': SettingsType.number,
+    'initialAutoProxyTimeout': SettingsType.number,
+  };
+
+  /// The first key holding a value WSL would reject, or null when clean.
+  String? _firstInvalidWslValue() {
+    for (final entry in _numericWslKeys.entries) {
+      final raw = _settings[entry.key]?.text.trim() ?? '';
+      if (raw.isEmpty) continue;
+      final ok = entry.value == SettingsType.size
+          ? parseWslSize(raw, unit: 'GB') != null
+          : parseWslCount(raw) != null;
+      if (!ok) return entry.key;
+    }
+    return null;
+  }
+
   Future<bool> saveSettings(BuildContext context) async {
     final remoteTarget = _remoteWslTargetController.text.trim();
     if (_useRemoteWsl && !_isRemoteWslTargetValid(remoteTarget)) {
       Notify.message('remote-wsl-target-required-text'.i18n(),
+          severity: InfoBarSeverity.warning);
+      return false;
+    }
+
+    // Typed `eight gigabytes` into Memory used to land in the file verbatim
+    // and break every distro start with nothing on screen (audit ST-05).
+    final invalid = _firstInvalidWslValue();
+    if (invalid != null) {
+      final labelKey = '${invalid.toLowerCase()}-text';
+      final prose = labelKey.i18n();
+      Notify.message(
+          'settinginvalidvalue-text'
+              .i18n([prose == labelKey ? invalid : prose]),
           severity: InfoBarSeverity.warning);
       return false;
     }
@@ -496,18 +550,19 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("SyncPassword");
     }
 
-    // Save repo link
+    // Save repo link. Empty removes the key: Save used to materialise the
+    // default as a stored value the user never chose (audit ST-26).
     if (_repoTextController.text.isNotEmpty) {
       prefs.setString("RepoLink", _repoTextController.text);
     } else {
-      prefs.setString("RepoLink", defaultRepoLink);
+      prefs.remove("RepoLink");
     }
 
-    // Save docker repo link
+    // Save docker repo link. Same ST-26 rule.
     if (_dockerrepoController.text.isNotEmpty) {
       prefs.setString("DockerRepoLink", _dockerrepoController.text);
     } else {
-      prefs.setString("DockerRepoLink", "https://registry-1.docker.io");
+      prefs.remove("DockerRepoLink");
     }
 
     // Save editor
@@ -664,8 +719,9 @@ class SettingsPageState extends State<SettingsPage> {
                 }
               },
             ),
-            placeholder:
-                prefs.getString("DistroPath") ?? getDefaultStorageRootPath()),
+            // The default alone: a chosen value lives in the box itself now
+            // (ST-25).
+            placeholder: getDefaultStorageRootPath()),
         settingsWidget(context,
             title: 'defaultdatalocation-text'.i18n(),
             name: 'General Data Location',
@@ -687,9 +743,8 @@ class SettingsPageState extends State<SettingsPage> {
                 }
               },
             ),
-            placeholder: prefs.getString("DataPath") ??
-                prefs.getString("DistroPath") ??
-                getDefaultStorageRootPath()),
+            placeholder:
+                prefs.getString("DistroPath") ?? getDefaultStorageRootPath()),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
@@ -784,9 +839,13 @@ class SettingsPageState extends State<SettingsPage> {
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Tooltip(
               message: 'remote-ssh-target-format-text'.i18n(),
+              // Live only while the toggle that reads it is on (audit ST-24).
               child: TextBox(
                 controller: _remoteWslTargetController,
-                placeholder: 'remote-ssh-target-placeholder-text'.i18n(),
+                enabled: _useRemoteWsl,
+                placeholder: _useRemoteWsl
+                    ? 'remote-ssh-target-placeholder-text'.i18n()
+                    : null,
               ),
             ),
           ),
@@ -1010,8 +1069,15 @@ class SettingsPageState extends State<SettingsPage> {
                   NamedIconButton(
                     label: 'copyendpoint-text'.i18n(),
                     icon: FluentIcons.copy,
-                    onPressed: () => Clipboard.setData(
-                        ClipboardData(text: _mcpService.endpointUrl)),
+                    // A copy with no acknowledgement is indistinguishable
+                    // from a missed click (audit ST-21).
+                    onPressed: () {
+                      Clipboard.setData(
+                          ClipboardData(text: _mcpService.endpointUrl));
+                      Notify.message('copied-text'.i18n(),
+                          severity: InfoBarSeverity.success,
+                          duration: const Duration(seconds: 2));
+                    },
                   ),
                 ],
               ),
@@ -1049,8 +1115,13 @@ class SettingsPageState extends State<SettingsPage> {
                   NamedIconButton(
                     label: 'copytoken-text'.i18n(),
                     icon: FluentIcons.copy,
-                    onPressed: () => Clipboard.setData(
-                        ClipboardData(text: _mcpService.token)),
+                    onPressed: () {
+                      Clipboard.setData(
+                          ClipboardData(text: _mcpService.token));
+                      Notify.message('copied-text'.i18n(),
+                          severity: InfoBarSeverity.success,
+                          duration: const Duration(seconds: 2));
+                    },
                   ),
                   const SizedBox(width: 4),
                   // Rotating the token silently broke every client already
@@ -1083,13 +1154,17 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: InfoBar(
-              title: Text('mcp-tunnel-warning-text'.i18n()),
-              severity: InfoBarSeverity.warning,
+          // Only while the tunnel is actually up: shown whenever MCP was
+          // enabled, this warning contradicted the "only reachable from this
+          // machine" hint two lines above it (audit ST-20).
+          if (_tunnelService.isRunning)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoBar(
+                title: Text('mcp-tunnel-warning-text'.i18n()),
+                severity: InfoBarSeverity.warning,
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: InfoLabel(
@@ -1166,8 +1241,13 @@ class SettingsPageState extends State<SettingsPage> {
                     NamedIconButton(
                       label: 'copytunnelurl-text'.i18n(),
                       icon: FluentIcons.copy,
-                      onPressed: () => Clipboard.setData(
-                          ClipboardData(text: _tunnelService.publicUrl!)),
+                      onPressed: () {
+                        Clipboard.setData(
+                            ClipboardData(text: _tunnelService.publicUrl!));
+                        Notify.message('copied-text'.i18n(),
+                            severity: InfoBarSeverity.success,
+                            duration: const Duration(seconds: 2));
+                      },
                     ),
                   ],
                 ),
@@ -1248,6 +1328,19 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        // Moved out of the Sync group: this is the download source for new
+        // distro images and has nothing to do with sync (audit ST-23).
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'repofordistro-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: TextBox(
+              controller: _repoTextController,
+              placeholder: defaultRepoLink,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1256,6 +1349,16 @@ class SettingsPageState extends State<SettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // What "sync" actually syncs, like every other group added by Phase
+        // 05 explains itself (audit ST-23).
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            'sync-info-text'.i18n(),
+            style:
+                const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
@@ -1275,21 +1378,12 @@ class SettingsPageState extends State<SettingsPage> {
             child: Tooltip(
               message: 'syncpasswordhint-text'.i18n(),
               child: TextBox(
+                // No example password in a masked field: readable
+                // placeholder text there reads as a stored value, and the
+                // example itself was a weak password (ST-23).
                 controller: _syncPasswordController,
-                placeholder: 'SecretPassword123',
                 obscureText: true,
               ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: InfoLabel(
-            label: 'repofordistro-text'.i18n(),
-            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: TextBox(
-              controller: _repoTextController,
-              placeholder: defaultRepoLink,
             ),
           ),
         ),
@@ -1356,7 +1450,9 @@ class SettingsPageState extends State<SettingsPage> {
             tooltip: 'processorinfo-text'.i18n(),
             type: SettingsType.number,
             sizeMin: 1,
-            sizeMax: SysInfo.cores.length,
+            // Platform.numberOfProcessors, not SysInfo.cores: the latter
+            // reported 1 core on the audit host (ST-08).
+            sizeMax: Platform.numberOfProcessors,
             placeholder: ''),
         settingsWidget(context,
             title: 'localhostForwarding',
@@ -1551,8 +1647,17 @@ class SettingsPageState extends State<SettingsPage> {
 
   /// Host memory in whole GB, the ceiling the `memory` and `swap` sliders are
   /// scaled against.
-  int get _hostMemoryGb =>
-      SysInfo.getTotalPhysicalMemory() ~/ 1024 ~/ 1024 ~/ 1024;
+  ///
+  /// `SysInfo.getTotalPhysicalMemory()` returns 0 on some hosts (measured in
+  /// the audit: 0 bytes and 1 core, so the Memory / Processors / Swap sliders
+  /// never rendered at all — ST-08). win32's `GlobalMemoryStatusEx` is the
+  /// authoritative answer on Windows; SysInfo stays as the fallback.
+  int get _hostMemoryGb {
+    final win32Bytes = hostPhysicalMemoryBytes();
+    final bytes =
+        win32Bytes > 0 ? win32Bytes : SysInfo.getTotalPhysicalMemory();
+    return bytes ~/ 1024 ~/ 1024 ~/ 1024;
+  }
 
   /// A `.wslconfig` boolean read the way WSL reads it: an absent key means the
   /// key's documented default, not `false`. Used for the conditional
@@ -1804,13 +1909,9 @@ class SettingsPageState extends State<SettingsPage> {
               },
             ),
           ),
-        if (!isSet)
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0),
-            child: Text('settingunset-text'.i18n(),
-                style: TextStyle(
-                    color: secondaryTextColor(context), fontSize: 12)),
-          ),
+        // No trailing "Not set — using the default" caption: the switch
+        // label already says "(Default)", and stating the one fact twice in
+        // two type styles, twelve times down the page, was ST-15.
       ],
     );
   }
@@ -1836,27 +1937,45 @@ class SettingsPageState extends State<SettingsPage> {
       if (selected != null && match == null) selected,
     ];
 
-    return ComboBox<String>(
-      isExpanded: true,
-      placeholder: Text(placeholder),
-      value: selected,
-      items: items
-          .map((option) => ComboBoxItem<String>(
-                value: option,
-                child: Text(notes.containsKey(option)
-                    ? '$option — ${notes[option]}'
-                    : option),
-              ))
-          .toList(),
-      onChanged: enabled
-          ? (value) {
-              if (value == null) return;
-              _settings[name]!.text = value;
-              setState(() {
-                _settings = _settings;
-              });
-            }
-          : null,
+    // A DropDownButton, not a ComboBox: the ComboBox popup anchors on the
+    // selected item, so with a late value chosen it opened over its own
+    // field (audit ST-17); this flyout opens below and marks the current
+    // value. The leading "Not set" entry is the un-choose the booleans have
+    // always had — an enumeration used to be un-clearable once touched
+    // (ST-16): it empties the value, which Save writes as a removed line, so
+    // the documented default applies again.
+    return DropDownButton(
+      title: Expanded(
+        child: Text(
+          selected == null
+              ? (placeholder.isEmpty ? 'settingunset-text'.i18n() : placeholder)
+              : selected,
+          textAlign: TextAlign.start,
+          style: selected == null
+              ? TextStyle(color: secondaryTextColor(context))
+              : null,
+        ),
+      ),
+      items: [
+        MenuFlyoutItem(
+          selected: selected == null,
+          text: Text('settingunset-text'.i18n()),
+          onPressed: enabled
+              ? () => setState(() => _settings[name]!.text = '')
+              : null,
+        ),
+        const MenuFlyoutSeparator(),
+        for (final option in items)
+          MenuFlyoutItem(
+            selected: option == selected,
+            text: Text(notes.containsKey(option)
+                ? '$option — ${notes[option]}'
+                : option),
+            onPressed: enabled
+                ? () => setState(() => _settings[name]!.text = option)
+                : null,
+          ),
+      ],
     );
   }
 
@@ -1904,6 +2023,9 @@ class SettingsPageState extends State<SettingsPage> {
             controller: _settings[name],
             placeholder: placeholder,
             enabled: enabled,
+            // Validation runs on the keystroke, not on whatever unrelated
+            // rebuild happened next (audit ST-06).
+            onChanged: (_) => setState(() {}),
           ),
           if (warning.isNotEmpty)
             Padding(

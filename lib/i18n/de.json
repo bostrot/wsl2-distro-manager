@@ -654,5 +654,8 @@
   "restore-found-text": "Pro gefunden — danke für Ihren Kauf!",
   "restore-notfound-text": "Keine Store-Lizenz gefunden. Pro erfordert die Microsoft-Store-Version dieser App.",
   "restore-support-text": "Hilfe erhalten",
-  "byok-locked-text": "Pro-Funktion"
+  "byok-locked-text": "Pro-Funktion",
+  "settinginvalidvalue-text": "'%s' enthält einen Wert, den WSL ablehnen würde. Korrigieren Sie ihn vor dem Speichern.",
+  "copied-text": "In die Zwischenablage kopiert.",
+  "sync-info-text": "Sync kopiert eine ganze Instanz zwischen zwei PCs mit dieser App im selben Netzwerk: einer stellt sie bereit, der andere lädt sie herunter. Das Passwort schützt diese Übertragung."
 }

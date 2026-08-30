@@ -653,5 +653,8 @@
   "restore-found-text": "Pro bulundu — satın aldığınız için teşekkürler!",
   "restore-notfound-text": "Store lisansı bulunamadı. Pro, bu uygulamanın Microsoft Store sürümünü gerektirir.",
   "restore-support-text": "Yardım al",
-  "byok-locked-text": "Pro özelliği"
+  "byok-locked-text": "Pro özelliği",
+  "settinginvalidvalue-text": "'%s' WSL'in reddedeceği bir değer içeriyor. Kaydetmeden önce düzeltin.",
+  "copied-text": "Panoya kopyalandı.",
+  "sync-info-text": "Eşitleme, aynı ağda bu uygulamayı çalıştıran iki bilgisayar arasında bir dağıtımın tamamını kopyalar: biri sunar, diğeri indirir. Parola bu aktarımı korur."
 }

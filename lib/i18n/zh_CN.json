@@ -654,5 +654,8 @@
   "restore-found-text": "已找到 Pro——感谢您的购买！",
   "restore-notfound-text": "未找到商店许可证。Pro 需要本应用的 Microsoft Store 版本。",
   "restore-support-text": "获取帮助",
-  "byok-locked-text": "Pro 功能"
+  "byok-locked-text": "Pro 功能",
+  "settinginvalidvalue-text": "“%s”包含 WSL 无法接受的值。请先修正再保存。",
+  "copied-text": "已复制到剪贴板。",
+  "sync-info-text": "同步可在同一网络中运行本应用的两台电脑之间复制整个实例：一台提供，另一台下载。密码用于保护该传输。"
 }

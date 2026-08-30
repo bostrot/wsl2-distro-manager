@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:win32/win32.dart' show MEMORYSTATUSEX, GlobalMemoryStatusEx;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
@@ -535,3 +538,22 @@ Color subtleFillColor(BuildContext context) =>
 /// Card fill that follows the theme (audit TL-08).
 Color cardFillColor(BuildContext context) =>
     FluentTheme.of(context).resources.cardBackgroundFillColorDefault;
+
+/// Total physical memory in bytes, straight from Win32.
+///
+/// `SysInfo.getTotalPhysicalMemory()` returns 0 on some hosts, which scaled
+/// the `.wslconfig` memory/swap sliders to nothing (audit ST-08). Returns 0
+/// when the call fails, so callers can fall back.
+int hostPhysicalMemoryBytes() {
+  if (!Platform.isWindows) return 0;
+  final status = calloc<MEMORYSTATUSEX>();
+  try {
+    status.ref.dwLength = sizeOf<MEMORYSTATUSEX>();
+    if (GlobalMemoryStatusEx(status) == 0) return 0;
+    return status.ref.ullTotalPhys;
+  } catch (_) {
+    return 0;
+  } finally {
+    calloc.free(status);
+  }
+}

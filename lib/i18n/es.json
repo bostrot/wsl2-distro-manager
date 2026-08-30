@@ -653,5 +653,8 @@
   "restore-found-text": "Pro encontrado. ¡Gracias por tu compra!",
   "restore-notfound-text": "No se encontró una licencia de la Store. Pro requiere la versión de Microsoft Store de esta aplicación.",
   "restore-support-text": "Obtener ayuda",
-  "byok-locked-text": "Función Pro"
+  "byok-locked-text": "Función Pro",
+  "settinginvalidvalue-text": "'%s' contiene un valor que WSL rechazaría. Corrígelo antes de guardar.",
+  "copied-text": "Copiado al portapapeles.",
+  "sync-info-text": "Sync copia una instancia completa entre dos PC con esta aplicación en la misma red: uno la sirve y el otro la descarga. La contraseña protege esa transferencia."
 }

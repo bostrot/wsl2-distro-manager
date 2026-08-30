@@ -413,7 +413,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-18 -- Recommendations panel | 4 | 0 | 2026-08-30 |
 | FIX-12 -- Copy, casing and terminology | 14 | 0 | 2026-08-30 |
 | FIX-13 -- Sell only what exists, gate it once | 13 | 0 | 2026-08-30 |
-| all others | 0 | 58 | -- |
+| FIX-15 -- Settings: validate `.wslconfig`, restore the missing controls | 12 | 0 | 2026-08-30 |
+| all others | 0 | 46 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -1083,20 +1084,50 @@ button, the primary hierarchy, Stop-while-starting).
 
 ### FIX-15 -- Settings: validate `.wslconfig`, restore the missing controls
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| ST-05 | blocker | Validate `.wslconfig` values before writing -- WSL rejects them on stderr with exit code 0, so the app currently reports nothing |
-| ST-06 | major | Run the validation on change, not on an unrelated rebuild |
-| ST-08 | major | Fix or replace `SysInfo` -- it reports 0 bytes and 1 core here, so the Memory / Processors / Swap sliders never render at all |
-| ST-16 | major | Give enumerations a "not set" item so a value can be un-chosen, as the booleans allow |
-| ST-20 | major | The public-internet warning currently shows whenever MCP is on, contradicting the hint two lines above it |
-| ST-17 | nit | Position the enumeration flyout so it does not cover its own field, and mark the current value |
-| ST-21 | nit | Give the copy buttons feedback |
-| ST-23 | nit | Explain the sync group; remove the plaintext example password from a masked field; move the non-sync setting out |
-| ST-24 | nit | Disable "Remote SSH target" while the toggle that uses it is off |
-| ST-25 | nit | Distinguish a set path from an unset one -- both currently render as grey placeholder text |
-| ST-26 | nit | Do not materialise a Docker repository default the user never chose on Save |
-| ST-15 | nit | "true (Default)" and "Not set -- using the default" state one fact twice on one row, twelve times over |
+**Landed 2026-08-30.** Save refuses to write a `.wslconfig` value WSL would
+reject: the seven numeric/size keys run through the same `parseWslSize` /
+`parseWslCount` the widgets use, and an unparseable value keeps the user on
+the screen with the setting named — WSL reports a bad value on stderr with
+exit code 0 at every distro start, so writing it meant the app could never
+learn it was wrong (ST-05). The inline warning appears on the keystroke
+instead of on whatever unrelated rebuild came next (ST-06).
+
+**ST-08's missing sliders were bad system probes**, not layout: on this host
+`SysInfo` reported 0 bytes of memory and 1 core, which scaled the Memory,
+Processors and Swap sliders to nothing. Memory now comes from win32's
+`GlobalMemoryStatusEx` (`helpers.dart`, `hostPhysicalMemoryBytes()`) with
+SysInfo as the fallback, and the processor ceiling from
+`Platform.numberOfProcessors`.
+
+The enumeration control became a below-opening flyout with a leading **Not
+set** entry: an enumeration used to be un-clearable once touched, unlike the
+booleans (ST-16), and the ComboBox popup anchored on the selected item and
+covered its own field (ST-17). The MCP public-internet warning shows only
+while the tunnel is actually running instead of contradicting the
+"only reachable from this machine" hint two lines above it (ST-20); the three
+copy buttons answer with a toast (ST-21); the remote SSH target is disabled
+while its toggle is off (ST-24); a chosen path renders as real text with only
+the fallback default left as a placeholder (ST-25); Save no longer
+materialises repo defaults the user never chose (ST-26); the unset booleans
+state their fact once, not twice in two type styles (ST-15); and the Sync
+group opens with a sentence saying what sync is, drops the
+`SecretPassword123` example from its masked field, and hands the distro-repo
+field to the Docker group it belongs with (ST-23).
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| ST-05 | blocker | Validate `.wslconfig` values before writing -- WSL rejects them on stderr with exit code 0, so the app currently reports nothing | `settings_screen.dart:496` (`_numericWslKeys`), save gate at `:527` |
+| ST-06 | major | Run the validation on change, not on an unrelated rebuild | `settings_screen.dart:2026` |
+| ST-08 | major | Fix or replace `SysInfo` -- it reports 0 bytes and 1 core here, so the Memory / Processors / Swap sliders never render at all | `helpers.dart` (`hostPhysicalMemoryBytes`), `settings_screen.dart:1424`, `:1656` |
+| ST-16 | major | Give enumerations a "not set" item so a value can be un-chosen, as the booleans allow | `settings_screen.dart:1945` |
+| ST-20 | major | The public-internet warning currently shows whenever MCP is on, contradicting the hint two lines above it | `settings_screen.dart:1160` |
+| ST-17 | nit | Position the enumeration flyout so it does not cover its own field, and mark the current value | `settings_screen.dart:1938` (`DropDownButton`) |
+| ST-21 | nit | Give the copy buttons feedback | `settings_screen.dart:1073`, `:1114`, `:1240`, key `copied-text` |
+| ST-23 | nit | Explain the sync group; remove the plaintext example password from a masked field; move the non-sync setting out | `settings_screen.dart:1352`, `:1383`, `:1332` |
+| ST-24 | nit | Disable "Remote SSH target" while the toggle that uses it is off | `settings_screen.dart:842` |
+| ST-25 | nit | Distinguish a set path from an unset one -- both currently render as grey placeholder text | `settings_screen.dart:311` (seeded), placeholders trimmed |
+| ST-26 | nit | Do not materialise a Docker repository default the user never chose on Save | `settings_screen.dart:553`, `:561` |
+| ST-15 | nit | "true (Default)" and "Not set -- using the default" state one fact twice on one row, twelve times over | `settings_screen.dart:1912` |
 
 ### FIX-16 -- The create / install form
 

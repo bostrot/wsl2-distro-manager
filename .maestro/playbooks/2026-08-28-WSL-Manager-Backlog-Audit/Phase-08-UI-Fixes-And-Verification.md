@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 156 of 214 findings closed (15 blockers, 85 majors, 56 nits).** Running
+  **In progress — 168 of 214 findings closed (16 blockers, 89 majors, 63 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -274,10 +274,21 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     per-field; the paywall keeps its BETA badge; the chat panel's unreachable
     Upgrade button is gone.
 
-  **Next up:** FIX-15/16/17, then FIX-19/20. Verification for this slice:
+  - **FIX-15 — settings validation and controls: complete (12/12).** Save
+    refuses `.wslconfig` values WSL would reject and names the setting;
+    validation fires on the keystroke. The missing sliders were bad probes:
+    memory now comes from win32 `GlobalMemoryStatusEx`, cores from
+    `Platform.numberOfProcessors`. Enumerations open below their field and
+    carry a "Not set" entry; the MCP internet warning shows only while the
+    tunnel runs; copy buttons answer; the remote target disables with its
+    toggle; chosen paths render as text; Save stops materialising repo
+    defaults; the unset booleans say their fact once; the Sync group explains
+    itself, drops its example password, and hands the distro repo to Docker.
+
+  **Next up:** FIX-16/17, then FIX-19/20. Verification for this slice:
   `flutter analyze` clean (the same two pre-existing warnings), `flutter test`
-  825 passing, `dart run scripts/check_translations.dart` exit 0. 7 new keys
-  and 4 dead keys deleted in all nine locales. `flutter test integration_test/` could not be run here — the harness
+  825 passing, `dart run scripts/check_translations.dart` exit 0. 3 new keys
+  in all nine locales. `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`
