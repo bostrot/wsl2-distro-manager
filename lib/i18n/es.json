@@ -636,5 +636,16 @@
   "createdinstancenopassword-text": "Se creó la instancia, pero %s todavía no tiene contraseña.",
   "ai-workspace-install-cancelled-text": "Se detuvo la instalación de %s",
   "checkingdistrostate-text": "Comprobando si %s está en ejecución...",
-  "readingwslconf-text": "Leyendo /etc/wsl.conf de %s..."
+  "readingwslconf-text": "Leyendo /etc/wsl.conf de %s...",
+  "snippetsloadfailed-text": "No se pudieron descargar los fragmentos de la comunidad. Comprueba tu conexión a Internet e inténtalo de nuevo.",
+  "snippetdownloadfailed-text": "No se pudieron descargar los fragmentos seleccionados. No se añadió nada.",
+  "snippetsselectone-text": "Selecciona al menos un fragmento para descargar.",
+  "snippetsdownloaded-text": "Se añadieron los fragmentos seleccionados.",
+  "downloadingsnippets-text": "Descargando %s de %s...",
+  "selectdiskrequired-text": "Selecciona el disco que quieres montar.",
+  "vhdpathrequired-text": "Elige el archivo .vhdx o .vhd que quieres montar.",
+  "unmountpathrequired-text": "Escribe o selecciona la ruta del disco que quieres desmontar.",
+  "snippetnamerequired-text": "Escribe un nombre para este fragmento.",
+  "snippetcontentrequired-text": "Escribe el script que debe ejecutar este fragmento.",
+  "installing-text": "Instalando"
 }

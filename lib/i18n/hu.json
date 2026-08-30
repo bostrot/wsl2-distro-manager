@@ -636,5 +636,16 @@
   "createdinstancenopassword-text": "A példány elkészült, de %s felhasználónak még nincs jelszava.",
   "ai-workspace-install-cancelled-text": "%s telepítése leállítva",
   "checkingdistrostate-text": "%s futásának ellenőrzése...",
-  "readingwslconf-text": "Az /etc/wsl.conf beolvasása innen: %s..."
+  "readingwslconf-text": "Az /etc/wsl.conf beolvasása innen: %s...",
+  "snippetsloadfailed-text": "A közösségi gyorskódokat nem sikerült letölteni. Ellenőrizd az internetkapcsolatot, és próbáld újra.",
+  "snippetdownloadfailed-text": "A kijelölt gyorskódokat nem sikerült letölteni. Semmi sem lett hozzáadva.",
+  "snippetsselectone-text": "Jelölj ki legalább egy gyorskódot a letöltéshez.",
+  "snippetsdownloaded-text": "A kijelölt gyorskódok hozzá lettek adva.",
+  "downloadingsnippets-text": "Letöltés: %s / %s...",
+  "selectdiskrequired-text": "Válaszd ki a csatolandó lemezt.",
+  "vhdpathrequired-text": "Válaszd ki a csatolandó .vhdx vagy .vhd fájlt.",
+  "unmountpathrequired-text": "Add meg vagy válaszd ki a leválasztandó lemez elérési útját.",
+  "snippetnamerequired-text": "Adj nevet ennek a gyorskódnak.",
+  "snippetcontentrequired-text": "Add meg a szkriptet, amelyet ez a gyorskód futtasson.",
+  "installing-text": "Telepítés"
 }

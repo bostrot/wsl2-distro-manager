@@ -26,12 +26,23 @@ class QuickPageState extends State<QuickPage> {
   var contentController = CodeLineEditingController();
   int lineNum = 30;
 
+  /// What Save is waiting for. Pressing it with an empty name used to hit a
+  /// branch whose entire body was the comment `// Error` (audit ST-53).
+  String? saveError;
+
   @override
   void initState() {
     super.initState();
 
     plausible.event(page: 'actions_screen');
     genLineNumbers(0);
+    // So a "the script is empty" message goes away as soon as it stops being
+    // true, the same way the name one does.
+    contentController.addListener(() {
+      if (saveError != null && contentController.text.trim().isNotEmpty) {
+        setState(() => saveError = null);
+      }
+    });
     scrollController.addListener(() {
       lineNumbers = '';
       int offset = (scrollController.offset ~/ 12);
@@ -74,9 +85,26 @@ class QuickPageState extends State<QuickPage> {
                         child: TextBox(
                           controller: nameController,
                           placeholder: 'settingname-text'.i18n(),
+                          onChanged: (_) {
+                            if (saveError != null) {
+                              setState(() => saveError = null);
+                            }
+                          },
                         ),
                       )
                     : Container(),
+                if (showInput && saveError != null)
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width - 40.0,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        saveError!,
+                        key: const ValueKey('test-action-save-error'),
+                        style: TextStyle(color: Colors.red, fontSize: 12.0),
+                      ),
+                    ),
+                  ),
                 showInput
                     ? const SizedBox(
                         height: 10.0,
@@ -171,6 +199,7 @@ class QuickPageState extends State<QuickPage> {
                       onPressed: () {
                         setState(() {
                           showInput = false;
+                          saveError = null;
                         });
                       },
                       child: Row(
@@ -200,9 +229,18 @@ class QuickPageState extends State<QuickPage> {
                   if (!showInput) {
                     setState(() {
                       showInput = true;
+                      saveError = null;
                     });
-                  } else if (nameController.text.isNotEmpty &&
-                      contentController.text.isNotEmpty) {
+                  } else if (nameController.text.trim().isEmpty ||
+                      contentController.text.trim().isEmpty) {
+                    // Say which of the two is missing rather than leaving the
+                    // screen exactly as it was.
+                    setState(() {
+                      saveError = nameController.text.trim().isEmpty
+                          ? 'snippetnamerequired-text'.i18n()
+                          : 'snippetcontentrequired-text'.i18n();
+                    });
+                  } else {
                     plausible.event(page: 'add_action');
 
                     // Load data
@@ -230,9 +268,8 @@ class QuickPageState extends State<QuickPage> {
 
                     setState(() {
                       showInput = false;
+                      saveError = null;
                     });
-                  } else {
-                    // Error
                   }
                 },
                 child: Row(

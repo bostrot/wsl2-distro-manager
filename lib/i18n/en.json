@@ -636,5 +636,16 @@
   "createdinstancenopassword-text": "The instance was created, but %s still has no password.",
   "ai-workspace-install-cancelled-text": "Stopped installing %s",
   "checkingdistrostate-text": "Checking whether %s is running...",
-  "readingwslconf-text": "Reading /etc/wsl.conf from %s..."
+  "readingwslconf-text": "Reading /etc/wsl.conf from %s...",
+  "snippetsloadfailed-text": "The community snippets could not be downloaded. Check your internet connection and try again.",
+  "snippetdownloadfailed-text": "The selected snippets could not be downloaded. Nothing was added.",
+  "snippetsselectone-text": "Select at least one snippet to download.",
+  "snippetsdownloaded-text": "The selected snippets were added.",
+  "downloadingsnippets-text": "Downloading %s of %s...",
+  "selectdiskrequired-text": "Select the disk to mount.",
+  "vhdpathrequired-text": "Choose the .vhdx or .vhd file to mount.",
+  "unmountpathrequired-text": "Enter or select the path of the disk to unmount.",
+  "snippetnamerequired-text": "Enter a name for this snippet.",
+  "snippetcontentrequired-text": "Enter the script this snippet should run.",
+  "installing-text": "Installing"
 }

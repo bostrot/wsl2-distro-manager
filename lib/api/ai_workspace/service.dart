@@ -1184,12 +1184,21 @@ class AiWorkspaceService {
         // feedback — and the port-closed check that decides this exit code
         // writes nothing to stderr at all, so the fallback is the whole
         // message here more often than not.
-        _toolStates[tool]?.errorMessage = _failureDetail(
-            result.stderr, 'ai-workspace-stop-failed-text'.i18n([config.name]));
+        //
+        // Through _recordActionFailure, not by assigning errorMessage: a bare
+        // assignment left `status` on `running`, so the card showed a red
+        // error line under a green "running" pill, and left the failure
+        // non-sticky, so the next background probe silently erased it
+        // (audit PS-32).
+        _recordActionFailure(
+          tool,
+          _failureDetail(result.stderr,
+              'ai-workspace-stop-failed-text'.i18n([config.name])),
+        );
         return false;
       }
     } catch (e) {
-      _toolStates[tool]?.errorMessage = e.toString();
+      _recordActionFailure(tool, e.toString());
       return false;
     }
   }

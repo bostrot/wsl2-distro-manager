@@ -637,5 +637,16 @@
   "createdinstancenopassword-text": "实例已创建，但 %s 尚未设置密码。",
   "ai-workspace-install-cancelled-text": "已停止安装 %s",
   "checkingdistrostate-text": "正在检查 %s 是否在运行...",
-  "readingwslconf-text": "正在从 %s 读取 /etc/wsl.conf..."
+  "readingwslconf-text": "正在从 %s 读取 /etc/wsl.conf...",
+  "snippetsloadfailed-text": "无法下载社区代码片段。请检查网络连接后重试。",
+  "snippetdownloadfailed-text": "无法下载所选代码片段，未添加任何内容。",
+  "snippetsselectone-text": "请至少选择一个要下载的代码片段。",
+  "snippetsdownloaded-text": "已添加所选代码片段。",
+  "downloadingsnippets-text": "正在下载第 %s 个，共 %s 个...",
+  "selectdiskrequired-text": "请选择要挂载的磁盘。",
+  "vhdpathrequired-text": "请选择要挂载的 .vhdx 或 .vhd 文件。",
+  "unmountpathrequired-text": "请输入或选择要卸载的磁盘路径。",
+  "snippetnamerequired-text": "请为此代码片段输入名称。",
+  "snippetcontentrequired-text": "请输入此代码片段要运行的脚本。",
+  "installing-text": "正在安装"
 }

@@ -1297,6 +1297,32 @@ void main() {
         expect(result, false);
         expect(state.errorMessage, 'openclaw: permission denied');
       });
+
+      // The failure used to be assigned straight onto `errorMessage`, which
+      // left `status` on `running` — a red error line under a green "running"
+      // pill — and left it non-sticky, so the next background probe wiped the
+      // only feedback the stop path has (audit PS-32).
+      test('a failed stop moves the card off "running" and sticks', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        final state = service.getState(AiWorkspaceTool.openClaw)!;
+        state.status = ToolStatus.running;
+
+        testShell.exitCode = 1;
+        testShell.stderrData = 'openclaw: permission denied\n';
+        expect(await service.stop(AiWorkspaceTool.openClaw), false);
+
+        expect(state.status, ToolStatus.error,
+            reason: 'a stop that failed may not leave the badge on running');
+        expect(state.errorSticky, true);
+
+        // The probe that follows must leave both alone until the user acts.
+        testShell.exitCode = 0;
+        await service.refreshStatus(AiWorkspaceTool.openClaw);
+        expect(state.errorMessage, 'openclaw: permission denied');
+        expect(state.status, ToolStatus.error);
+      });
     });
 
     group('uninstall', () {

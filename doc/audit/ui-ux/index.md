@@ -399,7 +399,7 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | Work item | Fixed | Open | Landed |
 |:---|---:|---:|:---|
 | FIX-03 -- One honest notification surface | 9 | 0 | 2026-08-28 |
-| FIX-02 -- Report what actually happened | 5 | 5 | 2026-08-28 (partial) |
+| FIX-02 -- Report what actually happened | 10 | 0 | 2026-08-30 |
 | FIX-01 -- Stop discarding what the user typed | 7 | 0 | 2026-08-28 |
 | FIX-05 -- Error text a user can act on | 12 | 0 | 2026-08-28 |
 | FIX-06 -- Keyboard operability | 9 | 0 | 2026-08-30 |
@@ -478,22 +478,24 @@ An operation that failed must not say it succeeded, and one that succeeded must 
 leave a spinner running. `IA-13` is the root of the pattern: an `async void` API whose
 `catch` is unreachable.
 
-**Status: 5 of 10 fixed.** The five that remain are per-screen work in
-`qa_dialog.dart`, `settings_screen.dart` and `ai_workspace_screen.dart`; the
-`Notify` layer they all report through is now in place.
+**Status: complete (10 of 10).** The last five were per-screen work in
+`qa_dialog.dart`, `mount_dialog.dart`, `actions_screen.dart` and the AI
+Workspace card; three of them were the same defect written out three times --
+a primary button whose only response to an empty required field was to do
+nothing at all.
 
 | ID | Sev | Fix | Fixed in |
 |:---|:---|:---|:---|
 | IA-13 | blocker | Change `WSLApi.start` to return `Future<void>`, await it at the call site, and post the toast *after* it resolves -- `Future.delayed(d, Notify.message(...))` calls the function immediately, so remove the delay too | `wsl.dart:522`, `list_item.dart:187` |
 | CI-12 | major | Validate the username when "Create default user" is ticked; never report success for a user that was not created | `create_dialog.dart:184`, `create_screen.dart:74` |
 | CI-17 | major | Stop the "Creating instance..." spinner on the failure path | `create_dialog.dart:147` |
-| CI-36 | major | Give the snippet download progress and a real failure state; a failed download may not close the dialog as if it worked | -- |
-| ST-53 | major | Replace the `// Error` no-op branch with a field-level validation message on the snippet name | -- |
-| ST-45 | major | A primary button may never silently no-op -- validate the required field and say what is missing | -- |
+| CI-36 | major | Give the snippet download progress and a real failure state; a failed download may not close the dialog as if it worked | `qa_dialog.dart:57`, `qa_list.dart:89`, `qa_list.dart:67` |
+| ST-53 | major | Replace the `// Error` no-op branch with a field-level validation message on the snippet name | `actions_screen.dart:239`, `actions_screen.dart:96` |
+| ST-45 | major | A primary button may never silently no-op -- validate the required field and say what is missing | `mount_dialog.dart:94`, `mount_dialog.dart:134` |
 | IA-12 | major | Show in-flight state for start / stop / delete, and only report DONE once the row is actually gone | `list_item.dart:41`, `list_item.dart:146`, `list_item.dart:473` |
-| PS-19 | major | Move the card into an explicit "Installing" state for the duration of the install | -- |
+| PS-19 | major | Move the card into an explicit "Installing" state for the duration of the install | `ai_workspace_screen.dart:535`, `ai_workspace_screen.dart:577` |
 | PS-17 | major | Clear the status line when the operation it describes finishes -- it still read "Starting Open WebUI..." 105s after the tool was running | `root_screen.dart:82`, `service.dart:1090` |
-| PS-32 | nit | A failed stop must leave the badge showing the state the tool is really in, not "running" in green | -- |
+| PS-32 | nit | A failed stop must leave the badge showing the state the tool is really in, not "running" in green | `service.dart:1193`, `service.dart:1201` |
 
 ### FIX-03 -- One honest notification surface
 
@@ -1053,7 +1055,8 @@ listed here.
   `notify.dart:63-67` and `root_screen.dart:231`; no multi-minute operation was started
   purely to click its close button.
 - **A failed `AiWorkspaceService.stop()`** (PS-32) -- would mean deliberately breaking a
-  tool inside the distro. Read from source.
+  tool inside the distro. Read from source; the fix is covered by a unit test that
+  forces the failing exit code instead (`ai_workspace_service_test.dart`).
 - **The MCP server's Pro half beyond the gate.** The endpoint, token, copy and regenerate
   controls were audited under the Pro build (ST-19..ST-22); [[pro-surfaces]] adds only the
   free-user gate (PS-11). The tunnel stays untriggered for the reason above.

@@ -636,5 +636,16 @@
   "createdinstancenopassword-text": "Örnek oluşturuldu, ancak %s için henüz parola yok.",
   "ai-workspace-install-cancelled-text": "%s kurulumu durduruldu",
   "checkingdistrostate-text": "%s çalışıyor mu diye bakılıyor...",
-  "readingwslconf-text": "/etc/wsl.conf %s içinden okunuyor..."
+  "readingwslconf-text": "/etc/wsl.conf %s içinden okunuyor...",
+  "snippetsloadfailed-text": "Topluluk kod parçacıkları indirilemedi. İnternet bağlantınızı kontrol edip yeniden deneyin.",
+  "snippetdownloadfailed-text": "Seçilen kod parçacıkları indirilemedi. Hiçbir şey eklenmedi.",
+  "snippetsselectone-text": "İndirmek için en az bir kod parçacığı seçin.",
+  "snippetsdownloaded-text": "Seçilen kod parçacıkları eklendi.",
+  "downloadingsnippets-text": "%s / %s indiriliyor...",
+  "selectdiskrequired-text": "Bağlanacak diski seçin.",
+  "vhdpathrequired-text": "Bağlanacak .vhdx veya .vhd dosyasını seçin.",
+  "unmountpathrequired-text": "Ayrılacak diskin yolunu girin veya seçin.",
+  "snippetnamerequired-text": "Bu kod parçacığı için bir ad girin.",
+  "snippetcontentrequired-text": "Bu kod parçacığının çalıştıracağı betiği girin.",
+  "installing-text": "Kuruluyor"
 }

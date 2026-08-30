@@ -529,11 +529,17 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     }[tool]!;
 
     final isChecking = _checkingTools.contains(tool);
-    final statusColor = _statusToColor(state?.status);
     // The service, not this page, owns install progress: the page is rebuilt
     // from scratch when the user navigates away and back, but the install
     // keeps running.
-    final isBusy = _busyTools.contains(tool) || _service.isInstalling(tool);
+    final isInstalling = _service.isInstalling(tool);
+    // For the whole of a six-minute install the pill read "Not Installed" and
+    // the dot stayed grey, directly above a live spinner (audit PS-19): the
+    // one element whose job is to say what state the tool is in said the
+    // wrong thing for the entire operation.
+    final statusColor =
+        isInstalling ? Colors.blue : _statusToColor(state?.status);
+    final isBusy = _busyTools.contains(tool) || isInstalling;
     // `error` means the last attempt failed, not that the tool is present —
     // a retry has to stay reachable.
     final canInstall = state?.status == ToolStatus.notInstalled ||
@@ -568,7 +574,14 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                 isChecking
                     ? _buildInlineStatus(
                         'ai-workspace-checking-status-text'.i18n())
-                    : _statusBadge(state?.status),
+                    : isInstalling
+                        ? _badge(
+                            'installing-text'.i18n(),
+                            Colors.blue,
+                            key: ValueKey('test-ai-installing-badge-'
+                                '${tool.name}'),
+                          )
+                        : _statusBadge(state?.status),
               ],
             ),
             if (state?.installPath != null) ...[
@@ -762,18 +775,25 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     );
   }
 
-  Widget _statusBadge(ToolStatus? status) {
+  Widget _statusBadge(ToolStatus? status) =>
+      _badge(_statusLabel(status), _statusToColor(status));
+
+  /// The pill itself. Taken out of [_statusBadge] because an install is not a
+  /// [ToolStatus] — it is a transition between two of them — and it still has
+  /// to be able to say so (audit PS-19).
+  Widget _badge(String label, Color color, {Key? key}) {
     return Container(
+      key: key,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _statusToColor(status).withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        _statusLabel(status),
+        label,
         style: TextStyle(
           fontSize: 12,
-          color: _statusToColor(status),
+          color: color,
         ),
       ),
     );

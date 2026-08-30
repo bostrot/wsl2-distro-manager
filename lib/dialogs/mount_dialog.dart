@@ -8,23 +8,26 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
-void showMountDialog() {
+void showMountDialog({MountService? service}) {
   final context = GlobalVariable.infobox.currentContext!;
   showDialog(
     context: context,
-    builder: (context) => const MountDialog(),
+    builder: (context) => MountDialog(service: service),
   );
 }
 
 class MountDialog extends StatefulWidget {
-  const MountDialog({super.key});
+  const MountDialog({super.key, this.service});
+
+  /// Injected in tests; the dialog builds its own.
+  final MountService? service;
 
   @override
   State<MountDialog> createState() => _MountDialogState();
 }
 
 class _MountDialogState extends State<MountDialog> {
-  final MountService _mountService = MountService();
+  late final MountService _mountService = widget.service ?? MountService();
   bool _loading = false;
   int _selectedTab = 0; // 0: Physical, 1: VHD, 2: Unmount
 
@@ -48,6 +51,14 @@ class _MountDialogState extends State<MountDialog> {
   // Unmount
   final TextEditingController _unmountPathController = TextEditingController();
   List<String> _mountedDisks = [];
+
+  /// What the current tab is waiting for before it can run.
+  ///
+  /// The three required-field guards used to be bare `return`s *inside* the
+  /// try that had already set `_loading`, so pressing the primary button on an
+  /// empty field flashed a progress bar and changed nothing at all
+  /// (audit ST-45).
+  String? _fieldError;
 
   @override
   void initState() {
@@ -79,11 +90,59 @@ class _MountDialogState extends State<MountDialog> {
     }
   }
 
+  /// The message for the field the active tab needs, or null when it can run.
+  String? _missingField() {
+    if (_selectedTab == 0) {
+      return _selectedDisk == null ? 'selectdiskrequired-text'.i18n() : null;
+    }
+    if (_selectedTab == 1) {
+      return _vhdPathController.text.trim().isEmpty
+          ? 'vhdpathrequired-text'.i18n()
+          : null;
+    }
+    return _unmountPathController.text.trim().isEmpty
+        ? 'unmountpathrequired-text'.i18n()
+        : null;
+  }
+
+  void _selectTab(int tab) {
+    setState(() {
+      _selectedTab = tab;
+      // The message names a field on the tab that is going away.
+      _fieldError = null;
+    });
+  }
+
+  void _clearFieldError() {
+    if (_fieldError != null) setState(() => _fieldError = null);
+  }
+
+  /// The validation message under the field it is about, or nothing.
+  Widget _fieldErrorText() {
+    if (_fieldError == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: Text(
+        _fieldError!,
+        key: const ValueKey('test-mount-field-error'),
+        style: TextStyle(color: Colors.red, fontSize: 12.0),
+      ),
+    );
+  }
+
   Future<void> _execute() async {
-    setState(() => _loading = true);
+    final missing = _missingField();
+    if (missing != null) {
+      setState(() => _fieldError = missing);
+      return;
+    }
+
+    setState(() {
+      _fieldError = null;
+      _loading = true;
+    });
     try {
       if (_selectedTab == 0) {
-        if (_selectedDisk == null) return;
         await _mountService.mountDisk(
           _selectedDisk!.deviceId,
           partition: _partitionController.text,
@@ -94,7 +153,6 @@ class _MountDialogState extends State<MountDialog> {
         );
         if (mounted) Notify.message('diskmounted-text'.i18n());
       } else if (_selectedTab == 1) {
-        if (_vhdPathController.text.isEmpty) return;
         await _mountService.mountVhd(
           _vhdPathController.text,
           partition: _vhdPartitionController.text,
@@ -105,7 +163,6 @@ class _MountDialogState extends State<MountDialog> {
         );
         if (mounted) Notify.message('vhdmounted-text'.i18n());
       } else {
-        if (_unmountPathController.text.isEmpty) return;
         await _mountService.unmount(_unmountPathController.text);
         if (mounted) Notify.message('diskunmounted-text'.i18n());
       }
@@ -277,17 +334,17 @@ class _MountDialogState extends State<MountDialog> {
                 RadioButton(
                   checked: _selectedTab == 0,
                   content: Text('physicaldisk-text'.i18n()),
-                  onChanged: (v) => setState(() => _selectedTab = 0),
+                  onChanged: (v) => _selectTab(0),
                 ),
                 RadioButton(
                   checked: _selectedTab == 1,
                   content: Text('vhdimage-text'.i18n()),
-                  onChanged: (v) => setState(() => _selectedTab = 1),
+                  onChanged: (v) => _selectTab(1),
                 ),
                 RadioButton(
                   checked: _selectedTab == 2,
                   content: Text('unmount-text'.i18n()),
-                  onChanged: (v) => setState(() => _selectedTab = 2),
+                  onChanged: (v) => _selectTab(2),
                 ),
               ],
             ),
@@ -310,6 +367,7 @@ class _MountDialogState extends State<MountDialog> {
           child: Text('cancel-text'.i18n()),
         ),
         FilledButton(
+          key: const ValueKey('test-mount-submit'),
           onPressed: _loading ? null : _execute,
           child: Text(
               _selectedTab == 2 ? 'unmount-text'.i18n() : 'mount-text'.i18n()),
@@ -323,6 +381,7 @@ class _MountDialogState extends State<MountDialog> {
       return Column(
         children: [
           Text('nodisksfound-text'.i18n()),
+          _fieldErrorText(),
           const SizedBox(height: 10),
           Button(
             onPressed: _loadDisks,
@@ -352,9 +411,13 @@ class _MountDialogState extends State<MountDialog> {
                     ))
                 .toList(),
             value: _selectedDisk,
-            onChanged: (v) => setState(() => _selectedDisk = v),
+            onChanged: (v) => setState(() {
+              _selectedDisk = v;
+              _fieldError = null;
+            }),
           ),
         ),
+        _fieldErrorText(),
         // The device id is the only thing that separates two disks of the
         // same model, and it is the first thing the combo ellipsises away
         // (audit ST-44).
@@ -445,6 +508,7 @@ class _MountDialogState extends State<MountDialog> {
                 child: TextBox(
                   controller: _vhdPathController,
                   placeholder: 'examplepath-text'.i18n(),
+                  onChanged: (_) => _clearFieldError(),
                   suffix: NamedIconButton(
                     label: 'choosefile-text'.i18n(),
                     icon: FluentIcons.open_folder_horizontal,
@@ -457,6 +521,7 @@ class _MountDialogState extends State<MountDialog> {
                       if (result != null) {
                         setState(() {
                           _vhdPathController.text = result.files.single.path!;
+                          _fieldError = null;
                         });
                       }
                     },
@@ -466,6 +531,7 @@ class _MountDialogState extends State<MountDialog> {
             ],
           ),
         ),
+        _fieldErrorText(),
         const SizedBox(height: 10),
         Checkbox(
           checked: _vhdBare,
@@ -547,6 +613,7 @@ class _MountDialogState extends State<MountDialog> {
               onChanged: (v) {
                 if (v != null) {
                   setState(() {
+                    _fieldError = null;
                     if (v.startsWith('PHYSICALDRIVE')) {
                       _unmountPathController.text = '\\\\.\\$v';
                     } else {
@@ -564,8 +631,10 @@ class _MountDialogState extends State<MountDialog> {
           child: TextBox(
             controller: _unmountPathController,
             placeholder: 'exampleunmountpath-text'.i18n(),
+            onChanged: (_) => _clearFieldError(),
           ),
         ),
+        _fieldErrorText(),
         const SizedBox(height: 10),
         Text('unmountpathhint-text'.i18n()),
       ],

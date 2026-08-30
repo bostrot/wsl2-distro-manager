@@ -638,5 +638,16 @@
   "createdinstancenopassword-text": "A instância foi criada, mas %s ainda não tem senha.",
   "ai-workspace-install-cancelled-text": "Instalação de %s interrompida",
   "checkingdistrostate-text": "Verificando se %s está em execução...",
-  "readingwslconf-text": "Lendo /etc/wsl.conf de %s..."
+  "readingwslconf-text": "Lendo /etc/wsl.conf de %s...",
+  "snippetsloadfailed-text": "Não foi possível baixar os snippets da comunidade. Verifique sua conexão com a internet e tente novamente.",
+  "snippetdownloadfailed-text": "Não foi possível baixar os snippets selecionados. Nada foi adicionado.",
+  "snippetsselectone-text": "Selecione pelo menos um snippet para baixar.",
+  "snippetsdownloaded-text": "Os snippets selecionados foram adicionados.",
+  "downloadingsnippets-text": "Baixando %s de %s...",
+  "selectdiskrequired-text": "Selecione o disco que deseja montar.",
+  "vhdpathrequired-text": "Escolha o arquivo .vhdx ou .vhd que deseja montar.",
+  "unmountpathrequired-text": "Digite ou selecione o caminho do disco que deseja desmontar.",
+  "snippetnamerequired-text": "Digite um nome para este snippet.",
+  "snippetcontentrequired-text": "Digite o script que este snippet deve executar.",
+  "installing-text": "Instalando"
 }

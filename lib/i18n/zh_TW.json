@@ -637,5 +637,16 @@
   "createdinstancenopassword-text": "執行個體已建立，但 %s 尚未設定密碼。",
   "ai-workspace-install-cancelled-text": "已停止安裝 %s",
   "checkingdistrostate-text": "正在檢查 %s 是否執行中...",
-  "readingwslconf-text": "正在從 %s 讀取 /etc/wsl.conf..."
+  "readingwslconf-text": "正在從 %s 讀取 /etc/wsl.conf...",
+  "snippetsloadfailed-text": "無法下載社群片段。請檢查網路連線後再試一次。",
+  "snippetdownloadfailed-text": "無法下載所選片段，未新增任何內容。",
+  "snippetsselectone-text": "請至少選擇一個要下載的片段。",
+  "snippetsdownloaded-text": "已新增所選片段。",
+  "downloadingsnippets-text": "正在下載第 %s 個，共 %s 個...",
+  "selectdiskrequired-text": "請選擇要掛載的磁碟。",
+  "vhdpathrequired-text": "請選擇要掛載的 .vhdx 或 .vhd 檔案。",
+  "unmountpathrequired-text": "請輸入或選擇要卸載的磁碟路徑。",
+  "snippetnamerequired-text": "請為此片段輸入名稱。",
+  "snippetcontentrequired-text": "請輸入此片段要執行的指令碼。",
+  "installing-text": "正在安裝"
 }

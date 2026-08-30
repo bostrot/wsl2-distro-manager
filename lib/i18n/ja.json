@@ -636,5 +636,16 @@
   "createdinstancenopassword-text": "インスタンスは作成されましたが、%s にはまだパスワードがありません。",
   "ai-workspace-install-cancelled-text": "%s のインストールを停止しました",
   "checkingdistrostate-text": "%s が実行中かどうかを確認しています...",
-  "readingwslconf-text": "%s から /etc/wsl.conf を読み込んでいます..."
+  "readingwslconf-text": "%s から /etc/wsl.conf を読み込んでいます...",
+  "snippetsloadfailed-text": "コミュニティスニペットをダウンロードできませんでした。インターネット接続を確認して、もう一度お試しください。",
+  "snippetdownloadfailed-text": "選択したスニペットをダウンロードできませんでした。何も追加されていません。",
+  "snippetsselectone-text": "ダウンロードするスニペットを 1 つ以上選択してください。",
+  "snippetsdownloaded-text": "選択したスニペットを追加しました。",
+  "downloadingsnippets-text": "%s / %s をダウンロード中...",
+  "selectdiskrequired-text": "マウントするディスクを選択してください。",
+  "vhdpathrequired-text": "マウントする .vhdx または .vhd ファイルを選択してください。",
+  "unmountpathrequired-text": "アンマウントするディスクのパスを入力または選択してください。",
+  "snippetnamerequired-text": "このスニペットの名前を入力してください。",
+  "snippetcontentrequired-text": "このスニペットで実行するスクリプトを入力してください。",
+  "installing-text": "インストール中"
 }

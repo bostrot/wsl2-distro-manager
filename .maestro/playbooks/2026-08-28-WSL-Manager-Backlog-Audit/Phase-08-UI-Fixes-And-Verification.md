@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 59 of 214 findings closed (8 blockers, 36 majors, 15 nits).** Running
+  **In progress — 64 of 214 findings closed (8 blockers, 40 majors, 16 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -21,12 +21,33 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     is a `Column` child rather than an overlay, so it can no longer cover Create/Cancel;
     messages expire after 8s and are dropped on navigation. `DONE:`/`ERROR:`/`WARNING:`
     prefixes removed from six keys across all nine locales.
-  - **FIX-02 — report what actually happened: 5/10.** Closed: IA-13 (`WSLApi.start` is
-    now `Future<void>` and awaited — the `Future.delayed(d, Notify.message(...))` at the
-    call site was calling the function immediately, so the toast fired before the spawn
-    and the catch was unreachable), CI-12, CI-17, IA-12, PS-17. Still open: CI-36, ST-53,
-    ST-45, PS-19, PS-32 — all per-screen work in `qa_dialog.dart`,
-    `settings_screen.dart` and `ai_workspace_screen.dart`.
+  - **FIX-02 — report what actually happened: complete (10/10).** The first five
+    were IA-13 (`WSLApi.start` is now `Future<void>` and awaited — the
+    `Future.delayed(d, Notify.message(...))` at the call site was calling the
+    function immediately, so the toast fired before the spawn and the catch was
+    unreachable), CI-12, CI-17, IA-12 and PS-17. The last five were per-screen,
+    and three of them were one defect written out three times: a primary button
+    whose entire response to an empty required field was to do nothing. ST-45's
+    `if (…text.isEmpty) return;` sat *inside* the try that had already set
+    `_loading`, so Unmount on an empty path flashed a progress bar and changed
+    nothing; ST-53's else branch was the comment `// Error`; and the community
+    dialog let Download close over an empty selection. All three now name the
+    field they are waiting for and clear the message as soon as it stops being
+    true. CI-36 is the same class one level up: `download()` caught its own
+    failure, posted a three-word toast and returned normally, so the dialog
+    popped and ran the *success* callback on a failed download — it now returns
+    a `QaDownloadResult`, the dialog stays open with the reason and a
+    "Technical details" disclosure, the catalogue's own load failure gained a
+    retry that drops the process-lifetime static cache (nothing could reload it
+    without restarting the app), and the download reports "Downloading 2 of 4"
+    while it runs and confirms when it lands. PS-19 gave the AI Workspace card
+    an "Installing" badge: the pill read **Not Installed** in grey directly
+    above a live spinner for the whole of a six-minute install, because
+    `isChecking` had a badge substitution and `isInstalling` did not. PS-32 was
+    `stop()`'s failure path assigning `errorMessage` directly instead of going
+    through `_recordActionFailure`, which left `status` on `running` — a red
+    error line under a green pill — and left the failure non-sticky, so the
+    next background probe erased the only feedback a stop has.
   - **FIX-01 — stop discarding what the user typed: complete (7/7).** A new
     `UnsavedChangesGuard` (`lib/components/unsaved_changes.dart`) lets a dirty screen
     register an exit guard; every nav-pane item, the app-bar back button, the window X
@@ -146,10 +167,15 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     window without typing left the account passwordless in silence. 14 new
     keys in all nine locales.
 
-  **Next up:** the five open FIX-02 items, then FIX-08. Verification for this
+  **Next up:** FIX-08 (destructive actions), then FIX-09. Verification for this
   slice: `flutter analyze` clean (the same two pre-existing warnings, untouched),
-  `flutter test` 787 passing (was 772), `dart run scripts/check_translations.dart`
-  exit 0. `flutter test integration_test/` could not be run here — the harness
+  `flutter test` 799 passing (was 787), `dart run scripts/check_translations.dart`
+  exit 0. 11 new keys in all nine locales. New tests:
+  `test/required_fields_test.dart` (six, covering ST-45 and ST-53 including the
+  clear-on-edit behaviour) and `test/qa_dialog_test.dart` (four, covering the
+  CI-36 success, failure, empty-selection and retry paths), plus one each in
+  `test/ai_workspace_screen_test.dart` (PS-19) and
+  `test/ai_workspace_service_test.dart` (PS-32). `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`

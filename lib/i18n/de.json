@@ -637,5 +637,16 @@
   "createdinstancenopassword-text": "Die Instanz wurde erstellt, aber %s hat noch kein Passwort.",
   "ai-workspace-install-cancelled-text": "Installation von %s abgebrochen",
   "checkingdistrostate-text": "Es wird geprüft, ob %s läuft...",
-  "readingwslconf-text": "/etc/wsl.conf wird aus %s gelesen..."
+  "readingwslconf-text": "/etc/wsl.conf wird aus %s gelesen...",
+  "snippetsloadfailed-text": "Die Community-Codeausschnitte konnten nicht heruntergeladen werden. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+  "snippetdownloadfailed-text": "Die ausgewählten Codeausschnitte konnten nicht heruntergeladen werden. Es wurde nichts hinzugefügt.",
+  "snippetsselectone-text": "Wählen Sie mindestens einen Codeausschnitt zum Herunterladen aus.",
+  "snippetsdownloaded-text": "Die ausgewählten Codeausschnitte wurden hinzugefügt.",
+  "downloadingsnippets-text": "Lädt %s von %s herunter...",
+  "selectdiskrequired-text": "Wählen Sie den Datenträger aus, der eingebunden werden soll.",
+  "vhdpathrequired-text": "Wählen Sie die .vhdx- oder .vhd-Datei aus, die eingebunden werden soll.",
+  "unmountpathrequired-text": "Geben Sie den Pfad des Datenträgers ein, der getrennt werden soll, oder wählen Sie ihn aus.",
+  "snippetnamerequired-text": "Geben Sie einen Namen für diesen Codeausschnitt ein.",
+  "snippetcontentrequired-text": "Geben Sie das Skript ein, das dieser Codeausschnitt ausführen soll.",
+  "installing-text": "Wird installiert"
 }

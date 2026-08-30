@@ -306,4 +306,46 @@ void main() {
         find.byKey(const ValueKey('test-ai-install-last-output-hermesAgent')),
         findsOneWidget);
   });
+
+  // For the whole of a six-minute install the pill above the live spinner read
+  // "Not Installed" — the one element on the card whose job is to say what
+  // state the tool is in said the wrong thing for the entire operation
+  // (audit PS-19).
+  testWidgets('the badge says Installing for the length of the install',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.notInstalled);
+
+    final child = ControlledProcess();
+    testShell.processFactory = () => child;
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    // All three cards start out saying the same thing.
+    expect(find.text('notinstalled-text'), findsNWidgets(3));
+
+    await tester.tap(find.byKey(const ValueKey('test-ai-install-hermesAgent')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('test-ai-installing-badge-hermesAgent')),
+        findsOneWidget);
+    expect(find.text('installing-text'), findsOneWidget);
+    // The card being installed no longer claims to be uninstalled; the other
+    // two still do, correctly.
+    expect(find.text('notinstalled-text'), findsNWidgets(2));
+
+    child.emit('Cloning hermes-agent...\n');
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byKey(const ValueKey('test-ai-installing-badge-hermesAgent')),
+        findsOneWidget);
+
+    child.exit(0);
+    await pumpInstallToEnd(tester, AiWorkspaceTool.hermesAgent);
+
+    expect(find.byKey(const ValueKey('test-ai-installing-badge-hermesAgent')),
+        findsNothing);
+  });
 }
