@@ -104,8 +104,14 @@ class _CommunityDialogState extends State<CommunityDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
+      // The dialog used to open as an untitled modal — a search box, a list
+      // and two buttons with nothing saying what it is or where the content
+      // comes from (audit CI-33).
+      title: Text('communitysnippetstitle-text'.i18n()),
+      // Sized to its content instead of `MediaQuery...size.height`, which made
+      // the modal as tall as the window with ~300px of dead space (CI-37).
       content: SizedBox(
-        height: MediaQuery.of(context).size.height,
+        height: 420.0,
         child: Column(
           children: [
             Expanded(
@@ -168,11 +174,10 @@ class _CommunityDialogState extends State<CommunityDialog> {
           ],
         ),
       ),
+      // Primary first, Cancel last: this was the one dialog in the app with
+      // the order reversed, so the slot that means "cancel" everywhere else
+      // meant "commit" here (audit CI-32).
       actions: [
-        Button(
-          onPressed: _downloading ? null : () => Navigator.pop(context),
-          child: Text('cancel-text'.i18n()),
-        ),
         BusyButton(
           key: const ValueKey('test-qa-download'),
           filled: true,
@@ -180,6 +185,10 @@ class _CommunityDialogState extends State<CommunityDialog> {
           busyLabel: 'downloading-text'.i18n(),
           busy: _downloading,
           onPressed: _downloading ? null : _download,
+        ),
+        Button(
+          onPressed: _downloading ? null : () => Navigator.pop(context),
+          child: Text('cancel-text'.i18n()),
         ),
       ],
     );

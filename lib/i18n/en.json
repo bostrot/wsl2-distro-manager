@@ -664,5 +664,12 @@
   "clear-text": "Clear",
   "physicalmountwarning-title": "Windows loses access to this disk",
   "physicalmountwarning-text": "Mounting a physical disk needs this app to run as administrator, and Windows cannot use the disk until you unmount it here.",
-  "copyinstancewarning-text": "The whole instance is copied, disk included, so this needs as much free space again and can take several minutes. The source instance is stopped first."
+  "copyinstancewarning-text": "The whole instance is copied, disk included, so this needs as much free space again and can take several minutes. The source instance is stopped first.",
+  "communitysnippetstitle-text": "Community snippets",
+  "downloadfromrepo-desc": "A ready-made Linux image from this app's catalogue",
+  "turnkeylinux-desc": "A pre-configured TurnKey appliance, downloaded on demand",
+  "dockerimage-desc": "Pulled from Docker Hub or another registry",
+  "localrootfsfile-desc": "A rootfs archive (.tar / .tar.gz) already on this PC",
+  "localdockerimage-desc": "An image already in your local Docker installation",
+  "importvhdx-desc": "A WSL virtual disk (.vhdx) already on this PC"
 }

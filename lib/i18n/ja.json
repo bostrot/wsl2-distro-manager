@@ -664,5 +664,12 @@
   "clear-text": "消去",
   "physicalmountwarning-title": "Windows からこのディスクにアクセスできなくなります",
   "physicalmountwarning-text": "物理ディスクのマウントにはこのアプリを管理者として実行する必要があります。ここでマウントを解除するまで、Windows はこのディスクを使用できません。",
-  "copyinstancewarning-text": "ディスクを含むインスタンス全体をコピーするため、同じだけの空き容量が必要で、数分かかることがあります。コピー元のインスタンスは先に停止します。"
+  "copyinstancewarning-text": "ディスクを含むインスタンス全体をコピーするため、同じだけの空き容量が必要で、数分かかることがあります。コピー元のインスタンスは先に停止します。",
+  "communitysnippetstitle-text": "コミュニティのスニペット",
+  "downloadfromrepo-desc": "このアプリのカタログにある既製の Linux イメージ",
+  "turnkeylinux-desc": "設定済みの TurnKey アプライアンス（必要時にダウンロード）",
+  "dockerimage-desc": "Docker Hub などのレジストリから取得",
+  "localrootfsfile-desc": "この PC 上にある rootfs アーカイブ（.tar / .tar.gz）",
+  "localdockerimage-desc": "ローカルの Docker にすでにあるイメージ",
+  "importvhdx-desc": "この PC 上にある WSL 仮想ディスク（.vhdx）"
 }

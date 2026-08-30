@@ -406,7 +406,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-07 -- Accessible names and honest tooltips | 10 | 0 | 2026-08-30 |
 | FIX-04 -- Long operations: moving progress and a way out | 7 | 0 | 2026-08-30 |
 | FIX-08 -- Destructive actions must look and behave destructive | 12 | 0 | 2026-08-30 |
-| all others | 0 | 138 | -- |
+| FIX-09 -- One dialog contract | 11 | 0 | 2026-08-30 |
+| all others | 0 | 127 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -780,19 +781,50 @@ Regression tests: `test/destructive_actions_test.dart` (14) and one in
 Button order, primary styling, titles and sizing differ per dialog; the one that
 deletes things is the one with the odd button order.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| ST-62 | major | One button order everywhere, including the delete dialog (Cancel is currently on the opposite side there) |
-| CI-32 | major | Same for the community snippets dialog |
-| CI-30 | major | Validate before popping, and stop using the source name as a placeholder -- the field looks pre-filled |
-| CI-29 | nit | `FilledButton` for the copy dialog's primary action |
-| CI-25 | nit | Keep the source-type flyout off the page title and the fields it belongs to |
-| CI-28 | nit | Delete the dead `createDialog()` -- it also carries the opposite button order |
-| CI-33 | nit | Give the community dialog a title |
-| CI-37 | nit | Size it to its content instead of full window height |
-| ST-32 | nit | Size the per-distro dialog to its twenty controls instead of a fixed 500x500 |
-| ST-33 | nit | Title it with the distro name, not the bare word "Settings" |
-| ST-43 | nit | Stop pre-filling the new-instance name box with the template's own name as a placeholder |
+**Landed 2026-08-30.** The contract is: **primary action filled and first, Cancel
+last** -- the order `base_dialog.dart`, the create screen and the AI Workspace
+dialogs already used, and the WinUI order. The three dialogs on the other
+convention (per-distro settings, mount, community snippets) flipped; the delete
+dialog was already right once the rest agreed with it. `dialog()`'s submit button
+is a `FilledButton` now, which closes CI-29 for the copy dialog and gives every
+`dialog()`-built confirmation the same primary emphasis.
+
+Two behaviours moved into `dialog()` itself rather than being fixed per caller:
+a `placeholder` parameter replaced the old behaviour of using the *item* -- the
+source's own name -- as the input placeholder, which made an empty box read as
+pre-filled with exactly the value a user would accept (CI-30, ST-43); and a
+`validateInput` callback runs before the pop, shows its message under the box,
+clears on edit, and keeps the dialog open -- so a primary button can no longer
+swallow an empty required field on its way out (CI-30, same contract FIX-02
+established for the screens).
+
+The dead `createDialog()` -- no call sites, opposite button order, tooltips
+repeating their own labels -- is deleted; `CreatePage` is the single
+implementation. The source-type control became a `DropDownButton`, whose flyout
+opens *below* the control instead of ComboBox's selected-item-anchored popup
+that covered the page title and the name field (CI-25); the flyout also groups
+the three downloading sources from the three local ones and gives each a
+description line, which is FIX-12's CI-26 closed early. The community dialog
+got a title and lost its window-height `SizedBox` (CI-33, CI-37); the
+per-distro dialog is 640x720 instead of 500x500 and is titled with the distro
+name (ST-32, ST-33).
+
+Regression tests: `test/dialog_contract_test.dart` (4). 7 new keys in all nine
+locales.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| ST-62 | major | One button order everywhere, including the delete dialog (Cancel is currently on the opposite side there) | `settings_dialog.dart:98`, `mount_dialog.dart:187`, `:250`, `:364` |
+| CI-32 | major | Same for the community snippets dialog | `qa_dialog.dart:177` |
+| CI-30 | major | Validate before popping, and stop using the source name as a placeholder -- the field looks pre-filled | `base_dialog.dart:34` (`validateInput`), `:70` (placeholder), `copy_dialog.dart:28` |
+| CI-29 | nit | `FilledButton` for the copy dialog's primary action | `base_dialog.dart:101` |
+| CI-25 | nit | Keep the source-type flyout off the page title and the fields it belongs to | `create_dialog.dart:605` (`DropDownButton`, flyout opens below) |
+| CI-28 | nit | Delete the dead `createDialog()` -- it also carries the opposite button order | deleted; guarded by `dialog_contract_test.dart` |
+| CI-33 | nit | Give the community dialog a title | `qa_dialog.dart:110` |
+| CI-37 | nit | Size it to its content instead of full window height | `qa_dialog.dart:114` |
+| ST-32 | nit | Size the per-distro dialog to its twenty controls instead of a fixed 500x500 | `settings_dialog.dart:86` |
+| ST-33 | nit | Title it with the distro name, not the bare word "Settings" | `settings_dialog.dart:53` |
+| ST-43 | nit | Stop pre-filling the new-instance name box with the template's own name as a placeholder | `base_dialog.dart:70` |
 
 ### FIX-10 -- Contrast and theme tokens
 

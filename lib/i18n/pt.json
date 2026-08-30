@@ -666,5 +666,12 @@
   "clear-text": "Limpar",
   "physicalmountwarning-title": "O Windows perde o acesso a este disco",
   "physicalmountwarning-text": "Montar um disco físico exige executar este aplicativo como administrador, e o Windows não poderá usar o disco até você desmontá-lo aqui.",
-  "copyinstancewarning-text": "A instância inteira é copiada, incluindo o disco, então é preciso outro tanto de espaço livre e pode levar vários minutos. A instância de origem é parada antes."
+  "copyinstancewarning-text": "A instância inteira é copiada, incluindo o disco, então é preciso outro tanto de espaço livre e pode levar vários minutos. A instância de origem é parada antes.",
+  "communitysnippetstitle-text": "Trechos da comunidade",
+  "downloadfromrepo-desc": "Uma imagem Linux pronta do catálogo deste aplicativo",
+  "turnkeylinux-desc": "Um appliance TurnKey pré-configurado, baixado quando necessário",
+  "dockerimage-desc": "Baixada do Docker Hub ou de outro registro",
+  "localrootfsfile-desc": "Um arquivo rootfs (.tar / .tar.gz) que já está neste PC",
+  "localdockerimage-desc": "Uma imagem que já está na sua instalação local do Docker",
+  "importvhdx-desc": "Um disco virtual do WSL (.vhdx) que já está neste PC"
 }

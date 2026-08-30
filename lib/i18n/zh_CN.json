@@ -665,5 +665,12 @@
   "clear-text": "清除",
   "physicalmountwarning-title": "Windows 将无法访问此磁盘",
   "physicalmountwarning-text": "挂载物理磁盘需要以管理员身份运行本应用；在您在此卸载它之前，Windows 无法使用该磁盘。",
-  "copyinstancewarning-text": "整个实例连同磁盘一起复制，因此需要同样大小的可用空间，可能需要几分钟。源实例会先停止。"
+  "copyinstancewarning-text": "整个实例连同磁盘一起复制，因此需要同样大小的可用空间，可能需要几分钟。源实例会先停止。",
+  "communitysnippetstitle-text": "社区代码片段",
+  "downloadfromrepo-desc": "来自本应用目录的现成 Linux 镜像",
+  "turnkeylinux-desc": "预配置的 TurnKey 设备，按需下载",
+  "dockerimage-desc": "从 Docker Hub 或其他注册表拉取",
+  "localrootfsfile-desc": "本机上已有的 rootfs 归档（.tar / .tar.gz）",
+  "localdockerimage-desc": "本地 Docker 中已有的镜像",
+  "importvhdx-desc": "本机上已有的 WSL 虚拟磁盘（.vhdx）"
 }

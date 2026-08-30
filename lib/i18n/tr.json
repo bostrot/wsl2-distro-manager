@@ -664,5 +664,12 @@
   "clear-text": "Temizle",
   "physicalmountwarning-title": "Windows bu diske erişimini kaybeder",
   "physicalmountwarning-text": "Fiziksel bir diski bağlamak için bu uygulamanın yönetici olarak çalışması gerekir ve diski burada ayırana kadar Windows onu kullanamaz.",
-  "copyinstancewarning-text": "Örneğin tamamı diskiyle birlikte kopyalanır; bu yüzden bir o kadar boş alan gerekir ve birkaç dakika sürebilir. Kaynak örnek önce durdurulur."
+  "copyinstancewarning-text": "Örneğin tamamı diskiyle birlikte kopyalanır; bu yüzden bir o kadar boş alan gerekir ve birkaç dakika sürebilir. Kaynak örnek önce durdurulur.",
+  "communitysnippetstitle-text": "Topluluk parçacıkları",
+  "downloadfromrepo-desc": "Bu uygulamanın kataloğundan hazır bir Linux kalıbı",
+  "turnkeylinux-desc": "Önceden yapılandırılmış TurnKey aygıtı, gerektiğinde indirilir",
+  "dockerimage-desc": "Docker Hub'dan veya başka bir kayıt defterinden çekilir",
+  "localrootfsfile-desc": "Bu bilgisayarda zaten bulunan bir rootfs arşivi (.tar / .tar.gz)",
+  "localdockerimage-desc": "Yerel Docker kurulumunuzda zaten bulunan bir kalıp",
+  "importvhdx-desc": "Bu bilgisayarda zaten bulunan bir WSL sanal diski (.vhdx)"
 }

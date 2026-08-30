@@ -4,7 +4,6 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-import 'package:wsl2distromanager/components/busy_button.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/app.dart';
@@ -47,92 +46,6 @@ class CreateFailure {
   /// Kept apart from [message] so the banner can fold it away and the AI
   /// diagnosis can still have all of it (audit CI-22).
   final String details;
-}
-
-/// Create Dialog
-createDialog() {
-  WSLApi api = WSLApi();
-  final autoSuggestBox = TextEditingController();
-  final locationController = TextEditingController();
-  final nameController = TextEditingController();
-  final userController = TextEditingController();
-  final sourceType = ValueNotifier<CreateSourceType>(CreateSourceType.repo);
-  plausible.event(page: 'create');
-
-  // Get root context by Key
-  final outerContext = GlobalVariable.infobox.currentContext!;
-  final creating = ValueNotifier<bool>(false);
-  final createError = ValueNotifier<CreateFailure?>(null);
-
-  showDialog(
-    useRootNavigator: false,
-    context: outerContext,
-    builder: (context) {
-      return ValueListenableBuilder<bool>(
-        valueListenable: creating,
-        builder: (context, isCreating, _) {
-          return ContentDialog(
-            constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 450.0),
-            title: Text('createnewinstance-text'.i18n()),
-            content: SingleChildScrollView(
-              child: CreateWidget(
-                nameController: nameController,
-                api: api,
-                autoSuggestBox: autoSuggestBox,
-                locationController: locationController,
-                userController: userController,
-                sourceType: sourceType,
-                creating: creating,
-                createError: createError,
-              ),
-            ),
-            actions: [
-              Tooltip(
-                message: 'cancel-text'.i18n(),
-                child: Button(
-                    key: const ValueKey('test-cancel-button'),
-                    onPressed: isCreating ? null : () {
-                      Navigator.pop(context);
-                    },
-                    child: Text('cancel-text'.i18n())),
-              ),
-              Tooltip(
-                message: 'create-text'.i18n(),
-                child: BusyButton(
-                  key: const ValueKey('test-create-button'),
-                  label: 'create-text'.i18n(),
-                  busyLabel: 'creating-text'.i18n(),
-                  busy: isCreating,
-                  onPressed: isCreating
-                      ? null
-                      : () async {
-                          creating.value = true;
-                          createError.value = null;
-                           final success = await createInstance(
-                             nameController,
-                             locationController,
-                             api,
-                             autoSuggestBox,
-                             userController,
-                             isDocker: sourceType.value == CreateSourceType.docker,
-                             isDockerLocalImage: sourceType.value == CreateSourceType.dockerLocalImage,
-                             isVhdx: sourceType.value == CreateSourceType.vhdx,
-                             onError: createError,
-                           );
-                          if (success) {
-                            Navigator.pop(context);
-                          } else {
-                            creating.value = false;
-                          }
-                        },
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
 }
 
 progressFn(current, total, currentStep, totalStep) =>
@@ -580,6 +493,44 @@ class _CreateWidgetState extends State<CreateWidget> {
     }
   }
 
+  /// The chosen source type's short label, for the closed control.
+  String _sourceTypeLabel(CreateSourceType type) {
+    switch (type) {
+      case CreateSourceType.repo:
+        return 'downloadfromrepo-text'.i18n();
+      case CreateSourceType.turnkey:
+        return 'turnkeylinux-text'.i18n();
+      case CreateSourceType.local:
+        return 'localrootfsfile-text'.i18n();
+      case CreateSourceType.docker:
+        return 'dockerimage-text'.i18n();
+      case CreateSourceType.dockerLocalImage:
+        return 'localdockerimage-text'.i18n();
+      case CreateSourceType.vhdx:
+        return 'importvhdx-text'.i18n();
+    }
+  }
+
+  /// One flyout entry: the label with a one-line description under it, so a
+  /// source type is not a bare piece of developer jargon (audit CI-26).
+  MenuFlyoutItem _sourceTypeItem(
+      CreateSourceType type, String labelKey, String descKey) {
+    return MenuFlyoutItem(
+      selected: sourceType == type,
+      text: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(labelKey.i18n()),
+          Text(descKey.i18n(),
+              style: TextStyle(
+                  fontSize: 12.0, color: secondaryTextColor(context))),
+        ],
+      ),
+      onPressed: () => widget.sourceType.value = type,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -645,39 +596,33 @@ class _CreateWidgetState extends State<CreateWidget> {
         ),
         InfoLabel(
           label: 'sourcetype-text'.i18n(),
-          child: ComboBox<CreateSourceType>(
-            placeholder: Text('selectsourcetype-text'.i18n()),
-            isExpanded: true,
-            value: sourceType,
+          // A DropDownButton's flyout opens *below* the control; the ComboBox
+          // it replaces aligned the popup over its selected item, so with a
+          // later value chosen it opened upward and covered the title and the
+          // name the user had just typed (audit CI-25). The flyout also
+          // groups the three sources that download from the three that read a
+          // local file, and says what each one needs (CI-26).
+          child: DropDownButton(
+            key: const ValueKey('test-create-sourcetype'),
+            title: Expanded(
+              child: Text(_sourceTypeLabel(sourceType),
+                  textAlign: TextAlign.start),
+            ),
             items: [
-              ComboBoxItem(
-                value: CreateSourceType.repo,
-                child: Text('downloadfromrepo-text'.i18n()),
-              ),
-              ComboBoxItem(
-                value: CreateSourceType.turnkey,
-                child: Text('turnkeylinux-text'.i18n()),
-              ),
-              ComboBoxItem(
-                value: CreateSourceType.local,
-                child: Text('localrootfsfile-text'.i18n()),
-              ),
-              ComboBoxItem(
-                value: CreateSourceType.docker,
-                child: Text('dockerimage-text'.i18n()),
-              ),
-              ComboBoxItem(
-                value: CreateSourceType.dockerLocalImage,
-                child: Text('localdockerimage-text'.i18n()),
-              ),
-              ComboBoxItem(
-                value: CreateSourceType.vhdx,
-                child: Text('importvhdx-text'.i18n()),
-              ),
+              _sourceTypeItem(CreateSourceType.repo, 'downloadfromrepo-text',
+                  'downloadfromrepo-desc'),
+              _sourceTypeItem(CreateSourceType.turnkey, 'turnkeylinux-text',
+                  'turnkeylinux-desc'),
+              _sourceTypeItem(CreateSourceType.docker, 'dockerimage-text',
+                  'dockerimage-desc'),
+              const MenuFlyoutSeparator(),
+              _sourceTypeItem(CreateSourceType.local, 'localrootfsfile-text',
+                  'localrootfsfile-desc'),
+              _sourceTypeItem(CreateSourceType.dockerLocalImage,
+                  'localdockerimage-text', 'localdockerimage-desc'),
+              _sourceTypeItem(
+                  CreateSourceType.vhdx, 'importvhdx-text', 'importvhdx-desc'),
             ],
-            onChanged: (v) {
-              if (v != null) widget.sourceType.value = v;
-            },
           ),
         ),
         Container(

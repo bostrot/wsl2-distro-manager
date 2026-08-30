@@ -665,5 +665,12 @@
   "clear-text": "清除",
   "physicalmountwarning-title": "Windows 將無法存取此磁碟",
   "physicalmountwarning-text": "掛載實體磁碟需要以系統管理員身分執行本應用程式；在您於此卸載它之前，Windows 無法使用該磁碟。",
-  "copyinstancewarning-text": "整個安裝實體連同磁碟一起複製，因此需要同樣大小的可用空間，可能需要數分鐘。來源安裝實體會先停止。"
+  "copyinstancewarning-text": "整個安裝實體連同磁碟一起複製，因此需要同樣大小的可用空間，可能需要數分鐘。來源安裝實體會先停止。",
+  "communitysnippetstitle-text": "社群程式碼片段",
+  "downloadfromrepo-desc": "來自本應用程式目錄的現成 Linux 映像",
+  "turnkeylinux-desc": "預先設定的 TurnKey 裝置，依需求下載",
+  "dockerimage-desc": "從 Docker Hub 或其他登錄檔取得",
+  "localrootfsfile-desc": "本機上已有的 rootfs 封存檔（.tar / .tar.gz）",
+  "localdockerimage-desc": "本機 Docker 中已有的映像",
+  "importvhdx-desc": "本機上已有的 WSL 虛擬磁碟（.vhdx）"
 }

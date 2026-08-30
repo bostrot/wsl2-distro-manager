@@ -665,5 +665,12 @@
   "clear-text": "Löschen",
   "physicalmountwarning-title": "Windows verliert den Zugriff auf diesen Datenträger",
   "physicalmountwarning-text": "Zum Einbinden eines physischen Datenträgers muss diese App als Administrator laufen, und Windows kann den Datenträger erst wieder nutzen, wenn Sie ihn hier aushängen.",
-  "copyinstancewarning-text": "Die gesamte Instanz wird samt Datenträger kopiert. Dafür wird noch einmal so viel freier Speicher benötigt, und es kann mehrere Minuten dauern. Die Quellinstanz wird vorher gestoppt."
+  "copyinstancewarning-text": "Die gesamte Instanz wird samt Datenträger kopiert. Dafür wird noch einmal so viel freier Speicher benötigt, und es kann mehrere Minuten dauern. Die Quellinstanz wird vorher gestoppt.",
+  "communitysnippetstitle-text": "Community-Snippets",
+  "downloadfromrepo-desc": "Ein fertiges Linux-Image aus dem Katalog dieser App",
+  "turnkeylinux-desc": "Eine vorkonfigurierte TurnKey-Appliance, wird bei Bedarf heruntergeladen",
+  "dockerimage-desc": "Wird von Docker Hub oder einer anderen Registry geladen",
+  "localrootfsfile-desc": "Ein Rootfs-Archiv (.tar / .tar.gz), das bereits auf diesem PC liegt",
+  "localdockerimage-desc": "Ein Image aus Ihrer lokalen Docker-Installation",
+  "importvhdx-desc": "Eine virtuelle WSL-Festplatte (.vhdx), die bereits auf diesem PC liegt"
 }

@@ -664,5 +664,12 @@
   "clear-text": "Törlés",
   "physicalmountwarning-title": "A Windows elveszíti a hozzáférést ehhez a lemezhez",
   "physicalmountwarning-text": "Fizikai lemez csatolásához az alkalmazásnak rendszergazdaként kell futnia, és a Windows addig nem tudja használni a lemezt, amíg itt le nem választod.",
-  "copyinstancewarning-text": "A teljes példány másolódik a lemezével együtt, ezért ugyanannyi szabad helyre van szükség, és több percig is eltarthat. A forráspéldány előtte leáll."
+  "copyinstancewarning-text": "A teljes példány másolódik a lemezével együtt, ezért ugyanannyi szabad helyre van szükség, és több percig is eltarthat. A forráspéldány előtte leáll.",
+  "communitysnippetstitle-text": "Közösségi kódrészletek",
+  "downloadfromrepo-desc": "Kész Linux-lemezkép az alkalmazás katalógusából",
+  "turnkeylinux-desc": "Előre beállított TurnKey-készülék, igény szerint letöltve",
+  "dockerimage-desc": "A Docker Hubról vagy más registryből letöltve",
+  "localrootfsfile-desc": "Egy rootfs-archívum (.tar / .tar.gz), ami már ezen a gépen van",
+  "localdockerimage-desc": "Egy kép, ami már a helyi Docker-telepítésedben van",
+  "importvhdx-desc": "Egy WSL virtuális lemez (.vhdx), ami már ezen a gépen van"
 }

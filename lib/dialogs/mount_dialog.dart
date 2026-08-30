@@ -184,10 +184,6 @@ class _MountDialogState extends State<MountDialog> {
               title: Text('unmountfailed-text'.i18n()),
               content: Text('unmountfailed-msg'.i18n()),
               actions: [
-                Button(
-                  child: Text('cancel-text'.i18n()),
-                  onPressed: () => Navigator.pop(dialogContext),
-                ),
                 FilledButton(
                   child: Text('selectfile-text'.i18n()),
                   onPressed: () async {
@@ -227,6 +223,10 @@ class _MountDialogState extends State<MountDialog> {
                     }
                   },
                 ),
+                Button(
+                  child: Text('cancel-text'.i18n()),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
               ],
             ),
           );
@@ -247,10 +247,6 @@ class _MountDialogState extends State<MountDialog> {
                   title: Text('mountfailed-text'.i18n()),
                   content: Text('mountfailed-msg'.i18n()),
                   actions: [
-                    Button(
-                      child: Text('cancel-text'.i18n()),
-                      onPressed: () => Navigator.pop(dialogContext),
-                    ),
                     FilledButton(
                       child: Text('detach-text'.i18n()),
                       onPressed: () async {
@@ -281,6 +277,10 @@ class _MountDialogState extends State<MountDialog> {
                           if (mounted) setState(() => _loading = false);
                         }
                       },
+                    ),
+                    Button(
+                      child: Text('cancel-text'.i18n()),
+                      onPressed: () => Navigator.pop(dialogContext),
                     ),
                   ],
                 ),
@@ -361,16 +361,18 @@ class _MountDialogState extends State<MountDialog> {
           ],
         ),
       ),
+      // Primary first, Cancel last — the order every other dialog in the app
+      // uses (audit ST-62).
       actions: [
-        Button(
-          onPressed: () => Navigator.pop(context),
-          child: Text('cancel-text'.i18n()),
-        ),
         FilledButton(
           key: const ValueKey('test-mount-submit'),
           onPressed: _loading ? null : _execute,
           child: Text(
               _selectedTab == 2 ? 'unmount-text'.i18n() : 'mount-text'.i18n()),
+        ),
+        Button(
+          onPressed: () => Navigator.pop(context),
+          child: Text('cancel-text'.i18n()),
         ),
       ],
     );

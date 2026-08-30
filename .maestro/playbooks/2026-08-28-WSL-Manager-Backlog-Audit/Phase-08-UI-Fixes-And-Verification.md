@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 76 of 214 findings closed (8 blockers, 49 majors, 19 nits).** Running
+  **In progress — 87 of 214 findings closed (8 blockers, 52 majors, 27 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -196,16 +196,29 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     and a copy duplicates the whole disk and stops the source first, which was
     not said anywhere.
 
-  **Next up:** FIX-09 (one dialog contract), then FIX-10. Verification for this
-  slice: `flutter analyze` clean (the same two pre-existing warnings, untouched),
-  `flutter test` 815 passing (was 799), `dart run scripts/check_translations.dart`
-  exit 0. 17 new keys in all nine locales, plus the two
-  `ai-workspace-uninstall-*` strings rewritten to take the tool's name. New
-  tests: `test/destructive_actions_test.dart` (14, covering LN-04, ST-04,
-  ST-19, ST-29, ST-46, ST-38/ST-54 and the locale placeholder count), one in
-  `test/ai_workspace_screen_test.dart` (PS-27/PS-28) and one in
-  `test/helpers_test.dart` (`destructiveColor` across both
-  brightnesses). `flutter test integration_test/` could not be run here — the harness
+  - **FIX-09 — one dialog contract: complete (11/11).** The contract is primary
+    action filled and first, Cancel last — the order `base_dialog.dart`, the
+    create screen and the AI Workspace dialogs already used. The three dialogs
+    on the other convention (per-distro settings, mount, community snippets)
+    flipped. `dialog()` grew a `placeholder` parameter (the *item* — the
+    source's own name — is no longer the input's placeholder, so an empty box
+    stops reading as pre-filled, CI-30/ST-43) and a `validateInput` callback
+    that runs before the pop and keeps the dialog open with the reason under
+    the box. The dead `createDialog()` is deleted. The source-type ComboBox —
+    whose popup anchored on the selected item and covered the page title and
+    the just-typed name — became a `DropDownButton` whose flyout opens below,
+    grouped remote-vs-local with a description line per entry (closes FIX-12's
+    CI-26 early). Community dialog: titled, content-sized, primary-first.
+    Per-distro dialog: 640x720, titled with the distro name.
+
+  **Next up:** FIX-10 (contrast and theme tokens), then FIX-11. Verification for
+  the FIX-09 slice: `flutter analyze` clean (the same two pre-existing warnings,
+  untouched), `flutter test` 819 passing (was 815; one flaky timing-dependent
+  failure in the streamed-install suite passed on re-run),
+  `dart run scripts/check_translations.dart` exit 0. 7 new keys in all nine
+  locales. New tests: `test/dialog_contract_test.dart` (4, covering the button
+  order, the placeholder, the validate-before-pop contract and the deleted
+  `createDialog()`). `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`

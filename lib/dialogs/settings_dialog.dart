@@ -47,7 +47,10 @@ settingsDialog(item) {
   // Get root context by Key
   final context = GlobalVariable.infobox.currentContext!;
 
-  var title = 'settings-text'.i18n();
+  // "Settings" alone was also the nav item for the app-wide screen, so one
+  // word named two destinations and the dialog never said which distro it
+  // edits (audit ST-33).
+  var title = '${'settings-text'.i18n()} \'${distroLabel(item)}\'';
   final pathController = TextEditingController();
   pathController.text = prefs.getString('StartPath_$item') ?? '';
   final startCmdController = TextEditingController();
@@ -77,7 +80,10 @@ settingsDialog(item) {
     context: context,
     builder: (childcontext) {
       return ContentDialog(
-        constraints: const BoxConstraints(maxHeight: 500.0, maxWidth: 500.0),
+        // Twenty controls lived in a 500x500 box: three fields visible at a
+        // time and ten wheel notches to reach Move, on a window with 900px of
+        // empty desktop around the dialog (audit ST-32).
+        constraints: const BoxConstraints(maxHeight: 720.0, maxWidth: 640.0),
         title: Text(title),
         content: SettingsDialogContent(
           item: item,
@@ -87,16 +93,12 @@ settingsDialog(item) {
           draft: draft,
           loaded: loaded,
         ),
+        // Primary first, Cancel last — the order every other dialog in the
+        // app uses (audit ST-62).
         actions: [
-          Button(
-              child: Text('cancel-text'.i18n()),
-              onPressed: () {
-                draft.clear();
-                Navigator.pop(childcontext);
-              }),
           ValueListenableBuilder<bool>(
             valueListenable: loaded,
-            builder: (context, isLoaded, _) => Button(
+            builder: (context, isLoaded, _) => FilledButton(
                 key: const ValueKey('test-settings-dialog-save'),
                 onPressed: !isLoaded
                     ? null
@@ -113,6 +115,12 @@ settingsDialog(item) {
                       },
                 child: Text('save-text'.i18n())),
           ),
+          Button(
+              child: Text('cancel-text'.i18n()),
+              onPressed: () {
+                draft.clear();
+                Navigator.pop(childcontext);
+              }),
         ],
       );
     },
