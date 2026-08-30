@@ -409,7 +409,9 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-09 -- One dialog contract | 11 | 0 | 2026-08-30 |
 | FIX-10 -- Contrast and theme tokens | 21 | 0 | 2026-08-30 |
 | FIX-14 -- AI Workspace card lifecycle | 4 | 0 | 2026-08-30 |
-| all others | 0 | 102 | -- |
+| FIX-11 -- Close the localization holes | 13 | 0 | 2026-08-30 |
+| FIX-18 -- Recommendations panel | 4 | 0 | 2026-08-30 |
+| all others | 0 | 85 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -909,21 +911,45 @@ Two blockers: one panel renders its own i18n keys, and a whole dialog is untrans
 in six of eight non-English locales. The CI gate that should have caught both only
 checks that keys are *present*.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| TL-09 | blocker | Translate the 35-37 missing Mount Disk keys in `es`, `hu`, `ja`, `pt`, `tr`, `zh_TW` |
-| PS-40 | blocker | Add the three `recommend-*` keys -- they are missing from **all nine** locales including `en`, so the panel prints its key names |
-| TL-16 | major | Same three keys, recorded from the locale side; closes with PS-40 |
-| TL-10 | major | Widen `locales_test.dart`'s gate from key-presence to the untranslated-value rule that already exists but is scoped to 60 keys; expect 131 locale-key pairs to fail and fix them |
-| TL-12 | major | Translate the German nav pane's "Home" and "Mount Disk" |
-| PS-43 | major | Build the "Go to Templates" label from one key with a placeholder, not three English fragments |
-| CI-10 | major | Key the three hardcoded English strings in the "no results" panel |
-| TL-11 | major | Fix the Turkish "örnek" collision -- ten strings mean *instance*, five legitimately mean *sample* |
-| LN-14 | major | Move the hardcoded "Dark Mode" toggle label into `en.json` |
-| PS-26 | nit | "Installed: cmd://openclaw" -- key it and stop leaking the internal URI sentinel |
-| PS-29 | nit | Build the uninstall success toast from a key with a placeholder, not concatenation |
-| IA-21 | nit | Same for the recommendation link built by an if/else on a route string |
-| TL-13 | nit | Decide whether "AI Workspace" is a product name; if not, translate it (it is the only Latin script in the `ja` and `zh_TW` nav panes) |
+**Landed 2026-08-30.** The Mount Disk dialog's ~39 keys got real translations in
+`es`, `hu`, `ja`, `pt`, `tr` and `zh_TW` (TL-09), and the gate that let them ship
+English is widened: `locales_test.dart`'s untranslated-value rule now runs over
+**every** key longer than 20 characters, not the 60 audit keys it was scoped to,
+with a nine-entry `identicalByDesign` allowlist for product names and literal
+examples (TL-10). "AI Workspace" is on that list as a deliberate product-name
+decision, recorded in the test's own comment (TL-13).
+
+The three `recommend-*` keys — missing from all nine locales including `en`, so
+the panel printed its own key names — exist everywhere with real translations
+(PS-40, TL-16). The "Go to Templates" link is one `goto-text` key whose
+placeholder is the destination's own translated name, instead of three English
+fragments glued in Dart (PS-43, IA-21). The remaining hardcoded strings went
+through keys: the nav's "Dark Mode" toggle (LN-14), the create form's Docker
+"no results" panel (CI-10), the AI Workspace card's "Installed:" line — which
+also stops leaking the internal `cmd://` existence-check sentinel (PS-26) — and
+the uninstall toast, whose subject was concatenated in Dart and can now move
+with the locale's word order (PS-29).
+
+Turkish got a term decision (TL-11): the ten strings using "örnek" for a WSL
+*instance* now say "dağıtım", leaving "örnek" to the five strings that
+genuinely mean *sample*. German's two English nav entries are translated
+(TL-12: "Startseite"; "Mount Disk" was already "Datenträger einbinden").
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| TL-09 | blocker | Translate the 35-37 missing Mount Disk keys in `es`, `hu`, `ja`, `pt`, `tr`, `zh_TW` | all six locale files, ~39 keys each |
+| PS-40 | blocker | Add the three `recommend-*` keys -- they are missing from **all nine** locales including `en`, so the panel prints its key names | all nine locale files |
+| TL-16 | major | Same three keys, recorded from the locale side; closes with PS-40 | with PS-40 |
+| TL-10 | major | Widen `locales_test.dart`'s gate from key-presence to the untranslated-value rule that already exists but is scoped to 60 keys; expect 131 locale-key pairs to fail and fix them | `locales_test.dart:399` (125 pairs measured; all fixed) |
+| TL-12 | major | Translate the German nav pane's "Home" and "Mount Disk" | `de.json` (`homepage-text`) |
+| PS-43 | major | Build the "Go to Templates" label from one key with a placeholder, not three English fragments | `recommendations_panel.dart:123` |
+| CI-10 | major | Key the three hardcoded English strings in the "no results" panel | `create_dialog.dart:698`, `:702`, `:707` |
+| TL-11 | major | Fix the Turkish "örnek" collision -- ten strings mean *instance*, five legitimately mean *sample* | `tr.json`, ten keys rewritten to "dağıtım" |
+| LN-14 | major | Move the hardcoded "Dark Mode" toggle label into `en.json` | `root_screen.dart:239`, key `darkmode-text` |
+| PS-26 | nit | "Installed: cmd://openclaw" -- key it and stop leaking the internal URI sentinel | `ai_workspace_screen.dart:631` |
+| PS-29 | nit | Build the uninstall success toast from a key with a placeholder, not concatenation | `ai_workspace_screen.dart:390` |
+| IA-21 | nit | Same for the recommendation link built by an if/else on a route string | `recommendations_panel.dart:123` |
+| TL-13 | nit | Decide whether "AI Workspace" is a product name; if not, translate it (it is the only Latin script in the `ja` and `zh_TW` nav panes) | decided: product name; pinned in `locales_test.dart`'s allowlist |
 
 ### FIX-12 -- Copy, casing and terminology
 
@@ -1049,12 +1075,22 @@ button, the primary hierarchy, Stop-while-starting).
 The dismiss control writes to prefs and changes nothing, and the "clear" function adds
 to the list it claims to clear.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| PS-41 | major | Dismiss must remove the card from the panel, not just write `DismissedRecommendations` |
-| PS-42 | major | `clearDismissed()` must clear, and the "Go to" link must not dismiss as a side effect |
-| PS-44 | nit | Hide the panel when every recommendation is dismissed instead of leaving an empty bordered box |
-| PS-45 | nit | Pin the dismiss X to the right edge and raise the 11px / 10px text |
+**Landed 2026-08-30.** The panel is a `StatefulWidget` now, so dismissing a card
+takes it off the screen on the click rather than on whatever rebuild happened
+next (PS-41). The misnamed `clearDismissed()` — which *adds* to the dismissed
+list — is `dismiss()`, and the "Go to" link no longer calls it at all, so acting
+on a recommendation stops erasing it (PS-42). Dismissed cards are filtered
+before the empty check, so a panel with nothing left to say disappears instead
+of standing as an empty bordered box (PS-44); the text column is `Expanded`
+so the dismiss X sits at the card's right edge, and the 11px/10px text is
+12px/11px (PS-45). Regression tests: `test/recommendations_panel_test.dart` (2).
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| PS-41 | major | Dismiss must remove the card from the panel, not just write `DismissedRecommendations` | `recommendations_panel.dart:146` |
+| PS-42 | major | `clearDismissed()` must clear, and the "Go to" link must not dismiss as a side effect | `recommender_service.dart:105` (`dismiss`), `recommendations_panel.dart:121` |
+| PS-44 | nit | Hide the panel when every recommendation is dismissed instead of leaving an empty bordered box | `recommendations_panel.dart:33` |
+| PS-45 | nit | Pin the dismiss X to the right edge and raise the 11px / 10px text | `recommendations_panel.dart:101` |
 
 ### FIX-19 -- AI chat panel
 

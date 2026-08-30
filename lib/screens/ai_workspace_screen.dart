@@ -385,7 +385,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       if (mounted) {
         setState(() {}); // Rebuild UI after uninstall completes
         if (success) {
-          Notify.message('${_toolName(tool)} ${'ai-workspace-uninstall-success'.i18n()}');
+          // One key with a placeholder — word order was baked into Dart
+          // concatenation, so no locale could move the subject (audit PS-29).
+          Notify.message('ai-workspace-uninstall-success'.i18n([_toolName(tool)]),
+              severity: InfoBarSeverity.success);
         } else {
           final state = _service.getState(tool);
           Notify.message(state?.errorMessage ?? 'ai-workspace-uninstall-failed'.i18n());
@@ -621,8 +624,15 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             ),
             if (state?.installPath != null) ...[
               const SizedBox(height: 4),
+              // Keyed, and the internal `cmd://<binary>` existence-check
+              // sentinel stays internal — "Installed: cmd://openclaw" leaked
+              // an implementation detail as a path (audit PS-26).
               Text(
-                'Installed: ${state!.installPath}',
+                'ai-workspace-installed-at-text'.i18n([
+                  state!.installPath!.startsWith('cmd://')
+                      ? state.installPath!.substring('cmd://'.length)
+                      : state.installPath!
+                ]),
                 style: FluentTheme.of(context).typography.bodyStrong,
               ),
             ],

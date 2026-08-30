@@ -374,7 +374,7 @@
   "ai-workspace-uninstall-title": "要卸载 %s 吗？",
   "ai-workspace-uninstall-confirm": "%s 及其存储的所有内容都会从 ai-workspace 实例中移除。此操作无法撤销。",
   "ai-workspace-uninstall-btn": "卸载",
-  "ai-workspace-uninstall-success": "卸载成功",
+  "ai-workspace-uninstall-success": "已卸载 %s。",
   "ai-workspace-uninstall-failed": "卸载工具失败。",
   "ai-workspace-open-dashboard-text": "打开仪表盘",
   "ai-workspace-dashboard-failed-text": "无法打开仪表盘。请确认该工具仍在运行，然后重试。",
@@ -674,5 +674,14 @@
   "localdockerimage-desc": "本地 Docker 中已有的镜像",
   "importvhdx-desc": "本机上已有的 WSL 虚拟磁盘（.vhdx）",
   "snippetauthor-text": "（作者：%s）",
-  "snippetauthoryou-text": "（我的）"
+  "snippetauthoryou-text": "（我的）",
+  "recommend-docker-template": "您创建了很多基于 Docker 的实例。把其中一个保存为模板，可以更快地创建新实例。",
+  "recommend-cleanup": "您有一个实例在磁盘上超过 10 GB。清理可以压缩它的虚拟磁盘。",
+  "recommend-systemd": "某个需要 systemd 的服务可能启动失败。请在该实例的设置中启用 systemd。",
+  "goto-text": "前往%s",
+  "darkmode-text": "深色模式",
+  "ai-workspace-installed-at-text": "已安装：%s",
+  "dockerimagecheck-text": "请检查镜像名称和标签。",
+  "dockerimagepreview-text": "Docker 镜像：%s",
+  "localdockerpreview-text": "本地 Docker 镜像：%s"
 }

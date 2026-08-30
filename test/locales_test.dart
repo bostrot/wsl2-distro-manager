@@ -392,4 +392,46 @@ void main() {
       }
     });
   });
+
+  /// The rule above was scoped to the WSL-docs audit keys, which is how a
+  /// whole dialog shipped in English in six locales without any gate firing
+  /// (audit TL-09, TL-10). This is the same rule over *every* key.
+  group('no locale ships English sentences', () {
+    /// Values that are legitimately byte-identical to English everywhere:
+    /// product names, literal examples and technical placeholders.
+    const identicalByDesign = [
+      // Paths and address examples are examples, not prose.
+      'examplepath-text',
+      'exampleunmountpath-text',
+      'remote-ssh-target-placeholder-text',
+      // Product and feature names (TL-13: "AI Workspace" is a product name —
+      // decided, not overlooked).
+      'ai-workspace-title',
+      'plan-store',
+      'turnkeylinux-text',
+      'windowsterminal-text',
+      'windowsstore-text',
+      'githubissue-text',
+    ];
+
+    test('every value over 20 characters is translated', () {
+      final english =
+          json.decode(File('lib/i18n/en.json').readAsStringSync()) as Map;
+
+      for (final locale in supportedLocalesList) {
+        if (locale.toString() == 'en') continue;
+        final file = File('lib/i18n/${locale.toString()}.json');
+        final translated = json.decode(file.readAsStringSync()) as Map;
+
+        for (final key in english.keys) {
+          if (identicalByDesign.contains(key)) continue;
+          // Short labels can legitimately be identical — "GPU" is "GPU"
+          // everywhere. A sentence that matches English is a fallback.
+          if ((english[key] as String).length <= 20) continue;
+          expect(translated[key], isNot(english[key]),
+              reason: '${file.path}: "$key" is still the English string');
+        }
+      }
+    });
+  });
 }

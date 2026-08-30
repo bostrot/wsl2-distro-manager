@@ -98,8 +98,11 @@ class RecommenderService {
     prefs.setInt('DockerImageCount', current + 1);
   }
 
-  /// Clear all recommendations (after user acts on them)
-  static void clearDismissed(String key) {
+  /// Dismiss one recommendation.
+  ///
+  /// This used to be called `clearDismissed`, a name that promised the exact
+  /// opposite of what it did — it *adds* to the dismissed list (audit PS-42).
+  void dismiss(String key) {
     final dismissed = prefs.getStringList('DismissedRecommendations') ?? [];
     if (!dismissed.contains(key)) {
       dismissed.add(key);

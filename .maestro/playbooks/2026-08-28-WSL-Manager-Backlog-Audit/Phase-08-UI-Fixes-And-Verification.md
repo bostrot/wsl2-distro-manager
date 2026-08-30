@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 112 of 214 findings closed (11 blockers, 66 majors, 35 nits).** Running
+  **In progress — 129 of 214 findings closed (13 blockers, 75 majors, 41 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -232,13 +232,29 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     since non-primary actions are no longer disabled `FilledButton`s. Stop
     stays live on a tool stuck in "Starting up...".
 
-  **Next up:** FIX-11 (localization holes), then FIX-12. Verification for the
-  FIX-09/10/14 slices: `flutter analyze` clean (the same two pre-existing
-  warnings), `flutter test` 822 passing (was 815),
-  `dart run scripts/check_translations.dart` exit 0. 9 new keys in all nine
-  locales. New tests: `test/dialog_contract_test.dart` (4) and three in
-  `test/ai_workspace_screen_test.dart` (dead button, primary hierarchy,
-  Stop-while-starting). `flutter test integration_test/` could not be run here — the harness
+  - **FIX-11 — close the localization holes: complete (13/13).** The Mount Disk
+    dialog's ~39 keys got real translations in the six locales that shipped it
+    in English; `locales_test.dart`'s untranslated-value gate now covers every
+    key over 20 characters (125 failing pairs measured, all fixed) with a
+    nine-entry product-name/example allowlist — "AI Workspace" is on it as a
+    recorded decision. The three `recommend-*` keys exist in all nine locales
+    (the panel printed its own key names); "Go to %s" is one key; Dark Mode,
+    the Docker no-results strings, "Installed:" (minus the leaked `cmd://`
+    sentinel) and the uninstall toast are keyed; Turkish says "dağıtım" for an
+    instance and keeps "örnek" for samples; German's nav is German.
+
+  - **FIX-18 — recommendations panel: complete (4/4).** The panel is stateful,
+    so dismiss removes the card on the click; `clearDismissed()` — which
+    *added* to the dismissed list — is `dismiss()`, and the Go-to link no
+    longer dismisses as a side effect; an all-dismissed panel disappears
+    entirely; the X is pinned to the card edge and the 11px/10px text raised.
+
+  **Next up:** FIX-12 (copy and casing), then FIX-13. Verification for the
+  FIX-11/18 slices: `flutter analyze` clean (the same two pre-existing
+  warnings), `flutter test` 825 passing (was 822),
+  `dart run scripts/check_translations.dart` exit 0. New tests:
+  `test/recommendations_panel_test.dart` (2) and the widened gate in
+  `test/locales_test.dart`. `flutter test integration_test/` could not be run here — the harness
   builds the app (`Built build\windows\x64\runner\Debug\wsl2distromanager.exe`)
   and then fails with "Unable to start the app on the device" / "The log reader
   stopped unexpectedly", which is the environment, not the change. `dart format`

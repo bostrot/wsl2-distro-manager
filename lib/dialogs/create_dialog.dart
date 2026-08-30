@@ -693,16 +693,19 @@ class _CreateWidgetState extends State<CreateWidget> {
                         tag = text.split(':')[1];
                       }
                     } catch (e) {
-                      text = 'Check the image name and tag';
+                      // Keyed: these three were the only hardcoded English
+                      // strings in the panel (audit CI-10).
+                      text = 'dockerimagecheck-text'.i18n();
                       error = true;
                     }
                     if (!error) {
-                      text = 'Docker Image: $image:$tag';
+                      text = 'dockerimagepreview-text'.i18n(['$image:$tag']);
                     }
                   } else if (sourceType == CreateSourceType.dockerLocalImage) {
                     text = widget.autoSuggestBox.text.isEmpty
                         ? 'localdockerimagenotfound-text'.i18n()
-                        : 'Local Docker: ${widget.autoSuggestBox.text}';
+                        : 'localdockerpreview-text'
+                            .i18n([widget.autoSuggestBox.text]);
                   } else if (sourceType == CreateSourceType.local) {
                     text = 'selectlocalfile-text'.i18n();
                   } else if (sourceType == CreateSourceType.vhdx) {

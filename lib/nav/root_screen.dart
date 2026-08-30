@@ -235,7 +235,8 @@ class RootPageState extends State<RootPage> with WindowListener {
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8.0),
             child: ToggleSwitch(
-              content: const Text('Dark Mode'),
+              // Was the one hardcoded-English label in the nav (audit LN-14).
+              content: Text('darkmode-text'.i18n()),
               checked: FluentTheme.of(context).brightness.isDark,
               onChanged: (v) {
                 appTheme.mode = v ? ThemeMode.dark : ThemeMode.light;
