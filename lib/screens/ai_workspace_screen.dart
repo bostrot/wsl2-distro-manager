@@ -633,13 +633,15 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             ),
             if (state?.installPath != null) ...[
               const SizedBox(height: 4),
-              // Keyed, and the internal `cmd://<binary>` existence-check
-              // sentinel stays internal — "Installed: cmd://openclaw" leaked
-              // an implementation detail as a path (audit PS-26).
+              // Keyed, and the internal existence-check sentinels stay
+              // internal — "Installed: cmd://openclaw" leaked an
+              // implementation detail as a path, and `docker://` was the
+              // same leak for container-backed tools (audit PS-26).
               Text(
                 'ai-workspace-installed-at-text'.i18n([
-                  state!.installPath!.startsWith('cmd://')
-                      ? state.installPath!.substring('cmd://'.length)
+                  state!.installPath!.contains('://')
+                      ? state.installPath!
+                          .substring(state.installPath!.indexOf('://') + 3)
                       : state.installPath!
                 ]),
                 style: FluentTheme.of(context).typography.bodyStrong,

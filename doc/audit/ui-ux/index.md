@@ -339,6 +339,27 @@ work items -- that, not this table, is what Phase 08 works from.
 | IA-21 | The recommendation link label is built with an if/else on a route string, in hardcoded English | [[interaction-and-a11y]] | `recommendations_panel.dart:98` | nit | S | _source-derived_ |
 | IA-22 | The snippet list signals hover by dropping the row to 50% opacity -- less contrast, not more | [[interaction-and-a11y]] | `hoverable.dart:33` | nit | S | _source-derived_ |
 
+## Phase 08 verification captures
+
+Re-captured on **2026-08-30** with the Phase 07 toolkit and baseline
+(`prefs.ps1 -Baseline`, `launch.ps1 -Mode run -ForcePro -Width 1400 -Height
+860`), in `.maestro/screenshots/phase-08/` — gitignored like the Phase 07 set.
+Diffed by eye against the Phase 07 captures named per finding:
+
+| Capture | Confirms, against Phase 07 |
+|:---|:---|
+| `00-home-1400x860.png` | vs `10-list-1400x860-home.png`: names get the row width (LN-01), running/stopped rows align (LN-02, the reserved stop slot), the size column is text-sized, the running row's first icon is a terminal (LN-26), the AI FAB is accent-filled (TL-06), nav reads sentence case (LN-15) with the `{}` Snippets icon (LN-11) |
+| `01-aiworkspace.png` | vs `141-aiws-initial.png`: one primary per card state — the dead "Installed" button is gone (PS-22), "Installed: openclaw" without the `cmd://` sentinel (PS-26), "Not installed"/"Stopped" badges in the AA palette (PS-20, PS-25), the dimmed notInstalled dot (PS-24) |
+| `02-license.png` | vs `172-free-license.png`: the Pro build shows the comparison table (PS-04), four rows — Script Generation and Smart Recommendations gone (PS-01), legible not-included marks (PS-03) |
+| `04-snippets.png` | vs `127-actions-empty.png`: both add buttons grouped bottom-right (ST-61) |
+| `05-templates.png` | vs `119`/`120`: title + explanation (ST-41), `test-4 (10 MB)` — the sub-GB size that used to format to "0.01 GB" or hide the row (ST-37, ST-42) |
+| `06-home-dark.png`, `07-aiworkspace-dark.png` | vs `202-dark-aiworkspace.png`: the status pills and dots that measured 1.03:1 are legible in dark (TL-01, TL-04) |
+| `08-chat-panel-dark.png` | vs `203-dark-aichat.png`, `145-aichat-empty.png`: the panel is visible in dark with readable empty state (TL-02), says up front it needs a key with an Open Settings action, and has its own close control (PS-34); Clear is disabled over the empty history (PS-35) |
+
+Not re-captured: the flows that need state this host does not have mid-run (a
+real create, a failing mount, the non-Pro paywall) — their fixes are covered
+by the widget tests named in each work item's section.
+
 ## Per-area files
 
 | File | Covers | Status |

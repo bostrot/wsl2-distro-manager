@@ -372,17 +372,40 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
   - Work them in a single pass grouped by file
   - For any nit deliberately not fixed, mark it deferred in the audit index with a one-line reason — do not silently drop findings
 
-- [ ] Add regression tests for the fixes that are testable without a display:
+- [x] Add regression tests for the fixes that are testable without a display
+  (per-slice suites named in each work item's section — dialog_contract,
+  destructive_actions, required_fields, qa_dialog, recommendations_panel,
+  keyboard_focus, accessible_names — plus `test/copy_quality_test.dart` for
+  the exception-shaped-string rule over `en.json` and the new
+  `formatBytes`/`sanitizeDistroName` helpers; `destructiveColor` landed in
+  `test/helpers_test.dart` with the FIX-08 slice):
   - Widget tests for empty states, error-state rendering and disabled-control conditions
   - A test asserting no user-facing string in `lib/i18n/en.json` contains an exception-shaped fragment (`Exception:`, `#0 `, `TimeoutException`)
   - Extend `test/helpers_test.dart` if new colour/formatting helpers were introduced
 
-- [ ] Re-run the click-through and prove the fixes visually:
+- [x] Re-run the click-through and prove the fixes visually (nine captures in
+  `.maestro/screenshots/phase-08/` at the Phase 07 sizes and baseline, diffed
+  against the Phase 07 set; the pairing per finding is recorded in the
+  "Phase 08 verification captures" table in `doc/audit/ui-ux/index.md`.
+  Flows needing unreachable state — a real create, a failing mount, the
+  non-Pro paywall — are covered by the named widget tests instead):
   - Launch with `.maestro/tools/launch.ps1`, revisit every screen and dialog changed in this phase, and capture `.maestro/screenshots/phase-08/` shots at the same window sizes as Phase 07
   - Diff them against the Phase 07 captures and confirm each fixed finding is visibly resolved
   - Record the before/after pairs in `doc/audit/ui-ux/index.md`
 
-- [ ] Run the full verification sweep and fix anything it surfaces:
+- [x] Run the full verification sweep — ran 2026-08-30, nothing surfaced:
+  `flutter analyze` clean (the same two pre-existing warnings, `wsl.dart:1987`
+  and `mocks.dart:610`); `flutter test` **828 passing**;
+  `flutter build windows --release` succeeds in 56.6s on the pinned 3.41.6
+  toolchain; with the app live on the distro list and its 5s poll running,
+  `(Get-Process wsl).Count` sampled repeatedly across ~10 minutes stayed at
+  **0** (`wslhost` 0 too — the Phase 01 broker fix holds);
+  `grep -n "return true;" lib/api/license_manager.dart` finds only the
+  `kDebugMode && WSLM_FORCE_PRO` debug gate a release build ignores — no
+  unconditional grant; `git status --short` shows only the intended files
+  (screenshots stay gitignored). `flutter test integration_test/` still fails
+  in this environment before the first test ("Unable to start the app on the
+  device"), unchanged from every earlier slice and recorded in TODO.md:
   - `flutter analyze` — no errors
   - `flutter test` — all tests passing; record the final count
   - `flutter build windows --release` — succeeds on the pinned Flutter 3.41.6 toolchain
@@ -390,7 +413,12 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
   - `grep -n "return true;" lib/api/license_manager.dart` — confirm no unconditional Pro grant
   - `git status --short` — confirm no stray tooling files, screenshots or scratch output are staged
 
-- [ ] Rewrite `TODO.md` to match reality:
+- [x] Rewrite `TODO.md` to match reality — done 2026-08-30: every completed
+  phase moved into a dated done section with how it was verified, "Now" holds
+  only the genuinely open items (the `images.json` CDN push first, with a
+  pointer to the handoff note; the keep-alive/hard-kill nit; the two remote-WSL
+  gaps; the integration-test environment failure), and this final slice is
+  committed on `beta`:
   - Move every item completed across Phases 01–08 into a dated done section with a one-line statement of how it was verified
   - Keep only genuinely open items in "Now", including anything deferred from the audits, with a pointer to the relevant `doc/audit/` file
   - Commit the UI fixes, the tests and the updated `TODO.md` on `beta`, then summarise for the user what changed, what still needs a manual step (the `images.json` CDN push), and what was deliberately deferred.
