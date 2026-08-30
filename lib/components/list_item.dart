@@ -85,14 +85,20 @@ class _ListItemState extends State<ListItem> {
         // The ring the header would have drawn round its chevron is switched
         // off and redrawn around the whole row; the buttons inside restore the
         // theme's ring by merging an empty override over the suppression.
-        FocusBorder(
-          focused: headerFocused,
-          child: FocusTheme(
-            data: const FocusThemeData(
-              primaryBorder: BorderSide.none,
-              secondaryBorder: BorderSide.none,
+        // Hover lights the same whole-row ring — the Expander's own hover
+        // effect reached only the chevron, 660px from the cursor (LN-09).
+        MouseRegion(
+          onEnter: (_) => setState(() => hovered = true),
+          onExit: (_) => setState(() => hovered = false),
+          child: FocusBorder(
+            focused: headerFocused || hovered,
+            child: FocusTheme(
+              data: const FocusThemeData(
+                primaryBorder: BorderSide.none,
+                secondaryBorder: BorderSide.none,
+              ),
+              child: buildRow(context),
             ),
-            child: buildRow(context),
           ),
         ),
         (focused) => rowFocused = focused,
@@ -107,9 +113,14 @@ class _ListItemState extends State<ListItem> {
               FocusTheme(
                   data: const FocusThemeData(),
                   child: Row(children: [
+            // On a running distro the first button opens another terminal —
+            // its tooltip saying "Start" over an already-running instance
+            // promised the wrong thing (audit LN-26).
             MergeSemantics(
               child: Tooltip(
-                message: 'start-text'.i18n(),
+                message: isRunning(widget.item, widget.running)
+                    ? 'openterminal-text'.i18n()
+                    : 'start-text'.i18n(),
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: IconButton(
@@ -118,7 +129,11 @@ class _ListItemState extends State<ListItem> {
                         ? const SizedBox.square(
                             dimension: 16.0,
                             child: ProgressRing(strokeWidth: 2.0))
-                        : const Icon(FluentIcons.play),
+                        : Icon(
+                            isRunning(widget.item, widget.running)
+                                ? FluentIcons.command_prompt
+                                : FluentIcons.play,
+                            size: 16.0),
                     onPressed: isBusy
                         ? null
                         : () {
@@ -128,29 +143,38 @@ class _ListItemState extends State<ListItem> {
                 ),
               ),
             ),
-            isRunning(widget.item, widget.running)
-                ? MergeSemantics(
-                    child: Tooltip(
-                      message: 'stop-text'.i18n(),
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: IconButton(
-                          key: const ValueKey('test-listitem-stop'),
-                          icon: isBusy
-                              ? const SizedBox.square(
-                                  dimension: 16.0,
-                                  child: ProgressRing(strokeWidth: 2.0))
-                              : const Icon(FluentIcons.stop),
-                          onPressed: isBusy
+            // Kept in the tree while the distro is stopped — its footprint
+            // is maintained invisibly, so the name does not jump ~30px
+            // sideways every time a distro starts or stops (audit LN-02).
+            // Hidden means disabled, so no invisible tab stop comes back.
+            Visibility(
+              visible: isRunning(widget.item, widget.running),
+              maintainSize: true,
+              maintainAnimation: true,
+              maintainState: true,
+              child: MergeSemantics(
+                child: Tooltip(
+                  message: 'stop-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      key: const ValueKey('test-listitem-stop'),
+                      icon: isBusy
+                          ? const SizedBox.square(
+                              dimension: 16.0,
+                              child: ProgressRing(strokeWidth: 2.0))
+                          : const Icon(FluentIcons.stop, size: 16.0),
+                      onPressed:
+                          (isBusy || !isRunning(widget.item, widget.running))
                               ? null
                               : () {
                                   stopInstance();
                                 },
-                        ),
-                      ),
                     ),
-                  )
-                : const Text(''),
+                  ),
+                ),
+              ),
+            ),
                   ])),
               (focused) => leadingFocused = focused),
           header: Row(
@@ -168,11 +192,19 @@ class _ListItemState extends State<ListItem> {
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
+              // Sized to its text, not to a flex share: `Expanded` +
+              // `Flexible` both at flex 1 split the header 50/50 and cut the
+              // name at half width beside ~480px of nothing (audit LN-01).
+              // The tooltip says what the bare "1.65 GB" actually is
+              // (LN-25), and a failed size read shows a dash instead of
+              // silently blanking.
+              Tooltip(
+                message: widget.trailing.isEmpty
+                    ? 'diskusageunavailable-text'.i18n()
+                    : 'sizeondiskhint-text'.i18n(),
                 child: Text(
-                  widget.trailing,
+                  widget.trailing.isEmpty ? '—' : widget.trailing,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
                 ),
               ),
@@ -320,7 +352,11 @@ class Bar extends StatelessWidget {
                       items: actions,
                     ),
                   )
-                : const SizedBox();
+                // Says what would fill the ~85% of the expanded row that sat
+                // empty with no explanation (audit LN-07).
+                : Text('nosnippetshint-text'.i18n(),
+                    style: TextStyle(
+                        fontSize: 12.0, color: secondaryTextColor(context)));
           }),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -331,7 +367,9 @@ class Bar extends StatelessWidget {
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
-                      icon: const Icon(FluentIcons.save_template, size: 16.0),
+                      // Distinct from copy's two-pages silhouette four
+                      // positions along (audit LN-06).
+                      icon: const Icon(FluentIcons.archive, size: 16.0),
                       onPressed: () =>
                           // Open remove dialog
                           dialog(
@@ -374,8 +412,11 @@ class Bar extends StatelessWidget {
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
-                      icon: const Icon(FluentIcons.visual_studio_for_windows,
-                          size: 16.0),
+                      // An outline glyph like its eight neighbours — the
+                      // solid VS bowtie was the heaviest mark in the strip
+                      // and pulled the eye to the least important action
+                      // (audit LN-05).
+                      icon: const Icon(FluentIcons.file_code, size: 16.0),
                       onPressed: () {
                         plausible.event(name: "wsl_vscode");
                         // Get path
@@ -407,7 +448,9 @@ class Bar extends StatelessWidget {
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
-                      icon: const Icon(FluentIcons.rename, size: 16.0),
+                      // A pencil, not the abstract =|) mark nothing reads
+                      // as renaming (audit LN-06).
+                      icon: const Icon(FluentIcons.edit, size: 16.0),
                       onPressed: () {
                         dialog(
                             item: widget.item,
@@ -444,7 +487,8 @@ class Bar extends StatelessWidget {
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
                       icon:
-                          const Icon(FluentIcons.hard_drive_group, size: 16.0),
+                          // A usage-share glyph, not a server rack (LN-06).
+                          const Icon(FluentIcons.pie_single, size: 16.0),
                       onPressed: () {
                         plausible.event(name: "wsl_disk");
                         diskDialog(widget.item);

@@ -21,7 +21,8 @@ final List<NavigationPaneItem> originalItems = [
   ),
   PaneItem(
     key: const Key('/quickactions'),
-    icon: const Icon(FluentIcons.file_code),
+    // Distinct from the Templates item's file_template at 16px (LN-11).
+    icon: const Icon(FluentIcons.code),
     title: Text('managequickactions-text'.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
@@ -85,8 +86,10 @@ final List<NavigationPaneItem> originalItems = [
       navigateGuarded('package', path: '/package');
     },
   ),
-  PaneItem(
-    key: const Key('/mount'),
+  // A PaneItemAction, not a PaneItem: this opens a modal, and as a PaneItem
+  // it was pixel-identical to the seven real destinations while the pane's
+  // selection stayed wherever it was (audit LN-16).
+  PaneItemAction(
     icon: const Icon(FluentIcons.hard_drive),
     title: Text('mountdisk-text'.i18n()),
     body: const SizedBox.shrink(),
@@ -164,8 +167,8 @@ List<NavigationPaneItem> get footerItems => [
         link: 'https://github.com/bostrot/wsl2-distro-manager/wiki',
         body: const SizedBox.shrink(),
       ),
-      PaneItem(
-        key: const Key('/about'),
+      // Same LN-16 rule as Mount Disk: a modal opener is an action.
+      PaneItemAction(
         icon: const Icon(FluentIcons.info),
         title: Text('about-text'.i18n()),
         body: const SizedBox.shrink(),

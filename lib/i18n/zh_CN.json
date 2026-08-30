@@ -659,5 +659,8 @@
   "copied-text": "已复制到剪贴板。",
   "sync-info-text": "同步可在同一网络中运行本应用的两台电脑之间复制整个实例：一台提供，另一台下载。密码用于保护该传输。",
   "loading-text": "正在加载...",
-  "namewillbe-text": "将创建为“%s”"
+  "namewillbe-text": "将创建为“%s”",
+  "openterminal-text": "打开终端（已在运行）",
+  "sizeondiskhint-text": "实例虚拟磁盘在 Windows 上的大小——历史峰值，而非其内部实际占用",
+  "nosnippetshint-text": "您添加的代码片段会显示在这里，可在此实例内运行"
 }

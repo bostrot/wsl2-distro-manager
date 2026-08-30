@@ -89,34 +89,37 @@ class DistroListState extends State<DistroList> {
             // in prefs, so the ordinary first-run state can speak to a new
             // user instead.
             final moving = prefs.getString('MoveOp_Distro') != null;
+            // The CTA sits under the sentence that motivates it. Pinned to
+            // the bottom-right corner it shared ~44x28px with the AI chat
+            // FAB, which covered exactly the spot a user clicks after
+            // reading "no instances found" (audit LN-21).
             return Expanded(
-              child: Stack(
-                children: [
-                  const SizedBox.expand(),
-                  Center(
-                    child: Text((moving
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text((moving
                             ? 'moveinprogress-text'
                             : 'noinstancesfound-text')
                         .i18n()),
-                  ),
-                  Positioned(
-                    right: 20,
-                    bottom: 20,
-                    child: FilledButton(
-                      onPressed: () {
-                        router.pushNamed('addinstance');
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(FluentIcons.add),
-                          const SizedBox(width: 8),
-                          Text('addinstance-text'.i18n()),
-                        ],
+                    if (!moving) ...[
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () {
+                          router.pushNamed('addinstance');
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(FluentIcons.add),
+                            const SizedBox(width: 8),
+                            Text('addinstance-text'.i18n()),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                ],
+                    ],
+                  ],
+                ),
               ),
             );
           }

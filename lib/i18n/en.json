@@ -658,5 +658,8 @@
   "copied-text": "Copied to the clipboard.",
   "sync-info-text": "Sync copies a whole instance between two PCs running this app on the same network: one serves it, the other downloads it. The password protects that transfer.",
   "loading-text": "Loading...",
-  "namewillbe-text": "Will be created as '%s'"
+  "namewillbe-text": "Will be created as '%s'",
+  "openterminal-text": "Open a terminal (already running)",
+  "sizeondiskhint-text": "Size of the instance's virtual disk on Windows — its high-water mark, not the space in use inside it",
+  "nosnippetshint-text": "Snippets you add appear here, to run inside this instance"
 }

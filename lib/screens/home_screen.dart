@@ -26,6 +26,12 @@ class _HomePageState extends State<HomePage> {
   WSLApi api = WSLApi();
   List<String> distroNames = [];
 
+  /// One key for the life of the page. Re-created inline on every build, it
+  /// tore down and rebuilt the whole list subtree — collapsing every expanded
+  /// row and restarting the 5s poll — each time the AI panel toggled
+  /// (audit LN-03).
+  final GlobalKey<NavigatorState> _infoboxKey = GlobalKey<NavigatorState>();
+
   void enableAnalytics() async {
     String platform = Platform.operatingSystemVersion;
     String exec = 'unknown';
@@ -106,7 +112,7 @@ class _HomePageState extends State<HomePage> {
                     width: showAi ? constraints.maxWidth - 361 : constraints.maxWidth,
                     height: constraints.maxHeight,
                     child: Column(
-                      key: (GlobalVariable.infobox = GlobalKey()),
+                      key: (GlobalVariable.infobox = _infoboxKey),
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[

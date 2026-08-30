@@ -415,7 +415,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-13 -- Sell only what exists, gate it once | 13 | 0 | 2026-08-30 |
 | FIX-15 -- Settings: validate `.wslconfig`, restore the missing controls | 12 | 0 | 2026-08-30 |
 | FIX-16 -- The create / install form | 11 | 0 | 2026-08-30 |
-| all others | 0 | 35 | -- |
+| FIX-17 -- Home list and navigation layout | 15 | 0 | 2026-08-30 |
+| all others | 0 | 20 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -1174,23 +1175,52 @@ elevation prompt, with the command kept beside it for terminal users.
 
 ### FIX-17 -- Home list and navigation layout
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| LN-03 | major | Hoist the `GlobalKey` out of `build` -- a new key per build tears down the list subtree (and leaks `reloadEvery5Seconds`'s `for(;;)` loop) every time the AI panel toggles |
-| LN-01 | major | Give the distro name the row width it has; `Expanded` + `Flexible` both at flex 1 split it 50/50 and leave ~480px empty |
-| LN-02 | major | Reserve the running indicator's space so the name does not jump ~30px when a distro starts or stops |
-| LN-10 | major | Keep the BETA badge off the AI Workspace icon in compact mode -- it hides the only affordance |
-| PS-10 | major | Same overlap, recorded from the Pro pass; closes with LN-10 |
-| LN-21 | major | Separate the empty-state CTA from the AI chat FAB -- they occupy the same corner |
-| LN-05 | nit | Replace the one solid glyph among eight outlines |
-| LN-06 | nit | Redraw the rename / disk-usage icons and differentiate save-template from copy |
-| LN-08 | nit | One icon size within a row (header default vs action bar pinned to 16px) |
-| LN-09 | nit | Hover the whole row, not the chevron 660px from the cursor |
-| LN-11 | nit | Differentiate the Snippets and Templates nav icons at 16px |
-| LN-07 | nit | Say what fills the expanded row when no snippets are configured |
-| LN-16 | nit | `PaneItemAction` for Mount Disk and About -- they open modals, not destinations |
-| LN-25 | nit | Label the size column and say it is VHDX-on-disk; do not blank silently on failure |
-| LN-26 | nit | Start must not stay enabled, and must not still say "Start", on a running distro |
+**Landed 2026-08-30.** The structural one first: the home `Column`'s key was
+`GlobalVariable.infobox = GlobalKey()`, *inline in build*, so every rebuild —
+every AI-panel toggle — handed the subtree a brand-new key, tearing down and
+recreating the whole list: expanded rows collapsed, the 5s poll restarted, and
+its `for(;;)` loop leaked (LN-03). The key is a field now.
+
+In the row header, the size column is sized to its text instead of taking a
+flex share — `Expanded` + `Flexible` both at flex 1 split the header 50/50 and
+cut the name at half width beside ~480px of nothing (LN-01) — and it carries a
+tooltip saying the bare "1.65 GB" is the virtual disk's high-water mark on
+Windows, with a dash instead of a silent blank on a failed read (LN-25). The
+stop button keeps its footprint invisibly while a distro is stopped, so the
+name stops jumping ~30px on every start/stop (LN-02); on a running distro the
+first button's tooltip says it opens a terminal instead of promising "Start"
+(LN-26); hover lights the same whole-row ring keyboard focus uses, instead of
+the chevron 660px from the cursor (LN-09); and the header's play/stop icons
+share the action bar's 16px (LN-08).
+
+Icons: the solid VS bowtie — the heaviest mark in a strip of eight outlines —
+is `file_code` (LN-05); rename is a pencil, disk usage a usage-share glyph,
+and save-as-template an archive box distinct from copy's two pages (LN-06);
+the Snippets nav item stops sharing Templates' file silhouette (LN-11). An
+expanded row with no snippets says what would fill it (LN-07). Mount Disk and
+About are `PaneItemAction`s — modal openers, not destinations that never take
+the selection (LN-16). The empty-state CTA sits centered under the sentence
+that motivates it instead of sharing its corner with the AI chat FAB (LN-21).
+LN-10/PS-10 (the BETA badge painted over the compact-mode icon) landed with
+the FIX-10 slice: compact mode gets a corner dot.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| LN-03 | major | Hoist the `GlobalKey` out of `build` -- a new key per build tears down the list subtree (and leaks `reloadEvery5Seconds`'s `for(;;)` loop) every time the AI panel toggles | `home_screen.dart:33` |
+| LN-01 | major | Give the distro name the row width it has; `Expanded` + `Flexible` both at flex 1 split it 50/50 and leave ~480px empty | `list_item.dart:196` |
+| LN-02 | major | Reserve the running indicator's space so the name does not jump ~30px when a distro starts or stops | `list_item.dart:146` (`Visibility` maintainSize) |
+| LN-10 | major | Keep the BETA badge off the AI Workspace icon in compact mode -- it hides the only affordance | `panelist.dart:50` (with the FIX-10 slice) |
+| PS-10 | major | Same overlap, recorded from the Pro pass; closes with LN-10 | with LN-10 |
+| LN-21 | major | Separate the empty-state CTA from the AI chat FAB -- they occupy the same corner | `list.dart:92` (CTA centered under the sentence) |
+| LN-05 | nit | Replace the one solid glyph among eight outlines | `list_item.dart:395` (`file_code`) |
+| LN-06 | nit | Redraw the rename / disk-usage icons and differentiate save-template from copy | `list_item.dart:340` `:421` `:459` (`archive` / `edit` / `pie_single`) |
+| LN-08 | nit | One icon size within a row (header default vs action bar pinned to 16px) | `list_item.dart:125`, `:158` |
+| LN-09 | nit | Hover the whole row, not the chevron 660px from the cursor | `list_item.dart:91` |
+| LN-11 | nit | Differentiate the Snippets and Templates nav icons at 16px | `panelist.dart:25` |
+| LN-07 | nit | Say what fills the expanded row when no snippets are configured | `list_item.dart:377`, key `nosnippetshint-text` |
+| LN-16 | nit | `PaneItemAction` for Mount Disk and About -- they open modals, not destinations | `panelist.dart:92`, `:171` |
+| LN-25 | nit | Label the size column and say it is VHDX-on-disk; do not blank silently on failure | `list_item.dart:201`, keys `sizeondiskhint-text` / `diskusageunavailable-text` |
+| LN-26 | nit | Start must not stay enabled, and must not still say "Start", on a running distro | `list_item.dart:113` (tooltip + `command_prompt` icon) |
 
 ### FIX-18 -- Recommendations panel
 

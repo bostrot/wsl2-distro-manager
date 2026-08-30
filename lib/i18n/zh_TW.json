@@ -659,5 +659,8 @@
   "copied-text": "已複製到剪貼簿。",
   "sync-info-text": "同步可在同一網路中執行本應用程式的兩台電腦之間複製整個安裝實體：一台提供，另一台下載。密碼用於保護該傳輸。",
   "loading-text": "正在載入...",
-  "namewillbe-text": "將建立為「%s」"
+  "namewillbe-text": "將建立為「%s」",
+  "openterminal-text": "開啟終端機（已在執行）",
+  "sizeondiskhint-text": "安裝實體虛擬磁碟在 Windows 上的大小——歷史峰值，而非其內部實際占用",
+  "nosnippetshint-text": "您新增的程式碼片段會顯示在這裡，可在此安裝實體內執行"
 }

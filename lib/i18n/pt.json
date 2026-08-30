@@ -660,5 +660,8 @@
   "copied-text": "Copiado para a área de transferência.",
   "sync-info-text": "A sincronização copia uma instância inteira entre dois PCs com este aplicativo na mesma rede: um a serve, o outro a baixa. A senha protege essa transferência.",
   "loading-text": "Carregando...",
-  "namewillbe-text": "Será criado como '%s'"
+  "namewillbe-text": "Será criado como '%s'",
+  "openterminal-text": "Abrir um terminal (já em execução)",
+  "sizeondiskhint-text": "Tamanho do disco virtual da instância no Windows — o pico histórico, não o espaço usado dentro dela",
+  "nosnippetshint-text": "Os trechos que você adicionar aparecem aqui, para rodar nesta instância"
 }

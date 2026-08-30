@@ -658,5 +658,8 @@
   "copied-text": "Vágólapra másolva.",
   "sync-info-text": "A szinkronizálás egy teljes példányt másol át két, ezt az alkalmazást futtató gép között ugyanazon a hálózaton: az egyik kiszolgálja, a másik letölti. A jelszó ezt az átvitelt védi.",
   "loading-text": "Betöltés...",
-  "namewillbe-text": "Létrehozva mint: '%s'"
+  "namewillbe-text": "Létrehozva mint: '%s'",
+  "openterminal-text": "Terminál megnyitása (már fut)",
+  "sizeondiskhint-text": "A példány virtuális lemezének mérete Windowson — a valaha elért maximum, nem a benne használt hely",
+  "nosnippetshint-text": "A hozzáadott kódrészletek itt jelennek meg, és ebben a példányban futnak"
 }

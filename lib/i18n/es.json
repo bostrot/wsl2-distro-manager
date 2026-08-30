@@ -658,5 +658,8 @@
   "copied-text": "Copiado al portapapeles.",
   "sync-info-text": "Sync copia una instancia completa entre dos PC con esta aplicación en la misma red: uno la sirve y el otro la descarga. La contraseña protege esa transferencia.",
   "loading-text": "Cargando...",
-  "namewillbe-text": "Se creará como '%s'"
+  "namewillbe-text": "Se creará como '%s'",
+  "openterminal-text": "Abrir un terminal (ya en ejecución)",
+  "sizeondiskhint-text": "Tamaño del disco virtual de la instancia en Windows: su máximo histórico, no el espacio usado dentro",
+  "nosnippetshint-text": "Los fragmentos que agregues aparecen aquí, para ejecutarse en esta instancia"
 }

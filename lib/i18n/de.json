@@ -659,5 +659,8 @@
   "copied-text": "In die Zwischenablage kopiert.",
   "sync-info-text": "Sync kopiert eine ganze Instanz zwischen zwei PCs mit dieser App im selben Netzwerk: einer stellt sie bereit, der andere lädt sie herunter. Das Passwort schützt diese Übertragung.",
   "loading-text": "Wird geladen...",
-  "namewillbe-text": "Wird als '%s' erstellt"
+  "namewillbe-text": "Wird als '%s' erstellt",
+  "openterminal-text": "Terminal öffnen (läuft bereits)",
+  "sizeondiskhint-text": "Größe der virtuellen Festplatte der Instanz unter Windows — ihr Höchststand, nicht der darin belegte Platz",
+  "nosnippetshint-text": "Hinzugefügte Snippets erscheinen hier und laufen in dieser Instanz"
 }

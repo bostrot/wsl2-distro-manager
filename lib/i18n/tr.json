@@ -658,5 +658,8 @@
   "copied-text": "Panoya kopyalandı.",
   "sync-info-text": "Eşitleme, aynı ağda bu uygulamayı çalıştıran iki bilgisayar arasında bir dağıtımın tamamını kopyalar: biri sunar, diğeri indirir. Parola bu aktarımı korur.",
   "loading-text": "Yükleniyor...",
-  "namewillbe-text": "'%s' olarak oluşturulacak"
+  "namewillbe-text": "'%s' olarak oluşturulacak",
+  "openterminal-text": "Terminal aç (zaten çalışıyor)",
+  "sizeondiskhint-text": "Dağıtımın Windows'taki sanal diskinin boyutu — içindeki kullanılan alan değil, ulaştığı en yüksek boyut",
+  "nosnippetshint-text": "Eklediğiniz parçacıklar burada görünür ve bu dağıtımın içinde çalışır"
 }
