@@ -402,7 +402,8 @@ Each work item's own table carries a `Fixed in` column once it has been worked;
 | FIX-02 -- Report what actually happened | 5 | 5 | 2026-08-28 (partial) |
 | FIX-01 -- Stop discarding what the user typed | 7 | 0 | 2026-08-28 |
 | FIX-05 -- Error text a user can act on | 12 | 0 | 2026-08-28 |
-| all others | 0 | 176 | -- |
+| FIX-06 -- Keyboard operability | 9 | 0 | 2026-08-30 |
+| all others | 0 | 167 | -- |
 
 **Why this order.** FIX-01 to FIX-05 are the ones where the app is *wrong*, not merely
 awkward: work vanishes, a failure is reported as a success, a dialog body is the word
@@ -575,17 +576,57 @@ the dialog hands over the command instead of naming three packages and stopping.
 IA-01 is the audit's worst single finding: **the app cannot be operated by keyboard at
 all until the user first clicks something**, and there is no keyboard route back.
 
-| ID | Sev | Fix |
-|:---|:---|:---|
-| IA-01 | blocker | Focus a real control at launch and on window activation instead of parking on the Root Focus Scope |
-| LN-12 | major | Re-verify after IA-01 -- the ring exists, focus was not moving. Likely closes for free; confirm with the Tab-diff capture |
-| IA-03 | major | Take the permanently disabled back arrow out of the tab order |
-| LN-13 | major | Wire the back button or remove it; a disabled control may not render near-white (enabled-looking) in dark |
-| IA-04 | major | Replace the three `GestureDetector` controls -- including the AI panel's only entry point -- with focusable, activatable buttons |
-| IA-05 | major | Tab order should reach the nav pane before deep content, and the row stop must land on the row, not on a chevron 1,100px away |
-| IA-06 | major | One focus ring lit at a time per distro row |
-| IA-08 | major | Cancel takes initial focus in the delete confirmation, not Delete |
-| IA-07 | nit | Widen the focus indicator to a 2px perimeter (WCAG 2.4.13) |
+**Status: all 9 fixed.** One new file, `lib/nav/shell_focus.dart`, carries the two
+pieces that are not per-widget: `shouldAdoptKeyboardFocus()`, the one-line test for
+the dead state IA-01 measured, and `ShellTraversalPolicy`, which sorts the shell's
+chrome ahead of the page instead of leaving the navigation pane -- the first thing on
+screen -- last in the cycle. `RootPageState` now wraps the whole `NavigationView` in
+that group plus a `FocusScope` it owns, and hands the scope focus from a post-frame
+callback in `initState` **and** from `onWindowFocus`; the second one is what fixes
+the recurrence, since alt-tabbing away and back was enough to kill traversal again.
+The check is deliberately conservative -- anything below the root scope, which is
+every dialog, every text box and every clicked control, keeps its focus.
+
+Three consequences worth recording. **The back arrow is not built at all when it
+cannot pop** rather than being built disabled: that removes the dead tab stop (IA-03)
+and the near-white "enabled-looking" disabled rendering (LN-13) together, and takes
+the `NavigationPaneTheme` override and a `setState()` *inside* `build()` with it. The
+arrow still appears on the pushed routes where `canPop()` is true.
+
+**The chevron's ring is suppressed at the theme, not removed.** The Expander header is
+one big `HoverButton` whose `FocusBorder` is drawn around the chevron alone, and whose
+`states.isFocused` follows `hasFocus`, so any focused child lit it a second time --
+IA-05's "1,100px away" and IA-06's two rings are the same fluent_ui behaviour seen
+twice. `list_item.dart` wraps the Expander in a `FocusTheme` with `BorderSide.none`,
+re-merges an empty `FocusThemeData` inside `leading:` and `content:` so the buttons
+there keep the theme's ring, and draws the row's own ring around the whole card. Which
+of the three regions holds focus is tracked by three non-traversable `Focus` watchers,
+because "the header is focused" is only knowable as "the row is, and neither the
+leading buttons nor the content are".
+
+**IA-07 is a theme change, not 38 widget changes.** `buildAppTheme()` in `theme.dart`
+now builds both brightnesses from one function -- the light and dark blocks in
+`main.dart` were near-identical copies -- and gives the focus ring a 2px inner stroke
+to match its 2px outer one. fluent_ui's default pairs a 2px outer stroke with a 1px
+inner one, and the inner stroke is what separates the ring from whatever it is drawn
+against; at 1px it read as the hairline the audit sampled.
+
+Regression tests: `test/keyboard_focus_test.dart` (12), including a tab-cycle
+assertion for the chrome-before-content order, a resolved-ring-width assertion for the
+chevron, and a tree-wide scan that fails if an interactive `GestureDetector` comes
+back.
+
+| ID | Sev | Fix | Fixed in |
+|:---|:---|:---|:---|
+| IA-01 | blocker | Focus a real control at launch and on window activation instead of parking on the Root Focus Scope | `shell_focus.dart:28`, `root_screen.dart:115`, `root_screen.dart:121`, `root_screen.dart:296`, `root_screen.dart:301` |
+| LN-12 | major | Re-verify after IA-01 -- the ring exists, focus was not moving. Likely closes for free; confirm with the Tab-diff capture | closed by IA-01 + IA-07; ring widened in `theme.dart:186` |
+| IA-03 | major | Take the permanently disabled back arrow out of the tab order | `root_screen.dart:185` |
+| LN-13 | major | Wire the back button or remove it; a disabled control may not render near-white (enabled-looking) in dark | `root_screen.dart:185` |
+| IA-04 | major | Replace the three `GestureDetector` controls -- including the AI panel's only entry point -- with focusable, activatable buttons | `home_screen.dart:156`, `pro_badge.dart:111`, `recommendations_panel.dart:94` |
+| IA-05 | major | Tab order should reach the nav pane before deep content, and the row stop must land on the row, not on a chevron 1,100px away | `shell_focus.dart:40`, `root_screen.dart:254`, `root_screen.dart:295`, `list_item.dart:82` |
+| IA-06 | major | One focus ring lit at a time per distro row | `list_item.dart:65`, `list_item.dart:86`, `list_item.dart:100`, `list_item.dart:174` |
+| IA-08 | major | Cancel takes initial focus in the delete confirmation, not Delete | `base_dialog.dart:52`, `base_dialog.dart:79` |
+| IA-07 | nit | Widen the focus indicator to a 2px perimeter (WCAG 2.4.13) | `theme.dart:172`, `main.dart:203` |
 
 ### FIX-07 -- Accessible names and honest tooltips
 

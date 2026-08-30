@@ -89,8 +89,13 @@ class RecommendationsPanel extends StatelessWidget {
                 ),
                 if (rec.actionRoute != null) ...[
                   const SizedBox(height: 6),
-                  GestureDetector(
-                    onTap: () {
+                  // A link the keyboard can reach: as a GestureDetector the
+                  // recommendation's only action was unfocusable (IA-04).
+                  HyperlinkButton(
+                    style: const ButtonStyle(
+                      padding: WidgetStatePropertyAll(EdgeInsets.zero),
+                    ),
+                    onPressed: () {
                       RecommenderService.clearDismissed(rec.key);
                       router.pushNamed(rec.actionRoute!);
                     },

@@ -147,33 +147,39 @@ class _HomePageState extends State<HomePage> {
           Positioned(
             right: showAi ? 376 : 16,
             bottom: 16,
-            child: Tooltip(
-              message: 'ai-assistant-title'.i18n(),
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    GlobalVariable.aiPanelVisible = !GlobalVariable.aiPanelVisible;
-                  });
-                },
-                child: Container(
+            // A Button rather than a GestureDetector: this is the only entry
+            // point to the AI chat panel and a GestureDetector has no focus
+            // node, so a keyboard could not reach it at all (audit IA-04).
+            child: MergeSemantics(
+              child: Tooltip(
+                message: 'ai-assistant-title'.i18n(),
+                child: Button(
                   key: const ValueKey('test-ai-chat-toggle'),
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: showAi
+                  onPressed: () {
+                    setState(() {
+                      GlobalVariable.aiPanelVisible =
+                          !GlobalVariable.aiPanelVisible;
+                    });
+                  },
+                  style: ButtonStyle(
+                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                    backgroundColor: WidgetStatePropertyAll(showAi
                         ? FluentTheme.of(context).accentColor
-                        : Colors.grey.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
+                        : Colors.grey.withValues(alpha: 0.12)),
+                    shape: WidgetStatePropertyAll(CircleBorder(
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
+                    )),
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    FluentIcons.chat,
-                    color: showAi ? Colors.white : null,
-                    size: 20,
+                  child: SizedBox.square(
+                    dimension: 48,
+                    child: Icon(
+                      FluentIcons.chat,
+                      color: showAi ? Colors.white : null,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),

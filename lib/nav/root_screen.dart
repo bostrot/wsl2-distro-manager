@@ -17,6 +17,7 @@ import 'package:wsl2distromanager/main.dart';
 import 'package:wsl2distromanager/nav/init.dart';
 import 'package:wsl2distromanager/nav/panelist.dart';
 import 'package:wsl2distromanager/nav/router.dart';
+import 'package:wsl2distromanager/nav/shell_focus.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 class RootPage extends StatefulWidget {
@@ -46,6 +47,11 @@ class RootPageState extends State<RootPage> with WindowListener {
   final searchKey = GlobalKey(debugLabel: 'Search Bar Key');
   final searchFocusNode = FocusNode();
   final searchController = TextEditingController();
+
+  /// Everything the shell draws — pane, app bar and page — lives in this
+  /// scope, so parking focus on it is enough to make Tab work (audit IA-01).
+  final shellFocusScope = FocusScopeNode(debugLabel: 'Shell Focus Scope');
+  final shellTraversalPolicy = ShellTraversalPolicy();
 
   String status = '';
   bool loading = false;
@@ -106,6 +112,15 @@ class RootPageState extends State<RootPage> with WindowListener {
     LicenseManager().addListener(_onLicenseChanged);
     initRoot(statusMsg);
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => adoptKeyboardFocus());
+  }
+
+  /// A cold launch — and every return from another window — left the primary
+  /// focus on the root scope (audit IA-01). Handing focus to the shell scope
+  /// puts traversal back at the top of the cycle.
+  void adoptKeyboardFocus() {
+    if (!mounted || !shouldAdoptKeyboardFocus()) return;
+    shellFocusScope.requestFocus();
   }
 
   @override
@@ -135,6 +150,7 @@ class RootPageState extends State<RootPage> with WindowListener {
     LicenseManager().removeListener(_onLicenseChanged);
     searchController.dispose();
     searchFocusNode.dispose();
+    shellFocusScope.dispose();
     super.dispose();
   }
 
@@ -156,53 +172,37 @@ class RootPageState extends State<RootPage> with WindowListener {
     final localizations = FluentLocalizations.of(context);
     final appTheme = context.watch<AppTheme>();
 
-    if (widget.shellContext != null && !router.canPop()) {
-      setState(() {});
-    }
-
-    return NavigationView(
+    final navigationView = NavigationView(
       key: viewKey,
       appBar: NavigationAppBar(
         automaticallyImplyLeading: false,
+        // Every pane destination is a `go()` on the shell route, so on most
+        // screens there is nothing to pop. A permanently disabled arrow was
+        // still a tab stop on every screen and still rendered near-white —
+        // enabled-looking — in dark (audit IA-03, LN-13), so it is only built
+        // when it can actually do something.
         leading: () {
-          final enabled = widget.shellContext != null && router.canPop();
-          final onPressed = enabled
-              ? () async {
-                  // Back is an exit route like any other, so it asks the
-                  // screen it is leaving first (audit ST-01).
-                  if (!await UnsavedChangesGuard.confirmLeave()) return;
-                  if (!mounted) return;
-                  if (router.canPop()) {
-                    router.pop();
-                    setState(() {});
-                  }
-                }
-              : null;
+          if (widget.shellContext == null || !router.canPop()) return null;
 
-          return NavigationPaneTheme(
-            data: NavigationPaneTheme.of(context).merge(NavigationPaneThemeData(
-              unselectedIconColor: ButtonState.resolveWith((states) {
-                if (states.isDisabled) {
-                  return ButtonThemeData.buttonColor(context, states);
+          return Builder(
+            builder: (context) => PaneItem(
+              icon: const Center(child: Icon(FluentIcons.back, size: 12.0)),
+              title: Text(localizations.backButtonTooltip),
+              body: const SizedBox.shrink(),
+            ).build(
+              context,
+              false,
+              () async {
+                // Back is an exit route like any other, so it asks the screen
+                // it is leaving first (audit ST-01).
+                if (!await UnsavedChangesGuard.confirmLeave()) return;
+                if (!mounted) return;
+                if (router.canPop()) {
+                  router.pop();
+                  setState(() {});
                 }
-                return ButtonThemeData.uncheckedInputColor(
-                  FluentTheme.of(context),
-                  states,
-                ).basedOnLuminance();
-              }),
-            )),
-            child: Builder(
-              builder: (context) => PaneItem(
-                icon: const Center(child: Icon(FluentIcons.back, size: 12.0)),
-                title: Text(localizations.backButtonTooltip),
-                body: const SizedBox.shrink(),
-                enabled: enabled,
-              ).build(
-                context,
-                false,
-                onPressed,
-                displayMode: PaneDisplayMode.compact,
-              ),
+              },
+              displayMode: PaneDisplayMode.compact,
             ),
           );
         }(),
@@ -251,20 +251,22 @@ class RootPageState extends State<RootPage> with WindowListener {
         // A column rather than a stack: overlaid at the bottom, the status bar
         // covered the Create / Cancel row outright on a short window, and the
         // user had no way to move it.
-        return FocusTraversalGroup(
-          key: ValueKey('body$name'),
-          child: Column(
-            children: [
-              Expanded(child: widget.child),
-              statusBuilder(
-                status,
-                statusWidget,
-                loading,
-                statusLeading,
-                statusSeverity,
-                clearStatus,
-              ),
-            ],
+        return ShellBodyScope(
+          child: FocusTraversalGroup(
+            key: ValueKey('body$name'),
+            child: Column(
+              children: [
+                Expanded(child: widget.child),
+                statusBuilder(
+                  status,
+                  statusWidget,
+                  loading,
+                  statusLeading,
+                  statusSeverity,
+                  clearStatus,
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -286,6 +288,20 @@ class RootPageState extends State<RootPage> with WindowListener {
       ),
       onOpenSearch: () => searchFocusNode.requestFocus(),
     );
+
+    // The group has to be above the scope: the sort walks up from the scope
+    // node to find the policy that owns it.
+    return FocusTraversalGroup(
+      policy: shellTraversalPolicy,
+      child: FocusScope(node: shellFocusScope, child: navigationView),
+    );
+  }
+
+  @override
+  void onWindowFocus() {
+    // Alt-tabbing away and back dropped focus to the root scope, and no key
+    // could get it out again (audit IA-01).
+    WidgetsBinding.instance.addPostFrameCallback((_) => adoptKeyboardFocus());
   }
 
   @override

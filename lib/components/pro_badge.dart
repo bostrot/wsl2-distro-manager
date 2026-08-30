@@ -105,8 +105,14 @@ class ProFeatureWrapper extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
+          // Looks like a link and now behaves like one: as a GestureDetector
+          // the upsell's only call to action had no focus node and never
+          // appeared in the tab cycle (audit IA-04).
+          HyperlinkButton(
+            style: const ButtonStyle(
+              padding: WidgetStatePropertyAll(EdgeInsets.zero),
+            ),
+            onPressed: () {
               router.pushNamed('license');
             },
             child: Text(

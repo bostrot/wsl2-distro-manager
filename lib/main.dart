@@ -200,26 +200,15 @@ class WSLManager extends StatelessWidget {
           themeMode: appTheme.mode,
           debugShowCheckedModeBanner: false,
           color: appTheme.color,
-          darkTheme: FluentThemeData(
-            tooltipTheme: const TooltipThemeData(
-              waitDuration: Duration(milliseconds: 50),
-            ),
+          darkTheme: buildAppTheme(
             brightness: Brightness.dark,
             accentColor: appTheme.color,
-            visualDensity: VisualDensity.standard,
-            focusTheme: FocusThemeData(
-              glowFactor: is10footScreen(context) ? 2.0 : 0.0,
-            ),
+            tenFootScreen: is10footScreen(context),
           ),
-          theme: FluentThemeData(
-            tooltipTheme: const TooltipThemeData(
-              waitDuration: Duration(milliseconds: 50),
-            ),
+          theme: buildAppTheme(
+            brightness: Brightness.light,
             accentColor: appTheme.color,
-            visualDensity: VisualDensity.standard,
-            focusTheme: FocusThemeData(
-              glowFactor: is10footScreen(context) ? 2.0 : 0.0,
-            ),
+            tenFootScreen: is10footScreen(context),
           ),
           locale: appTheme.locale,
           localeResolutionCallback: (locale, supportedLocales) {

@@ -161,3 +161,38 @@ AccentColor get systemBackgroundColor {
 Color get systemTextColor {
   return AppTheme.themeMode == ThemeMode.dark ? Colors.white : Colors.black;
 }
+
+/// The app's theme, built once per brightness so light and dark cannot drift.
+///
+/// [tenFootScreen] adds the TV-distance glow; [focusTheme] is what widens the
+/// focus indicator to a real two-colour perimeter (audit IA-07). fluent_ui's
+/// own default draws a 2px outer stroke and a 1px inner one, which measured as
+/// a hairline on screen — the second stroke is what separates the ring from
+/// whatever it is drawn against, so it gets the same width as the first.
+FluentThemeData buildAppTheme({
+  required Brightness brightness,
+  required AccentColor accentColor,
+  required bool tenFootScreen,
+}) {
+  final base = FluentThemeData(
+    brightness: brightness,
+    accentColor: accentColor,
+    visualDensity: VisualDensity.standard,
+    tooltipTheme: const TooltipThemeData(
+      waitDuration: Duration(milliseconds: 50),
+    ),
+  );
+  return base.copyWith(
+    focusTheme: FocusThemeData(
+      primaryBorder: BorderSide(
+        width: 2.0,
+        color: base.resources.focusStrokeColorOuter,
+      ),
+      secondaryBorder: BorderSide(
+        width: 2.0,
+        color: base.resources.focusStrokeColorInner,
+      ),
+      glowFactor: tenFootScreen ? 2.0 : 0.0,
+    ),
+  );
+}

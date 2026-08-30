@@ -49,6 +49,7 @@ dialog({
                   ? Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: TextBox(
+                        autofocus: true,
                         controller: controller,
                         placeholder: item,
                       ),
@@ -69,7 +70,13 @@ dialog({
                   },
                   child: Text(submitText))
               : Container(),
+          // The safe action takes the initial focus. This dialog confirms
+          // deletes, so opening it and hitting Tab, Enter — the reflex on a
+          // modal — used to destroy the distro (audit IA-08). A dialog that
+          // asks for text focuses the box instead.
           Button(
+              key: const ValueKey('test-dialog-cancel'),
+              autofocus: !submitInput,
               child: Text(cancelText == '' ? 'cancel-text'.i18n() : cancelText),
               onPressed: () {
                 if (onCancel != null) {

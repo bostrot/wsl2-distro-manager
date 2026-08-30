@@ -41,6 +41,17 @@ class _ListItemState extends State<ListItem> {
   /// both controls report it instead of silently queueing a second `wsl.exe`.
   bool isBusy = false;
 
+  /// The Expander's header is one big HoverButton, and its focus ring is drawn
+  /// around the chevron alone — 1,100px from the name it belongs to (IA-05) —
+  /// while any focused child of the header lights it a second time (IA-06).
+  /// Tracking the three regions separately is what tells "the row is the tab
+  /// stop" apart from "a control inside the row is".
+  bool rowFocused = false;
+  bool leadingFocused = false;
+  bool contentFocused = false;
+
+  bool get headerFocused => rowFocused && !leadingFocused && !contentFocused;
+
   void syncing(var item) {
     setState(() {
       isSyncing = item;
@@ -50,13 +61,46 @@ class _ListItemState extends State<ListItem> {
   bool isRunning(String distroName, List<String> runningList) =>
       runningList.contains(distroName);
 
+  /// Watches a region of the row for focus without becoming a tab stop itself.
+  Widget watchFocus(Widget child, ValueChanged<bool> onChanged) => Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (focused) {
+          if (mounted) setState(() => onChanged(focused));
+        },
+        child: child,
+      );
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8.0, left: 12.0, right: 12.0),
-      child: Expander(
+      child: watchFocus(
+        // The ring the header would have drawn round its chevron is switched
+        // off and redrawn around the whole row; the buttons inside restore the
+        // theme's ring by merging an empty override over the suppression.
+        FocusBorder(
+          focused: headerFocused,
+          child: FocusTheme(
+            data: const FocusThemeData(
+              primaryBorder: BorderSide.none,
+              secondaryBorder: BorderSide.none,
+            ),
+            child: buildRow(context),
+          ),
+        ),
+        (focused) => rowFocused = focused,
+      ),
+    );
+  }
+
+  Widget buildRow(BuildContext context) {
+    return Expander(
           initiallyExpanded: false,
-          leading: Row(children: [
+          leading: watchFocus(
+              FocusTheme(
+                  data: const FocusThemeData(),
+                  child: Row(children: [
             MergeSemantics(
               child: Tooltip(
                 message: 'start-text'.i18n(),
@@ -101,7 +145,8 @@ class _ListItemState extends State<ListItem> {
                     ),
                   )
                 : const Text(''),
-          ]),
+                  ])),
+              (focused) => leadingFocused = focused),
           header: Row(
             mainAxisSize: MainAxisSize.max,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -126,18 +171,22 @@ class _ListItemState extends State<ListItem> {
               ),
             ],
           ),
-          content: Bar(
-            widget: widget,
-            isCleaning: isCleaning,
-            onCleaningChanged: (value) {
-              if (mounted) {
-                setState(() {
-                  isCleaning = value;
-                });
-              }
-            },
-          )),
-    );
+          content: watchFocus(
+              FocusTheme(
+                data: const FocusThemeData(),
+                child: Bar(
+                  widget: widget,
+                  isCleaning: isCleaning,
+                  onCleaningChanged: (value) {
+                    if (mounted) {
+                      setState(() {
+                        isCleaning = value;
+                      });
+                    }
+                  },
+                ),
+              ),
+              (focused) => contentFocused = focused));
   }
 
   void _setBusy(bool value) {

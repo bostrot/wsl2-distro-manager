@@ -8,7 +8,7 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
 
 - [ ] Fix every **blocker** and **major** finding from `doc/audit/ui-ux/index.md`, working top-down and grouping edits by file so each area lands as one coherent change. Update the finding's row in the audit index with the fix location (`file:line`) as you go.
 
-  **In progress — 33 of 214 findings closed (6 blockers, 21 majors, 6 nits).** Running
+  **In progress — 42 of 214 findings closed (7 blockers, 28 majors, 7 nits).** Running
   tally lives in the [Progress](../../../doc/audit/ui-ux/index.md#progress) table in the
   audit index; each work item's own table carries a `Fixed in` column, `--` = still open.
   Ordered by the index's own sequencing note (FIX-03 is groundwork for FIX-02 and FIX-05,
@@ -70,10 +70,39 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
     installing — that terminal lives on the *host*, so the app cannot elevate to a
     package manager; the dialog hands over the command instead.
 
-  **Next up:** FIX-06/FIX-07 (keyboard operability and accessible names), then
-  FIX-04, then the five open FIX-02 items. Verification for this slice:
+  - **FIX-06 — keyboard operability: complete (9/9).** One new file,
+    `lib/nav/shell_focus.dart`, holds the two pieces that are not per-widget:
+    `shouldAdoptKeyboardFocus()` — the test for the state IA-01 measured, focus
+    parked on the root scope with no key able to leave it — and
+    `ShellTraversalPolicy`, which sorts the shell's chrome ahead of the page so
+    the navigation pane is no longer the *last* thing in a cycle it visually
+    starts. `RootPageState` wraps the whole `NavigationView` in that group plus
+    a `FocusScope` it owns and claims the scope from a post-frame callback in
+    `initState` **and** from `onWindowFocus` — the second is the one that
+    matters, because alt-tabbing away and back was enough to kill traversal
+    again. Nothing below the root scope is ever disturbed, so an open dialog or
+    a text box being typed in keeps its focus. The back arrow is now not built
+    at all unless it can pop, which removes the dead tab stop (IA-03) and the
+    near-white disabled-but-enabled-looking rendering (LN-13) in one go, along
+    with a `setState()` that was running *inside* `build()`. The three
+    `GestureDetector`s — the AI panel's only entry point among them — are
+    buttons, guarded by a tree-wide test that fails if one comes back. On the
+    distro row, IA-05's "ring 1,100px away" and IA-06's "two rings at once" are
+    the same fluent_ui behaviour twice: the Expander header is a `HoverButton`
+    that draws its ring around the chevron alone and lights it whenever *any*
+    descendant has focus. The chevron's ring is switched off at the theme, the
+    leading buttons and the content re-merge an empty `FocusThemeData` to keep
+    theirs, and the row draws its own around the whole card. IA-08 gives the
+    safe action the initial focus — Tab, Enter on the delete confirmation used
+    to delete. IA-07 is one theme change, not 38 widget changes: `buildAppTheme()`
+    builds both brightnesses from one function (the light and dark blocks in
+    `main.dart` were near-identical) and widens the ring's inner stroke to match
+    its outer one, which is what made it read as a hairline.
+
+  **Next up:** FIX-07 (accessible names and honest tooltips), then FIX-04, then
+  the five open FIX-02 items. Verification for this slice:
   `flutter analyze` clean (the same two pre-existing warnings, untouched),
-  `flutter test` 755 passing (was 732), `dart run scripts/check_translations.dart`
+  `flutter test` 767 passing (was 755), `dart run scripts/check_translations.dart`
   exit 0. `dart format` was deliberately **not** run: the toolchain here ships the
   3.7 "tall style" formatter and the repo is formatted with the older one, so a
   format pass rewrites every touched file end to end. Edits match the surrounding
