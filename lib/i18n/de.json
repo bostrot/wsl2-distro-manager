@@ -724,5 +724,6 @@
   "sandbox-chat-hint-text": "Bitte den Assistenten, in der Sandbox etwas einzurichten oder auszuführen.",
   "ai-tasks-title": "Aufgaben",
   "ai-tasks-work-text": "Aufgaben abarbeiten",
-  "ai-tasks-add-hint-text": "Aufgabe hinzufügen …"
+  "ai-tasks-add-hint-text": "Aufgabe hinzufügen …",
+  "sandbox-session-new-text": "noch kein Chat"
 }

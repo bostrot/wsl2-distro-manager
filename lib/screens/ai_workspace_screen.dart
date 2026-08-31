@@ -9,7 +9,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
-import 'package:wsl2distromanager/dialogs/sandbox_chat_dialog.dart';
 import 'package:wsl2distromanager/api/wsl.dart' show formatElapsed;
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
@@ -44,8 +43,6 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   late final AiWorkspaceService _service;
   final SandboxService _sandbox = SandboxService();
   List<String> _sandboxes = [];
-  bool _creatingSandbox = false;
-  String _sandboxStage = '';
   // Gates only the distro check, not the page — cards render immediately.
   bool _preparingDistro = true;
   String? _error;
@@ -81,6 +78,9 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // Shared instance from main.dart — startup already began these checks.
     _service = context.read<AiWorkspaceService>();
     _sandboxes = _sandbox.list();
+    // Creation is app-global (it survives leaving this page); repaint the
+    // section whenever its stage moves, including from "running" to done.
+    SandboxService.creationStage.addListener(_onSandboxStage);
     if (_isPro) {
       // Spinner only where nothing is known yet; cached state renders at
       // once and is refreshed below without blocking the UI.
@@ -98,6 +98,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   @override
   void dispose() {
+    SandboxService.creationStage.removeListener(_onSandboxStage);
     _installWatch?.cancel();
     _startingWatch?.cancel();
     super.dispose();
@@ -571,7 +572,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               style: TextStyle(
                   fontSize: 12, color: secondaryTextColor(context))),
           const SizedBox(height: 12),
-          if (_sandboxes.isEmpty && !_creatingSandbox)
+          if (_sandboxes.isEmpty && !SandboxService.isCreating)
             Text('sandbox-none-text'.i18n(),
                 style: TextStyle(color: secondaryTextColor(context))),
           for (final distro in _sandboxes)
@@ -591,7 +592,13 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                       const SizedBox(width: 6),
                       Text('sandbox-open-chat-text'.i18n()),
                     ]),
-                    onPressed: () => showSandboxChat(distro),
+                    // The docked panel, not a modal: it stays open while the
+                    // user works elsewhere in the app, and its transcript
+                    // persists across close/reopen.
+                    onPressed: () {
+                      GlobalVariable.sandboxChat.value = distro;
+                      GlobalVariable.aiPanel.value = true;
+                    },
                   ),
                   const SizedBox(width: 6),
                   MergeSemantics(
@@ -608,12 +615,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               ),
             ),
           const SizedBox(height: 8),
-          if (_creatingSandbox)
+          if (SandboxService.isCreating)
             _buildInlineStatus(
-                _sandboxStage.isEmpty
-                    ? 'sandbox-creating-text'.i18n()
-                    : '${'sandbox-creating-text'.i18n()} '
-                        '(${'sandbox-stage-$_sandboxStage-text'.i18n()})',
+                '${'sandbox-creating-text'.i18n()} '
+                '(${'sandbox-stage-${SandboxService.creationStage.value}-text'.i18n()})',
                 fill: true)
           else
             Button(
@@ -640,12 +645,19 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       context: context,
       builder: (context) => ContentDialog(
         title: Text('sandbox-add-text'.i18n()),
-        content: TextBox(
-          key: const ValueKey('test-sandbox-name'),
-          controller: controller,
-          placeholder: 'sandbox-name-hint-text'.i18n(),
-          autofocus: true,
-          onSubmitted: (v) => Navigator.of(context).pop(v),
+        // mainAxisSize.min: a bare TextBox handed the dialog's tall
+        // constraints stretched to the full dialog height (user-reported).
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextBox(
+              key: const ValueKey('test-sandbox-name'),
+              controller: controller,
+              placeholder: 'sandbox-name-hint-text'.i18n(),
+              autofocus: true,
+              onSubmitted: (v) => Navigator.of(context).pop(v),
+            ),
+          ],
         ),
         actions: [
           Button(
@@ -660,25 +672,24 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       ),
     );
     if (name == null || name.trim().isEmpty) return;
-    setState(() {
-      _creatingSandbox = true;
-      _sandboxStage = '';
-    });
-    try {
-      await _sandbox.createUbuntuSandbox(name, onProgress: (stage) {
-        if (mounted) setState(() => _sandboxStage = stage);
-      });
+    // Fire and forget: the download takes minutes and must not be tied to
+    // this page's lifetime — the global stage notifier carries progress and
+    // the toasts land wherever the user is when it finishes.
+    _sandbox.createUbuntuSandbox(name).then((_) {
       Notify.message('sandbox-created-text'.i18n(),
           severity: InfoBarSeverity.success);
-    } catch (e) {
+      _refreshSandboxes();
+    }).catchError((e) {
       Notify.message(
           '${'sandbox-create-failed-text'.i18n()} ${WslFailure.from(e).shortReason}'
               .trim(),
           severity: InfoBarSeverity.error);
-    } finally {
-      if (mounted) setState(() => _creatingSandbox = false);
-      await _refreshSandboxes();
-    }
+      _refreshSandboxes();
+    });
+  }
+
+  void _onSandboxStage() {
+    if (mounted) setState(() => _sandboxes = _sandbox.list());
   }
 
   Future<void> _deleteSandbox(String distro) async {

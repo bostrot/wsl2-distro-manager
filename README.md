@@ -85,7 +85,10 @@ guessing. Tool calls are shown inline as it works.
 **Sandboxes** (AI Workspace → *Add custom Ubuntu distro*) create a throwaway
 Ubuntu distro. Its chat is handed only the `sandbox_*` tools, which are locked to
 that one distro — the model can run anything *inside* the sandbox and can never
-see your Windows host or any other distro.
+see your Windows host or any other distro. Sandbox chats use the same docked
+panel as the assistant (task queue included), their transcripts persist, and the
+history button in the chat header switches between the assistant and any
+sandbox session.
 
 **Task queue** — open the *Tasks* section at the top of the chat, add items, and
 press ▶. The assistant works through them with its tools and checks each off as

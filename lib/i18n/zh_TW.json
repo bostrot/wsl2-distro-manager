@@ -724,5 +724,6 @@
   "sandbox-chat-hint-text": "請助手在沙箱內設定或執行某些內容。",
   "ai-tasks-title": "任務",
   "ai-tasks-work-text": "處理這些任務",
-  "ai-tasks-add-hint-text": "新增任務…"
+  "ai-tasks-add-hint-text": "新增任務…",
+  "sandbox-session-new-text": "尚無聊天"
 }

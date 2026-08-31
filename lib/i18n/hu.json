@@ -723,5 +723,6 @@
   "sandbox-chat-hint-text": "Kérd meg az asszisztenst, hogy állítson be vagy futtasson valamit a homokozóban.",
   "ai-tasks-title": "Feladatok",
   "ai-tasks-work-text": "Feladatok elvégzése",
-  "ai-tasks-add-hint-text": "Feladat hozzáadása…"
+  "ai-tasks-add-hint-text": "Feladat hozzáadása…",
+  "sandbox-session-new-text": "még nincs csevegés"
 }

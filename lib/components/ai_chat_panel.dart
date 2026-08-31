@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/sandbox_service.dart';
 import 'package:wsl2distromanager/api/todo_store.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
@@ -12,11 +13,16 @@ import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
 class AiChatPanel extends StatefulWidget {
-  const AiChatPanel({Key? key, this.onClose}) : super(key: key);
+  const AiChatPanel({Key? key, this.onClose, this.sandbox}) : super(key: key);
 
   /// Closes the panel. Without it the only way to dismiss the panel was the
   /// FAB behind it (audit PS-34).
   final VoidCallback? onClose;
+
+  /// When set, this panel is that sandbox's chat: same UI, same task queue,
+  /// but the transcript and tools come from [SandboxChat] — scoped to one
+  /// distro. Null is the normal app-wide assistant.
+  final SandboxChat? sandbox;
 
   @override
   State<AiChatPanel> createState() => _AiChatPanelState();
@@ -35,6 +41,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
   /// How many times a "work on tasks" run may auto-continue itself before it
   /// stops on its own — a queue that never drains must not loop forever.
   static const int _maxAutoContinue = 6;
+
+  SandboxChat? get _sandbox => widget.sandbox;
+  List<AiMessage> get _transcript =>
+      _sandbox?.history ?? _ai.conversationHistory;
 
   /// Incremented on every Send and on Cancel. A reply whose generation is
   /// stale was cancelled while in flight and is dropped — the panel used to
@@ -138,7 +148,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
     _scrollToBottom();
 
     try {
-      await _ai.sendMessage(text, onUpdate: () {
+      void onUpdate() {
         // Tool calls and interim narration land in the transcript mid-run;
         // repaint so the user watches the assistant work instead of staring
         // at a spinner.
@@ -146,7 +156,13 @@ class _AiChatPanelState extends State<AiChatPanel> {
           setState(() {});
           _scrollToBottom();
         }
-      });
+      }
+
+      if (_sandbox != null) {
+        await _sandbox!.send(text, onUpdate: onUpdate);
+      } else {
+        await _ai.sendMessage(text, onUpdate: onUpdate);
+      }
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _isLoading = false;
@@ -187,7 +203,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final history = _ai.conversationHistory;
+    final history = _transcript;
 
     return Column(
       children: [
@@ -204,20 +220,29 @@ class _AiChatPanelState extends State<AiChatPanel> {
           ),
           child: Row(
             children: [
-              Icon(FluentIcons.chat,
+              Icon(_sandbox == null ? FluentIcons.chat : FluentIcons.cube_shape,
                   size: 16, color: FluentTheme.of(context).accentColor),
               const SizedBox(width: 8),
-              Text(
-                'ai-assistant-title'.i18n(),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: FluentTheme.of(context).accentColor,
+              Expanded(
+                child: Text(
+                  _sandbox == null
+                      ? 'ai-assistant-title'.i18n()
+                      : 'sandbox-chat-title'
+                          .i18n([_shortSandboxName(_sandbox!.distro)]),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: FluentTheme.of(context).accentColor,
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
               const BetaBadge(),
-              const Spacer(),
+              const SizedBox(width: 4),
+              // Switch between the app assistant and sandbox sessions —
+              // their transcripts persist, so any of them can be reopened.
+              _sessionsButton(context),
               // No quota counter anymore — chat runs on the user's own API
               // key, so usage is between them and their provider.
               const SizedBox(width: 8),
@@ -243,7 +268,9 @@ class _AiChatPanelState extends State<AiChatPanel> {
                             foregroundColor: ButtonState.all(Colors.white),
                           ),
                           onSubmit: (_) {
-                            _ai.clearHistory();
+                            _sandbox == null
+                                ? _ai.clearHistory()
+                                : _sandbox!.clear();
                             setState(() {});
                           },
                         ),
@@ -296,13 +323,20 @@ class _AiChatPanelState extends State<AiChatPanel> {
                         color: disabledTextColor(context),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        'ai-assistant-hint'.i18n(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: secondaryTextColor(context),
+                      Padding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Text(
+                          (_sandbox == null
+                                  ? 'ai-assistant-hint'
+                                  : 'sandbox-chat-hint-text')
+                              .i18n(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: secondaryTextColor(context),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       // No Upgrade button here: the FAB that opens this panel
                       // is Pro-only, so the only people who could ever see
@@ -404,10 +438,53 @@ class _AiChatPanelState extends State<AiChatPanel> {
     );
   }
 
+  static String _shortSandboxName(String distro) =>
+      distro.startsWith(SandboxService.prefix)
+          ? distro.substring(SandboxService.prefix.length)
+          : distro;
+
+  /// Flyout listing the app assistant and every sandbox chat, so a closed
+  /// conversation can be reopened — transcripts persist across close/reopen.
+  Widget _sessionsButton(BuildContext context) {
+    final sandboxes = SandboxService().list();
+    if (sandboxes.isEmpty && _sandbox == null) {
+      return const SizedBox.shrink();
+    }
+    final withHistory = SandboxChat.sessions().toSet();
+    return DropDownButton(
+      key: const ValueKey('test-chat-sessions'),
+      leading: const Icon(FluentIcons.history, size: 12),
+      title: const SizedBox.shrink(),
+      items: [
+        MenuFlyoutItem(
+          selected: _sandbox == null,
+          leading: _sandbox == null
+              ? const Icon(FluentIcons.check_mark, size: 12.0)
+              : const SizedBox.square(dimension: 12.0),
+          text: Text('ai-assistant-title'.i18n()),
+          onPressed: () => GlobalVariable.sandboxChat.value = null,
+        ),
+        if (sandboxes.isNotEmpty) const MenuFlyoutSeparator(),
+        for (final distro in sandboxes)
+          MenuFlyoutItem(
+            selected: _sandbox?.distro == distro,
+            leading: _sandbox?.distro == distro
+                ? const Icon(FluentIcons.check_mark, size: 12.0)
+                : const SizedBox.square(dimension: 12.0),
+            text: Text(withHistory.contains(distro)
+                ? _shortSandboxName(distro)
+                : "${_shortSandboxName(distro)} — "
+                    "${'sandbox-session-new-text'.i18n()}"),
+            onPressed: () => GlobalVariable.sandboxChat.value = distro,
+          ),
+      ],
+    );
+  }
+
   Widget _buildTasksSection(BuildContext context) {
     final items = _todos.items;
     final header = Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
       child: Row(
         children: [
           Icon(
@@ -448,9 +525,15 @@ class _AiChatPanelState extends State<AiChatPanel> {
           child: header,
         ),
         if (_tasksExpanded) ...[
+          // Capped: a long queue scrolls inside its own box instead of
+          // squeezing the conversation out of the panel.
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: SingleChildScrollView(
+              child: Column(children: [
           for (final t in items)
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 2, 12, 2),
+              padding: const EdgeInsets.fromLTRB(14, 4, 12, 4),
               child: Row(
                 children: [
                   Checkbox(
@@ -515,6 +598,9 @@ class _AiChatPanelState extends State<AiChatPanel> {
                   ),
                 ),
               ],
+            ),
+          ),
+              ]),
             ),
           ),
         ],

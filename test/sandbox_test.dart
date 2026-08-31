@@ -145,7 +145,7 @@ void main() {
       ai.setByokApiKey('sk-test');
       ai.setAiProvider('openai');
 
-      final chat = SandboxChat('wslm-sandbox-box', service: ai);
+      final chat = SandboxChat.forTesting('wslm-sandbox-box', service: ai);
       // A trivial tool so the loop has something scoped to offer, though the
       // model answers directly here.
       chat.toolsForTesting = [
@@ -179,9 +179,34 @@ void main() {
     });
 
     test('throws pro-required when not Pro', () async {
-      final chat = SandboxChat('wslm-sandbox-box');
+      final chat = SandboxChat.forTesting('wslm-sandbox-box');
       await expectLater(chat.send('hi'),
           throwsA(predicate((e) => e.toString().contains('pro-required'))));
+    });
+
+    test('history persists across close and reopen', () {
+      // The user-visible guarantee: closing the panel and reopening the chat
+      // comes back to the same conversation, not an empty one.
+      prefs.setStringList('SandboxDistros', ['wslm-sandbox-persist']);
+      prefs.setString(
+          'SandboxChat_wslm-sandbox-persist',
+          json.encode([
+            AiMessage(
+                    role: 'user',
+                    content: 'remember me',
+                    timestamp: DateTime.now())
+                .toJson()
+          ]));
+
+      final chat = SandboxChat.of('wslm-sandbox-persist');
+      expect(chat.history.single.content, 'remember me');
+      // It shows up in the "last sessions" list…
+      expect(SandboxChat.sessions(), contains('wslm-sandbox-persist'));
+      // …and the same instance comes back on reopen.
+      expect(identical(chat, SandboxChat.of('wslm-sandbox-persist')), true);
+
+      SandboxChat.dropTranscript('wslm-sandbox-persist');
+      expect(prefs.getString('SandboxChat_wslm-sandbox-persist'), isNull);
     });
   });
 }

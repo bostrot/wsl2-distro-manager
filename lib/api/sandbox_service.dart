@@ -10,7 +10,10 @@ import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'dart:convert';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
+import 'package:wsl2distromanager/api/mcp/todo_tools.dart';
+import 'package:wsl2distromanager/api/todo_store.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:flutter/foundation.dart';
@@ -63,63 +66,131 @@ class SandboxService {
   String distroNameFor(String name) =>
       '$prefix${sanitizeDistroName(name)}';
 
+  /// The stage of a sandbox creation in flight, or null when none is.
+  ///
+  /// App-global, not page state: creation takes minutes (a rootfs download),
+  /// and living on the page meant switching tabs lost the progress display —
+  /// the work carried on invisibly and its result surfaced nowhere.
+  static final ValueNotifier<String?> creationStage =
+      ValueNotifier<String?>(null);
+
+  /// Whether a creation is currently running.
+  static bool get isCreating => creationStage.value != null;
+
   /// Creates an Ubuntu sandbox: downloads the catalog rootfs and imports it as
-  /// a new distro. Returns the registered distro name.
-  Future<String> createUbuntuSandbox(String name,
-      {void Function(String stage)? onProgress}) async {
+  /// a new distro. Returns the registered distro name. Progress is published
+  /// on [creationStage] so any page (or none) can watch it.
+  Future<String> createUbuntuSandbox(String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw ArgumentError('A name is required.');
+    if (isCreating) throw StateError('A sandbox is already being created.');
     final distro = distroNameFor(trimmed);
 
-    final existing = await _api.list(false);
-    if (existing.all.any((d) => d.toLowerCase() == distro.toLowerCase())) {
-      throw StateError('A distro named "$distro" already exists.');
-    }
-
-    onProgress?.call('resolving');
-    final links = await _app.getDistroLinks();
-    final url = _pickUbuntuUrl(links);
-    if (url == null) {
-      throw StateError('No Ubuntu image is available in the catalog.');
-    }
-
-    onProgress?.call('downloading');
-    final tmp = '${Directory.systemTemp.path}${Platform.pathSeparator}'
-        'wslm-sandbox-${trimmed.hashCode}.tar.gz';
-    await _dio.download(url, tmp);
-
-    onProgress?.call('importing');
-    await _api.import(distro, '', tmp);
+    creationStage.value = 'resolving';
     try {
-      File(tmp).deleteSync();
-    } catch (_) {}
+      final existing = await _api.list(false);
+      if (existing.all.any((d) => d.toLowerCase() == distro.toLowerCase())) {
+        throw StateError('A distro named "$distro" already exists.');
+      }
 
-    _remember(distro);
-    return distro;
+      final links = await _app.getDistroLinks();
+      final url = _pickUbuntuUrl(links);
+      if (url == null) {
+        throw StateError('No Ubuntu image is available in the catalog.');
+      }
+
+      creationStage.value = 'downloading';
+      final tmp = '${Directory.systemTemp.path}${Platform.pathSeparator}'
+          'wslm-sandbox-${trimmed.hashCode}.tar.gz';
+      await _dio.download(url, tmp);
+
+      creationStage.value = 'importing';
+      await _api.import(distro, '', tmp);
+      try {
+        File(tmp).deleteSync();
+      } catch (_) {}
+
+      _remember(distro);
+      return distro;
+    } finally {
+      creationStage.value = null;
+    }
   }
 
-  /// Unregisters a sandbox distro and drops it from the list.
+  /// Unregisters a sandbox distro, drops it from the list and deletes its
+  /// chat transcript.
   Future<void> deleteSandbox(String distro) async {
     await _api.remove(distro);
     _forget(distro);
+    SandboxChat.dropTranscript(distro);
   }
 }
 
-/// A chat confined to one sandbox distro: its own transcript and only the
-/// `sandbox_*` tools, reusing [AiService]'s provider loop. "All the LLM sees
-/// is the inside of the sandbox."
+/// A chat confined to one sandbox distro: its own persistent transcript and
+/// only the `sandbox_*` tools (plus the app's task-queue tools), reusing
+/// [AiService]'s provider loop. "All the LLM sees is the inside of the
+/// sandbox."
 class SandboxChat {
-  SandboxChat(this.distro, {AiService? service})
+  SandboxChat._(this.distro, {AiService? service})
+      : _ai = service ?? AiService() {
+    _load();
+  }
+
+  @visibleForTesting
+  SandboxChat.forTesting(this.distro, {AiService? service})
       : _ai = service ?? AiService();
+
+  /// One live instance per sandbox, so closing and reopening the panel comes
+  /// back to the same conversation instead of a fresh empty one.
+  static final Map<String, SandboxChat> _instances = {};
+  factory SandboxChat.of(String distro) =>
+      _instances.putIfAbsent(distro, () => SandboxChat._(distro));
+
+  static String _prefsKeyFor(String distro) => 'SandboxChat_$distro';
+
+  /// Sandboxes that have a stored transcript — the "last sessions" list.
+  static List<String> sessions() => SandboxService()
+      .list()
+      .where((d) =>
+          _instances[d]?.history.isNotEmpty == true ||
+          (prefs.getString(_prefsKeyFor(d))?.isNotEmpty ?? false))
+      .toList();
+
+  /// Deletes the stored transcript (used when the sandbox itself goes).
+  static void dropTranscript(String distro) {
+    _instances.remove(distro);
+    prefs.remove(_prefsKeyFor(distro));
+  }
 
   final String distro;
   final AiService _ai;
   final List<AiMessage> _history = [];
 
+  void _load() {
+    final stored = prefs.getString(_prefsKeyFor(distro));
+    if (stored == null || stored.isEmpty) return;
+    try {
+      final list = json.decode(stored) as List;
+      _history
+        ..clear()
+        ..addAll(
+            list.map((e) => AiMessage.fromJson(e as Map<String, dynamic>)));
+    } catch (_) {}
+  }
+
+  void _persist() {
+    prefs.setString(_prefsKeyFor(distro),
+        json.encode(_history.map((m) => m.toJson()).toList()));
+  }
+
   List<McpTool>? _toolsOverride;
-  List<McpTool> get _tools =>
-      _toolsOverride ??=
-          buildSandboxTools(WSLApi(), WslTerminalManager(wslApi: WSLApi()), distro);
+  List<McpTool> get _tools => _toolsOverride ??= [
+        ...buildSandboxTools(
+            WSLApi(), WslTerminalManager(wslApi: WSLApi()), distro),
+        // The task queue works in the sandbox chat too — the todo tools touch
+        // only the app's own list, never the host.
+        ...buildTodoTools(TodoStore.instance),
+      ];
 
   @visibleForTesting
   set toolsForTesting(List<McpTool> value) => _toolsOverride = value;
@@ -129,7 +200,8 @@ class SandboxChat {
   bool get canSend => LicenseManager().isPro && _ai.hasAiConfigured;
 
   String get _systemPrompt => '''
-You are an assistant confined to a single sandboxed Linux environment (a WSL distro named "$distro"). Everything you do happens INSIDE it through the sandbox_* tools — you cannot see or affect the user's Windows machine or any other distro, and there is no such thing to reach. Use sandbox_run_command to inspect and work inside the sandbox. After acting, say briefly what you did. Keep answers concise.''';
+You are an assistant confined to a single sandboxed Linux environment (a WSL distro named "$distro"). Everything you do happens INSIDE it through the sandbox_* tools — you cannot see or affect the user's Windows machine or any other distro, and there is no such thing to reach. Use sandbox_run_command to inspect and work inside the sandbox. After acting, say briefly what you did. Keep answers concise.
+You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one inside the sandbox, and mark it done with todo_set_done as soon as you finish it.''';
 
   Future<String> send(String query, {void Function()? onUpdate}) async {
     if (!LicenseManager().isPro) throw Exception('pro-required');
@@ -140,12 +212,14 @@ You are an assistant confined to a single sandboxed Linux environment (a WSL dis
     }
     _history.add(AiMessage(
         role: 'user', content: query, timestamp: DateTime.now()));
+    _persist();
     onUpdate?.call();
     try {
       final reply = await _ai.runAgentOn(_history, _tools,
-          onUpdate: onUpdate, systemPrompt: _systemPrompt);
+          onUpdate: onUpdate, systemPrompt: _systemPrompt, persist: _persist);
       _history.add(AiMessage(
           role: 'assistant', content: reply, timestamp: DateTime.now()));
+      _persist();
       onUpdate?.call();
       return reply;
     } catch (e) {
@@ -154,9 +228,13 @@ You are an assistant confined to a single sandboxed Linux environment (a WSL dis
         _history.removeLast();
       }
       if (_history.isNotEmpty) _history.removeLast();
+      _persist();
       rethrow;
     }
   }
 
-  void clear() => _history.clear();
+  void clear() {
+    _history.clear();
+    _persist();
+  }
 }

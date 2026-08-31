@@ -324,6 +324,11 @@ class GlobalVariable {
   static final ValueNotifier<bool> aiPanel = ValueNotifier<bool>(false);
   static bool get aiPanelVisible => aiPanel.value;
   static set aiPanelVisible(bool value) => aiPanel.value = value;
+
+  /// Which sandbox chat the dock shows, or null for the app assistant.
+  /// Sticky across open/close so reopening returns to the same conversation.
+  static final ValueNotifier<String?> sandboxChat =
+      ValueNotifier<String?>(null);
   /// Override for testing: when true, Pro features are always accessible.
   static bool testProEnabled = false;
 }

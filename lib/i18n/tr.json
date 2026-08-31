@@ -723,5 +723,6 @@
   "sandbox-chat-hint-text": "Asistandan kum havuzunun içinde bir şey kurmasını veya çalıştırmasını iste.",
   "ai-tasks-title": "Görevler",
   "ai-tasks-work-text": "Görevleri hallet",
-  "ai-tasks-add-hint-text": "Görev ekle…"
+  "ai-tasks-add-hint-text": "Görev ekle…",
+  "sandbox-session-new-text": "henüz sohbet yok"
 }

@@ -723,5 +723,6 @@
   "sandbox-chat-hint-text": "Pide al asistente que configure o ejecute algo dentro del entorno aislado.",
   "ai-tasks-title": "Tareas",
   "ai-tasks-work-text": "Trabajar en las tareas",
-  "ai-tasks-add-hint-text": "Añadir una tarea…"
+  "ai-tasks-add-hint-text": "Añadir una tarea…",
+  "sandbox-session-new-text": "sin chat todavía"
 }

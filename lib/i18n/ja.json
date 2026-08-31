@@ -723,5 +723,6 @@
   "sandbox-chat-hint-text": "サンドボックス内で何かをセットアップまたは実行するようアシスタントに依頼してください。",
   "ai-tasks-title": "タスク",
   "ai-tasks-work-text": "タスクを進める",
-  "ai-tasks-add-hint-text": "タスクを追加…"
+  "ai-tasks-add-hint-text": "タスクを追加…",
+  "sandbox-session-new-text": "チャット履歴なし"
 }
