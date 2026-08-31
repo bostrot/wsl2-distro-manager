@@ -11,6 +11,7 @@ dependencies:
   archive: ^4.0.7
   async: ^2.13.0
   chunked_downloader: ^1.0.0
+  crypto: ^3.0.6
   desktop_window: ^0.4.2
   dio: ^5.9.0
   ffi: ^2.1.4

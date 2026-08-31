@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/claude_auth.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
@@ -93,6 +94,14 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _byokBaseUrlController = TextEditingController();
   final TextEditingController _byokApiKeyController = TextEditingController();
   final TextEditingController _byokModelController = TextEditingController();
+  final TextEditingController _claudeClientIdController =
+      TextEditingController();
+  final TextEditingController _claudeModelController = TextEditingController();
+  String _aiProvider = 'openai';
+  bool _claudeBusy = false;
+  List<String> _modelSuggestions = [];
+  bool _modelsLoading = false;
+  bool _aiTestBusy = false;
   bool _useRemoteWsl = false;
   bool _mcpEnabled = false;
   bool _mcpTokenVisible = false;
@@ -135,6 +144,8 @@ class SettingsPageState extends State<SettingsPage> {
         _byokBaseUrlController,
         _byokApiKeyController,
         _byokModelController,
+        _claudeClientIdController,
+        _claudeModelController,
         ..._settings.values,
       ];
 
@@ -154,6 +165,9 @@ class SettingsPageState extends State<SettingsPage> {
         'ByokBaseUrl': _byokBaseUrlController.text,
         'ByokApiKey': _byokApiKeyController.text,
         'ByokModel': _byokModelController.text,
+        'AiProvider': _aiProvider,
+        'ClaudeOAuthClientId': _claudeClientIdController.text,
+        'ClaudeModel': _claudeModelController.text,
         'UseRemoteWSL': _useRemoteWsl.toString(),
         'language': _draftLanguage,
       };
@@ -215,6 +229,9 @@ class SettingsPageState extends State<SettingsPage> {
     restore(_byokBaseUrlController, 'ByokBaseUrl');
     restore(_byokApiKeyController, 'ByokApiKey');
     restore(_byokModelController, 'ByokModel');
+    restore(_claudeClientIdController, 'ClaudeOAuthClientId');
+    restore(_claudeModelController, 'ClaudeModel');
+    _aiProvider = saved['AiProvider'] ?? 'openai';
     _useRemoteWsl = saved['UseRemoteWSL'] == 'true';
     _applyLanguage(saved['language'] ?? _draftLanguage, persist: false);
     _onDraftChanged();
@@ -247,6 +264,8 @@ class SettingsPageState extends State<SettingsPage> {
     _byokBaseUrlController.dispose();
     _byokApiKeyController.dispose();
     _byokModelController.dispose();
+    _claudeClientIdController.dispose();
+    _claudeModelController.dispose();
     super.dispose();
   }
 
@@ -328,6 +347,10 @@ class SettingsPageState extends State<SettingsPage> {
     _byokBaseUrlController.text = prefs.getString('ByokBaseUrl') ?? '';
     _byokApiKeyController.text = _aiService.byokApiKey;
     _byokModelController.text = prefs.getString('ByokModel') ?? '';
+    _claudeClientIdController.text =
+        prefs.getString('ClaudeOAuthClientId') ?? '';
+    _claudeModelController.text = prefs.getString('ClaudeModel') ?? '';
+    _aiProvider = _aiService.aiProvider;
     _mcpEnabled = _mcpService.enabled;
     for (final controller in _draftControllers) {
       controller.removeListener(_onDraftChanged);
@@ -600,10 +623,13 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("RemoteWSLTarget");
     }
 
-    // BYOK settings
+    // AI settings
     _aiService.setByokBaseUrl(_byokBaseUrlController.text);
     _aiService.setByokApiKey(_byokApiKeyController.text);
     _aiService.setByokModel(_byokModelController.text);
+    _aiService.setAiProvider(_aiProvider);
+    ClaudeAuth().setClientId(_claudeClientIdController.text);
+    _aiService.setClaudeModel(_claudeModelController.text);
 
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
@@ -928,6 +954,121 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: isPro
+                ? 'ai-provider-text'.i18n()
+                : "${'ai-provider-text'.i18n()} — ${'byok-locked-text'.i18n()}",
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'ai-provider-hint-text'.i18n(),
+              child: DropDownButton(
+                key: const ValueKey('test-ai-provider'),
+                title: Text((_aiProvider == 'claude'
+                        ? 'ai-provider-claude-text'
+                        : 'ai-provider-openai-text')
+                    .i18n()),
+                items: [
+                  _aiProviderItem('openai', 'ai-provider-openai-text', isPro),
+                  _aiProviderItem('claude', 'ai-provider-claude-text', isPro),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_aiProvider == 'claude') ...[
+          // Sign in with Claude needs a client ID from Anthropic's
+          // registration; the flow stays disabled until one is set, and the
+          // notice says why rather than offering a dead button.
+          if (!ClaudeAuth().hasClientId &&
+              _claudeClientIdController.text.trim().isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoBar(
+                title: Text('claude-clientid-missing-text'.i18n()),
+                content: Text('claude-clientid-hint-text'.i18n()),
+                severity: InfoBarSeverity.info,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: isPro
+                  ? 'claude-account-text'.i18n()
+                  : "${'claude-account-text'.i18n()} — ${'byok-locked-text'.i18n()}",
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      (ClaudeAuth().isSignedIn
+                              ? 'claude-signedin-text'
+                              : 'claude-notsignedin-text')
+                          .i18n(),
+                      style: TextStyle(color: secondaryTextColor(context)),
+                    ),
+                  ),
+                  ClaudeAuth().isSignedIn
+                      ? Button(
+                          key: const ValueKey('test-claude-signout'),
+                          onPressed: isPro ? _claudeSignOut : null,
+                          child: Text('claude-signout-text'.i18n()),
+                        )
+                      : FilledButton(
+                          key: const ValueKey('test-claude-signin'),
+                          onPressed: isPro &&
+                                  !_claudeBusy &&
+                                  (_claudeClientIdController.text
+                                          .trim()
+                                          .isNotEmpty ||
+                                      ClaudeAuth().hasClientId)
+                              ? _claudeSignIn
+                              : null,
+                          child: Text((_claudeBusy
+                                  ? 'claude-signing-in-text'
+                                  : 'claude-signin-text')
+                              .i18n()),
+                        ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: isPro
+                  ? 'claude-clientid-text'.i18n()
+                  : "${'claude-clientid-text'.i18n()} — ${'byok-locked-text'.i18n()}",
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Tooltip(
+                message: 'claude-clientid-hint-text'.i18n(),
+                child: TextBox(
+                  key: const ValueKey('test-claude-clientid-input'),
+                  controller: _claudeClientIdController,
+                  enabled: isPro,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: isPro
+                  ? 'claude-model-text'.i18n()
+                  : "${'claude-model-text'.i18n()} — ${'byok-locked-text'.i18n()}",
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: _modelField(
+                key: const ValueKey('test-claude-model-input'),
+                controller: _claudeModelController,
+                enabled: isPro,
+                hintKey: 'claude-model-hint-text',
+                placeholder: isPro ? AiService.defaultClaudeModel : null,
+              ),
+            ),
+          ),
+        ] else ...[
         // No enable toggle — the key is the only chat path, not an option.
         Padding(
           padding: const EdgeInsets.all(8.0),
@@ -977,19 +1118,173 @@ class SettingsPageState extends State<SettingsPage> {
                 ? 'byok-model-text'.i18n()
                 : '${'byok-model-text'.i18n()} — ${'byok-locked-text'.i18n()}',
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'byok-model-hint-text'.i18n(),
-              child: TextBox(
-                key: const ValueKey('test-byok-model-input'),
-                controller: _byokModelController,
-                enabled: isPro,
-                placeholder: isPro ? AiService.defaultByokModel : null,
-              ),
+            child: _modelField(
+              key: const ValueKey('test-byok-model-input'),
+              controller: _byokModelController,
+              enabled: isPro,
+              hintKey: 'byok-model-hint-text',
+              placeholder: isPro ? AiService.defaultByokModel : null,
             ),
+          ),
+        ),
+        ],
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Button(
+            key: const ValueKey('test-ai-test-button'),
+            onPressed: isPro && !_aiTestBusy ? _testAiConnection : null,
+            child: Text(
+                (_aiTestBusy ? 'ai-testing-text' : 'ai-test-text').i18n()),
           ),
         ),
       ],
     );
+  }
+
+  /// The model box with autocomplete, plus the button that fills its
+  /// suggestion list from the provider's own /models endpoint.
+  Widget _modelField({
+    required Key key,
+    required TextEditingController controller,
+    required bool enabled,
+    required String hintKey,
+    String? placeholder,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Tooltip(
+            message: hintKey.i18n(),
+            child: AutoSuggestBox<String>(
+              key: key,
+              controller: controller,
+              enabled: enabled,
+              placeholder: placeholder,
+              items: [
+                for (final m in _modelSuggestions)
+                  AutoSuggestBoxItem<String>(value: m, label: m),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8.0),
+        Tooltip(
+          message: 'ai-loadmodels-text'.i18n(),
+          child: IconButton(
+            key: const ValueKey('test-ai-loadmodels'),
+            icon: _modelsLoading
+                ? const SizedBox.square(
+                    dimension: 14.0, child: ProgressRing(strokeWidth: 2.0))
+                : const Icon(FluentIcons.refresh, size: 14.0),
+            onPressed:
+                enabled && !_modelsLoading ? _loadModelSuggestions : null,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Fills the autocomplete from the provider, using the values as typed —
+  /// waiting for Save would mean probing yesterday's key.
+  Future<void> _loadModelSuggestions() async {
+    setState(() => _modelsLoading = true);
+    try {
+      final models = await _aiService.listModels(
+        provider: _aiProvider,
+        baseUrl: _byokBaseUrlController.text,
+        apiKey: _byokApiKeyController.text,
+      );
+      if (!mounted) return;
+      setState(() => _modelSuggestions = models);
+      Notify.message('ai-models-loaded-text'.i18n(['${models.length}']),
+          severity: InfoBarSeverity.success);
+    } catch (_) {
+      if (mounted) {
+        Notify.message('ai-models-failed-text'.i18n(),
+            severity: InfoBarSeverity.error);
+      }
+    } finally {
+      if (mounted) setState(() => _modelsLoading = false);
+    }
+  }
+
+  /// One tiny chat round trip with the values as typed, so "it does not
+  /// work" surfaces here and not mid-question in the chat panel.
+  Future<void> _testAiConnection() async {
+    setState(() => _aiTestBusy = true);
+    try {
+      await _aiService.testConnection(
+        provider: _aiProvider,
+        baseUrl: _byokBaseUrlController.text,
+        apiKey: _byokApiKeyController.text,
+        model: _aiProvider == 'claude'
+            ? _claudeModelController.text
+            : _byokModelController.text,
+      );
+      Notify.message('ai-test-ok-text'.i18n(),
+          severity: InfoBarSeverity.success);
+    } catch (_) {
+      Notify.message('ai-test-failed-text'.i18n(),
+          severity: InfoBarSeverity.error);
+    } finally {
+      if (mounted) setState(() => _aiTestBusy = false);
+    }
+  }
+
+  /// One provider entry, marked when active (same pattern as the
+  /// enumeration flyouts).
+  MenuFlyoutItem _aiProviderItem(String value, String labelKey, bool enabled) {
+    final selected = _aiProvider == value;
+    return MenuFlyoutItem(
+      selected: selected,
+      leading: selected
+          ? const Icon(FluentIcons.check_mark, size: 12.0)
+          : const SizedBox.square(dimension: 12.0),
+      text: Text(labelKey.i18n()),
+      onPressed: enabled
+          ? () => setState(() {
+                _aiProvider = value;
+                _onDraftChanged();
+              })
+          : null,
+    );
+  }
+
+  Future<void> _claudeSignIn() async {
+    setState(() => _claudeBusy = true);
+    try {
+      // Sign in uses the client ID as typed — waiting for Save here would
+      // mean a button that ignores the field right above it.
+      ClaudeAuth().setClientId(_claudeClientIdController.text);
+      await ClaudeAuth().signIn();
+      Notify.message('claude-signin-success-text'.i18n(),
+          severity: InfoBarSeverity.success);
+    } catch (_) {
+      Notify.message('claude-signin-failed-text'.i18n(),
+          severity: InfoBarSeverity.error);
+    } finally {
+      if (mounted) setState(() => _claudeBusy = false);
+    }
+  }
+
+  void _claudeSignOut() {
+    ClaudeAuth().signOut();
+    setState(() {});
+  }
+
+  Future<void> _connectClaudeDesktop() async {
+    try {
+      await _mcpService.connectClaudeDesktop();
+      Notify.message('mcp-quickconnect-done-text'.i18n(),
+          severity: InfoBarSeverity.success);
+    } catch (e) {
+      Notify.message(
+          (e.toString().contains('claude-desktop-not-found')
+                  ? 'mcp-quickconnect-notfound-text'
+                  : 'mcp-quickconnect-failed-text')
+              .i18n(),
+          severity: InfoBarSeverity.error);
+    }
   }
 
   Widget _buildMcpSettings(BuildContext context) {
@@ -1147,6 +1442,30 @@ class SettingsPageState extends State<SettingsPage> {
                         Notify.message('tokenregenerated-text'.i18n(),
                             severity: InfoBarSeverity.success);
                       },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'mcp-quickconnect-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  Button(
+                    key: const ValueKey('test-mcp-quickconnect'),
+                    onPressed: _connectClaudeDesktop,
+                    child: Text('mcp-quickconnect-text'.i18n()),
+                  ),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child: Text(
+                      'mcp-quickconnect-hint-text'.i18n(),
+                      style: TextStyle(
+                          color: secondaryTextColor(context), fontSize: 12.0),
                     ),
                   ),
                 ],

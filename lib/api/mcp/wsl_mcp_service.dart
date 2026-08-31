@@ -72,6 +72,59 @@ class WslMcpService {
 
   String get endpointUrl => 'http://127.0.0.1:$port$path';
 
+  /// Where Claude Desktop keeps its config dir; tests point this at a temp
+  /// directory.
+  static String? claudeDesktopConfigDirOverride;
+
+  /// Claude Desktop's config file path, or null when it is not installed.
+  String? claudeDesktopConfigPath() {
+    final appData = Platform.environment['APPDATA'];
+    final dirPath = claudeDesktopConfigDirOverride ??
+        (appData == null || appData.isEmpty ? null : '$appData\\Claude');
+    if (dirPath == null || !Directory(dirPath).existsSync()) return null;
+    return '$dirPath\\claude_desktop_config.json';
+  }
+
+  /// One-click Claude Desktop hookup: writes a `wsl-manager` entry into
+  /// claude_desktop_config.json, leaving everything else in the file alone.
+  ///
+  /// Claude Desktop launches stdio servers only, so the entry bridges to
+  /// this HTTP endpoint through `npx mcp-remote`. The bearer token travels
+  /// through `env` and an `${AUTH_HEADER}` placeholder that mcp-remote
+  /// expands itself — Claude Desktop splits argv on spaces, so the header
+  /// cannot be one argument.
+  Future<String> connectClaudeDesktop() async {
+    final configPath = claudeDesktopConfigPath();
+    if (configPath == null) throw Exception('claude-desktop-not-found');
+    final file = File(configPath);
+    Map<String, dynamic> config = <String, dynamic>{};
+    if (file.existsSync()) {
+      final text = await file.readAsString();
+      if (text.trim().isNotEmpty) {
+        // An unparseable config is not ours to clobber — let the decode
+        // throw and the caller report it instead of overwriting.
+        config = json.decode(text) as Map<String, dynamic>;
+      }
+    }
+    final servers = (config['mcpServers'] as Map<String, dynamic>?) ??
+        <String, dynamic>{};
+    servers['wsl-manager'] = {
+      'command': 'npx',
+      'args': [
+        '-y',
+        'mcp-remote',
+        endpointUrl,
+        '--header',
+        r'Authorization:${AUTH_HEADER}',
+      ],
+      'env': {'AUTH_HEADER': 'Bearer $token'},
+    };
+    config['mcpServers'] = servers;
+    await file
+        .writeAsString(const JsonEncoder.withIndent('  ').convert(config));
+    return configPath;
+  }
+
   Future<void> setEnabled(bool value) async {
     prefs.setBool('McpServerEnabled', value);
     if (value) {

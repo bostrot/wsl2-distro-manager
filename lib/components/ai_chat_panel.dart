@@ -79,9 +79,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
       return;
     }
 
-    // Chat runs on the user's own API key — nothing to send without one.
-    if (!_ai.hasByokConfigured) {
-      _block('byok-required-text', 'settings', 'opensettings-text');
+    // Chat runs on credentials the user brings — nothing to send without
+    // a key or a Claude sign-in, whichever provider is picked.
+    if (!_ai.hasAiConfigured) {
+      _block(_ai.configRequiredKey, 'settings', 'opensettings-text');
       return;
     }
 
@@ -106,13 +107,15 @@ class _AiChatPanelState extends State<AiChatPanel> {
       });
 
       final msg = e.toString();
-      if (msg.contains('pro-required') || msg.contains('byok-required')) {
+      if (msg.contains('pro-required') ||
+          msg.contains('byok-required') ||
+          msg.contains('claude-signin-required')) {
         // The question never reached a provider, so give it back rather than
         // making the user retype it (PS-33).
         if (_inputController.text.isEmpty) _inputController.text = text;
         msg.contains('pro-required')
             ? _block('ai-chat-pro-required-text', 'license', 'upgrade-text')
-            : _block('byok-required-text', 'settings', 'opensettings-text');
+            : _block(_ai.configRequiredKey, 'settings', 'opensettings-text');
       } else {
         Notify.message('ai-error-text'.i18n(), severity: InfoBarSeverity.error);
       }
@@ -211,12 +214,12 @@ class _AiChatPanelState extends State<AiChatPanel> {
         // Said before the first keystroke, not after the first Send: with no
         // key the panel used to be indistinguishable from a working one until
         // the button revealed the precondition (audit PS-34).
-        if (!_ai.hasByokConfigured && _blockedReasonKey == null)
+        if (!_ai.hasAiConfigured && _blockedReasonKey == null)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
             child: InfoBar(
               key: const ValueKey('test-aichat-needs-key'),
-              title: Text('byok-required-text'.i18n()),
+              title: Text(_ai.configRequiredKey.i18n()),
               severity: InfoBarSeverity.info,
               action: Button(
                 onPressed: () => navigateGuarded('settings'),

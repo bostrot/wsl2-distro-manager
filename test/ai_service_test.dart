@@ -167,4 +167,172 @@ void main() {
       expect(ai.conversationHistory, isEmpty);
     });
   });
+
+  group('AiService Claude provider', () {
+    test('defaults to the BYOK path and switches per preference', () {
+      final ai = AiService();
+      expect(ai.aiProvider, 'openai');
+      expect(ai.usesClaudeAccount, false);
+
+      ai.setAiProvider('claude');
+      expect(ai.usesClaudeAccount, true);
+      // Not signed in, so the provider is unconfigured — and the message the
+      // UI would show talks about signing in, not about API keys.
+      expect(ai.hasAiConfigured, false);
+      expect(ai.configRequiredKey, 'claude-signin-required-text');
+
+      ai.setAiProvider('openai');
+      expect(ai.configRequiredKey, 'byok-required-text');
+    });
+
+    test('throws claude-signin-required when Pro but not signed in', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setAiProvider('claude');
+      await ai.init();
+
+      await expectLater(
+        ai.sendMessage('hello'),
+        throwsA(predicate(
+            (e) => e.toString().contains('claude-signin-required'))),
+      );
+    });
+
+    test('sends to the Messages API with the OAuth bearer', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setAiProvider('claude');
+      prefs.setString('ClaudeRefreshToken', 'rt-1');
+      prefs.setString('ClaudeAccessToken', 'at-1');
+      prefs.setInt(
+          'ClaudeTokenExpiry',
+          DateTime.now()
+              .add(const Duration(hours: 1))
+              .millisecondsSinceEpoch);
+      await ai.init();
+      ai.clearHistory();
+
+      final adapter = _RecordingAdapter((options) {
+        expect(options.headers['Authorization'], 'Bearer at-1');
+        expect(options.headers['anthropic-beta'], 'oauth-2025-04-20');
+        expect(options.headers['anthropic-version'], isNotNull);
+        return ResponseBody.fromString(
+          json.encode({
+            'content': [
+              {'type': 'text', 'text': 'claude reply'}
+            ]
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      final reply = await ai.sendMessage('hello');
+
+      expect(reply, 'claude reply');
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.single.path, AiService.claudeMessagesEndpoint);
+      final body = json.decode(adapter.requests.single.data as String)
+          as Map<String, dynamic>;
+      expect(body['model'], AiService.defaultClaudeModel);
+      expect(body['max_tokens'], isA<int>());
+    });
+  });
+
+  group('AiService model list and test probe', () {
+    test('lists BYOK models from /models with the typed key', () async {
+      final ai = AiService();
+      final adapter = _RecordingAdapter((options) {
+        expect(options.path, 'https://typed.example.com/v1/models');
+        expect(options.headers['Authorization'], 'Bearer typed-key');
+        return ResponseBody.fromString(
+          json.encode({
+            'data': [
+              {'id': 'b-model'},
+              {'id': 'a-model'}
+            ]
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      final models = await ai.listModels(
+          baseUrl: 'https://typed.example.com/v1', apiKey: 'typed-key');
+
+      expect(models, ['a-model', 'b-model']);
+    });
+
+    test('lists Claude models with the OAuth bearer', () async {
+      final ai = AiService();
+      prefs.setString('ClaudeRefreshToken', 'rt-1');
+      prefs.setString('ClaudeAccessToken', 'at-1');
+      prefs.setInt(
+          'ClaudeTokenExpiry',
+          DateTime.now()
+              .add(const Duration(hours: 1))
+              .millisecondsSinceEpoch);
+      final adapter = _RecordingAdapter((options) {
+        expect(options.path, 'https://api.anthropic.com/v1/models');
+        expect(options.headers['Authorization'], 'Bearer at-1');
+        return ResponseBody.fromString(
+          json.encode({
+            'data': [
+              {'id': 'claude-x'}
+            ]
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      expect(await ai.listModels(provider: 'claude'), ['claude-x']);
+    });
+
+    test('the test probe posts one tiny chat request as typed', () async {
+      final ai = AiService();
+      final adapter = _RecordingAdapter((options) {
+        final body =
+            json.decode(options.data as String) as Map<String, dynamic>;
+        expect(body['model'], 'typed-model');
+        expect(body['max_tokens'], 16);
+        return ResponseBody.fromString(json.encode({'choices': []}), 200,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            });
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      await ai.testConnection(
+          baseUrl: 'https://typed.example.com/v1',
+          apiKey: 'k',
+          model: 'typed-model');
+
+      expect(adapter.requests.single.path,
+          'https://typed.example.com/v1/chat/completions');
+    });
+
+    test('a refused probe throws ai-test-failed', () async {
+      final ai = AiService();
+      ai.dioForTesting.httpClientAdapter =
+          _RecordingAdapter((_) => ResponseBody.fromString('denied', 401));
+
+      await expectLater(
+        ai.testConnection(
+            baseUrl: 'https://x.example.com/v1', apiKey: 'k', model: 'm'),
+        throwsA(predicate((e) => e.toString().contains('ai-test-failed'))),
+      );
+    });
+  });
 }

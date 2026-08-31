@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -172,5 +173,55 @@ void main() {
 
     expect(prefs.getBool('McpServerEnabled'), false);
     expect(svc.isRunning, false);
+  });
+
+  group('connectClaudeDesktop', () {
+    test('writes the bridge entry and preserves the rest of the config',
+        () async {
+      final tempDir = await Directory.systemTemp.createTemp('claude_desktop');
+      addTearDown(() => tempDir.delete(recursive: true));
+      WslMcpService.claudeDesktopConfigDirOverride = tempDir.path;
+      addTearDown(
+          () => WslMcpService.claudeDesktopConfigDirOverride = null);
+      File('${tempDir.path}${Platform.pathSeparator}claude_desktop_config.json')
+          .writeAsStringSync(json.encode({
+        'mcpServers': {
+          'other': {'command': 'foo'}
+        },
+        'theme': 'dark',
+      }));
+
+      final svc = service();
+      final path = await svc.connectClaudeDesktop();
+
+      final config =
+          json.decode(File(path).readAsStringSync()) as Map<String, dynamic>;
+      final servers = config['mcpServers'] as Map<String, dynamic>;
+      // The other server and the unrelated setting both survive.
+      expect(servers.keys, containsAll(['other', 'wsl-manager']));
+      expect(config['theme'], 'dark');
+
+      final entry = servers['wsl-manager'] as Map<String, dynamic>;
+      expect(entry['command'], 'npx');
+      final args = (entry['args'] as List).cast<String>();
+      expect(args, contains(svc.endpointUrl));
+      // The token travels via env, not argv — Claude Desktop splits argv
+      // on spaces.
+      expect(args, contains(r'Authorization:${AUTH_HEADER}'));
+      expect((entry['env'] as Map)['AUTH_HEADER'], 'Bearer ${svc.token}');
+    });
+
+    test('reports when Claude Desktop is not installed', () async {
+      WslMcpService.claudeDesktopConfigDirOverride =
+          '${Directory.systemTemp.path}${Platform.pathSeparator}no-claude-desktop-here';
+      addTearDown(
+          () => WslMcpService.claudeDesktopConfigDirOverride = null);
+
+      await expectLater(
+        service().connectClaudeDesktop(),
+        throwsA(predicate(
+            (e) => e.toString().contains('claude-desktop-not-found'))),
+      );
+    });
   });
 }
