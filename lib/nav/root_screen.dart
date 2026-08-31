@@ -283,7 +283,14 @@ class RootPageState extends State<RootPage> with WindowListener {
               [GlobalVariable.aiPanel, GlobalVariable.sandboxChat]),
           builder: (context, _) {
             if (!GlobalVariable.aiPanel.value) return pageWithStatus;
-            final sandbox = GlobalVariable.sandboxChat.value;
+            var sandbox = GlobalVariable.sandboxChat.value;
+            // A sandbox deleted while docked (any path — the button, the MCP
+            // tool) must not leave a dead transcript on screen.
+            if (sandbox != null && !SandboxService().isSandbox(sandbox)) {
+              sandbox = null;
+              WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => GlobalVariable.sandboxChat.value = null);
+            }
             return LayoutBuilder(
               builder: (context, constraints) {
                 // A fixed 360px dock took 40% of a narrow window; below

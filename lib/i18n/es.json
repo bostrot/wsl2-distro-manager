@@ -707,9 +707,9 @@
   "mcp-quickconnect-failed-text": "No se pudo actualizar la configuración de Claude Desktop.",
   "ai-ran-tool-text": "Ejecutó %s",
   "sandbox-title-text": "Entornos aislados",
-  "sandbox-subtitle-text": "Una distro Ubuntu aislada a la que se limita un chat de IA: el modelo puede hacer cualquier cosa dentro y nada fuera.",
+  "sandbox-subtitle-text": "Una distro aislada a la que se limita un chat de IA: el modelo solo puede actuar dentro de ella, nunca en tu equipo Windows ni en otras distros. Nota: la propia distro aislada sigue teniendo acceso normal a internet.",
   "sandbox-none-text": "Aún no hay entornos aislados.",
-  "sandbox-add-text": "Añadir distro Ubuntu personalizada",
+  "sandbox-add-text": "Añadir distro aislada",
   "sandbox-name-hint-text": "Nombre, p. ej. playground",
   "sandbox-open-chat-text": "Abrir chat",
   "sandbox-creating-text": "Creando la distro aislada…",
@@ -719,11 +719,13 @@
   "sandbox-created-text": "Entorno aislado creado.",
   "sandbox-create-failed-text": "No se pudo crear el entorno aislado.",
   "sandbox-chat-title": "Chat aislado — %s",
-  "sandbox-chat-scope-text": "Este chat está limitado al entorno aislado. Solo puede ejecutar comandos y editar archivos dentro de esta distro, nunca en tu equipo Windows ni en otras distros.",
+  "sandbox-chat-scope-text": "Este chat está limitado al entorno aislado. Solo puede ejecutar comandos y editar archivos dentro de esta distro, nunca en tu equipo Windows ni en otras distros. El propio entorno aislado sigue teniendo acceso normal a internet.",
   "sandbox-chat-hint-text": "Pide al asistente que configure o ejecute algo dentro del entorno aislado.",
   "ai-tasks-title": "Tareas",
   "ai-tasks-work-text": "Trabajar en las tareas",
   "ai-tasks-add-hint-text": "Añadir una tarea…",
   "sandbox-session-new-text": "sin chat todavía",
-  "ai-sessions-text": "Sesiones de chat"
+  "ai-sessions-text": "Sesiones de chat",
+  "sandbox-image-default-text": "Ubuntu más reciente (predeterminado)",
+  "sandbox-disk-space-text": "No hay suficiente espacio libre en disco: un entorno aislado necesita unos 3 GB."
 }

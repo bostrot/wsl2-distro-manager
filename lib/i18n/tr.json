@@ -707,9 +707,9 @@
   "mcp-quickconnect-failed-text": "Claude Desktop yapılandırması güncellenemedi.",
   "ai-ran-tool-text": "%s çalıştırıldı",
   "sandbox-title-text": "Kum havuzları",
-  "sandbox-subtitle-text": "Bir yapay zekâ sohbetinin sınırlandığı yalıtılmış bir Ubuntu dağıtımı — model içinde her şeyi yapabilir, dışında hiçbir şey.",
+  "sandbox-subtitle-text": "Bir yapay zekâ sohbetinin sınırlandığı yalıtılmış bir dağıtım — model yalnızca içinde hareket edebilir, asla Windows makinende veya başka dağıtımlarda değil. Not: kum havuzunun kendisi normal internet erişimine sahiptir.",
   "sandbox-none-text": "Henüz kum havuzu yok.",
-  "sandbox-add-text": "Özel Ubuntu dağıtımı ekle",
+  "sandbox-add-text": "Kum havuzu dağıtımı ekle",
   "sandbox-name-hint-text": "Ad, örn. playground",
   "sandbox-open-chat-text": "Sohbeti aç",
   "sandbox-creating-text": "Kum havuzu dağıtımı oluşturuluyor…",
@@ -719,11 +719,13 @@
   "sandbox-created-text": "Kum havuzu oluşturuldu.",
   "sandbox-create-failed-text": "Kum havuzu oluşturulamadı.",
   "sandbox-chat-title": "Kum havuzu sohbeti — %s",
-  "sandbox-chat-scope-text": "Bu sohbet kum havuzuyla sınırlıdır. Yalnızca bu dağıtımın içinde komut çalıştırabilir ve dosya düzenleyebilir — asla Windows makinende veya başka dağıtımlarda.",
+  "sandbox-chat-scope-text": "Bu sohbet kum havuzuyla sınırlıdır. Yalnızca bu dağıtımın içinde komut çalıştırabilir ve dosya düzenleyebilir — asla Windows makinende veya başka dağıtımlarda. Kum havuzunun kendisi normal internet erişimine sahiptir.",
   "sandbox-chat-hint-text": "Asistandan kum havuzunun içinde bir şey kurmasını veya çalıştırmasını iste.",
   "ai-tasks-title": "Görevler",
   "ai-tasks-work-text": "Görevleri hallet",
   "ai-tasks-add-hint-text": "Görev ekle…",
   "sandbox-session-new-text": "henüz sohbet yok",
-  "ai-sessions-text": "Sohbet oturumları"
+  "ai-sessions-text": "Sohbet oturumları",
+  "sandbox-image-default-text": "En yeni Ubuntu (varsayılan)",
+  "sandbox-disk-space-text": "Yeterli boş disk alanı yok — bir kum havuzu yaklaşık 3 GB gerektirir."
 }

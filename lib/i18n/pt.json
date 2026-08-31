@@ -709,9 +709,9 @@
   "mcp-quickconnect-failed-text": "Não foi possível atualizar a configuração do Claude Desktop.",
   "ai-ran-tool-text": "Executou %s",
   "sandbox-title-text": "Sandboxes",
-  "sandbox-subtitle-text": "Uma distro Ubuntu isolada à qual um chat de IA fica confinado — o modelo pode fazer tudo dentro dela e nada fora.",
+  "sandbox-subtitle-text": "Uma distro isolada à qual um chat de IA fica confinado — o modelo só pode agir dentro dela, nunca na sua máquina Windows ou em outras distros. Nota: a própria sandbox continua com acesso normal à internet.",
   "sandbox-none-text": "Ainda não há sandboxes.",
-  "sandbox-add-text": "Adicionar distro Ubuntu personalizada",
+  "sandbox-add-text": "Adicionar distro sandbox",
   "sandbox-name-hint-text": "Nome, ex.: playground",
   "sandbox-open-chat-text": "Abrir chat",
   "sandbox-creating-text": "Criando a distro sandbox…",
@@ -721,11 +721,13 @@
   "sandbox-created-text": "Sandbox criada.",
   "sandbox-create-failed-text": "Não foi possível criar a sandbox.",
   "sandbox-chat-title": "Chat da sandbox — %s",
-  "sandbox-chat-scope-text": "Este chat está confinado à sandbox. Só pode executar comandos e editar arquivos dentro desta distro — nunca na sua máquina Windows ou em outras distros.",
+  "sandbox-chat-scope-text": "Este chat está confinado à sandbox. Só pode executar comandos e editar arquivos dentro desta distro — nunca na sua máquina Windows ou em outras distros. A própria sandbox continua com acesso normal à internet.",
   "sandbox-chat-hint-text": "Peça ao assistente para configurar ou executar algo dentro da sandbox.",
   "ai-tasks-title": "Tarefas",
   "ai-tasks-work-text": "Trabalhar nas tarefas",
   "ai-tasks-add-hint-text": "Adicionar uma tarefa…",
   "sandbox-session-new-text": "ainda sem chat",
-  "ai-sessions-text": "Sessões de chat"
+  "ai-sessions-text": "Sessões de chat",
+  "sandbox-image-default-text": "Ubuntu mais recente (padrão)",
+  "sandbox-disk-space-text": "Espaço em disco insuficiente — uma sandbox precisa de cerca de 3 GB."
 }

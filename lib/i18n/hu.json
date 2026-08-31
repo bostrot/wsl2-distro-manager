@@ -707,9 +707,9 @@
   "mcp-quickconnect-failed-text": "A Claude Desktop konfigurációját nem sikerült frissíteni.",
   "ai-ran-tool-text": "%s futtatva",
   "sandbox-title-text": "Homokozók",
-  "sandbox-subtitle-text": "Egy elszigetelt Ubuntu-disztró, amelyre egy MI-csevegés korlátozódik — a modell bármit megtehet benne, kívüle semmit.",
+  "sandbox-subtitle-text": "Egy elszigetelt disztró, amelyre egy MI-csevegés korlátozódik — a modell csak benne cselekedhet, soha a Windows gépeden vagy más disztrókban. Megjegyzés: a homokozónak magának továbbra is normál internet-hozzáférése van.",
   "sandbox-none-text": "Még nincs homokozó.",
-  "sandbox-add-text": "Egyéni Ubuntu-disztró hozzáadása",
+  "sandbox-add-text": "Homokozó-disztró hozzáadása",
   "sandbox-name-hint-text": "Név, pl. playground",
   "sandbox-open-chat-text": "Csevegés megnyitása",
   "sandbox-creating-text": "A homokozó-disztró létrehozása…",
@@ -719,11 +719,13 @@
   "sandbox-created-text": "Homokozó létrehozva.",
   "sandbox-create-failed-text": "A homokozót nem sikerült létrehozni.",
   "sandbox-chat-title": "Homokozó-csevegés — %s",
-  "sandbox-chat-scope-text": "Ez a csevegés a homokozóra korlátozódik. Csak ebben a disztróban futtathat parancsokat és szerkeszthet fájlokat — soha a Windows gépeden vagy más disztróban.",
+  "sandbox-chat-scope-text": "Ez a csevegés a homokozóra korlátozódik. Csak ebben a disztróban futtathat parancsokat és szerkeszthet fájlokat — soha a Windows gépeden vagy más disztrókban. A homokozónak magának továbbra is normál internet-hozzáférése van.",
   "sandbox-chat-hint-text": "Kérd meg az asszisztenst, hogy állítson be vagy futtasson valamit a homokozóban.",
   "ai-tasks-title": "Feladatok",
   "ai-tasks-work-text": "Feladatok elvégzése",
   "ai-tasks-add-hint-text": "Feladat hozzáadása…",
   "sandbox-session-new-text": "még nincs csevegés",
-  "ai-sessions-text": "Csevegési munkamenetek"
+  "ai-sessions-text": "Csevegési munkamenetek",
+  "sandbox-image-default-text": "Legújabb Ubuntu (alapértelmezett)",
+  "sandbox-disk-space-text": "Nincs elég szabad lemezterület — egy homokozóhoz kb. 3 GB kell."
 }

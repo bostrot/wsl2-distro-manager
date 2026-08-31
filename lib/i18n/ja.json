@@ -707,9 +707,9 @@
   "mcp-quickconnect-failed-text": "Claude Desktop の設定を更新できませんでした。",
   "ai-ran-tool-text": "%s を実行しました",
   "sandbox-title-text": "サンドボックス",
-  "sandbox-subtitle-text": "AI チャットが限定される隔離された Ubuntu ディストロ — モデルはその中では何でもでき、外では何もできません。",
+  "sandbox-subtitle-text": "AI チャットが限定される隔離ディストロ — モデルはその内部でのみ行動でき、Windows マシンや他のディストロには決して触れません。注意: サンドボックス自体は通常のインターネット アクセスを持ちます。",
   "sandbox-none-text": "サンドボックスはまだありません。",
-  "sandbox-add-text": "カスタム Ubuntu ディストロを追加",
+  "sandbox-add-text": "サンドボックス ディストロを追加",
   "sandbox-name-hint-text": "名前（例: playground）",
   "sandbox-open-chat-text": "チャットを開く",
   "sandbox-creating-text": "サンドボックス ディストロを作成しています…",
@@ -719,11 +719,13 @@
   "sandbox-created-text": "サンドボックスを作成しました。",
   "sandbox-create-failed-text": "サンドボックスを作成できませんでした。",
   "sandbox-chat-title": "サンドボックス チャット — %s",
-  "sandbox-chat-scope-text": "このチャットはサンドボックスに限定されています。このディストロ内でのみコマンドの実行やファイルの編集ができ、Windows マシンや他のディストロには一切アクセスできません。",
+  "sandbox-chat-scope-text": "このチャットはサンドボックスに限定されています。このディストロ内でのみコマンドの実行やファイルの編集ができ、Windows マシンや他のディストロには一切アクセスできません。サンドボックス自体は通常のインターネット アクセスを持ちます。",
   "sandbox-chat-hint-text": "サンドボックス内で何かをセットアップまたは実行するようアシスタントに依頼してください。",
   "ai-tasks-title": "タスク",
   "ai-tasks-work-text": "タスクを進める",
   "ai-tasks-add-hint-text": "タスクを追加…",
   "sandbox-session-new-text": "チャット履歴なし",
-  "ai-sessions-text": "チャット セッション"
+  "ai-sessions-text": "チャット セッション",
+  "sandbox-image-default-text": "最新の Ubuntu（既定）",
+  "sandbox-disk-space-text": "空きディスク容量が不足しています。サンドボックスには約 3 GB 必要です。"
 }

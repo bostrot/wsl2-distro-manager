@@ -53,9 +53,11 @@ class SandboxService {
     prefs.setStringList(_prefsKey, all);
   }
 
-  /// Picks the catalog's best Ubuntu entry (falling back to the first entry).
-  String? _pickUbuntuUrl(Map<String, String> links) {
+  /// The catalog URL for [image] (an exact catalog key), or — when [image]
+  /// is null — the newest Ubuntu entry, falling back to the first entry.
+  String? _pickImageUrl(Map<String, String> links, String? image) {
     if (links.isEmpty) return null;
+    if (image != null && links.containsKey(image)) return links[image];
     final ubuntu = links.entries
         .where((e) => e.key.toLowerCase().contains('ubuntu'))
         .toList()
@@ -78,42 +80,78 @@ class SandboxService {
   /// Whether a creation is currently running.
   static bool get isCreating => creationStage.value != null;
 
-  /// Creates an Ubuntu sandbox: downloads the catalog rootfs and imports it as
-  /// a new distro. Returns the registered distro name. Progress is published
-  /// on [creationStage] so any page (or none) can watch it.
-  Future<String> createUbuntuSandbox(String name) async {
+  /// Download progress of the current creation, 0..1, or null when unknown
+  /// or idle — the rootfs is ~700 MB and a bare "downloading" told the user
+  /// nothing for minutes.
+  static final ValueNotifier<double?> creationProgress =
+      ValueNotifier<double?>(null);
+
+  static CancelToken? _creationCancelToken;
+
+  /// Aborts the running creation: the download is torn down and the partial
+  /// file deleted.
+  static void cancelCreation() => _creationCancelToken?.cancel();
+
+  /// Creation refuses to start below this much free disk. The rootfs plus
+  /// its imported VHD comfortably exceed 2 GB, and this machine has already
+  /// demonstrated what 0 bytes free does to everything else (2026-08-31).
+  static const int minFreeBytes = 3 * 1024 * 1024 * 1024;
+
+  /// Creates a sandbox from a catalog image ([image] is a catalog key;
+  /// null = newest Ubuntu): downloads the rootfs and imports it as a new
+  /// distro. Returns the registered distro name. Progress is published on
+  /// [creationStage] / [creationProgress] so any page (or none) can watch.
+  Future<String> createUbuntuSandbox(String name, {String? image}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw ArgumentError('A name is required.');
     if (isCreating) throw StateError('A sandbox is already being created.');
     final distro = distroNameFor(trimmed);
 
     creationStage.value = 'resolving';
+    final cancelToken = _creationCancelToken = CancelToken();
+    final tmp = '${Directory.systemTemp.path}${Platform.pathSeparator}'
+        'wslm-sandbox-${trimmed.hashCode}.tar.gz';
     try {
+      // Refuse up front rather than fail mid-download: a full disk here took
+      // the whole machine down with it, not just this feature.
+      final free = await _api
+          .freeSpaceBytes(prefs.getString('DistroPath') ?? Directory.systemTemp.path);
+      if (free != null && free < minFreeBytes) {
+        throw Exception('sandbox-disk-space');
+      }
+
       final existing = await _api.list(false);
       if (existing.all.any((d) => d.toLowerCase() == distro.toLowerCase())) {
         throw StateError('A distro named "$distro" already exists.');
       }
 
       final links = await _app.getDistroLinks();
-      final url = _pickUbuntuUrl(links);
+      final url = _pickImageUrl(links, image);
       if (url == null) {
-        throw StateError('No Ubuntu image is available in the catalog.');
+        throw StateError('No matching image is available in the catalog.');
       }
 
       creationStage.value = 'downloading';
-      final tmp = '${Directory.systemTemp.path}${Platform.pathSeparator}'
-          'wslm-sandbox-${trimmed.hashCode}.tar.gz';
-      await _dio.download(url, tmp);
+      await _dio.download(url, tmp, cancelToken: cancelToken,
+          onReceiveProgress: (received, total) {
+        creationProgress.value = total > 0 ? received / total : null;
+      });
 
+      creationProgress.value = null;
       creationStage.value = 'importing';
       await _api.import(distro, '', tmp);
-      try {
-        File(tmp).deleteSync();
-      } catch (_) {}
 
       _remember(distro);
       return distro;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) throw const CancelledException();
+      rethrow;
     } finally {
+      try {
+        File(tmp).deleteSync();
+      } catch (_) {}
+      _creationCancelToken = null;
+      creationProgress.value = null;
       creationStage.value = null;
     }
   }

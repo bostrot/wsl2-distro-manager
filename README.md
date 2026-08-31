@@ -82,11 +82,13 @@ guessing. Tool calls are shown inline as it works.
 - **Claude subscription** — *Sign in with Claude* (OAuth): the chat then runs on
   your Claude plan through the Messages API. No API key to paste.
 
-**Sandboxes** (AI Workspace → *Add custom Ubuntu distro*) create a throwaway
-Ubuntu distro. Its chat is handed only the `sandbox_*` tools, which are locked to
-that one distro — the model can run anything *inside* the sandbox and can never
-see your Windows host or any other distro. Sandbox chats use the same docked
-panel as the assistant (task queue included), their transcripts persist, and the
+**Sandboxes** (AI Workspace → *Add sandbox distro*) create a throwaway distro
+from any catalog image (newest Ubuntu by default). Its chat is handed only the
+`sandbox_*` tools, which are locked to that one distro — the model can run
+anything *inside* the sandbox and can never see your Windows host or any other
+distro. One honest caveat: the sandbox distro itself has normal outbound
+internet access, like any WSL distro. Sandbox chats use the same docked panel
+as the assistant (task queue included), their transcripts persist, and the
 history button in the chat header switches between the assistant and any
 sandbox session.
 

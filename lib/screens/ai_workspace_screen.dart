@@ -6,6 +6,8 @@ import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/api/app.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
@@ -81,6 +83,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // Creation is app-global (it survives leaving this page); repaint the
     // section whenever its stage moves, including from "running" to done.
     SandboxService.creationStage.addListener(_onSandboxStage);
+    SandboxService.creationProgress.addListener(_onSandboxStage);
     if (_isPro) {
       // Spinner only where nothing is known yet; cached state renders at
       // once and is refreshed below without blocking the UI.
@@ -99,6 +102,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   @override
   void dispose() {
     SandboxService.creationStage.removeListener(_onSandboxStage);
+    SandboxService.creationProgress.removeListener(_onSandboxStage);
     _installWatch?.cancel();
     _startingWatch?.cancel();
     super.dispose();
@@ -616,10 +620,16 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             ),
           const SizedBox(height: 8),
           if (SandboxService.isCreating)
-            _buildInlineStatus(
-                '${'sandbox-creating-text'.i18n()} '
-                '(${'sandbox-stage-${SandboxService.creationStage.value}-text'.i18n()})',
-                fill: true)
+            Row(
+              children: [
+                Expanded(child: _buildInlineStatus(_sandboxStatusLabel(), fill: true)),
+                Button(
+                  key: const ValueKey('test-sandbox-cancel'),
+                  onPressed: SandboxService.cancelCreation,
+                  child: Text('cancel-text'.i18n()),
+                ),
+              ],
+            )
           else
             Button(
               key: const ValueKey('test-sandbox-add'),
@@ -639,51 +649,109 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     if (mounted) setState(() => _sandboxes = _sandbox.list());
   }
 
+  /// "Creating the sandbox distro… (downloading 42%)".
+  String _sandboxStatusLabel() {
+    final stage = SandboxService.creationStage.value;
+    var stageLabel = 'sandbox-stage-$stage-text'.i18n();
+    final progress = SandboxService.creationProgress.value;
+    if (stage == 'downloading' && progress != null) {
+      stageLabel = '$stageLabel ${(progress * 100).round()}%';
+    }
+    return '${'sandbox-creating-text'.i18n()} ($stageLabel)';
+  }
+
   Future<void> _addSandbox() async {
     final controller = TextEditingController();
-    final name = await showDialog<String>(
+    String? image; // null = newest Ubuntu, the labelled default.
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => ContentDialog(
-        title: Text('sandbox-add-text'.i18n()),
-        // mainAxisSize.min: a bare TextBox handed the dialog's tall
-        // constraints stretched to the full dialog height (user-reported).
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextBox(
-              key: const ValueKey('test-sandbox-name'),
-              controller: controller,
-              placeholder: 'sandbox-name-hint-text'.i18n(),
-              autofocus: true,
-              onSubmitted: (v) => Navigator.of(context).pop(v),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => ContentDialog(
+          title: Text('sandbox-add-text'.i18n()),
+          // mainAxisSize.min: a bare TextBox handed the dialog's tall
+          // constraints stretched to the full dialog height (user-reported).
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextBox(
+                key: const ValueKey('test-sandbox-name'),
+                controller: controller,
+                placeholder: 'sandbox-name-hint-text'.i18n(),
+                autofocus: true,
+                onSubmitted: (v) => Navigator.of(context).pop(true),
+              ),
+              const SizedBox(height: 12),
+              // Any catalog image, not just Ubuntu — the plumbing has always
+              // taken an arbitrary rootfs URL.
+              FutureBuilder<Map<String, String>>(
+                future: App().getDistroLinks(),
+                builder: (context, snapshot) {
+                  final keys = (snapshot.data ?? const {}).keys.toList()
+                    ..sort();
+                  return DropDownButton(
+                    key: const ValueKey('test-sandbox-image'),
+                    title: Text(image ?? 'sandbox-image-default-text'.i18n()),
+                    items: [
+                      MenuFlyoutItem(
+                        selected: image == null,
+                        leading: image == null
+                            ? const Icon(FluentIcons.check_mark, size: 12.0)
+                            : const SizedBox.square(dimension: 12.0),
+                        text: Text('sandbox-image-default-text'.i18n()),
+                        onPressed: () => setDialogState(() => image = null),
+                      ),
+                      if (keys.isNotEmpty) const MenuFlyoutSeparator(),
+                      for (final key in keys)
+                        MenuFlyoutItem(
+                          selected: image == key,
+                          leading: image == key
+                              ? const Icon(FluentIcons.check_mark, size: 12.0)
+                              : const SizedBox.square(dimension: 12.0),
+                          text: Text(key),
+                          onPressed: () => setDialogState(() => image = key),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: [
+            Button(
+              child: Text('cancel-text'.i18n()),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            FilledButton(
+              child: Text('create-text'.i18n()),
+              onPressed: () => Navigator.of(context).pop(true),
             ),
           ],
         ),
-        actions: [
-          Button(
-            child: Text('cancel-text'.i18n()),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          FilledButton(
-            child: Text('create-text'.i18n()),
-            onPressed: () => Navigator.of(context).pop(controller.text),
-          ),
-        ],
       ),
     );
-    if (name == null || name.trim().isEmpty) return;
+    final name = controller.text;
+    if (confirmed != true || name.trim().isEmpty) return;
     // Fire and forget: the download takes minutes and must not be tied to
     // this page's lifetime — the global stage notifier carries progress and
     // the toasts land wherever the user is when it finishes.
-    _sandbox.createUbuntuSandbox(name).then((_) {
+    _sandbox.createUbuntuSandbox(name, image: image).then((_) {
       Notify.message('sandbox-created-text'.i18n(),
           severity: InfoBarSeverity.success);
       _refreshSandboxes();
     }).catchError((e) {
-      Notify.message(
-          '${'sandbox-create-failed-text'.i18n()} ${WslFailure.from(e).shortReason}'
-              .trim(),
-          severity: InfoBarSeverity.error);
+      if (e is CancelledException) {
+        Notify.message('createcancelled-text'.i18n(),
+            severity: InfoBarSeverity.warning);
+      } else if (e.toString().contains('sandbox-disk-space')) {
+        Notify.message('sandbox-disk-space-text'.i18n(),
+            severity: InfoBarSeverity.error);
+      } else {
+        Notify.message(
+            '${'sandbox-create-failed-text'.i18n()} ${WslFailure.from(e).shortReason}'
+                .trim(),
+            severity: InfoBarSeverity.error);
+      }
       _refreshSandboxes();
     });
   }
@@ -693,6 +761,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   }
 
   Future<void> _deleteSandbox(String distro) async {
+    // A dock pointed at a distro that no longer exists would be a dead
+    // transcript; hand it back to the assistant first.
+    if (GlobalVariable.sandboxChat.value == distro) {
+      GlobalVariable.sandboxChat.value = null;
+    }
     try {
       await _sandbox.deleteSandbox(distro);
     } catch (_) {}

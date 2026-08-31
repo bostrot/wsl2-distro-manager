@@ -708,9 +708,9 @@
   "mcp-quickconnect-failed-text": "无法更新 Claude Desktop 的配置。",
   "ai-ran-tool-text": "已运行 %s",
   "sandbox-title-text": "沙盒",
-  "sandbox-subtitle-text": "AI 聊天被限定其中的隔离 Ubuntu 发行版——模型在其内部无所不能，在其外部一无所能。",
+  "sandbox-subtitle-text": "AI 聊天被限定其中的隔离发行版——模型只能在其内部行动，绝不会触及你的 Windows 计算机或其他发行版。注意：沙盒本身仍拥有正常的互联网访问。",
   "sandbox-none-text": "还没有沙盒。",
-  "sandbox-add-text": "添加自定义 Ubuntu 发行版",
+  "sandbox-add-text": "添加沙盒发行版",
   "sandbox-name-hint-text": "名称，例如 playground",
   "sandbox-open-chat-text": "打开聊天",
   "sandbox-creating-text": "正在创建沙盒发行版…",
@@ -720,11 +720,13 @@
   "sandbox-created-text": "沙盒已创建。",
   "sandbox-create-failed-text": "无法创建沙盒。",
   "sandbox-chat-title": "沙盒聊天 — %s",
-  "sandbox-chat-scope-text": "此聊天仅限于该沙盒。它只能在此发行版内运行命令和编辑文件——绝不会触及你的 Windows 计算机或其他发行版。",
+  "sandbox-chat-scope-text": "此聊天仅限于该沙盒。它只能在此发行版内运行命令和编辑文件——绝不会触及你的 Windows 计算机或其他发行版。沙盒本身仍拥有正常的互联网访问。",
   "sandbox-chat-hint-text": "让助手在沙盒内设置或运行某些内容。",
   "ai-tasks-title": "任务",
   "ai-tasks-work-text": "处理这些任务",
   "ai-tasks-add-hint-text": "添加任务…",
   "sandbox-session-new-text": "尚无聊天",
-  "ai-sessions-text": "聊天会话"
+  "ai-sessions-text": "聊天会话",
+  "sandbox-image-default-text": "最新 Ubuntu（默认）",
+  "sandbox-disk-space-text": "可用磁盘空间不足——一个沙盒大约需要 3 GB。"
 }

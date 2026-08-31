@@ -90,6 +90,44 @@ void main() {
               .createUbuntuSandbox('   '),
           throwsArgumentError);
     });
+
+    test('a named catalog image overrides the Ubuntu default', () async {
+      final adapter = _StringAdapter(
+          (_) => ResponseBody.fromString('rootfs-bytes', 200));
+      final svc = SandboxService(
+        api: WSLApi(shell: MockShell()),
+        app: _FakeApp({
+          'Alpine': 'https://example.com/alpine.tar.gz',
+          'Ubuntu-24.04': 'https://example.com/ubuntu-2404.tar.gz',
+        }),
+        dio: Dio()..httpClientAdapter = adapter,
+      );
+
+      await svc.createUbuntuSandbox('alp', image: 'Alpine');
+
+      expect(adapter.requests.single.path,
+          'https://example.com/alpine.tar.gz');
+    });
+
+    test('creation publishes stage and clears it when done', () async {
+      final svc = SandboxService(
+        api: WSLApi(shell: MockShell()),
+        app: _FakeApp({'Ubuntu-24.04': 'https://example.com/u.tar.gz'}),
+        dio: Dio()
+          ..httpClientAdapter = _StringAdapter(
+              (_) => ResponseBody.fromString('rootfs-bytes', 200)),
+      );
+      final stages = <String?>[];
+      void listener() => stages.add(SandboxService.creationStage.value);
+      SandboxService.creationStage.addListener(listener);
+      addTearDown(
+          () => SandboxService.creationStage.removeListener(listener));
+
+      await svc.createUbuntuSandbox('stagey');
+
+      expect(stages, containsAllInOrder(['resolving', 'downloading', 'importing', null]));
+      expect(SandboxService.isCreating, false);
+    });
   });
 
   group('buildSandboxTools scoping', () {

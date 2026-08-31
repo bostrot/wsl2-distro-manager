@@ -708,9 +708,9 @@
   "mcp-quickconnect-failed-text": "Die Konfiguration von Claude Desktop konnte nicht aktualisiert werden.",
   "ai-ran-tool-text": "%s ausgeführt",
   "sandbox-title-text": "Sandboxes",
-  "sandbox-subtitle-text": "Eine isolierte Ubuntu-Distribution, auf die ein KI-Chat beschränkt ist — das Modell darf darin alles und außerhalb nichts.",
+  "sandbox-subtitle-text": "Eine isolierte Distribution, auf die ein KI-Chat beschränkt ist — das Modell kann nur darin handeln, nie auf deinem Windows-Rechner oder in anderen Distributionen. Hinweis: Die Sandbox selbst hat weiterhin normalen Internetzugang.",
   "sandbox-none-text": "Noch keine Sandboxes.",
-  "sandbox-add-text": "Eigene Ubuntu-Distribution hinzufügen",
+  "sandbox-add-text": "Sandbox-Distribution hinzufügen",
   "sandbox-name-hint-text": "Name, z. B. playground",
   "sandbox-open-chat-text": "Chat öffnen",
   "sandbox-creating-text": "Sandbox-Distribution wird erstellt …",
@@ -720,11 +720,13 @@
   "sandbox-created-text": "Sandbox erstellt.",
   "sandbox-create-failed-text": "Sandbox konnte nicht erstellt werden.",
   "sandbox-chat-title": "Sandbox-Chat — %s",
-  "sandbox-chat-scope-text": "Dieser Chat ist auf die Sandbox beschränkt. Er kann nur in dieser Distribution Befehle ausführen und Dateien bearbeiten — niemals auf deinem Windows-Rechner oder in anderen Distributionen.",
+  "sandbox-chat-scope-text": "Dieser Chat ist auf die Sandbox beschränkt. Er kann nur in dieser Distribution Befehle ausführen und Dateien bearbeiten — nie auf deinem Windows-Rechner oder in anderen Distributionen. Die Sandbox selbst hat weiterhin normalen Internetzugang.",
   "sandbox-chat-hint-text": "Bitte den Assistenten, in der Sandbox etwas einzurichten oder auszuführen.",
   "ai-tasks-title": "Aufgaben",
   "ai-tasks-work-text": "Aufgaben abarbeiten",
   "ai-tasks-add-hint-text": "Aufgabe hinzufügen …",
   "sandbox-session-new-text": "noch kein Chat",
-  "ai-sessions-text": "Chat-Sitzungen"
+  "ai-sessions-text": "Chat-Sitzungen",
+  "sandbox-image-default-text": "Neuestes Ubuntu (Standard)",
+  "sandbox-disk-space-text": "Nicht genug freier Speicherplatz — eine Sandbox braucht etwa 3 GB."
 }
