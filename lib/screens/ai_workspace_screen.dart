@@ -594,10 +594,15 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                     onPressed: () => showSandboxChat(distro),
                   ),
                   const SizedBox(width: 6),
-                  IconButton(
-                    icon: Icon(FluentIcons.delete,
-                        size: 14, color: destructiveColor(context)),
-                    onPressed: () => _deleteSandbox(distro),
+                  MergeSemantics(
+                    child: Tooltip(
+                      message: 'delete-text'.i18n(),
+                      child: IconButton(
+                        icon: Icon(FluentIcons.delete,
+                            size: 14, color: destructiveColor(context)),
+                        onPressed: () => _deleteSandbox(distro),
+                      ),
+                    ),
                   ),
                 ],
               ),

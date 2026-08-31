@@ -425,12 +425,14 @@ class _AiChatPanelState extends State<AiChatPanel> {
                     fontSize: 11, color: secondaryTextColor(context))),
           const Spacer(),
           if (_todos.hasOpen)
-            Tooltip(
-              message: 'ai-tasks-work-text'.i18n(),
-              child: IconButton(
-                key: const ValueKey('test-chat-work-tasks'),
-                icon: const Icon(FluentIcons.play, size: 12),
-                onPressed: _isLoading ? null : _workOnTasks,
+            MergeSemantics(
+              child: Tooltip(
+                message: 'ai-tasks-work-text'.i18n(),
+                child: IconButton(
+                  key: const ValueKey('test-chat-work-tasks'),
+                  icon: const Icon(FluentIcons.play, size: 12),
+                  onPressed: _isLoading ? null : _workOnTasks,
+                ),
               ),
             ),
         ],
@@ -467,10 +469,15 @@ class _AiChatPanelState extends State<AiChatPanel> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(FluentIcons.clear,
-                        size: 10, color: secondaryTextColor(context)),
-                    onPressed: () => _todos.remove(t.id),
+                  MergeSemantics(
+                    child: Tooltip(
+                      message: 'delete-text'.i18n(),
+                      child: IconButton(
+                        icon: Icon(FluentIcons.clear,
+                            size: 10, color: secondaryTextColor(context)),
+                        onPressed: () => _todos.remove(t.id),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -492,7 +499,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                IconButton(
+                MergeSemantics(
+                  child: Tooltip(
+                    message: 'ai-tasks-add-hint-text'.i18n(),
+                    child: IconButton(
                   icon: const Icon(FluentIcons.add, size: 12),
                   onPressed: () {
                     final v = _todoInputController.text.trim();
@@ -501,6 +511,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
                       _todoInputController.clear();
                     }
                   },
+                ),
+                  ),
                 ),
               ],
             ),
