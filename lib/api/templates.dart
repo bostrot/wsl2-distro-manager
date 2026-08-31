@@ -80,8 +80,10 @@ class Templates {
     prefs.setStringList('templates', templates);
     // Remove description
     prefs.remove('template_description_$name');
-    // Delete template file
-    await File(getTemplateFilePath(name)).delete();
+    // Delete template file. The prefs entry is already gone, so a file
+    // something else removed must not turn the cleanup into a crash.
+    final file = File(getTemplateFilePath(name));
+    if (await file.exists()) await file.delete();
     Notify.message('deletedinstance-text'.i18n([name]),
         severity: InfoBarSeverity.success);
   }

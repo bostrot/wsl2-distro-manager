@@ -80,13 +80,14 @@ void main() {
     expect(res, "");
   });
 
-  tearDownAll(() {
-    // Delete the instance
-    api.remove('test');
-    api.remove('test2');
-    templates.deleteTemplate('test');
-    templates.deleteTemplate('test-2');
-    templates.deleteTemplate('test-3');
+  tearDownAll(() async {
+    // Delete the instance. Awaited: unawaited futures here failed the suite
+    // *after* it had completed whenever a template file was already gone.
+    await api.remove('test');
+    await api.remove('test2');
+    await templates.deleteTemplate('test');
+    await templates.deleteTemplate('test-2');
+    await templates.deleteTemplate('test-3');
   });
 
   test('Create template', () async {
