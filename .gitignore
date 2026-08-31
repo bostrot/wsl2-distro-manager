@@ -4,7 +4,13 @@ Ubuntu*
 /distros/
 /certs/
 *.secret
-macos/
+# macOS platform build output (sources under macos/ are tracked)
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/Runner.xcworkspace/xcuserdata/
+macos/Runner.xcodeproj/xcuserdata/
+macos/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+macos/vmctl/.build/
 
 # Miscellaneous
 *.class
@@ -70,3 +76,6 @@ SESSION-HANDOFF.md
 # Playbook Phase-*.md documents stay tracked; only generated output is ignored.
 .maestro/screenshots/
 .maestro/playbooks/**/Working/
+# Literal Windows-style paths created by tests on non-Windows hosts
+/C:*
+/D:*

@@ -5,7 +5,7 @@
 
 version:
   revision: "db50e20168db8fee486b9abf32fc912de3bc5b6a"
-  channel: "stable"
+  channel: "[user-branch]"
 
 project_type: app
 
@@ -15,7 +15,7 @@ migration:
     - platform: root
       create_revision: db50e20168db8fee486b9abf32fc912de3bc5b6a
       base_revision: db50e20168db8fee486b9abf32fc912de3bc5b6a
-    - platform: linux
+    - platform: macos
       create_revision: db50e20168db8fee486b9abf32fc912de3bc5b6a
       base_revision: db50e20168db8fee486b9abf32fc912de3bc5b6a
 
