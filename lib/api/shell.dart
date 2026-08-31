@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:wsl2distromanager/api/process_reaper.dart';
 
 /// Shared SSH client options for remote WSL connections.
 List<String> getSshClientOptions() {
@@ -84,8 +85,8 @@ class ProcessShell implements Shell {
     bool includeParentEnvironment = true,
     bool runInShell = false,
     ProcessStartMode mode = ProcessStartMode.normal,
-  }) {
-    return Process.start(
+  }) async {
+    final process = await Process.start(
       executable,
       arguments,
       workingDirectory: workingDirectory,
@@ -94,5 +95,9 @@ class ProcessShell implements Shell {
       runInShell: runInShell,
       mode: mode,
     );
+    // Tie the child to the app job so a force-kill of the app takes it down
+    // too — best-effort, never throws, no-op off Windows.
+    ProcessReaper.instance.adopt(process.pid);
+    return process;
   }
 }
