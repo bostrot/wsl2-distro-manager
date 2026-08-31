@@ -46,7 +46,9 @@ void main() {
       await tool('wsl_run_command')
           .handler({'distro': 'Ubuntu', 'command': 'echo hi'});
 
-      expect(mockShell.lastRunArguments,
+      // Through the broker now (start channel), so assert on runCalls,
+      // which sees both channels.
+      expect(mockShell.runCalls.last,
           ['-d', 'Ubuntu', '-u', 'root', '--exec', 'bash', '-c', 'echo hi']);
     });
 
@@ -59,8 +61,8 @@ void main() {
       await tool('wsl_run_command')
           .handler({'distro': 'Ubuntu', 'command': cmd});
 
-      expect(mockShell.lastRunArguments.last, cmd);
-      expect(mockShell.lastRunArguments, contains('--exec'));
+      expect(mockShell.runCalls.last.last, cmd);
+      expect(mockShell.runCalls.last, contains('--exec'));
       expect(mockShell.lastRunInShell, isFalse);
     });
 
@@ -103,21 +105,156 @@ void main() {
     });
   });
 
-  test('the destructive operations are not exposed as tools', () {
+  test('the tool surface covers the whole lifecycle', () {
     final names =
         buildWslMcpTools(wslApi, terminalManager).map((t) => t.name).toSet();
-    // Deliberately excluded from v1: distro creation/deletion/export/move
-    // are one-way or disk-heavy and belong in the GUI where a human
-    // directly confirms them, not behind an agent-callable MCP tool.
+    // v2 exposes create → configure → operate → destroy. The one-way
+    // operation (unregister) is confirm-gated rather than hidden — see the
+    // dedicated group below.
     expect(names, {
       'wsl_list_distros',
+      'wsl_distro_info',
+      'wsl_status',
+      'wsl_list_online_distros',
+      'wsl_install_distro',
+      'wsl_import_distro',
+      'wsl_import_in_place',
+      'wsl_export_distro',
+      'wsl_unregister_distro',
+      'wsl_get_wsl_conf',
+      'wsl_set_wsl_conf',
+      'wsl_get_wslconfig',
+      'wsl_set_wslconfig',
+      'wsl_set_default_user',
+      'wsl_set_default_distro',
+      'wsl_set_version',
       'wsl_run_command',
       'wsl_stop_distro',
+      'wsl_shutdown',
+      'wsl_copy_to',
+      'wsl_copy_from',
+      'wsl_move_distro',
+      'wsl_resize_distro',
+      'wsl_compact_disk',
+      'wsl_mount_disk',
+      'wsl_unmount_disk',
       'wsl_terminal_start',
       'wsl_terminal_send',
       'wsl_terminal_read',
+      'wsl_terminal_signal',
       'wsl_terminal_list',
       'wsl_terminal_close',
+    });
+  });
+
+  group('wsl_run_command overrides', () {
+    test('user, cwd and timeout reshape the argv', () async {
+      await tool('wsl_run_command').handler({
+        'distro': 'Ubuntu',
+        'command': 'make',
+        'user': 'dev',
+        'cwd': '/src',
+        'timeout_seconds': 10,
+      });
+
+      expect(mockShell.runCalls.last, [
+        '-d',
+        'Ubuntu',
+        '--cd',
+        '/src',
+        '-u',
+        'dev',
+        '--exec',
+        'bash',
+        '-c',
+        'make',
+      ]);
+    });
+  });
+
+  group('wsl_unregister_distro', () {
+    test('refuses without confirm and touches nothing', () async {
+      await expectLater(
+        tool('wsl_unregister_distro')
+            .handler({'distro': 'Ubuntu', 'confirm': false}),
+        throwsArgumentError,
+      );
+      expect(mockShell.runCalls, isEmpty);
+    });
+
+    test('unregisters with confirm: true', () async {
+      final result = await tool('wsl_unregister_distro')
+          .handler({'distro': 'Ubuntu', 'confirm': true});
+
+      expect(mockShell.runCalls.any((c) => c.contains('--unregister')), true);
+      expect(mockShell.runCalls.any((c) => c.contains('Ubuntu')), true);
+      expect(result, contains('Unregistered'));
+    });
+  });
+
+  group('lifecycle argv shapes', () {
+    test('wsl_list_online_distros asks the catalog', () async {
+      await tool('wsl_list_online_distros').handler({});
+      expect(mockShell.runCalls.last, ['--list', '--online']);
+    });
+
+    test('wsl_install_distro installs headless', () async {
+      await tool('wsl_install_distro').handler({'distro': 'Ubuntu-24.04'});
+      expect(mockShell.runCalls.last,
+          ['--install', '-d', 'Ubuntu-24.04', '--no-launch']);
+    });
+
+    test('wsl_set_default_distro uses --set-default', () async {
+      await tool('wsl_set_default_distro').handler({'distro': 'Ubuntu'});
+      expect(mockShell.runCalls.last, ['--set-default', 'Ubuntu']);
+    });
+
+    test('wsl_set_version rejects anything but 1 or 2', () async {
+      await expectLater(
+        tool('wsl_set_version').handler({'distro': 'Ubuntu', 'version': 3}),
+        throwsArgumentError,
+      );
+    });
+
+    test('wsl_import_distro refuses a missing local tarball', () async {
+      await expectLater(
+        tool('wsl_import_distro').handler({
+          'name': 'fresh',
+          'tarball': 'C:\\definitely\\missing\\rootfs.tar.gz',
+        }),
+        throwsArgumentError,
+      );
+      expect(mockShell.runCalls, isEmpty);
+    });
+
+    test('wsl_import_in_place refuses a missing vhdx', () async {
+      await expectLater(
+        tool('wsl_import_in_place').handler({
+          'name': 'fresh',
+          'vhdx_path': 'C:\\definitely\\missing\\disk.vhdx',
+        }),
+        throwsArgumentError,
+      );
+      expect(mockShell.runCalls, isEmpty);
+    });
+  });
+
+  group('wsl_terminal_signal', () {
+    test('rejects an unknown session id', () async {
+      await expectLater(
+        tool('wsl_terminal_signal')
+            .handler({'session_id': 'nope', 'signal': 'ctrl-c'}),
+        throwsArgumentError,
+      );
+    });
+
+    test('kill on an unknown session is still an error, not a no-op',
+        () async {
+      await expectLater(
+        tool('wsl_terminal_signal')
+            .handler({'session_id': 'nope', 'signal': 'kill'}),
+        throwsArgumentError,
+      );
     });
   });
 

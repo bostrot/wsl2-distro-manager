@@ -2720,6 +2720,37 @@ try {
   Future<WslOutput> manageSetDefaultUser(String distribution, String user) =>
       manage(distribution, '--set-default-user', user);
 
+  /// `wsl --list --online`: the catalog names `wsl --install -d` accepts.
+  Future<WslOutput> listOnline() =>
+      runVerb(['--list', '--online'], timeout: const Duration(minutes: 2));
+
+  /// `wsl --install -d <distro>`, brokered and headless — the interactive
+  /// [install] opens a terminal window instead, which no MCP client wants.
+  Future<WslOutput> installOnline(String distribution,
+          {bool noLaunch = true}) =>
+      runVerb([
+        '--install',
+        '-d',
+        distribution,
+        if (noLaunch) '--no-launch',
+      ], timeout: const Duration(minutes: 60));
+
+  /// `wsl --set-version <distro> <1|2>` — converts the disk, takes minutes.
+  Future<WslOutput> setVersion(String distribution, int version) =>
+      runVerb(['--set-version', distribution, '$version'],
+          timeout: const Duration(minutes: 30));
+
+  /// `wsl --set-default <distro>`.
+  Future<WslOutput> setDefaultDistro(String distribution) =>
+      runVerb(['--set-default', distribution],
+          timeout: const Duration(seconds: 20));
+
+  /// `wsl --import-in-place <name> <path.vhdx>`: register an existing VHDX
+  /// where it lies — no copy, unlike [import].
+  Future<WslOutput> importInPlace(String distribution, String vhdxPath) =>
+      runVerb(['--import-in-place', distribution, vhdxPath],
+          timeout: const Duration(minutes: 5));
+
   /// `wsl --update`, optionally through the documented Store-free path.
   ///
   /// `--web-download` is `compare-versions.md:102`'s answer for machines where

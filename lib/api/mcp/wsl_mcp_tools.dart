@@ -1,18 +1,33 @@
-// The WSL tools exposed over MCP: list distros, run one-shot commands,
-// drive persistent terminal sessions, stop a distro.
+// The WSL tools exposed over MCP: the full lifecycle (create, configure,
+// operate, destroy), global and per-distro configuration, introspection,
+// file transfer and disk management.
 //
-// Deliberately non-destructive. Create, delete, export and move stay
-// GUI-only — one-way or disk-heavy actions need a human confirming them.
+// The one-way operations are gated instead of hidden: unregistering needs an
+// explicit confirm flag and points at the export tool first, so an agent can
+// provision and tear down distros without a human clicking through the GUI —
+// but never deletes one on a whim.
 
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
+import 'package:wsl2distromanager/api/mount_service.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 
 List<McpTool> buildWslMcpTools(
   WSLApi wslApi,
-  WslTerminalManager terminalManager,
-) {
+  WslTerminalManager terminalManager, {
+  MountService? mountService,
+  Dio? dio,
+}) {
+  final mount = mountService ?? MountService();
+  final http = dio ?? Dio();
   return [
+    // =========================================================================
+    // Introspection
+    // =========================================================================
     McpTool(
       name: 'wsl_list_distros',
       description:
@@ -31,10 +46,465 @@ List<McpTool> buildWslMcpTools(
       },
     ),
     McpTool(
+      name: 'wsl_distro_info',
+      description:
+          'Details for one installed distro: state, install path and disk '
+          'size.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+        },
+        'required': ['distro'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final instances = await wslApi.list(false);
+        if (!instances.all.contains(distro)) {
+          throw ArgumentError('No distro named "$distro". Installed: '
+              '${instances.all.isEmpty ? "none" : instances.all.join(", ")}');
+        }
+        final running = instances.running.contains(distro);
+        final path = wslApi.currentDistroPath(distro);
+        final size = await wslApi.getSize(distro);
+        return [
+          'Name: $distro',
+          'State: ${running ? "running" : "stopped"}',
+          'Install path: $path',
+          'Disk size: ${size == null || size.isEmpty ? "unknown" : size}',
+        ].join('\n');
+      },
+    ),
+    McpTool(
+      name: 'wsl_status',
+      description:
+          'Global WSL status: version of WSL itself, kernel, default distro '
+          'and default WSL version (wsl --status plus wsl --version).',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final status = await wslApi.statusInfo();
+        final version = await wslApi.versionInfo();
+        final parts = [
+          if (status.text.isNotEmpty) status.text,
+          if (version.text.isNotEmpty) version.text,
+        ];
+        return parts.isEmpty ? 'WSL returned no status output.' : parts.join('\n\n');
+      },
+    ),
+    // =========================================================================
+    // Lifecycle
+    // =========================================================================
+    McpTool(
+      name: 'wsl_list_online_distros',
+      description:
+          'List the distros available from the online catalog '
+          '(wsl --list --online). A distro not listed here needs '
+          'wsl_import_distro with a rootfs tarball instead.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final out = await wslApi.listOnline();
+        return _verbReport(out, 'No catalog output.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_install_distro',
+      description:
+          'Install a distro from the online catalog (wsl --install). Use '
+          'wsl_list_online_distros for the accepted names. Runs headless '
+          'with --no-launch, so the first shell is never opened here.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Catalog name, e.g. Ubuntu-24.04.',
+          },
+        },
+        'required': ['distro'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final out = await wslApi.installOnline(distro);
+        return _verbReport(out, 'Installed $distro.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_import_distro',
+      description:
+          'Create a distro from a rootfs tarball (wsl --import). The tarball '
+          'can be a local path or an http(s) URL, which is downloaded first. '
+          'Omit install_path to use the app\'s configured distro location. '
+          'Set vhd for a .vhdx instead of a tarball.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {
+            'type': 'string',
+            'description': 'Name to register the new distro under.',
+          },
+          'tarball': {
+            'type': 'string',
+            'description':
+                'Local path or http(s) URL of the rootfs tar/tar.gz/tar.xz.',
+          },
+          'install_path': {
+            'type': 'string',
+            'description':
+                'Directory for the new distro\'s disk. Optional.',
+          },
+          'vhd': {
+            'type': 'boolean',
+            'description': 'The source is a .vhdx image, not a tarball.',
+          },
+        },
+        'required': ['name', 'tarball'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final tarball = _requireString(args, 'tarball');
+        final installPath = (args['install_path'] as String?)?.trim() ?? '';
+        final isVhd = args['vhd'] == true;
+
+        var file = tarball;
+        if (tarball.startsWith('http://') ||
+            tarball.startsWith('https://')) {
+          final target = '${Directory.systemTemp.path}'
+              '${Platform.pathSeparator}wsl2dm-mcp-import-'
+              '${DateTime.now().millisecondsSinceEpoch}.tar';
+          await http.download(tarball, target);
+          file = target;
+        } else if (!File(tarball).existsSync()) {
+          throw ArgumentError('tarball not found: $tarball');
+        }
+
+        final result = await wslApi.import(name, installPath, file,
+            isVhd: isVhd);
+        return result.trim().isEmpty ? 'Imported $name.' : result.trim();
+      },
+    ),
+    McpTool(
+      name: 'wsl_import_in_place',
+      description:
+          'Register an existing .vhdx as a distro where it lies '
+          '(wsl --import-in-place). Nothing is copied.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {
+            'type': 'string',
+            'description': 'Name to register the distro under.',
+          },
+          'vhdx_path': {
+            'type': 'string',
+            'description': 'Windows path of the existing .vhdx.',
+          },
+        },
+        'required': ['name', 'vhdx_path'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final vhdx = _requireString(args, 'vhdx_path');
+        if (!File(vhdx).existsSync()) {
+          throw ArgumentError('vhdx_path not found: $vhdx');
+        }
+        final out = await wslApi.importInPlace(name, vhdx);
+        return _verbReport(out, 'Registered $name from $vhdx.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_export_distro',
+      description:
+          'Export a distro to a file (wsl --export) — the backup to take '
+          'before a risky change or an unregister. Format defaults to an '
+          'uncompressed tar; pass tar.gz, tar.xz or vhd to change it.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro to export.',
+          },
+          'out_path': {
+            'type': 'string',
+            'description': 'Windows path of the file to write.',
+          },
+          'format': {
+            'type': 'string',
+            'enum': ['tar', 'tar.gz', 'tar.xz', 'vhd'],
+            'description': 'Archive format. Optional.',
+          },
+        },
+        'required': ['distro', 'out_path'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final outPath = _requireString(args, 'out_path');
+        final format = (args['format'] as String?)?.trim();
+        final result = await wslApi.export(distro, outPath,
+            format: format == null || format.isEmpty || format == 'tar'
+                ? null
+                : format);
+        return result.trim().isEmpty
+            ? 'Exported $distro to $outPath.'
+            : result.trim();
+      },
+    ),
+    McpTool(
+      name: 'wsl_unregister_distro',
+      description:
+          'PERMANENTLY delete a distro and its disk (wsl --unregister). '
+          'Unrecoverable — take a backup with wsl_export_distro first. '
+          'Refuses to run unless confirm is true.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro to delete.',
+          },
+          'confirm': {
+            'type': 'boolean',
+            'description':
+                'Must be true. Confirms the permanent deletion is intended.',
+          },
+        },
+        'required': ['distro', 'confirm'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        if (args['confirm'] != true) {
+          throw ArgumentError(
+              'Refused: unregistering permanently deletes "$distro" and its '
+              'disk. Export a backup first (wsl_export_distro), then call '
+              'again with confirm: true.');
+        }
+        await wslApi.remove(distro);
+        return 'Unregistered $distro. Its disk is gone.';
+      },
+    ),
+    // =========================================================================
+    // Configuration
+    // =========================================================================
+    McpTool(
+      name: 'wsl_get_wsl_conf',
+      description:
+          'Read /etc/wsl.conf from a distro, verbatim. Starts the distro if '
+          'needed.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+        },
+        'required': ['distro'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final conf = await wslApi.readWSLConf(distro);
+        if (conf == null) {
+          return '(no /etc/wsl.conf in $distro, or the distro is unreachable)';
+        }
+        final text = conf.serialize().trim();
+        return text.isEmpty ? '(empty /etc/wsl.conf)' : text;
+      },
+    ),
+    McpTool(
+      name: 'wsl_set_wsl_conf',
+      description:
+          'Set one key in a distro\'s /etc/wsl.conf, preserving everything '
+          'else in the file — e.g. section "boot" key "command" to autostart '
+          'a daemon, or "boot"/"systemd". An empty value removes the key. '
+          'Takes effect after the distro restarts (wsl_stop_distro, then any '
+          'command).',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+          'section': {
+            'type': 'string',
+            'description': 'INI section: boot, automount, network, '
+                'interop or user.',
+          },
+          'key': {
+            'type': 'string',
+            'description': 'Key inside the section, e.g. command or systemd.',
+          },
+          'value': {
+            'type': 'string',
+            'description': 'Value to write. Empty string removes the key.',
+          },
+        },
+        'required': ['distro', 'section', 'key', 'value'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final section = _requireString(args, 'section');
+        final key = _requireString(args, 'key');
+        final value = (args['value'] as String?) ?? '';
+        final ok = await wslApi.updateWSLConf(
+            distro,
+            (conf) => value.trim().isEmpty
+                ? conf.remove(section, key)
+                : conf.set(section, key, value));
+        if (!ok) {
+          throw StateError(
+              'Could not read /etc/wsl.conf in $distro — is it reachable?');
+        }
+        return value.trim().isEmpty
+            ? 'Removed [$section] $key from $distro. Restart the distro to '
+                'apply.'
+            : 'Set [$section] $key=$value in $distro. Restart the distro to '
+                'apply.';
+      },
+    ),
+    McpTool(
+      name: 'wsl_get_wslconfig',
+      description:
+          'Read the global %USERPROFILE%\\.wslconfig, verbatim.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final config = await wslApi.readWslConfig();
+        if (config == null) return '(no .wslconfig found)';
+        final text = config.serialize().trim();
+        return text.isEmpty ? '(empty .wslconfig)' : text;
+      },
+    ),
+    McpTool(
+      name: 'wsl_set_wslconfig',
+      description:
+          'Set one key in the global .wslconfig (memory, processors, swap, '
+          'networkingMode, ...). The key is placed in the section WSL reads '
+          'it from; an empty value removes it. Applies after wsl_shutdown.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'key': {
+            'type': 'string',
+            'description': 'Key name, e.g. memory or networkingMode.',
+          },
+          'value': {
+            'type': 'string',
+            'description': 'Value to write. Empty string removes the key.',
+          },
+        },
+        'required': ['key', 'value'],
+      },
+      handler: (args) async {
+        final key = _requireString(args, 'key');
+        final value = (args['value'] as String?) ?? '';
+        final ok = value.trim().isEmpty
+            ? await wslApi.removeConfig(key)
+            : await wslApi.setConfig(key, value);
+        if (!ok) {
+          throw StateError('Could not update .wslconfig.');
+        }
+        return value.trim().isEmpty
+            ? 'Removed $key from .wslconfig. Run wsl_shutdown to apply.'
+            : 'Set $key=$value in .wslconfig. Run wsl_shutdown to apply.';
+      },
+    ),
+    McpTool(
+      name: 'wsl_set_default_user',
+      description:
+          'Set the default login user of a distro '
+          '(wsl --manage --set-default-user). Needs WSL 2.5+.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+          'user': {
+            'type': 'string',
+            'description': 'Existing Linux user name.',
+          },
+        },
+        'required': ['distro', 'user'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final user = _requireString(args, 'user');
+        final out = await wslApi.manageSetDefaultUser(distro, user);
+        return _verbReport(out, 'Default user of $distro is now $user.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_set_default_distro',
+      description: 'Make a distro the default one (wsl --set-default).',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+        },
+        'required': ['distro'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final out = await wslApi.setDefaultDistro(distro);
+        return _verbReport(out, '$distro is now the default distro.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_set_version',
+      description:
+          'Convert a distro between WSL 1 and WSL 2 (wsl --set-version). '
+          'Converts the whole disk — can take minutes.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+          'version': {
+            'type': 'integer',
+            'enum': [1, 2],
+            'description': 'Target WSL version.',
+          },
+        },
+        'required': ['distro', 'version'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final version = args['version'];
+        if (version != 1 && version != 2) {
+          throw ArgumentError('version must be 1 or 2');
+        }
+        final out = await wslApi.setVersion(distro, version as int);
+        return _verbReport(out, '$distro is now WSL $version.');
+      },
+    ),
+    // =========================================================================
+    // Operate
+    // =========================================================================
+    McpTool(
       name: 'wsl_run_command',
       description:
-          'Run a shell command as root inside a named WSL distro and return '
-          'its output. Starts the distro first if it is not already running.',
+          'Run a shell command inside a named WSL distro and return its '
+          'output. Starts the distro first if it is not already running. '
+          'Defaults to root, the distro\'s home directory and a 300s '
+          'timeout; override with user, cwd and timeout_seconds.',
       inputSchema: const {
         'type': 'object',
         'properties': {
@@ -46,20 +516,49 @@ List<McpTool> buildWslMcpTools(
             'type': 'string',
             'description': 'Shell command to execute.',
           },
+          'user': {
+            'type': 'string',
+            'description': 'Linux user to run as. Defaults to root.',
+          },
+          'cwd': {
+            'type': 'string',
+            'description':
+                'Working directory inside the distro (Linux path), or a '
+                'Windows path like C:\\src.',
+          },
+          'timeout_seconds': {
+            'type': 'integer',
+            'description':
+                'Kill the command after this many seconds. Default 300, '
+                'max 3600.',
+          },
         },
         'required': ['distro', 'command'],
       },
       handler: (args) async {
-        final distro = args['distro'] as String?;
-        final command = args['command'] as String?;
-        if (distro == null || distro.trim().isEmpty) {
-          throw ArgumentError('distro is required');
+        final distro = _requireString(args, 'distro');
+        final command = _requireString(args, 'command');
+        final user = (args['user'] as String?)?.trim() ?? '';
+        final cwd = (args['cwd'] as String?)?.trim() ?? '';
+        final timeoutSeconds =
+            ((args['timeout_seconds'] as num?)?.toInt() ?? 300)
+                .clamp(1, 3600);
+        final out = await wslApi.runVerb([
+          '-d',
+          distro,
+          if (cwd.isNotEmpty) ...['--cd', cwd],
+          '-u',
+          user.isEmpty ? 'root' : user,
+          '--exec',
+          'bash',
+          '-c',
+          command,
+        ], timeout: Duration(seconds: timeoutSeconds));
+        if (out.exitCode != 0) {
+          return 'Exit code ${out.exitCode}.'
+              '${out.text.isEmpty ? "" : "\n${out.text}"}';
         }
-        if (command == null || command.trim().isEmpty) {
-          throw ArgumentError('command is required');
-        }
-        final output = await wslApi.execCmdAsRoot(distro, command);
-        return output.isEmpty ? '(no output)' : output;
+        return out.text.isEmpty ? '(no output)' : out.text;
       },
     ),
     McpTool(
@@ -76,14 +575,265 @@ List<McpTool> buildWslMcpTools(
         'required': ['distro'],
       },
       handler: (args) async {
-        final distro = args['distro'] as String?;
-        if (distro == null || distro.trim().isEmpty) {
-          throw ArgumentError('distro is required');
-        }
+        final distro = _requireString(args, 'distro');
         await wslApi.stop(distro);
         return 'Stopped $distro.';
       },
     ),
+    McpTool(
+      name: 'wsl_shutdown',
+      description:
+          'Shut down every running distro and the WSL VM at once '
+          '(wsl --shutdown). Required for .wslconfig changes to apply. '
+          'wsl_stop_distro stops a single distro instead.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final result = await wslApi.shutdown();
+        return result.trim().isEmpty ? 'WSL shut down.' : result.trim();
+      },
+    ),
+    // =========================================================================
+    // File transfer
+    // =========================================================================
+    McpTool(
+      name: 'wsl_copy_to',
+      description:
+          'Copy one file from Windows into a distro. Starts the distro and '
+          'creates the target directory if needed. Single files only.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+          'windows_path': {
+            'type': 'string',
+            'description': 'Source file on Windows, e.g. C:\\data\\app.conf.',
+          },
+          'linux_path': {
+            'type': 'string',
+            'description': 'Absolute destination path inside the distro.',
+          },
+        },
+        'required': ['distro', 'windows_path', 'linux_path'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final winPath = _requireString(args, 'windows_path');
+        final linuxPath = _requireString(args, 'linux_path');
+        if (!File(winPath).existsSync()) {
+          throw ArgumentError('windows_path not found: $winPath');
+        }
+        if (!linuxPath.startsWith('/')) {
+          throw ArgumentError('linux_path must be absolute: $linuxPath');
+        }
+        // Boots the distro and makes sure the directory exists — a UNC copy
+        // into a missing directory just fails.
+        final dir = linuxPath.substring(0, linuxPath.lastIndexOf('/'));
+        if (dir.isNotEmpty) {
+          await wslApi.execCmdAsRoot(distro, 'mkdir -p ${_shellQuote(dir)}');
+        }
+        await File(winPath).copy(_uncPath(distro, linuxPath));
+        return 'Copied $winPath to $distro:$linuxPath.';
+      },
+    ),
+    McpTool(
+      name: 'wsl_copy_from',
+      description:
+          'Copy one file out of a distro to Windows. Starts the distro and '
+          'creates the target directory if needed. Single files only.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+          'linux_path': {
+            'type': 'string',
+            'description': 'Absolute source path inside the distro.',
+          },
+          'windows_path': {
+            'type': 'string',
+            'description': 'Destination file on Windows.',
+          },
+        },
+        'required': ['distro', 'linux_path', 'windows_path'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final linuxPath = _requireString(args, 'linux_path');
+        final winPath = _requireString(args, 'windows_path');
+        if (!linuxPath.startsWith('/')) {
+          throw ArgumentError('linux_path must be absolute: $linuxPath');
+        }
+        // Boots the distro so the \\wsl$ share answers.
+        await wslApi.execCmdAsRoot(distro, 'true');
+        final source = File(_uncPath(distro, linuxPath));
+        if (!source.existsSync()) {
+          throw ArgumentError('linux_path not found in $distro: $linuxPath');
+        }
+        await File(winPath).parent.create(recursive: true);
+        await source.copy(winPath);
+        return 'Copied $distro:$linuxPath to $winPath.';
+      },
+    ),
+    // =========================================================================
+    // Disks
+    // =========================================================================
+    McpTool(
+      name: 'wsl_move_distro',
+      description:
+          'Move a distro\'s storage to another directory '
+          '(wsl --manage --move). Copies the whole disk — can take a long '
+          'time. Needs WSL 2.5+.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+          'new_location': {
+            'type': 'string',
+            'description': 'Destination directory on Windows.',
+          },
+        },
+        'required': ['distro', 'new_location'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final location = _requireString(args, 'new_location');
+        final out = await wslApi.manageMove(distro, location);
+        return _verbReport(out, 'Moved $distro to $location.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_resize_distro',
+      description:
+          'Grow a distro\'s virtual disk (wsl --manage --resize). Size like '
+          '512GB or 1TB, whole numbers only. Stop WSL first (wsl_shutdown). '
+          'Needs WSL 2.5+.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+          'size': {
+            'type': 'string',
+            'description': 'New size, e.g. 512GB. Decimals are rejected.',
+          },
+        },
+        'required': ['distro', 'size'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final size = _requireString(args, 'size');
+        final out = await wslApi.manageResize(distro, size);
+        return _verbReport(out, 'Resized $distro to $size.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_compact_disk',
+      description:
+          'Compact a distro\'s virtual disk so freed space returns to '
+          'Windows (diskpart, not a wsl.exe flag). Stops the distro first; '
+          'can take minutes.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro.',
+          },
+        },
+        'required': ['distro'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final result = await wslApi.cleanup(distro);
+        return result.trim().isEmpty
+            ? 'Compacted the disk of $distro.'
+            : result.trim();
+      },
+    ),
+    McpTool(
+      name: 'wsl_mount_disk',
+      description:
+          'Mount a physical disk or partition into WSL (wsl --mount). '
+          'Needs administrator rights, which Windows prompts for.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'disk': {
+            'type': 'string',
+            'description': r'Device path, e.g. \\.\PHYSICALDRIVE1.',
+          },
+          'partition': {
+            'type': 'string',
+            'description': 'Partition number. Optional.',
+          },
+          'type': {
+            'type': 'string',
+            'description': 'Filesystem type, e.g. ext4. Optional.',
+          },
+          'options': {
+            'type': 'string',
+            'description': 'Mount options, e.g. data=ordered. Optional.',
+          },
+          'name': {
+            'type': 'string',
+            'description': 'Mount point name. Optional.',
+          },
+          'bare': {
+            'type': 'boolean',
+            'description': 'Attach without mounting a filesystem.',
+          },
+        },
+        'required': ['disk'],
+      },
+      handler: (args) async {
+        final disk = _requireString(args, 'disk');
+        await mount.mountDisk(
+          disk,
+          partition: (args['partition'] as String?) ?? '',
+          type: (args['type'] as String?) ?? '',
+          options: (args['options'] as String?) ?? '',
+          name: (args['name'] as String?) ?? '',
+          bare: args['bare'] == true,
+        );
+        return 'Mounted $disk. It appears under /mnt/wsl in every distro.';
+      },
+    ),
+    McpTool(
+      name: 'wsl_unmount_disk',
+      description:
+          'Unmount a disk previously mounted into WSL (wsl --unmount).',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'disk': {
+            'type': 'string',
+            'description': 'Device path or mount name used when mounting.',
+          },
+        },
+        'required': ['disk'],
+      },
+      handler: (args) async {
+        final disk = _requireString(args, 'disk');
+        await mount.unmount(disk);
+        return 'Unmounted $disk.';
+      },
+    ),
+    // =========================================================================
+    // Terminal sessions
+    // =========================================================================
     McpTool(
       name: 'wsl_terminal_start',
       description:
@@ -108,10 +858,7 @@ List<McpTool> buildWslMcpTools(
         'required': ['distro'],
       },
       handler: (args) async {
-        final distro = args['distro'] as String?;
-        if (distro == null || distro.trim().isEmpty) {
-          throw ArgumentError('distro is required');
-        }
+        final distro = _requireString(args, 'distro');
         final user = args['user'] as String?;
         final session =
             await terminalManager.startSession(distro, user: user);
@@ -123,10 +870,11 @@ List<McpTool> buildWslMcpTools(
       name: 'wsl_terminal_send',
       description:
           'Send a line of input to an open terminal session (as if typed '
-          'and followed by Enter), then briefly wait and return any output '
-          'produced. For long-running commands, follow up with '
-          'wsl_terminal_read to keep polling — this only waits about half '
-          'a second before returning.',
+          'and followed by Enter), then wait and return any output '
+          'produced. wait_ms sets how long to wait (default 600, max '
+          '30000); wait_for is a regex that returns as soon as the output '
+          'matches it, instead of waiting the full time. For longer runs, '
+          'keep polling with wsl_terminal_read.',
       inputSchema: const {
         'type': 'object',
         'properties': {
@@ -138,6 +886,16 @@ List<McpTool> buildWslMcpTools(
             'type': 'string',
             'description': 'Text to send, e.g. a shell command.',
           },
+          'wait_ms': {
+            'type': 'integer',
+            'description':
+                'Milliseconds to wait for output. Default 600, max 30000.',
+          },
+          'wait_for': {
+            'type': 'string',
+            'description':
+                'Regex; return as soon as the collected output matches.',
+          },
         },
         'required': ['session_id', 'input'],
       },
@@ -147,9 +905,25 @@ List<McpTool> buildWslMcpTools(
         if (input == null) {
           throw ArgumentError('input is required');
         }
+        final waitMs =
+            ((args['wait_ms'] as num?)?.toInt() ?? 600).clamp(50, 30000);
+        final pattern = (args['wait_for'] as String?)?.isNotEmpty == true
+            ? RegExp(args['wait_for'] as String)
+            : null;
         session.sendInput(input);
-        await Future.delayed(const Duration(milliseconds: 600));
-        final output = session.readNewOutput();
+
+        final collected = StringBuffer();
+        final deadline =
+            DateTime.now().add(Duration(milliseconds: waitMs));
+        while (true) {
+          await Future.delayed(const Duration(milliseconds: 150));
+          collected.write(session.readNewOutput());
+          if (pattern != null && pattern.hasMatch(collected.toString())) {
+            break;
+          }
+          if (!DateTime.now().isBefore(deadline)) break;
+        }
+        final output = collected.toString();
         return output.isEmpty ? '(no output yet)' : output;
       },
     ),
@@ -173,6 +947,57 @@ List<McpTool> buildWslMcpTools(
         final session = _requireSession(terminalManager, args);
         final output = session.readNewOutput();
         return output.isEmpty ? '(no new output)' : output;
+      },
+    ),
+    McpTool(
+      name: 'wsl_terminal_signal',
+      description:
+          'Interrupt or end an open terminal session: ctrl-c and ctrl-d '
+          'send the control byte (best effort — the session is a pipe, not '
+          'a TTY, so some programs ignore them), eof closes stdin for a '
+          'true end-of-file, and kill terminates the session outright — '
+          'the reliable way to unstick a hung command.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'session_id': {
+            'type': 'string',
+            'description': 'Session id returned by wsl_terminal_start.',
+          },
+          'signal': {
+            'type': 'string',
+            'enum': ['ctrl-c', 'ctrl-d', 'eof', 'kill'],
+            'description': 'What to send.',
+          },
+        },
+        'required': ['session_id', 'signal'],
+      },
+      handler: (args) async {
+        final signal = _requireString(args, 'signal');
+        if (signal == 'kill') {
+          final sessionId = _requireString(args, 'session_id');
+          if (terminalManager.session(sessionId) == null) {
+            throw ArgumentError('Unknown session_id: $sessionId');
+          }
+          await terminalManager.closeSession(sessionId);
+          return 'Killed session $sessionId.';
+        }
+        final session = _requireSession(terminalManager, args);
+        switch (signal) {
+          case 'ctrl-c':
+            session.sendControl(0x03);
+            return 'Sent Ctrl-C. If the command is still running, use '
+                'signal "kill".';
+          case 'ctrl-d':
+            session.sendControl(0x04);
+            return 'Sent Ctrl-D.';
+          case 'eof':
+            await session.sendEof();
+            return 'Closed stdin (end-of-file).';
+          default:
+            throw ArgumentError(
+                'signal must be one of ctrl-c, ctrl-d, eof, kill');
+        }
       },
     ),
     McpTool(
@@ -207,10 +1032,7 @@ List<McpTool> buildWslMcpTools(
         'required': ['session_id'],
       },
       handler: (args) async {
-        final sessionId = args['session_id'] as String?;
-        if (sessionId == null || sessionId.trim().isEmpty) {
-          throw ArgumentError('session_id is required');
-        }
+        final sessionId = _requireString(args, 'session_id');
         if (terminalManager.session(sessionId) == null) {
           throw ArgumentError('Unknown session_id: $sessionId');
         }
@@ -220,6 +1042,31 @@ List<McpTool> buildWslMcpTools(
     ),
   ];
 }
+
+String _requireString(Map<String, dynamic> args, String key) {
+  final value = args[key] as String?;
+  if (value == null || value.trim().isEmpty) {
+    throw ArgumentError('$key is required');
+  }
+  return value;
+}
+
+/// Success gets the verb's own output (or [okMessage] when it printed
+/// nothing); failure gets the exit code plus whatever wsl.exe said.
+String _verbReport(WslOutput out, String okMessage) {
+  if (out.exitCode == 0) {
+    return out.text.isEmpty ? okMessage : out.text;
+  }
+  return 'Failed (exit code ${out.exitCode})'
+      '${out.text.isEmpty ? "." : ": ${out.text}"}';
+}
+
+/// `/etc/passwd` in `Ubuntu` → `\\wsl$\Ubuntu\etc\passwd`.
+String _uncPath(String distro, String linuxPath) =>
+    '\\\\wsl\$\\$distro${linuxPath.replaceAll('/', '\\')}';
+
+/// Single-quote [value] for a POSIX shell.
+String _shellQuote(String value) => "'${value.replaceAll("'", "'\\''")}'";
 
 WslTerminalSession _requireSession(
     WslTerminalManager manager, Map<String, dynamic> args) {

@@ -121,16 +121,21 @@ void main() {
     final body = json.decode(await response.readAsString());
     final toolNames =
         (body['result']['tools'] as List).map((t) => t['name']).toSet();
-    expect(toolNames, {
-      'wsl_list_distros',
-      'wsl_run_command',
-      'wsl_stop_distro',
-      'wsl_terminal_start',
-      'wsl_terminal_send',
-      'wsl_terminal_read',
-      'wsl_terminal_list',
-      'wsl_terminal_close',
-    });
+    expect(
+        toolNames,
+        containsAll({
+          'wsl_list_distros',
+          'wsl_run_command',
+          'wsl_stop_distro',
+          'wsl_import_distro',
+          'wsl_unregister_distro',
+          'wsl_set_wsl_conf',
+          'wsl_set_wslconfig',
+          'wsl_terminal_start',
+          'wsl_terminal_send',
+          'wsl_terminal_signal',
+          'wsl_terminal_close',
+        }));
   });
 
   test('an actual tool call round-trips through the real WSLApi', () async {

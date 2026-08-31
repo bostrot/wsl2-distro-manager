@@ -50,6 +50,27 @@ class WslTerminalSession {
     process.stdin.writeln(text);
   }
 
+  /// Sends a raw control byte (0x03 Ctrl-C, 0x04 Ctrl-D).
+  ///
+  /// The session is a pipe, not a TTY, so a program that only honours these
+  /// from a terminal may ignore them — killing the session is the reliable
+  /// fallback, which is why the MCP signal tool offers both.
+  void sendControl(int byte) {
+    if (_closed) {
+      throw StateError('Terminal session $id has already closed.');
+    }
+    process.stdin.add([byte]);
+  }
+
+  /// Closes stdin — a true end-of-file, which ends `cat`, a heredoc, or the
+  /// shell itself regardless of TTY semantics.
+  Future<void> sendEof() {
+    if (_closed) {
+      throw StateError('Terminal session $id has already closed.');
+    }
+    return process.stdin.close();
+  }
+
   /// Output since the last call. Consuming — a second call with nothing new
   /// in between returns empty, not a repeat.
   String readNewOutput() {

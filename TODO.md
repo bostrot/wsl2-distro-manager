@@ -23,6 +23,14 @@ Debug builds now skip the CDN entirely and read the repo's own `images.json`
 push — verified live 2026-08-31 in a `WSLM_FORCE_PRO` debug run: the create
 screen's suggestion list served the repo's 19 entries (Ubuntu 26.04 first).
 
+### Register the app for "Sign in with Claude"
+The AI chat can now run on a Claude subscription instead of an API key
+(Settings → AI, provider "Claude subscription"). The OAuth/PKCE flow is
+implemented and tested, but it needs a client ID from Anthropic's
+Sign in with Claude registration (Anthropic Console) before the button works
+for users — bake it in with `--dart-define=WSLM_CLAUDE_CLIENT_ID=...` or set
+it in the settings field. Do not ship another product's client ID.
+
 ### Keep-alive survives a hard kill of the app
 `dispose()` releases the held `wsl … sleep infinity` session on a clean exit,
 but a force-kill (Task Manager, `Stop-Process -Force`) skips provider disposal
