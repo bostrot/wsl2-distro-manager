@@ -704,5 +704,6 @@
   "mcp-quickconnect-hint-text": "Felveszi ezt a szervert a Claude Desktop konfigurációjába az npx mcp-remote hídon keresztül (Node.js szükséges). Utána indítsd újra a Claude Desktopot.",
   "mcp-quickconnect-done-text": "Hozzáadva a Claude Desktophoz — a szerver betöltéséhez indítsd újra.",
   "mcp-quickconnect-notfound-text": "A Claude Desktop nem található ezen a gépen.",
-  "mcp-quickconnect-failed-text": "A Claude Desktop konfigurációját nem sikerült frissíteni."
+  "mcp-quickconnect-failed-text": "A Claude Desktop konfigurációját nem sikerült frissíteni.",
+  "ai-ran-tool-text": "%s futtatva"
 }

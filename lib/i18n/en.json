@@ -704,5 +704,6 @@
   "mcp-quickconnect-hint-text": "Adds this server to Claude Desktop's configuration, bridged through npx mcp-remote (needs Node.js). Restart Claude Desktop afterwards.",
   "mcp-quickconnect-done-text": "Added to Claude Desktop — restart it to load the server.",
   "mcp-quickconnect-notfound-text": "Claude Desktop was not found on this machine.",
-  "mcp-quickconnect-failed-text": "Could not update Claude Desktop's configuration."
+  "mcp-quickconnect-failed-text": "Could not update Claude Desktop's configuration.",
+  "ai-ran-tool-text": "Ran %s"
 }

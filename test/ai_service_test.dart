@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -333,6 +334,178 @@ void main() {
             baseUrl: 'https://x.example.com/v1', apiKey: 'k', model: 'm'),
         throwsA(predicate((e) => e.toString().contains('ai-test-failed'))),
       );
+    });
+  });
+
+  group('AiService tool-use agent', () {
+    late McpTool echoTool;
+    late List<Map<String, dynamic>> echoArgs;
+
+    setUp(() {
+      echoArgs = [];
+      echoTool = McpTool(
+        name: 'echo',
+        description: 'echoes text',
+        inputSchema: const {
+          'type': 'object',
+          'properties': {
+            'text': {'type': 'string'}
+          },
+          'required': ['text'],
+        },
+        handler: (args) async {
+          echoArgs.add(args);
+          return 'echoed:${args['text']}';
+        },
+      );
+    });
+
+    ResponseBody _json(Map<String, dynamic> body) => ResponseBody.fromString(
+          json.encode(body),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+
+    test('BYOK: a tool call runs, its result is fed back, answer returns',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [echoTool];
+      await ai.init();
+      ai.clearHistory();
+
+      var call = 0;
+      final adapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          // First turn: ask to call the tool.
+          return _json({
+            'choices': [
+              {
+                'message': {
+                  'role': 'assistant',
+                  'content': null,
+                  'tool_calls': [
+                    {
+                      'id': 'c1',
+                      'type': 'function',
+                      'function': {
+                        'name': 'echo',
+                        'arguments': '{"text":"hi"}',
+                      },
+                    }
+                  ],
+                }
+              }
+            ]
+          });
+        }
+        // Second turn: the tool result must be present, then answer.
+        final body = json.decode(options.data as String) as Map<String, dynamic>;
+        final msgs = body['messages'] as List;
+        expect(
+            msgs.any((m) => m['role'] == 'tool' && m['content'] == 'echoed:hi'),
+            true);
+        return _json({
+          'choices': [
+            {
+              'message': {'role': 'assistant', 'content': 'done: hi'}
+            }
+          ]
+        });
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      var updates = 0;
+      final reply = await ai.sendMessage('echo hi', onUpdate: () => updates++);
+
+      expect(reply, 'done: hi');
+      expect(echoArgs.single['text'], 'hi');
+      expect(adapter.requests, hasLength(2));
+      expect(updates, greaterThan(0));
+      // The transcript carries a tool note.
+      expect(ai.conversationHistory.any((m) => m.role == 'tool'), true);
+    });
+
+    test('Claude: tool_use loop feeds tool_result back and answers', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setAiProvider('claude');
+      prefs.setString('ClaudeRefreshToken', 'rt-1');
+      prefs.setString('ClaudeAccessToken', 'at-1');
+      prefs.setInt(
+          'ClaudeTokenExpiry',
+          DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch);
+      ai.toolsForTesting = [echoTool];
+      await ai.init();
+      ai.clearHistory();
+
+      var call = 0;
+      final adapter = _RecordingAdapter((options) {
+        call++;
+        // Tools must be advertised.
+        final body = json.decode(options.data as String) as Map<String, dynamic>;
+        expect(body['tools'], isNotNull);
+        if (call == 1) {
+          return _json({
+            'stop_reason': 'tool_use',
+            'content': [
+              {'type': 'text', 'text': 'checking'},
+              {
+                'type': 'tool_use',
+                'id': 't1',
+                'name': 'echo',
+                'input': {'text': 'hi'},
+              }
+            ]
+          });
+        }
+        // The tool_result block must be in the follow-up.
+        final msgs = body['messages'] as List;
+        final hasResult = msgs.any((m) =>
+            m['content'] is List &&
+            (m['content'] as List)
+                .any((b) => b is Map && b['type'] == 'tool_result'));
+        expect(hasResult, true);
+        return _json({
+          'stop_reason': 'end_turn',
+          'content': [
+            {'type': 'text', 'text': 'all done'}
+          ]
+        });
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      final reply = await ai.sendMessage('echo hi');
+
+      expect(reply, 'all done');
+      expect(echoArgs.single['text'], 'hi');
+      expect(adapter.requests, hasLength(2));
+    });
+
+    test('with no tools it still answers in one turn', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [];
+      await ai.init();
+      ai.clearHistory();
+
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((_) => _json({
+            'choices': [
+              {
+                'message': {'role': 'assistant', 'content': 'plain answer'}
+              }
+            ]
+          }));
+
+      expect(await ai.sendMessage('hi'), 'plain answer');
     });
   });
 }

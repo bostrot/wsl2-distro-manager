@@ -95,7 +95,15 @@ class _AiChatPanelState extends State<AiChatPanel> {
     _scrollToBottom();
 
     try {
-      await _ai.sendMessage(text);
+      await _ai.sendMessage(text, onUpdate: () {
+        // Tool calls and interim narration land in the transcript mid-run;
+        // repaint so the user watches the assistant work instead of staring
+        // at a spinner.
+        if (mounted && generation == _requestGeneration) {
+          setState(() {});
+          _scrollToBottom();
+        }
+      });
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _isLoading = false;
@@ -350,6 +358,30 @@ class _AiChatPanelState extends State<AiChatPanel> {
   }
 
   Widget _buildMessageBubble(AiMessage msg) {
+    // A tool note: a compact "ran <tool>" chip, not a chat bubble, so the
+    // user can see what the assistant actually did on their machine.
+    if (msg.role == 'tool') {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8, left: 36),
+        child: Row(
+          children: [
+            Icon(FluentIcons.processing,
+                size: 11, color: secondaryTextColor(context)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'ai-ran-tool-text'.i18n([msg.content]),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                  color: secondaryTextColor(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final isUser = msg.role == 'user';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

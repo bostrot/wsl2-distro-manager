@@ -316,7 +316,14 @@ class GlobalVariable {
   static final GlobalKey<RootPageState> root = GlobalKey<RootPageState>();
   static GlobalKey<NavigatorState> infobox = GlobalKey<NavigatorState>();
   static Instances? initialSnapshot;
-  static bool aiPanelVisible = false;
+
+  /// Whether the AI chat dock is open. A notifier, not a plain bool, because
+  /// the dock now lives in the shell (so a notification bar can sit beside it
+  /// instead of under it) while the button that toggles it lives on the home
+  /// page — the two rebuild independently off this.
+  static final ValueNotifier<bool> aiPanel = ValueNotifier<bool>(false);
+  static bool get aiPanelVisible => aiPanel.value;
+  static set aiPanelVisible(bool value) => aiPanel.value = value;
   /// Override for testing: when true, Pro features are always accessible.
   static bool testProEnabled = false;
 }

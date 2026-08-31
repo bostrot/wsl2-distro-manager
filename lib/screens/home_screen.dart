@@ -3,7 +3,6 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-import 'package:wsl2distromanager/components/ai_chat_panel.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/list.dart';
@@ -91,7 +90,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final showAi = GlobalVariable.aiPanelVisible;
     bool isPro = false;
     try {
       isPro = GlobalVariable.testProEnabled || LicenseManager().isPro;
@@ -101,76 +99,38 @@ class _HomePageState extends State<HomePage> {
 
     return Stack(
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // A fixed 360px panel took 40% of a narrow window; below 1000px
-            // it scales with the window instead (audit PS-38).
-            final panelWidth = constraints.maxWidth < 1000
-                ? (constraints.maxWidth * 0.36).roundToDouble()
-                : 360.0;
-            return SizedBox(
-              height: constraints.maxHeight,
-              width: constraints.maxWidth,
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: showAi
-                        ? constraints.maxWidth - panelWidth - 1
-                        : constraints.maxWidth,
-                    height: constraints.maxHeight,
-                    child: Column(
-                      key: (GlobalVariable.infobox = _infoboxKey),
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        FutureBuilder<List<String>>(
-                          future: _fetchDistroNames(),
-                          builder: (context, snapshot) {
-                            final names = snapshot.data ?? [];
-                            if (names.isNotEmpty && names != distroNames) {
-                              distroNames = names;
-                            }
-                            return RecommendationsPanel(
-                              key: const ValueKey('test-recommendations-panel'),
-                              distroNames: distroNames,
-                            );
-                          },
-                        ),
-                        DistroList(api: api),
-                      ],
-                    ),
-                  ),
-                  if (showAi) ...[
-                    Container(
-                      width: 1,
-                      color: surfaceBorderColor(context),
-                    ),
-                    SizedBox(
-                      width: panelWidth,
-                      height: constraints.maxHeight,
-                      child: AiChatPanel(
-                        // The panel's own close control — the FAB behind it
-                        // used to be the only way out (PS-34).
-                        onClose: () => setState(
-                            () => GlobalVariable.aiPanelVisible = false),
-                      ),
-                    ),
-                  ],
-                ],
+        // Just the main content now. The AI chat is docked by the shell
+        // (nav/root_screen.dart) so the status/notification bar sits beside
+        // it instead of sliding underneath it and colliding with the panel's
+        // own input and this button.
+        SizedBox.expand(
+          child: Column(
+            key: (GlobalVariable.infobox = _infoboxKey),
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              FutureBuilder<List<String>>(
+                future: _fetchDistroNames(),
+                builder: (context, snapshot) {
+                  final names = snapshot.data ?? [];
+                  if (names.isNotEmpty && names != distroNames) {
+                    distroNames = names;
+                  }
+                  return RecommendationsPanel(
+                    key: const ValueKey('test-recommendations-panel'),
+                    distroNames: distroNames,
+                  );
+                },
               ),
-            );
-          },
+              DistroList(api: api),
+            ],
+          ),
         ),
         if (isPro)
           Positioned(
-            // 16px past the panel's live width (PS-38 made it responsive).
-            right: showAi
-                ? ((MediaQuery.of(context).size.width < 1000
-                        ? (MediaQuery.of(context).size.width * 0.36)
-                            .roundToDouble()
-                        : 360.0) +
-                    16)
-                : 16,
+            // The home body already excludes the dock's width, so the button
+            // sits at its own right edge — just left of the divider.
+            right: 16,
             bottom: 16,
             // A Button rather than a GestureDetector: this is the only entry
             // point to the AI chat panel and a GestureDetector has no focus
@@ -180,12 +140,10 @@ class _HomePageState extends State<HomePage> {
                 message: 'ai-assistant-title'.i18n(),
                 child: Button(
                   key: const ValueKey('test-ai-chat-toggle'),
-                  onPressed: () {
-                    setState(() {
-                      GlobalVariable.aiPanelVisible =
-                          !GlobalVariable.aiPanelVisible;
-                    });
-                  },
+                  // The shell dock listens to this notifier and rebuilds; the
+                  // FAB itself looks the same open or closed, so no setState.
+                  onPressed: () => GlobalVariable.aiPanel.value =
+                      !GlobalVariable.aiPanel.value,
                   // Accent-filled in both states. The closed state used to be
                   // a grey wash over the page — 1.25:1 in light, 1.02:1 in
                   // dark — so the only entry point to the AI panel was close

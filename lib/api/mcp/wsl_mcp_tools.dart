@@ -10,9 +10,12 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:wsl2distromanager/api/app.dart';
+import 'package:wsl2distromanager/api/distro_package.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/api/mount_service.dart';
+import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 
@@ -21,9 +24,13 @@ List<McpTool> buildWslMcpTools(
   WslTerminalManager terminalManager, {
   MountService? mountService,
   Dio? dio,
+  App? app,
+  DistroPackager? packager,
 }) {
   final mount = mountService ?? MountService();
   final http = dio ?? Dio();
+  final catalog = app ?? App();
+  final distroPackager = packager ?? DistroPackager(api: wslApi);
   return [
     // =========================================================================
     // Introspection
@@ -113,6 +120,25 @@ List<McpTool> buildWslMcpTools(
       handler: (_) async {
         final out = await wslApi.listOnline();
         return _verbReport(out, 'No catalog output.');
+      },
+    ),
+    McpTool(
+      name: 'wsl_list_catalog',
+      description:
+          'List the distros the app can create from its own curated catalog '
+          '(the "Add an instance" screen) — names mapped to rootfs URLs. '
+          'Install one by passing its URL to wsl_import_distro as the '
+          'tarball.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final links = await catalog.getDistroLinks();
+        if (links.isEmpty) return 'The catalog is empty or unreachable.';
+        final entries = links.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
+        return entries.map((e) => '${e.key}: ${e.value}').join('\n');
       },
     ),
     McpTool(
@@ -256,6 +282,84 @@ List<McpTool> buildWslMcpTools(
         return result.trim().isEmpty
             ? 'Exported $distro to $outPath.'
             : result.trim();
+      },
+    ),
+    McpTool(
+      name: 'wsl_package_distro',
+      description:
+          'Package a distro as a portable .wsl file (the "Distro packages" '
+          'screen): configures then exports it so it installs on any machine '
+          'via wsl_install_package or `wsl --install --from-file`. Omit '
+          'out_path to use the app\'s default packages folder. Needs WSL '
+          '2.4.4.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the distro to package.',
+          },
+          'out_path': {
+            'type': 'string',
+            'description':
+                'Windows path of the .wsl file to write. Optional.',
+          },
+          'format': {
+            'type': 'string',
+            'enum': ['tar.gz', 'tar.xz'],
+            'description': 'Archive format inside the package. Default tar.gz.',
+          },
+        },
+        'required': ['distro'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final outPath = (args['out_path'] as String?)?.trim().isNotEmpty == true
+            ? (args['out_path'] as String).trim()
+            : distroPackager.defaultPackageFile(distro);
+        final format = (args['format'] as String?)?.trim();
+        final result = await distroPackager.package(distro, outPath,
+            format: format == null || format.isEmpty ? 'tar.gz' : format);
+        if (!result.ok) {
+          throw StateError('Packaging failed: ${result.error}');
+        }
+        return 'Packaged $distro to ${result.path} '
+            '(${result.bytes} bytes).';
+      },
+    ),
+    McpTool(
+      name: 'wsl_install_package',
+      description:
+          'Install a .wsl package (wsl --install --from-file). Unlike '
+          'wsl_import_distro this honours the package\'s wsl-distribution.conf '
+          '— first-run setup, default user, Start-menu shortcut. Needs WSL '
+          '2.4.4.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'path': {
+            'type': 'string',
+            'description': 'Windows path of the .wsl file.',
+          },
+          'name': {
+            'type': 'string',
+            'description':
+                'Name to register under, overriding the package default. '
+                'Optional.',
+          },
+        },
+        'required': ['path'],
+      },
+      handler: (args) async {
+        final path = _requireString(args, 'path');
+        if (!File(path).existsSync()) {
+          throw ArgumentError('package not found: $path');
+        }
+        final name = (args['name'] as String?)?.trim();
+        final out = await distroPackager.install(path,
+            name: name == null || name.isEmpty ? null : name);
+        return _verbReport(
+            out, 'Installed ${name == null || name.isEmpty ? path : name}.');
       },
     ),
     McpTool(
@@ -829,6 +933,137 @@ List<McpTool> buildWslMcpTools(
         final disk = _requireString(args, 'disk');
         await mount.unmount(disk);
         return 'Unmounted $disk.';
+      },
+    ),
+    // =========================================================================
+    // Snippets (the Snippets screen's quick actions)
+    // =========================================================================
+    McpTool(
+      name: 'wsl_list_snippets',
+      description:
+          'List saved snippets (Snippets screen) — reusable shell scripts by '
+          'name.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final items = QuickAction().getFromPrefs();
+        if (items.isEmpty) return 'No snippets saved.';
+        return items
+            .map((s) => s.description.isEmpty
+                ? s.name
+                : '${s.name} — ${s.description}')
+            .join('\n');
+      },
+    ),
+    McpTool(
+      name: 'wsl_get_snippet',
+      description: 'Return the script body of a saved snippet by name.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Snippet name.'},
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final items = QuickAction().getFromPrefs();
+        for (final s in items) {
+          if (s.name == name) {
+            return s.content.isEmpty ? '(empty snippet)' : s.content;
+          }
+        }
+        throw ArgumentError('No snippet named "$name".');
+      },
+    ),
+    McpTool(
+      name: 'wsl_create_snippet',
+      description:
+          'Create or update a snippet (Snippets screen): a named, reusable '
+          'shell script the user can run against a distro later.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Snippet name.'},
+          'content': {
+            'type': 'string',
+            'description': 'The shell script body.',
+          },
+          'description': {
+            'type': 'string',
+            'description': 'Short description. Optional.',
+          },
+        },
+        'required': ['name', 'content'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final content = _requireString(args, 'content');
+        final description = (args['description'] as String?)?.trim() ?? '';
+        final existed =
+            QuickAction().getFromPrefs().any((s) => s.name == name);
+        QuickAction.addToPrefs(QuickActionItem(
+          name: name,
+          content: content,
+          description: description,
+        ));
+        return existed
+            ? 'Updated snippet "$name".'
+            : 'Created snippet "$name".';
+      },
+    ),
+    McpTool(
+      name: 'wsl_delete_snippet',
+      description: 'Delete a saved snippet by name.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Snippet name.'},
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final items = QuickAction().getFromPrefs();
+        if (!items.any((s) => s.name == name)) {
+          throw ArgumentError('No snippet named "$name".');
+        }
+        QuickAction.removeFromPrefs(QuickActionItem(name: name, content: ''));
+        return 'Deleted snippet "$name".';
+      },
+    ),
+    // =========================================================================
+    // Disk discovery (the Mount disk screen)
+    // =========================================================================
+    McpTool(
+      name: 'wsl_list_physical_disks',
+      description:
+          'List the physical disks on the machine that can be mounted into '
+          'WSL (device id, model, size).',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final disks = await mount.getPhysicalDisks();
+        if (disks.isEmpty) return 'No physical disks found.';
+        return disks
+            .map((d) => '${d.deviceId} — ${d.model} (${d.size})')
+            .join('\n');
+      },
+    ),
+    McpTool(
+      name: 'wsl_list_mounted_disks',
+      description: 'List disks currently mounted into WSL.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final disks = await mount.getMountedDisks();
+        return disks.isEmpty ? 'No disks are mounted.' : disks.join('\n');
       },
     ),
     // =========================================================================

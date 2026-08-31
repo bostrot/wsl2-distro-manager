@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:wsl2distromanager/components/ai_chat_panel.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/unsaved_changes.dart';
@@ -252,22 +253,65 @@ class RootPageState extends State<RootPage> with WindowListener {
         // A column rather than a stack: overlaid at the bottom, the status bar
         // covered the Create / Cancel row outright on a short window, and the
         // user had no way to move it.
+        // The page plus its status/notification bar. On a short window the
+        // bar used to overlay the page bottom; as a column child it takes its
+        // own row instead.
+        final pageWithStatus = Column(
+          children: [
+            Expanded(child: widget.child),
+            statusBuilder(
+              status,
+              statusWidget,
+              loading,
+              statusLeading,
+              statusSeverity,
+              clearStatus,
+            ),
+          ],
+        );
+
+        // The AI chat is docked here, at the shell, rather than inside the
+        // home page — so the status bar above sits to the *left* of the dock
+        // instead of sliding underneath it and colliding with the panel's own
+        // input and the chat button (the design the user flagged). Home-only,
+        // matching where the button that opens it lives.
+        final body = name != '/'
+            ? pageWithStatus
+            : ValueListenableBuilder<bool>(
+                valueListenable: GlobalVariable.aiPanel,
+                builder: (context, showAi, _) {
+                  if (!showAi) return pageWithStatus;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      // A fixed 360px dock took 40% of a narrow window; below
+                      // 1000px it scales with the window instead (audit
+                      // PS-38).
+                      final panelWidth = constraints.maxWidth < 1000
+                          ? (constraints.maxWidth * 0.36).roundToDouble()
+                          : 360.0;
+                      return Row(
+                        children: [
+                          Expanded(child: pageWithStatus),
+                          Container(
+                              width: 1, color: surfaceBorderColor(context)),
+                          SizedBox(
+                            width: panelWidth,
+                            child: AiChatPanel(
+                              onClose: () =>
+                                  GlobalVariable.aiPanel.value = false,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              );
+
         return ShellBodyScope(
           child: FocusTraversalGroup(
             key: ValueKey('body$name'),
-            child: Column(
-              children: [
-                Expanded(child: widget.child),
-                statusBuilder(
-                  status,
-                  statusWidget,
-                  loading,
-                  statusLeading,
-                  statusSeverity,
-                  clearStatus,
-                ),
-              ],
-            ),
+            child: body,
           ),
         );
       },

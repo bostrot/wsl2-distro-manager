@@ -95,13 +95,21 @@ distro: 123
 
       final yaml = item.toYamlString();
 
-      expect(yaml, contains('name: Test Action'));
-      expect(yaml, contains('description: A test action'));
-      expect(yaml, contains('version: 1.0.0'));
-      expect(yaml, contains('author: Test Author'));
-      expect(yaml, contains('license: MIT'));
-      expect(yaml, contains('git: https://github.com/test/repo'));
-      expect(yaml, contains('distro: ubuntu'));
+      // Scalars are JSON-quoted now, so an empty field survives the reload
+      // round-trip instead of parsing back as YAML null.
+      expect(yaml, contains('name: "Test Action"'));
+      expect(yaml, contains('description: "A test action"'));
+      expect(yaml, contains('version: "1.0.0"'));
+      expect(yaml, contains('author: "Test Author"'));
+      expect(yaml, contains('license: "MIT"'));
+      expect(yaml, contains('git: "https://github.com/test/repo"'));
+      expect(yaml, contains('distro: "ubuntu"'));
+
+      // The point of the quoting: a snippet with empty fields still parses.
+      final round = QuickActionItem.fromYamlString(
+          QuickActionItem(name: 'n', content: 'c').toYamlString());
+      expect(round.name, 'n');
+      expect(round.description, '');
     });
 
     test('round-trips yaml parse and serialize', () {

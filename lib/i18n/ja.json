@@ -704,5 +704,6 @@
   "mcp-quickconnect-hint-text": "このサーバーを Claude Desktop の設定に追加します。npx mcp-remote 経由でブリッジされます（Node.js が必要）。追加後は Claude Desktop を再起動してください。",
   "mcp-quickconnect-done-text": "Claude Desktop に追加しました。サーバーを読み込むには再起動してください。",
   "mcp-quickconnect-notfound-text": "このマシンに Claude Desktop が見つかりませんでした。",
-  "mcp-quickconnect-failed-text": "Claude Desktop の設定を更新できませんでした。"
+  "mcp-quickconnect-failed-text": "Claude Desktop の設定を更新できませんでした。",
+  "ai-ran-tool-text": "%s を実行しました"
 }

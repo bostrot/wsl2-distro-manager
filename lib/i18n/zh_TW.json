@@ -705,5 +705,6 @@
   "mcp-quickconnect-hint-text": "將此伺服器加入 Claude Desktop 的設定，透過 npx mcp-remote 橋接（需要 Node.js）。之後請重新啟動 Claude Desktop。",
   "mcp-quickconnect-done-text": "已加入 Claude Desktop——重新啟動後即可載入該伺服器。",
   "mcp-quickconnect-notfound-text": "在這台電腦上找不到 Claude Desktop。",
-  "mcp-quickconnect-failed-text": "無法更新 Claude Desktop 的設定。"
+  "mcp-quickconnect-failed-text": "無法更新 Claude Desktop 的設定。",
+  "ai-ran-tool-text": "已執行 %s"
 }

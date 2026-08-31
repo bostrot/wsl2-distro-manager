@@ -116,10 +116,13 @@ void main() {
       'wsl_distro_info',
       'wsl_status',
       'wsl_list_online_distros',
+      'wsl_list_catalog',
       'wsl_install_distro',
       'wsl_import_distro',
       'wsl_import_in_place',
       'wsl_export_distro',
+      'wsl_package_distro',
+      'wsl_install_package',
       'wsl_unregister_distro',
       'wsl_get_wsl_conf',
       'wsl_set_wsl_conf',
@@ -138,12 +141,55 @@ void main() {
       'wsl_compact_disk',
       'wsl_mount_disk',
       'wsl_unmount_disk',
+      'wsl_list_snippets',
+      'wsl_get_snippet',
+      'wsl_create_snippet',
+      'wsl_delete_snippet',
+      'wsl_list_physical_disks',
+      'wsl_list_mounted_disks',
       'wsl_terminal_start',
       'wsl_terminal_send',
       'wsl_terminal_read',
       'wsl_terminal_signal',
       'wsl_terminal_list',
       'wsl_terminal_close',
+    });
+  });
+
+  group('snippets', () {
+    test('create, list, get and delete round-trip through prefs', () async {
+      expect(await tool('wsl_list_snippets').handler({}), 'No snippets saved.');
+
+      final created = await tool('wsl_create_snippet').handler({
+        'name': 'update',
+        'content': 'apt update && apt upgrade -y',
+        'description': 'refresh packages',
+      });
+      expect(created, contains('Created'));
+
+      final list = await tool('wsl_list_snippets').handler({});
+      expect(list, contains('update'));
+      expect(list, contains('refresh packages'));
+
+      final body = await tool('wsl_get_snippet').handler({'name': 'update'});
+      expect(body, 'apt update && apt upgrade -y');
+
+      // A second create with the same name updates rather than duplicates.
+      final updated = await tool('wsl_create_snippet')
+          .handler({'name': 'update', 'content': 'apt update'});
+      expect(updated, contains('Updated'));
+
+      await tool('wsl_delete_snippet').handler({'name': 'update'});
+      expect(await tool('wsl_list_snippets').handler({}), 'No snippets saved.');
+    });
+
+    test('get and delete reject an unknown snippet', () async {
+      await expectLater(
+          tool('wsl_get_snippet').handler({'name': 'nope'}),
+          throwsArgumentError);
+      await expectLater(
+          tool('wsl_delete_snippet').handler({'name': 'nope'}),
+          throwsArgumentError);
     });
   });
 

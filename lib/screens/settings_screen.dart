@@ -1168,7 +1168,10 @@ class SettingsPageState extends State<SettingsPage> {
           ),
         ),
         const SizedBox(width: 8.0),
-        Tooltip(
+        // MergeSemantics+Tooltip so the icon-only button carries its name for
+        // a screen reader (audit IA-09).
+        MergeSemantics(
+          child: Tooltip(
           message: 'ai-loadmodels-text'.i18n(),
           child: IconButton(
             key: const ValueKey('test-ai-loadmodels'),
@@ -1178,6 +1181,7 @@ class SettingsPageState extends State<SettingsPage> {
                 : const Icon(FluentIcons.refresh, size: 14.0),
             onPressed:
                 enabled && !_modelsLoading ? _loadModelSuggestions : null,
+          ),
           ),
         ),
       ],

@@ -9,6 +9,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wsl2distromanager/api/claude_auth.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
+import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
+import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 class AiMessage {
@@ -157,7 +161,32 @@ class AiService {
   }
 
   /// Send a message to the AI and return the response
-  Future<String> sendMessage(String query) async {
+  /// Tools the chat can call. Defaults to the same registry the MCP server
+  /// exposes, so the assistant can actually inspect and operate the user's
+  /// WSL instead of guessing — a scoped instance (the sandbox chat) passes a
+  /// narrower list.
+  List<McpTool>? _tools;
+  List<McpTool> get tools =>
+      _tools ??= buildWslMcpTools(WSLApi(), WslTerminalManager(wslApi: WSLApi()));
+
+  @visibleForTesting
+  set toolsForTesting(List<McpTool> value) => _tools = value;
+
+  /// System prompt: says what the assistant is and that its tools act on the
+  /// user's real machine, so it uses them instead of answering from nothing
+  /// (the "I don't have access to your system" reply the tools exist to fix).
+  String get _systemPrompt => '''
+You are the AI assistant built into WSL Distro Manager, a Windows GUI for managing WSL2 Linux distributions. You have tools that operate on the user's REAL WSL installation on this machine. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see installed distros, wsl_list_catalog / wsl_list_online_distros for what can be installed, wsl_run_command to run something inside a distro.
+Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.''';
+
+  /// How many tool round-trips one message may take before the loop stops.
+  static const int _maxToolIterations = 8;
+
+  /// Tool output is fed back to the model; a multi-megabyte `find /` would
+  /// blow the context, so it is capped.
+  static const int _maxToolResultChars = 6000;
+
+  Future<String> sendMessage(String query, {void Function()? onUpdate}) async {
     if (!_license.isPro) {
       throw Exception('pro-required');
     }
@@ -176,8 +205,7 @@ class AiService {
     _saveConversation();
 
     try {
-      final reply =
-          await (usesClaudeAccount ? _sendViaClaude() : _sendViaByok());
+      final reply = await runAgent(tools, onUpdate: onUpdate);
 
       final assistantMsg = AiMessage(
         role: 'assistant',
@@ -192,63 +220,184 @@ class AiService {
       if (kDebugMode) {
         debugPrint('AI service error: $e');
       }
-      // Remove the failed user message from history
-      _conversationHistory.removeLast();
+      // Remove the failed user message (and any tool notes added mid-run)
+      // back to the last user turn, so a retry starts clean.
+      while (_conversationHistory.isNotEmpty &&
+          _conversationHistory.last.role != 'user') {
+        _conversationHistory.removeLast();
+      }
+      if (_conversationHistory.isNotEmpty) _conversationHistory.removeLast();
       _saveConversation();
       rethrow;
     }
   }
 
-  /// Sends the conversation to the user's own OpenAI-compatible endpoint.
-  Future<String> _sendViaByok() async {
-    final messages = _conversationHistory
-        .take(10)
-        .map((m) => {
-              'role': m.role == 'user' ? 'user' : 'assistant',
-              'content': m.content,
-            })
-        .toList();
-
-    final Response response;
-    try {
-      response = await _dio.post(
-        '$byokBaseUrl/chat/completions',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $byokApiKey',
-            'Content-Type': 'application/json',
-          },
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-        data: json.encode({
-          'model': byokModel,
-          'messages': messages,
-        }),
-      );
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint('BYOK request failed: $e');
-      }
-      throw Exception('byok-request-failed');
-    }
-
-    if (response.statusCode != 200) {
-      throw Exception('byok-request-failed');
-    }
-
-    final data =
-        response.data is String ? json.decode(response.data) : response.data;
-    final choices = (data as Map<String, dynamic>)['choices'] as List?;
-    final content = choices != null && choices.isNotEmpty
-        ? (choices.first['message']?['content'] as String?)
-        : null;
-
-    if (content == null || content.trim().isEmpty) {
-      throw Exception('byok-empty-response');
-    }
-    return content.trim();
+  /// Records a tool call in the transcript as a compact note (UI only — these
+  /// are never replayed to the provider), and pings [onUpdate] so the panel
+  /// can show it live.
+  void _noteTool(String label, void Function()? onUpdate) {
+    _conversationHistory.add(AiMessage(
+      role: 'tool',
+      content: label,
+      timestamp: DateTime.now(),
+    ));
+    _saveConversation();
+    onUpdate?.call();
   }
+
+  void _noteAssistant(String text, void Function()? onUpdate) {
+    if (text.trim().isEmpty) return;
+    _conversationHistory.add(AiMessage(
+      role: 'assistant',
+      content: text.trim(),
+      timestamp: DateTime.now(),
+    ));
+    _saveConversation();
+    onUpdate?.call();
+  }
+
+  /// Executes one tool by name and returns its output (or an error string the
+  /// model can read and recover from), capped in size.
+  Future<String> _executeTool(
+      List<McpTool> toolList, String name, Map<String, dynamic> args) async {
+    McpTool? tool;
+    for (final t in toolList) {
+      if (t.name == name) {
+        tool = t;
+        break;
+      }
+    }
+    if (tool == null) return 'Error: unknown tool "$name".';
+    String out;
+    try {
+      out = await tool.handler(args);
+    } catch (e) {
+      return 'Error: $e';
+    }
+    if (out.length > _maxToolResultChars) {
+      out = '${out.substring(0, _maxToolResultChars)}\n…(truncated)';
+    }
+    return out;
+  }
+
+  /// Runs the current provider as an agent over [toolList]: it may call tools,
+  /// whose results are fed back, until it produces a final text answer.
+  @visibleForTesting
+  Future<String> runAgent(List<McpTool> toolList,
+          {void Function()? onUpdate, String? systemPrompt}) =>
+      usesClaudeAccount
+          ? _runClaudeAgent(toolList,
+              onUpdate: onUpdate, systemPrompt: systemPrompt ?? _systemPrompt)
+          : _runByokAgent(toolList,
+              onUpdate: onUpdate, systemPrompt: systemPrompt ?? _systemPrompt);
+
+  /// The prior transcript as provider messages: user and assistant turns only
+  /// (the `tool` notes are UI-side and would not be valid protocol messages).
+  List<Map<String, dynamic>> _historyMessages() => _conversationHistory
+      .where((m) => m.role == 'user' || m.role == 'assistant')
+      .map((m) => {'role': m.role, 'content': m.content})
+      .toList();
+
+  /// OpenAI function-calling specs for [toolList].
+  List<Map<String, dynamic>> _openAiToolSpecs(List<McpTool> toolList) =>
+      toolList
+          .map((t) => {
+                'type': 'function',
+                'function': {
+                  'name': t.name,
+                  'description': t.description,
+                  'parameters': t.inputSchema,
+                },
+              })
+          .toList();
+
+  /// The OpenAI-compatible agent loop.
+  Future<String> _runByokAgent(List<McpTool> toolList,
+      {void Function()? onUpdate, required String systemPrompt}) async {
+    final messages = <Map<String, dynamic>>[
+      {'role': 'system', 'content': systemPrompt},
+      ..._historyMessages(),
+    ];
+    final toolSpecs = _openAiToolSpecs(toolList);
+
+    for (var i = 0; i < _maxToolIterations; i++) {
+      final Response response;
+      try {
+        response = await _dio.post(
+          '$byokBaseUrl/chat/completions',
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $byokApiKey',
+              'Content-Type': 'application/json',
+            },
+            sendTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 120),
+          ),
+          data: json.encode({
+            'model': byokModel,
+            'messages': messages,
+            if (toolSpecs.isNotEmpty) 'tools': toolSpecs,
+            if (toolSpecs.isNotEmpty) 'tool_choice': 'auto',
+          }),
+        );
+      } on DioException catch (e) {
+        if (kDebugMode) debugPrint('BYOK request failed: $e');
+        throw Exception('byok-request-failed');
+      }
+      if (response.statusCode != 200) {
+        throw Exception('byok-request-failed');
+      }
+
+      final data =
+          response.data is String ? json.decode(response.data) : response.data;
+      final choices = (data as Map<String, dynamic>)['choices'] as List?;
+      final message = choices != null && choices.isNotEmpty
+          ? (choices.first['message'] as Map<String, dynamic>?)
+          : null;
+      final toolCalls = message?['tool_calls'] as List?;
+      final content = message?['content'] as String?;
+
+      if (toolCalls == null || toolCalls.isEmpty) {
+        if (content == null || content.trim().isEmpty) {
+          throw Exception('byok-empty-response');
+        }
+        return content.trim();
+      }
+
+      // A model that narrates before calling ("Let me check…") — surface it.
+      if (content != null && content.trim().isNotEmpty) {
+        _noteAssistant(content, onUpdate);
+      }
+      messages.add(message!);
+
+      for (final call in toolCalls) {
+        final fn = (call as Map)['function'] as Map?;
+        final name = fn?['name'] as String? ?? '';
+        final rawArgs = fn?['arguments'];
+        Map<String, dynamic> parsedArgs = {};
+        if (rawArgs is String && rawArgs.trim().isNotEmpty) {
+          try {
+            parsedArgs = json.decode(rawArgs) as Map<String, dynamic>;
+          } catch (_) {}
+        } else if (rawArgs is Map) {
+          parsedArgs = Map<String, dynamic>.from(rawArgs);
+        }
+        _noteTool(name, onUpdate);
+        final result = await _executeTool(toolList, name, parsedArgs);
+        messages.add({
+          'role': 'tool',
+          'tool_call_id': call['id'],
+          'content': result,
+        });
+      }
+    }
+    // Ran out of tool iterations without a final answer.
+    return _toolLimitMessage;
+  }
+
+  static const String _toolLimitMessage =
+      'I ran several tools but could not finish within the step limit. '
+      'Please narrow the request or ask me to continue.';
 
   /// The Messages API headers: an OAuth bearer token instead of an API key.
   Future<Map<String, String>> _claudeHeaders() async {
@@ -383,53 +532,89 @@ class AiService {
 
   /// Sends the conversation to the Messages API on the user's Claude
   /// subscription — an OAuth bearer token instead of an API key.
-  Future<String> _sendViaClaude() async {
+  /// Claude tool specs for [toolList] (Messages API shape).
+  List<Map<String, dynamic>> _claudeToolSpecs(List<McpTool> toolList) =>
+      toolList
+          .map((t) => {
+                'name': t.name,
+                'description': t.description,
+                'input_schema': t.inputSchema,
+              })
+          .toList();
 
-    final messages = _conversationHistory
-        .take(10)
-        .map((m) => {
-              'role': m.role == 'user' ? 'user' : 'assistant',
-              'content': m.content,
-            })
-        .toList();
+  /// The Claude Messages API agent loop, using tool_use / tool_result blocks.
+  Future<String> _runClaudeAgent(List<McpTool> toolList,
+      {void Function()? onUpdate, required String systemPrompt}) async {
+    final messages = <Map<String, dynamic>>[..._historyMessages()];
+    final toolSpecs = _claudeToolSpecs(toolList);
 
-    final Response response;
-    try {
-      response = await _dio.post(
-        claudeMessagesEndpoint,
-        options: Options(
-          headers: await _claudeHeaders(),
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-        data: json.encode({
-          'model': claudeModel,
-          'max_tokens': 4096,
-          'messages': messages,
-        }),
-      );
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint('Claude request failed: $e');
+    for (var i = 0; i < _maxToolIterations; i++) {
+      final Response response;
+      try {
+        response = await _dio.post(
+          claudeMessagesEndpoint,
+          options: Options(
+            headers: await _claudeHeaders(),
+            sendTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 120),
+          ),
+          data: json.encode({
+            'model': claudeModel,
+            'max_tokens': 4096,
+            'system': systemPrompt,
+            'messages': messages,
+            if (toolSpecs.isNotEmpty) 'tools': toolSpecs,
+          }),
+        );
+      } on DioException catch (e) {
+        if (kDebugMode) debugPrint('Claude request failed: $e');
+        throw Exception('claude-request-failed');
       }
-      throw Exception('claude-request-failed');
-    }
+      if (response.statusCode != 200) {
+        throw Exception('claude-request-failed');
+      }
 
-    if (response.statusCode != 200) {
-      throw Exception('claude-request-failed');
-    }
+      final data =
+          response.data is String ? json.decode(response.data) : response.data;
+      final map = data as Map<String, dynamic>;
+      final blocks = (map['content'] as List?) ?? const [];
+      final stopReason = map['stop_reason'] as String?;
 
-    final data =
-        response.data is String ? json.decode(response.data) : response.data;
-    final blocks = (data as Map<String, dynamic>)['content'] as List?;
-    final text = blocks != null && blocks.isNotEmpty
-        ? (blocks.first['text'] as String?)
-        : null;
+      final textOut = blocks
+          .where((b) => b is Map && b['type'] == 'text')
+          .map((b) => (b as Map)['text'] as String? ?? '')
+          .join('\n')
+          .trim();
+      final toolUses =
+          blocks.where((b) => b is Map && b['type'] == 'tool_use').toList();
 
-    if (text == null || text.trim().isEmpty) {
-      throw Exception('claude-empty-response');
+      if (stopReason != 'tool_use' || toolUses.isEmpty) {
+        if (textOut.isEmpty) throw Exception('claude-empty-response');
+        return textOut;
+      }
+
+      // Narration alongside the tool call.
+      if (textOut.isNotEmpty) _noteAssistant(textOut, onUpdate);
+      messages.add({'role': 'assistant', 'content': blocks});
+
+      final toolResults = <Map<String, dynamic>>[];
+      for (final use in toolUses) {
+        final u = use as Map;
+        final name = u['name'] as String? ?? '';
+        final input = u['input'] is Map
+            ? Map<String, dynamic>.from(u['input'] as Map)
+            : <String, dynamic>{};
+        _noteTool(name, onUpdate);
+        final result = await _executeTool(toolList, name, input);
+        toolResults.add({
+          'type': 'tool_result',
+          'tool_use_id': u['id'],
+          'content': result,
+        });
+      }
+      messages.add({'role': 'user', 'content': toolResults});
     }
-    return text.trim();
+    return _toolLimitMessage;
   }
 
   /// Generate a bash script from natural language description

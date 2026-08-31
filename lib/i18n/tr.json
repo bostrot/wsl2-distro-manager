@@ -704,5 +704,6 @@
   "mcp-quickconnect-hint-text": "Bu sunucuyu npx mcp-remote köprüsüyle Claude Desktop yapılandırmasına ekler (Node.js gerekir). Ardından Claude Desktop'ı yeniden başlat.",
   "mcp-quickconnect-done-text": "Claude Desktop'a eklendi — sunucuyu yüklemek için yeniden başlat.",
   "mcp-quickconnect-notfound-text": "Bu makinede Claude Desktop bulunamadı.",
-  "mcp-quickconnect-failed-text": "Claude Desktop yapılandırması güncellenemedi."
+  "mcp-quickconnect-failed-text": "Claude Desktop yapılandırması güncellenemedi.",
+  "ai-ran-tool-text": "%s çalıştırıldı"
 }

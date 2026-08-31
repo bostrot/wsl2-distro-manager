@@ -347,7 +347,12 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     statusCheck: _listeningStatusCheck(_kOpenClawPort),
     port: _kOpenClawPort,
     defaultInstallPath: 'cmd://openclaw',
-    dashboardCommand: 'openclaw dashboard',
+    // `--no-open`: without it the CLI tries to launch a browser *inside* WSL
+    // (there is none) and prints a plain URL, so the page we opened on Windows
+    // loaded but its WebSocket to the gateway had no token and failed with
+    // "connection not possible". `--no-open` prints the tokenised URL with the
+    // auth details baked in, which is the one that actually connects.
+    dashboardCommand: 'openclaw dashboard --no-open',
   ),
   AiWorkspaceTool.openWebUi: ToolConfig(
     name: 'Open WebUI',
