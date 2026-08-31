@@ -82,6 +82,7 @@ const supportedLocalesList = [
   Locale('es', ''), // Spanish, no country code
   Locale('tr', ''), // Turkish, no country code
   Locale('ja', ''), // Japanese, no country code
+  Locale('ko', ''), // Korean, no country code
 ];
 
 String currentVersion = "1.0.0";
