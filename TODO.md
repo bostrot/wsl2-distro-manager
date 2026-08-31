@@ -31,24 +31,14 @@ Sign in with Claude registration (Anthropic Console) before the button works
 for users — bake it in with `--dart-define=WSLM_CLAUDE_CLIENT_ID=...` or set
 it in the settings field. Do not ship another product's client ID.
 
-### Keep-alive survives a hard kill of the app
-`dispose()` releases the held `wsl … sleep infinity` session on a clean exit,
-but a force-kill (Task Manager, `Stop-Process -Force`) skips provider disposal
-and the process lingers, holding the distro up. Harmless but untidy —
-`wsl --shutdown` clears it. Consider a Windows job object so children die with
-the parent.
-
-### Remote WSL still flattens argv inside ssh
-`--exec` fixed the wsl.exe re-parse locally, but `_buildRemoteArgs()` does not
-quote its arguments, so a multi-command script that works locally is still not
-safe over remote WSL. Recorded as a known gap in `AGENTS.md` ("Remote WSL
-mode… re-flattens argv a third time").
-
-### `RemoteShell`/`ExecutionBroker` are not wired up for remote WSL
-`doc/remote-execution-architecture.md` describes the migration as complete;
-it is not — every production `WSLApi()`/`MountService()` call site uses the
-default constructor and remote execution goes through the plain
-`shell.run('ssh', …)` fallback paths. Either finish the wiring or fix the doc.
+### Wire remote WSL onto `RemoteShell` (optional cleanup)
+The `RemoteShell` class exists but is not instantiated in production —
+`wsl.dart` decides local-vs-remote itself and builds `ssh … wsl …` inline, and
+`mount_service.dart` calls `shell.run` directly rather than the broker.
+`doc/remote-execution-architecture.md` has been corrected to say so (2026-08),
+so nothing is *wrong* now; routing those call sites through `RemoteShell` +
+the broker would be a consistency cleanup, not a fix. Needs a real remote host
+to verify.
 
 ### Hermes install tail noise (upstream)
 `uv sync --locked` errors on a stale `uv.lock` — non-fatal, but it dominates
@@ -114,6 +104,22 @@ scaffolding exists — this would be a from-scratch, multi-week effort.
 
 Each phase's full record lives in its playbook file; verification is quoted
 from there.
+
+### Follow-ups closed 2026-08-31
+- **Remote WSL argv quoting** — `_buildRemoteArgs(quoteCommand: true)` now
+  POSIX single-quotes each remote-command token so the remote login shell
+  keeps it whole; a `bash -c 'a | b'` no longer loses everything after the
+  first space over SSH. The exec paths (`_runWsl`, `_brokeredWsl`,
+  `_startWsl`) opt in; the interactive terminal launches stay raw. Verified:
+  `wsl_test.dart` "a remote command with spaces and metacharacters is quoted
+  whole".
+- **Keep-alive survives a hard kill** — `ProcessReaper` puts every child
+  started through `ProcessShell.start` into a Windows job object with
+  `KILL_ON_JOB_CLOSE`, so a force-kill of the app (Task Manager,
+  `Stop-Process -Force`) takes the `wsl … sleep infinity` keep-alive and any
+  streaming exec down with it. Best-effort and no-op on failure. Verified:
+  `process_reaper_test.dart` confirms an adopted child is actually placed in a
+  job (`IsProcessInJob`), and never throws on a bad pid.
 
 ### Phase 01 — foundation & ship blockers (2026-08-28)
 - **ExecutionBroker kills timed-out children** instead of leaking `wsl.exe`

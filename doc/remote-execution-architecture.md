@@ -3,6 +3,21 @@
 ## Overview
 The Execution Broker provides a unified abstraction layer for shell command execution, enabling both local and remote WSL operations through a single interface. This enables managing WSL distributions on remote machines via SSH without duplicating business logic.
 
+> **Status (accurate as of 2026-08):** the `ExecutionBroker` is wired and
+> load-bearing — every Phase-05 verb and every in-distro file read/write in
+> `wsl.dart` goes through `_brokeredWsl` → `ExecutionBroker.run`, which enforces
+> the per-call timeout and reaps the child. **Remote** WSL, however, is *not*
+> routed through the `RemoteShell` class the diagram below shows: `RemoteShell`
+> exists (`lib/api/execution/remote_shell.dart`) but is **not instantiated
+> anywhere in production**. Instead, `wsl.dart` decides local-vs-remote itself
+> and, for remote, builds a plain `ssh … wsl …` command (now POSIX-quoted per
+> token — see `_buildRemoteArgs(quoteCommand: true)`) that it hands to either
+> the broker (`_brokeredWsl`) or, for the older `_runWsl`/`_startWsl` paths,
+> straight to `shell.run`/`shell.start`. So the diagram is the *intended*
+> design; the "RemoteShell" box is aspirational until those call sites are
+> migrated onto it. Treat the "✅ Complete" table below as "broker-wired", not
+> "RemoteShell-wired".
+
 ## Architecture Diagram
 
 ```
@@ -159,8 +174,9 @@ class _ShellResult {
 
 | File | Calls Migrated | Status |
 |------|----------------|--------|
-| `lib/api/wsl.dart` | ~14 shell.run() | ✅ Complete |
-| `lib/api/mount_service.dart` | 5 shell.run() | ✅ Complete |
+| `lib/api/wsl.dart` | Phase-05 verbs + file I/O via `_brokeredWsl` | ✅ Broker-wired (timeouts, child reaping). Legacy `_runWsl`/`_startWsl` still call `shell.run`/`shell.start` directly. |
+| `lib/api/mount_service.dart` | 5 shell.run() | ⚠️ Uses `ProcessShell` directly, not the broker |
+| `lib/api/execution/remote_shell.dart` | — | ❌ Defined but not instantiated in production; remote is done inline in `wsl.dart` |
 
 ## Testing Strategy
 
