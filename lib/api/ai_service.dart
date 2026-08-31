@@ -10,8 +10,10 @@ import 'package:flutter/foundation.dart';
 import 'package:wsl2distromanager/api/claude_auth.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
+import 'package:wsl2distromanager/api/mcp/todo_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
+import 'package:wsl2distromanager/api/todo_store.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -166,8 +168,10 @@ class AiService {
   /// WSL instead of guessing — a scoped instance (the sandbox chat) passes a
   /// narrower list.
   List<McpTool>? _tools;
-  List<McpTool> get tools =>
-      _tools ??= buildWslMcpTools(WSLApi(), WslTerminalManager(wslApi: WSLApi()));
+  List<McpTool> get tools => _tools ??= [
+        ...buildWslMcpTools(WSLApi(), WslTerminalManager(wslApi: WSLApi())),
+        ...buildTodoTools(TodoStore.instance),
+      ];
 
   @visibleForTesting
   set toolsForTesting(List<McpTool> value) => _tools = value;
@@ -177,7 +181,8 @@ class AiService {
   /// (the "I don't have access to your system" reply the tools exist to fix).
   String get _systemPrompt => '''
 You are the AI assistant built into WSL Distro Manager, a Windows GUI for managing WSL2 Linux distributions. You have tools that operate on the user's REAL WSL installation on this machine. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see installed distros, wsl_list_catalog / wsl_list_online_distros for what can be installed, wsl_run_command to run something inside a distro.
-Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.''';
+Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.
+You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one with your tools, and mark it done with todo_set_done as soon as you finish it.''';
 
   /// How many tool round-trips one message may take before the loop stops.
   static const int _maxToolIterations = 8;
@@ -235,24 +240,26 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
   /// Records a tool call in the transcript as a compact note (UI only — these
   /// are never replayed to the provider), and pings [onUpdate] so the panel
   /// can show it live.
-  void _noteTool(String label, void Function()? onUpdate) {
-    _conversationHistory.add(AiMessage(
+  void _noteTool(List<AiMessage> transcript, void Function()? persist,
+      String label, void Function()? onUpdate) {
+    transcript.add(AiMessage(
       role: 'tool',
       content: label,
       timestamp: DateTime.now(),
     ));
-    _saveConversation();
+    persist?.call();
     onUpdate?.call();
   }
 
-  void _noteAssistant(String text, void Function()? onUpdate) {
+  void _noteAssistant(List<AiMessage> transcript, void Function()? persist,
+      String text, void Function()? onUpdate) {
     if (text.trim().isEmpty) return;
-    _conversationHistory.add(AiMessage(
+    transcript.add(AiMessage(
       role: 'assistant',
       content: text.trim(),
       timestamp: DateTime.now(),
     ));
-    _saveConversation();
+    persist?.call();
     onUpdate?.call();
   }
 
@@ -280,23 +287,45 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
     return out;
   }
 
-  /// Runs the current provider as an agent over [toolList]: it may call tools,
-  /// whose results are fed back, until it produces a final text answer.
+  /// Runs the current provider as an agent over [toolList] against the main
+  /// chat transcript.
   @visibleForTesting
   Future<String> runAgent(List<McpTool> toolList,
           {void Function()? onUpdate, String? systemPrompt}) =>
+      runAgentOn(_conversationHistory, toolList,
+          onUpdate: onUpdate,
+          systemPrompt: systemPrompt,
+          persist: _saveConversation);
+
+  /// Runs the agent loop against an arbitrary [transcript] — the same core
+  /// the main chat uses, exposed so a scoped conversation (the sandbox chat,
+  /// with its own history and its own locked-down tools) reuses it instead of
+  /// duplicating the provider plumbing. [persist] is called whenever the
+  /// transcript grows; pass null for an ephemeral chat.
+  Future<String> runAgentOn(
+    List<AiMessage> transcript,
+    List<McpTool> toolList, {
+    void Function()? onUpdate,
+    String? systemPrompt,
+    void Function()? persist,
+  }) =>
       usesClaudeAccount
-          ? _runClaudeAgent(toolList,
-              onUpdate: onUpdate, systemPrompt: systemPrompt ?? _systemPrompt)
-          : _runByokAgent(toolList,
-              onUpdate: onUpdate, systemPrompt: systemPrompt ?? _systemPrompt);
+          ? _runClaudeAgent(transcript, toolList,
+              onUpdate: onUpdate,
+              persist: persist,
+              systemPrompt: systemPrompt ?? _systemPrompt)
+          : _runByokAgent(transcript, toolList,
+              onUpdate: onUpdate,
+              persist: persist,
+              systemPrompt: systemPrompt ?? _systemPrompt);
 
   /// The prior transcript as provider messages: user and assistant turns only
   /// (the `tool` notes are UI-side and would not be valid protocol messages).
-  List<Map<String, dynamic>> _historyMessages() => _conversationHistory
-      .where((m) => m.role == 'user' || m.role == 'assistant')
-      .map((m) => {'role': m.role, 'content': m.content})
-      .toList();
+  List<Map<String, dynamic>> _historyMessages(List<AiMessage> transcript) =>
+      transcript
+          .where((m) => m.role == 'user' || m.role == 'assistant')
+          .map((m) => {'role': m.role, 'content': m.content})
+          .toList();
 
   /// OpenAI function-calling specs for [toolList].
   List<Map<String, dynamic>> _openAiToolSpecs(List<McpTool> toolList) =>
@@ -312,11 +341,14 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
           .toList();
 
   /// The OpenAI-compatible agent loop.
-  Future<String> _runByokAgent(List<McpTool> toolList,
-      {void Function()? onUpdate, required String systemPrompt}) async {
+  Future<String> _runByokAgent(
+      List<AiMessage> transcript, List<McpTool> toolList,
+      {void Function()? onUpdate,
+      void Function()? persist,
+      required String systemPrompt}) async {
     final messages = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemPrompt},
-      ..._historyMessages(),
+      ..._historyMessages(transcript),
     ];
     final toolSpecs = _openAiToolSpecs(toolList);
 
@@ -366,7 +398,7 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
 
       // A model that narrates before calling ("Let me check…") — surface it.
       if (content != null && content.trim().isNotEmpty) {
-        _noteAssistant(content, onUpdate);
+        _noteAssistant(transcript, persist, content, onUpdate);
       }
       messages.add(message!);
 
@@ -382,7 +414,7 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
         } else if (rawArgs is Map) {
           parsedArgs = Map<String, dynamic>.from(rawArgs);
         }
-        _noteTool(name, onUpdate);
+        _noteTool(transcript, persist, name, onUpdate);
         final result = await _executeTool(toolList, name, parsedArgs);
         messages.add({
           'role': 'tool',
@@ -543,9 +575,12 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
           .toList();
 
   /// The Claude Messages API agent loop, using tool_use / tool_result blocks.
-  Future<String> _runClaudeAgent(List<McpTool> toolList,
-      {void Function()? onUpdate, required String systemPrompt}) async {
-    final messages = <Map<String, dynamic>>[..._historyMessages()];
+  Future<String> _runClaudeAgent(
+      List<AiMessage> transcript, List<McpTool> toolList,
+      {void Function()? onUpdate,
+      void Function()? persist,
+      required String systemPrompt}) async {
+    final messages = <Map<String, dynamic>>[..._historyMessages(transcript)];
     final toolSpecs = _claudeToolSpecs(toolList);
 
     for (var i = 0; i < _maxToolIterations; i++) {
@@ -594,7 +629,7 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
       }
 
       // Narration alongside the tool call.
-      if (textOut.isNotEmpty) _noteAssistant(textOut, onUpdate);
+      if (textOut.isNotEmpty) _noteAssistant(transcript, persist, textOut, onUpdate);
       messages.add({'role': 'assistant', 'content': blocks});
 
       final toolResults = <Map<String, dynamic>>[];
@@ -604,7 +639,7 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
         final input = u['input'] is Map
             ? Map<String, dynamic>.from(u['input'] as Map)
             : <String, dynamic>{};
-        _noteTool(name, onUpdate);
+        _noteTool(transcript, persist, name, onUpdate);
         final result = await _executeTool(toolList, name, input);
         toolResults.add({
           'type': 'tool_result',

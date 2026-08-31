@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/todo_store.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
@@ -24,9 +25,16 @@ class AiChatPanel extends StatefulWidget {
 class _AiChatPanelState extends State<AiChatPanel> {
   final AiService _ai = AiService();
   final LicenseManager _license = LicenseManager();
+  final TodoStore _todos = TodoStore.instance;
   final TextEditingController _inputController = TextEditingController();
+  final TextEditingController _todoInputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+  bool _tasksExpanded = false;
+
+  /// How many times a "work on tasks" run may auto-continue itself before it
+  /// stops on its own — a queue that never drains must not loop forever.
+  static const int _maxAutoContinue = 6;
 
   /// Incremented on every Send and on Cancel. A reply whose generation is
   /// stale was cancelled while in flight and is dropped — the panel used to
@@ -67,10 +75,46 @@ class _AiChatPanelState extends State<AiChatPanel> {
   void initState() {
     super.initState();
     _ai.init().then((_) => setState(() {}));
+    _todos.addListener(_onTodosChanged);
+  }
+
+  void _onTodosChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Sends the "work through the queue" instruction, then auto-continues while
+  /// the assistant keeps completing tasks — this is the "keep going until all
+  /// are done" the user asked for. It stops when the queue is empty, when a
+  /// run makes no progress, or after [_maxAutoContinue] rounds.
+  Future<void> _workOnTasks() async {
+    if (_isLoading || !_todos.hasOpen) return;
+    await _dispatch(
+        'Work through the task list until every item is done. Use todo_list '
+        'to see what is left, do each task with your tools, and call '
+        'todo_set_done the moment you finish one.');
+    var rounds = 0;
+    while (mounted &&
+        _todos.hasOpen &&
+        rounds < _maxAutoContinue &&
+        !_isLoading) {
+      final before = _todos.openCount;
+      rounds++;
+      await _dispatch('Continue with the remaining tasks.');
+      // No progress this round — stop rather than spin.
+      if (_todos.openCount >= before) break;
+    }
   }
 
   Future<void> _sendMessage() async {
     final text = _inputController.text.trim();
+    if (text.isEmpty || _isLoading) return;
+    _inputController.clear();
+    await _dispatch(text);
+  }
+
+  /// The actual send: precondition checks, the request, and error handling.
+  /// Factored out of [_sendMessage] so the task runner can reuse it.
+  Future<void> _dispatch(String text) async {
     if (text.isEmpty || _isLoading) return;
 
     // Check license
@@ -91,7 +135,6 @@ class _AiChatPanelState extends State<AiChatPanel> {
     setState(() {
       _isLoading = true;
     });
-    _inputController.clear();
     _scrollToBottom();
 
     try {
@@ -218,6 +261,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
             ],
           ),
         ),
+
+        // The task queue: the user adds todos and can tell the assistant to
+        // work through them; the assistant checks them off as it goes.
+        _buildTasksSection(context),
 
         // Said before the first keystroke, not after the first Send: with no
         // key the panel used to be indistinguishable from a working one until
@@ -357,6 +404,113 @@ class _AiChatPanelState extends State<AiChatPanel> {
     );
   }
 
+  Widget _buildTasksSection(BuildContext context) {
+    final items = _todos.items;
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Row(
+        children: [
+          Icon(
+            _tasksExpanded ? FluentIcons.chevron_down : FluentIcons.chevron_right,
+            size: 10,
+            color: secondaryTextColor(context),
+          ),
+          const SizedBox(width: 6),
+          Text('ai-tasks-title'.i18n(),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          const SizedBox(width: 6),
+          if (items.isNotEmpty)
+            Text('${_todos.openCount}/${items.length}',
+                style: TextStyle(
+                    fontSize: 11, color: secondaryTextColor(context))),
+          const Spacer(),
+          if (_todos.hasOpen)
+            Tooltip(
+              message: 'ai-tasks-work-text'.i18n(),
+              child: IconButton(
+                key: const ValueKey('test-chat-work-tasks'),
+                icon: const Icon(FluentIcons.play, size: 12),
+                onPressed: _isLoading ? null : _workOnTasks,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _tasksExpanded = !_tasksExpanded),
+          child: header,
+        ),
+        if (_tasksExpanded) ...[
+          for (final t in items)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 2, 12, 2),
+              child: Row(
+                children: [
+                  Checkbox(
+                    checked: t.done,
+                    onChanged: (v) => _todos.setDone(t.id, v ?? false),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      t.text,
+                      style: TextStyle(
+                        fontSize: 12,
+                        decoration:
+                            t.done ? TextDecoration.lineThrough : null,
+                        color: t.done ? secondaryTextColor(context) : null,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(FluentIcons.clear,
+                        size: 10, color: secondaryTextColor(context)),
+                    onPressed: () => _todos.remove(t.id),
+                  ),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 2, 12, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextBox(
+                    controller: _todoInputController,
+                    placeholder: 'ai-tasks-add-hint-text'.i18n(),
+                    onSubmitted: (v) {
+                      if (v.trim().isNotEmpty) {
+                        _todos.add(v);
+                        _todoInputController.clear();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(FluentIcons.add, size: 12),
+                  onPressed: () {
+                    final v = _todoInputController.text.trim();
+                    if (v.isNotEmpty) {
+                      _todos.add(v);
+                      _todoInputController.clear();
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+        Container(height: 1, color: surfaceBorderColor(context)),
+      ],
+    );
+  }
+
   Widget _buildMessageBubble(AiMessage msg) {
     // A tool note: a compact "ran <tool>" chip, not a chat bubble, so the
     // user can see what the assistant actually did on their machine.
@@ -465,7 +619,9 @@ class _AiChatPanelState extends State<AiChatPanel> {
 
   @override
   void dispose() {
+    _todos.removeListener(_onTodosChanged);
     _inputController.dispose();
+    _todoInputController.dispose();
     _scrollController.dispose();
     super.dispose();
   }

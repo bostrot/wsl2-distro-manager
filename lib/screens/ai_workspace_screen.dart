@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/sandbox_service.dart';
+import 'package:wsl2distromanager/dialogs/sandbox_chat_dialog.dart';
 import 'package:wsl2distromanager/api/wsl.dart' show formatElapsed;
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
@@ -40,6 +42,10 @@ class AiWorkspacePage extends StatefulWidget {
 
 class _AiWorkspacePageState extends State<AiWorkspacePage> {
   late final AiWorkspaceService _service;
+  final SandboxService _sandbox = SandboxService();
+  List<String> _sandboxes = [];
+  bool _creatingSandbox = false;
+  String _sandboxStage = '';
   // Gates only the distro check, not the page — cards render immediately.
   bool _preparingDistro = true;
   String? _error;
@@ -74,6 +80,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     super.initState();
     // Shared instance from main.dart — startup already began these checks.
     _service = context.read<AiWorkspaceService>();
+    _sandboxes = _sandbox.list();
     if (_isPro) {
       // Spinner only where nothing is known yet; cached state renders at
       // once and is refreshed below without blocking the UI.
@@ -536,9 +543,144 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             const SizedBox(height: 16),
           ],
           ...AiWorkspaceTool.values.map((tool) => _buildToolCard(tool)),
+          const SizedBox(height: 8),
+          _buildSandboxSection(context),
         ],
       ),
     );
+  }
+
+  /// Sandboxes: app-created Ubuntu distros an AI chat is confined to. The chat
+  /// gets only the sandbox_* tools, so the model can do anything inside the
+  /// distro and nothing outside it.
+  Widget _buildSandboxSection(BuildContext context) {
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(FluentIcons.processing, size: 18),
+              const SizedBox(width: 8),
+              Text('sandbox-title-text'.i18n(),
+                  style: FluentTheme.of(context).typography.subtitle),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('sandbox-subtitle-text'.i18n(),
+              style: TextStyle(
+                  fontSize: 12, color: secondaryTextColor(context))),
+          const SizedBox(height: 12),
+          if (_sandboxes.isEmpty && !_creatingSandbox)
+            Text('sandbox-none-text'.i18n(),
+                style: TextStyle(color: secondaryTextColor(context))),
+          for (final distro in _sandboxes)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Row(
+                children: [
+                  const Icon(FluentIcons.cube_shape, size: 14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(distro,
+                          overflow: TextOverflow.ellipsis)),
+                  Button(
+                    key: ValueKey('test-sandbox-chat-$distro'),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(FluentIcons.chat, size: 12),
+                      const SizedBox(width: 6),
+                      Text('sandbox-open-chat-text'.i18n()),
+                    ]),
+                    onPressed: () => showSandboxChat(distro),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: Icon(FluentIcons.delete,
+                        size: 14, color: destructiveColor(context)),
+                    onPressed: () => _deleteSandbox(distro),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          if (_creatingSandbox)
+            _buildInlineStatus(
+                _sandboxStage.isEmpty
+                    ? 'sandbox-creating-text'.i18n()
+                    : '${'sandbox-creating-text'.i18n()} '
+                        '(${'sandbox-stage-$_sandboxStage-text'.i18n()})',
+                fill: true)
+          else
+            Button(
+              key: const ValueKey('test-sandbox-add'),
+              onPressed: _addSandbox,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(FluentIcons.add, size: 12),
+                const SizedBox(width: 6),
+                Text('sandbox-add-text'.i18n()),
+              ]),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _refreshSandboxes() async {
+    if (mounted) setState(() => _sandboxes = _sandbox.list());
+  }
+
+  Future<void> _addSandbox() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: Text('sandbox-add-text'.i18n()),
+        content: TextBox(
+          key: const ValueKey('test-sandbox-name'),
+          controller: controller,
+          placeholder: 'sandbox-name-hint-text'.i18n(),
+          autofocus: true,
+          onSubmitted: (v) => Navigator.of(context).pop(v),
+        ),
+        actions: [
+          Button(
+            child: Text('cancel-text'.i18n()),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          FilledButton(
+            child: Text('create-text'.i18n()),
+            onPressed: () => Navigator.of(context).pop(controller.text),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    setState(() {
+      _creatingSandbox = true;
+      _sandboxStage = '';
+    });
+    try {
+      await _sandbox.createUbuntuSandbox(name, onProgress: (stage) {
+        if (mounted) setState(() => _sandboxStage = stage);
+      });
+      Notify.message('sandbox-created-text'.i18n(),
+          severity: InfoBarSeverity.success);
+    } catch (e) {
+      Notify.message(
+          '${'sandbox-create-failed-text'.i18n()} ${WslFailure.from(e).shortReason}'
+              .trim(),
+          severity: InfoBarSeverity.error);
+    } finally {
+      if (mounted) setState(() => _creatingSandbox = false);
+      await _refreshSandboxes();
+    }
+  }
+
+  Future<void> _deleteSandbox(String distro) async {
+    try {
+      await _sandbox.deleteSandbox(distro);
+    } catch (_) {}
+    await _refreshSandboxes();
   }
 
   /// Spinner plus a grey label saying what is being waited on.

@@ -1318,3 +1318,216 @@ WslTerminalSession _requireSession(
   }
   return session;
 }
+
+/// A locked-down tool set confined to a single [distro] — the sandbox chat.
+///
+/// The model gets no lifecycle, no `.wslconfig`, no other distro and no
+/// Windows host: every tool here hardcodes [distro], so the LLM can only ever
+/// see and act inside that one sandbox. That is what makes "all the LLM sees
+/// is the inside of the sandbox" a property of the tools, not just a request
+/// in the prompt.
+List<McpTool> buildSandboxTools(
+  WSLApi wslApi,
+  WslTerminalManager terminalManager,
+  String distro,
+) {
+  return [
+    McpTool(
+      name: 'sandbox_run_command',
+      description:
+          'Run a shell command inside the sandbox and return its output. '
+          'There is no other machine or distro you can reach.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'command': {'type': 'string', 'description': 'Shell command.'},
+          'user': {
+            'type': 'string',
+            'description': 'Linux user. Defaults to root.',
+          },
+          'cwd': {
+            'type': 'string',
+            'description': 'Working directory inside the sandbox.',
+          },
+          'timeout_seconds': {
+            'type': 'integer',
+            'description': 'Kill after N seconds. Default 300, max 3600.',
+          },
+        },
+        'required': ['command'],
+      },
+      handler: (args) async {
+        final command = _requireString(args, 'command');
+        final user = (args['user'] as String?)?.trim() ?? '';
+        final cwd = (args['cwd'] as String?)?.trim() ?? '';
+        final timeoutSeconds =
+            ((args['timeout_seconds'] as num?)?.toInt() ?? 300).clamp(1, 3600);
+        final out = await wslApi.runVerb([
+          '-d',
+          distro,
+          if (cwd.isNotEmpty) ...['--cd', cwd],
+          '-u',
+          user.isEmpty ? 'root' : user,
+          '--exec',
+          'bash',
+          '-c',
+          command,
+        ], timeout: Duration(seconds: timeoutSeconds));
+        if (out.exitCode != 0) {
+          return 'Exit code ${out.exitCode}.'
+              '${out.text.isEmpty ? "" : "\n${out.text}"}';
+        }
+        return out.text.isEmpty ? '(no output)' : out.text;
+      },
+    ),
+    McpTool(
+      name: 'sandbox_write_file',
+      description: 'Write a text file inside the sandbox (creating parents).',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'path': {
+            'type': 'string',
+            'description': 'Absolute path inside the sandbox.',
+          },
+          'content': {'type': 'string', 'description': 'File contents.'},
+        },
+        'required': ['path', 'content'],
+      },
+      handler: (args) async {
+        final path = _requireString(args, 'path');
+        final content = args['content'] as String? ?? '';
+        if (!path.startsWith('/')) {
+          throw ArgumentError('path must be absolute: $path');
+        }
+        final ok = await wslApi.writeDistroFile(distro, path, content);
+        if (!ok) throw StateError('Could not write $path.');
+        return 'Wrote ${content.length} bytes to $path.';
+      },
+    ),
+    McpTool(
+      name: 'sandbox_read_file',
+      description: 'Read a text file from inside the sandbox.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'path': {
+            'type': 'string',
+            'description': 'Absolute path inside the sandbox.',
+          },
+        },
+        'required': ['path'],
+      },
+      handler: (args) async {
+        final path = _requireString(args, 'path');
+        final text = await wslApi.readDistroFile(distro, path);
+        if (text == null) throw ArgumentError('Could not read $path.');
+        return text.isEmpty ? '(empty file)' : text;
+      },
+    ),
+    McpTool(
+      name: 'sandbox_terminal_start',
+      description:
+          'Open a persistent shell in the sandbox; returns a session_id for '
+          'sandbox_terminal_send / _read / _close.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'user': {
+            'type': 'string',
+            'description': 'Linux user. Defaults to root.',
+          },
+        },
+      },
+      handler: (args) async {
+        final user = args['user'] as String?;
+        final session = await terminalManager.startSession(distro, user: user);
+        return 'Started sandbox session ${session.id} (user: ${session.user}).';
+      },
+    ),
+    McpTool(
+      name: 'sandbox_terminal_send',
+      description:
+          'Send a line to a sandbox shell session and return output. wait_ms '
+          '(default 600, max 30000) and wait_for (regex) control the wait.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'session_id': {'type': 'string'},
+          'input': {'type': 'string'},
+          'wait_ms': {'type': 'integer'},
+          'wait_for': {'type': 'string'},
+        },
+        'required': ['session_id', 'input'],
+      },
+      handler: (args) async {
+        final session = _requireSandboxSession(terminalManager, distro, args);
+        final input = args['input'] as String?;
+        if (input == null) throw ArgumentError('input is required');
+        final waitMs =
+            ((args['wait_ms'] as num?)?.toInt() ?? 600).clamp(50, 30000);
+        final pattern = (args['wait_for'] as String?)?.isNotEmpty == true
+            ? RegExp(args['wait_for'] as String)
+            : null;
+        session.sendInput(input);
+        final collected = StringBuffer();
+        final deadline = DateTime.now().add(Duration(milliseconds: waitMs));
+        while (true) {
+          await Future.delayed(const Duration(milliseconds: 150));
+          collected.write(session.readNewOutput());
+          if (pattern != null && pattern.hasMatch(collected.toString())) break;
+          if (!DateTime.now().isBefore(deadline)) break;
+        }
+        final output = collected.toString();
+        return output.isEmpty ? '(no output yet)' : output;
+      },
+    ),
+    McpTool(
+      name: 'sandbox_terminal_read',
+      description: 'Read new output from a sandbox shell session.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'session_id': {'type': 'string'},
+        },
+        'required': ['session_id'],
+      },
+      handler: (args) async {
+        final session = _requireSandboxSession(terminalManager, distro, args);
+        final output = session.readNewOutput();
+        return output.isEmpty ? '(no new output)' : output;
+      },
+    ),
+    McpTool(
+      name: 'sandbox_terminal_close',
+      description: 'Close a sandbox shell session.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'session_id': {'type': 'string'},
+        },
+        'required': ['session_id'],
+      },
+      handler: (args) async {
+        final sessionId = _requireString(args, 'session_id');
+        final session = terminalManager.session(sessionId);
+        if (session == null || session.distribution != distro) {
+          throw ArgumentError('Unknown session_id: $sessionId');
+        }
+        await terminalManager.closeSession(sessionId);
+        return 'Closed session $sessionId.';
+      },
+    ),
+  ];
+}
+
+/// Like [_requireSession] but also refuses a session belonging to a different
+/// distro — a sandbox tool must never reach outside its distro.
+WslTerminalSession _requireSandboxSession(
+    WslTerminalManager manager, String distro, Map<String, dynamic> args) {
+  final session = _requireSession(manager, args);
+  if (session.distribution != distro) {
+    throw ArgumentError('Unknown session_id: ${args['session_id']}');
+  }
+  return session;
+}
