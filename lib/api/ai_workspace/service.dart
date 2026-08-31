@@ -352,7 +352,18 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     // loaded but its WebSocket to the gateway had no token and failed with
     // "connection not possible". `--no-open` prints the tokenised URL with the
     // auth details baked in, which is the one that actually connects.
-    dashboardCommand: 'openclaw dashboard --no-open',
+    // `--no-open` alone is not enough: with no browser inside WSL the CLI
+    // prints a *bare* URL and says (measured 2026-08-31) "Token auto-auth not
+    // delivered. Append your gateway token … as a URL fragment with key
+    // `token`" — so the page loaded but its WebSocket had no token and the
+    // dashboard showed "unauthorized: gateway token missing". The second line
+    // digs the token out of the config (the CLI's own `config get` redacts
+    // it) and prints it on a marker line for [_runDashboardCommand] to append
+    // as `#token=`.
+    dashboardCommand: 'openclaw dashboard --no-open 2>&1; '
+        'printf "GATEWAY_TOKEN:%s\\n" "\${OPENCLAW_GATEWAY_TOKEN:-\$(sed -n '
+        "'s/.*\"token\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p' "
+        '~/.openclaw/openclaw.json 2>/dev/null | head -n1)}"',
   ),
   AiWorkspaceTool.openWebUi: ToolConfig(
     name: 'Open WebUI',
@@ -1485,7 +1496,17 @@ class AiWorkspaceService {
 
     try {
       final result = await _broker.run(request);
-      return _firstServiceUrl('${result.stdout}\n${result.stderr}');
+      final output = '${result.stdout}\n${result.stderr}';
+      final url = _firstServiceUrl(output);
+      if (url == null) return null;
+      // A GATEWAY_TOKEN marker line (OpenClaw) carries the auth the URL
+      // itself lacks; the control UI reads it from the `token` fragment.
+      final token =
+          RegExp(r'GATEWAY_TOKEN:(\S+)').firstMatch(output)?.group(1);
+      if (token != null && token.isNotEmpty && !url.contains('token')) {
+        return '$url#token=$token';
+      }
+      return url;
     } catch (_) {
       return null;
     }
