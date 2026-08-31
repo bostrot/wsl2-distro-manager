@@ -160,18 +160,22 @@ void main() {
     test('vm_start is headless unless gui is asked for', () async {
       final shell = FakeVmctlShell();
       shell.responses['start'] = '{}';
+      shell.responses['list'] = '{"vms":[{"name":"dev","state":"running"}]}';
       final api = AppleVmApi(
           shell: shell,
           helperPathOverride: '/fake/vmctl',
-          storeDirOverride: '/tmp/vm-mcp-test');
+          storeDirOverride: '/tmp/vm-mcp-test',
+          earlyExitProbeDelay: Duration.zero);
       final tools =
           buildWslMcpTools(api, WslTerminalManager(wslApi: api));
       final start = tools.firstWhere((t) => t.name == 'vm_start').handler;
 
+      List<String> startCall() =>
+          shell.calls.lastWhere((c) => c.contains('start'));
       await start({'name': 'dev'});
-      expect(shell.calls.last, isNot(contains('--gui')));
+      expect(startCall(), isNot(contains('--gui')));
       await start({'name': 'dev', 'gui': true});
-      expect(shell.calls.last, contains('--gui'));
+      expect(startCall(), contains('--gui'));
     });
   });
 }

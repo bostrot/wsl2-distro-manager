@@ -278,6 +278,13 @@ public enum VmctlCLI {
             }
             if !process.isRunning {
                 let logText = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
+                // A guest can power itself off within this window (nothing
+                // bootable). That is a successful start followed by a stop —
+                // callers detect it via status — not a failure to start.
+                if logText.contains("VM \(name) started") {
+                    printJson(["started": name])
+                    return
+                }
                 throw VmctlError("VM failed to start: \(logText.suffix(2000))")
             }
             Thread.sleep(forTimeInterval: 0.25)

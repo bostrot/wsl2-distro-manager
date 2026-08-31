@@ -77,8 +77,13 @@ class AppleVmApi extends VmBackend {
   /// Overrides the VM store directory; only tests set it.
   final String? storeDirOverride;
 
-  AppleVmApi({Shell? shell, this.helperPathOverride, this.storeDirOverride})
-      : shell = shell ?? ProcessShell();
+  AppleVmApi({
+    Shell? shell,
+    this.helperPathOverride,
+    this.storeDirOverride,
+    Duration? earlyExitProbeDelay,
+  })  : shell = shell ?? ProcessShell(),
+        earlyExitProbeDelay = earlyExitProbeDelay ?? _defaultEarlyExitProbeDelay;
 
   @override
   String get backendId => 'applevirt';
@@ -183,6 +188,14 @@ class AppleVmApi extends VmBackend {
     return (await list(false)).running;
   }
 
+  /// How long after a successful `vmctl start` the VM is re-checked. A guest
+  /// with nothing bootable powers itself off within a couple of seconds —
+  /// EFI runs out of boot options — and without this check the app reported
+  /// "started" over a VM window that had already closed itself. Injectable
+  /// so tests don't sit through it.
+  static const Duration _defaultEarlyExitProbeDelay = Duration(seconds: 4);
+  final Duration earlyExitProbeDelay;
+
   @override
   Future<void> start(String distribution,
       {String startPath = '',
@@ -191,11 +204,43 @@ class AppleVmApi extends VmBackend {
     // Bring the VM up (idempotent for a VM that is already running) with its
     // display window, the Apple analogue of opening a distro's terminal.
     await _runChecked(['start', '--name', distribution, '--gui']);
+    await _throwIfStoppedRightAway(distribution);
   }
 
   /// Start without presenting a window — what the MCP tools want.
   Future<void> startHeadless(String distribution) async {
     await _runChecked(['start', '--name', distribution]);
+    await _throwIfStoppedRightAway(distribution);
+  }
+
+  Future<void> _throwIfStoppedRightAway(String distribution) async {
+    await Future.delayed(earlyExitProbeDelay);
+    try {
+      final vm = await vmInfo(distribution);
+      if (vm == null || vm.running) return;
+    } catch (_) {
+      // The status probe failing is not evidence the VM died.
+      return;
+    }
+    var message = 'vmstoppedimmediately-text'.i18n();
+    final serialTail = _tailOfLog(distribution, 'serial.log');
+    if (serialTail.isNotEmpty) {
+      message = '$message\n$serialTail';
+    }
+    throw AppleVmException(message);
+  }
+
+  /// Last few hundred bytes of a per-VM run log, or '' when unavailable.
+  String _tailOfLog(String distribution, String logName) {
+    try {
+      final log = File(p.join(storeDir, distribution, 'run', logName));
+      if (!log.existsSync()) return '';
+      final text = log.readAsStringSync();
+      final tail = text.substring(text.length < 300 ? 0 : text.length - 300);
+      return tail.trim();
+    } catch (_) {
+      return '';
+    }
   }
 
   @override

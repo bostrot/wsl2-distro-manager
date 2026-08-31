@@ -75,6 +75,7 @@ void main() {
       shell: shell,
       helperPathOverride: '/fake/vmctl',
       storeDirOverride: tempStore.path,
+      earlyExitProbeDelay: Duration.zero,
     );
   });
 
@@ -141,16 +142,41 @@ void main() {
   });
 
   group('lifecycle', () {
+    List<String> callWith(String verb) =>
+        shell.calls.lastWhere((c) => c.contains(verb));
+
     test('start opens the VM with its display window', () async {
       shell.responses['start'] = '{"started":"ubuntu"}';
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"running"}]}';
       await api.start('ubuntu');
-      expect(lastCall(), containsAll(['start', '--name', 'ubuntu', '--gui']));
+      expect(
+          callWith('start'), containsAll(['start', '--name', 'ubuntu', '--gui']));
     });
 
     test('startHeadless omits the gui flag', () async {
       shell.responses['start'] = '{"started":"ubuntu"}';
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"running"}]}';
       await api.startHeadless('ubuntu');
-      expect(lastCall(), isNot(contains('--gui')));
+      expect(callWith('start'), isNot(contains('--gui')));
+    });
+
+    test('a VM that stops right after starting is reported, with the '
+        'serial log tail', () async {
+      shell.responses['start'] = '{"started":"ubuntu"}';
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"stopped"}]}';
+      Directory('${tempStore.path}/ubuntu/run').createSync(recursive: true);
+      File('${tempStore.path}/ubuntu/run/serial.log')
+          .writeAsStringSync('EFI: no bootable option');
+      expect(
+        () => api.start('ubuntu'),
+        throwsA(predicate((e) =>
+            e is AppleVmException &&
+            e.message.contains('vmstoppedimmediately-text') &&
+            e.message.contains('no bootable option'))),
+      );
     });
 
     test('stop and remove hit the expected verbs', () async {
