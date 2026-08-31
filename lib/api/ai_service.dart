@@ -185,7 +185,10 @@ Prefer read-only tools to inspect state before acting. Destructive actions (wsl_
 You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one with your tools, and mark it done with todo_set_done as soon as you finish it.''';
 
   /// How many tool round-trips one message may take before the loop stops.
-  static const int _maxToolIterations = 8;
+  /// Generous: a real provisioning task (install Docker on Alpine, fix
+  /// networking, verify) burned through 8; the transcript survives either
+  /// way, so "continue" picks up where the limit cut in.
+  static const int _maxToolIterations = 24;
 
   /// Tool output is fed back to the model; a multi-megabyte `find /` would
   /// blow the context, so it is capped.
