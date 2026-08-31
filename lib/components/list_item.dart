@@ -27,6 +27,7 @@ class _ListItemState extends State<ListItem> {
   Map<String, bool> hover = {};
   bool isSyncing = false;
   bool isCleaning = false;
+  bool isStopping = false;
   bool showBar = false;
   bool hovered = false;
 
@@ -65,9 +66,7 @@ class _ListItemState extends State<ListItem> {
                       cursor: SystemMouseCursors.click,
                       child: IconButton(
                         icon: const Icon(FluentIcons.stop),
-                        onPressed: () {
-                          stopInstance();
-                        },
+                        onPressed: isStopping ? null : stopInstance,
                       ),
                     ),
                   )
@@ -98,11 +97,28 @@ class _ListItemState extends State<ListItem> {
     );
   }
 
-  void stopInstance() {
+  Future<void> stopInstance() async {
     plausible.event(name: "wsl_stopped");
-    WSLApi().stop(widget.item);
-    Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
-        loading: false, duration: const Duration(seconds: 3));
+    if (mounted) {
+      setState(() {
+        isStopping = true;
+      });
+    }
+    Notify.message('Stopping ${distroLabel(widget.item)} ...', loading: true);
+    try {
+      await WSLApi().stop(widget.item);
+      Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
+          loading: false, duration: const Duration(seconds: 3));
+    } catch (error) {
+      Notify.message('Failed to stop ${widget.item}: ${error.toString()}',
+          loading: false, duration: const Duration(seconds: 5));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isStopping = false;
+        });
+      }
+    }
   }
 
   void startInstance() {

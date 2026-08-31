@@ -48,6 +48,7 @@ void main() async {
       );
       await windowManager.setMinimumSize(const Size(574, 450));
       await windowManager.setSize(const Size(800, 600));
+      await windowManager.center();
       await windowManager.show();
       await windowManager.setPreventClose(true);
       await windowManager.setSkipTaskbar(false);

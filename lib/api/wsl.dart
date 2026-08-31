@@ -116,10 +116,32 @@ class WSLApi {
   }
 
   /// Stop a WSL distro by name
-  Future<String> stop(String distribution) async {
-    ProcessResult results =
-        await shell.run('wsl', ['--terminate', distribution]);
-    return results.stdout;
+  Future<String> stop(String distribution,
+      {Duration? timeout = const Duration(seconds: 30),
+      Duration pollInterval = const Duration(milliseconds: 500)}) async {
+    ProcessResult results = await shell.run(
+      'wsl.exe',
+      ['--terminate', distribution],
+      runInShell: true,
+    );
+    final terminateFailed = results.exitCode != 0;
+
+    final deadline = timeout == null ? null : DateTime.now().add(timeout);
+    while (deadline == null || DateTime.now().isBefore(deadline)) {
+      final running = await listRunning();
+      if (!running.any((name) => name.trim() == distribution.trim())) {
+        return results.stdout;
+      }
+      await Future.delayed(pollInterval);
+    }
+
+    if (terminateFailed) {
+      throw Exception(
+          "'$distribution' is still running. Close any open terminal sessions for this distro and try again. "
+          'WSL terminate failed with exit code ${results.exitCode}: ${results.stderr}');
+    }
+
+    throw Exception("Timed out waiting for '$distribution' to stop.");
   }
 
   /// Open bashrc with notepad from WSL

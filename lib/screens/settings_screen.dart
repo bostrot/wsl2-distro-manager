@@ -143,7 +143,7 @@ class SettingsPageState extends State<SettingsPage> {
                           WSLApi().restart();
                           hasPushed = false;
 
-                          Navigator.popAndPushNamed(context, '/');
+                          router.pushNamed('home');
                         },
                         child: Text('stopwsl-text'.i18n())),
                   ),
