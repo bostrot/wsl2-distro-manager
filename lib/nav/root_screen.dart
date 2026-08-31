@@ -245,7 +245,10 @@ class RootPageState extends State<RootPage> with WindowListener {
               },
             ),
           ),
-          if (!kIsWeb) const WindowButtons(),
+          // Not on macOS: the native title bar already has its own window
+          // controls there, and WindowCaption queries the window plugin at
+          // build time, which asserts when nothing initialised it (tests).
+          if (!kIsWeb && !Platform.isMacOS) const WindowButtons(),
         ]),
       ),
       paneBodyBuilder: (item, child) {

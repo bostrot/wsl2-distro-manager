@@ -422,6 +422,9 @@ class SettingsPageState extends State<SettingsPage> {
             children: [
               Row(
                 children: [
+                  // Both footer actions drive wsl.exe; other backends have
+                  // neither a .wslconfig nor a global WSL VM to stop.
+                  if (!isAppleHost) ...[
                   Tooltip(
                     message: 'editwslconfighint-text'.i18n(),
                     child: Button(
@@ -462,6 +465,7 @@ class SettingsPageState extends State<SettingsPage> {
                             }),
                         child: Text('stopwsl-text'.i18n())),
                   ),
+                  ],
                 ],
               ),
               const SizedBox(

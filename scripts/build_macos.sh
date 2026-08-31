@@ -35,6 +35,10 @@ codesign --force --sign "$IDENTITY" \
   --entitlements macos/vmctl/vmctl.entitlements \
   "$APP/Contents/Resources/vmctl"
 
-# Re-seal the outer bundle after modifying its contents.
-codesign --force --deep --sign "$IDENTITY" "$APP"
+# Re-seal the outer bundle after modifying its contents. Not --deep, and
+# with the app's own entitlements: a bare --force re-sign strips them, which
+# silently removes com.apple.security.virtualization from the app.
+codesign --force --sign "$IDENTITY" \
+  --entitlements macos/Runner/Release.entitlements \
+  "$APP"
 echo "==> Done: $APP"
