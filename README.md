@@ -53,6 +53,14 @@
 - [x] Sync a distro between two machines on your network
 - [x] Dark and light themes, available in nine languages
 
+**On macOS: native virtual machines** *(beta)*
+- [x] The same app manages VMs through Apple's Virtualization framework instead of WSL
+- [x] Create Linux VMs from an installer ISO, a cloud image or an exported template
+- [x] Create macOS guest VMs from a restore image (Apple Silicon)
+- [x] Start, stop, clone, export/import and template VMs like distros
+- [x] Run commands inside VMs over auto-provisioned SSH (cloud-init), from the GUI, the AI chat or MCP clients
+- [x] Build with `scripts/build_macos.sh` — bundles the signed `vmctl` helper
+
 **Pro** *(optional one-time purchase on the Microsoft Store — not a subscription)*
 - [x] **AI Workspace** — run Hermes Agent, OpenClaw and Open WebUI in a dedicated, isolated WSL distro
 - [x] **AI assistant with tools** — the built-in chat can actually *operate* your WSL: it lists and inspects distros, runs commands, edits config, creates snippets, mounts disks and packages distros through the same tools the MCP server exposes
