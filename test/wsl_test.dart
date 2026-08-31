@@ -422,8 +422,24 @@ void main() {
       // the argument list instead).
       expect(mockShell.lastRunExecutable, 'ssh');
       expect(mockShell.lastRunArguments, contains('user@192.168.1.20'));
-      expect(mockShell.lastRunArguments, contains('--terminate'));
-      expect(mockShell.lastRunArguments, contains('Ubuntu'));
+      // The remote command is POSIX-quoted so the remote shell keeps each
+      // token whole; ssh's own options (the target) stay raw.
+      expect(mockShell.lastRunArguments, contains("'--terminate'"));
+      expect(mockShell.lastRunArguments, contains("'Ubuntu'"));
+    });
+
+    test('a remote command with spaces and metacharacters is quoted whole',
+        () async {
+      // The bug this closes: ssh joins the remote argv with spaces and the
+      // remote login shell re-splits it, so an unquoted `bash -c "a | b"`
+      // lost everything after the space. Each token is now single-quoted.
+      await wslApi.runVerb(
+          ['-d', 'Ubuntu', '--exec', 'bash', '-c', 'echo hi | tee /tmp/x']);
+      final args = mockShell.runCalls.last;
+      expect(args, contains("'-d'"));
+      expect(args, contains("'echo hi | tee /tmp/x'"));
+      // The ssh target itself is not quoted.
+      expect(args, contains('user@192.168.1.20'));
     });
 
     test('remoteInstallPath builds a path under the shared remote root',

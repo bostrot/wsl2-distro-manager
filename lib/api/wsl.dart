@@ -370,10 +370,19 @@ class WSLApi {
     return remotePath;
   }
 
+  /// POSIX single-quote an argument so the *remote* shell keeps it as one
+  /// token. `ssh host a b c` hands `a b c` to the remote login shell, which
+  /// word-splits and re-interprets it — a third argv flatten on top of the
+  /// two wsl.exe already does. Quoting each token here is what stops a command
+  /// with spaces, `|`, `$`, `&` or quotes from being mangled over SSH.
+  static String _escapePosixSingleQuoted(String value) =>
+      "'${value.replaceAll("'", r"'\''")}'";
+
   List<String> _buildRemoteArgs(
     String executable,
     List<String> args, {
     bool allocateTty = false,
+    bool quoteCommand = false,
   }) {
     final remoteArgs = <String>[..._sshClientOptions];
     if (allocateTty) {
@@ -381,8 +390,16 @@ class WSLApi {
     }
     remoteArgs.add('--');
     remoteArgs.add(_remoteTarget);
-    remoteArgs.add(executable);
-    remoteArgs.addAll(args);
+    // ssh's own options and the target stay raw (they are consumed by the
+    // local ssh); only the remote command is quoted, because only it reaches
+    // the remote shell.
+    if (quoteCommand) {
+      remoteArgs.add(_escapePosixSingleQuoted(executable));
+      remoteArgs.addAll(args.map(_escapePosixSingleQuoted));
+    } else {
+      remoteArgs.add(executable);
+      remoteArgs.addAll(args);
+    }
     return remoteArgs;
   }
 
@@ -404,7 +421,7 @@ class WSLApi {
 
     return shell.run(
       'ssh',
-      _buildRemoteArgs('wsl', args),
+      _buildRemoteArgs('wsl', args, quoteCommand: true),
       runInShell: false,
       stdoutEncoding: stdoutEncoding,
       stderrEncoding: stderrEncoding,
@@ -431,7 +448,7 @@ class WSLApi {
     final ExecutionRequest request = _useRemoteWsl
         ? ExecutionRequest(
             command: 'ssh',
-            arguments: _buildRemoteArgs('wsl', args),
+            arguments: _buildRemoteArgs('wsl', args, quoteCommand: true),
             timeout: timeout,
           )
         : ExecutionRequest(
@@ -464,7 +481,7 @@ class WSLApi {
 
     return shell.start(
       'ssh',
-      _buildRemoteArgs('wsl', args, allocateTty: allocateTty),
+      _buildRemoteArgs('wsl', args, allocateTty: allocateTty, quoteCommand: true),
       runInShell: false,
       mode: mode,
     );
