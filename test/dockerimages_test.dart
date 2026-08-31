@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
@@ -37,7 +38,10 @@ void main() {
   setUpAll(() async {
     WidgetsFlutterBinding.ensureInitialized();
     DartPluginRegistrant.ensureInitialized();
-    SharedPreferences.setMockInitialValues({});
+    // Pin the distro root: these tests stage rootfs fixtures under
+    // C:\WSL2-Distros, so they must not depend on the per-user default
+    // storage root (%APPDATA%) that getDistroPath() otherwise falls back to.
+    SharedPreferences.setMockInitialValues({'DistroPath': defaultPath});
     await initPrefs();
 
     Notify();

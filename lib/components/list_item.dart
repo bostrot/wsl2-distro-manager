@@ -1,6 +1,8 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
+import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -10,6 +12,11 @@ import 'package:wsl2distromanager/dialogs/dialogs.dart';
 /// Builder for the WSL Distro List Items. Each item is an expander with [item]
 /// as the title and [trailing] as the trailing text. [running] is a list of
 /// running distros.
+///
+/// The action buttons are wrapped in MergeSemantics: fluent_ui's Tooltip puts
+/// its message on a Semantics node above the button, while IconButton opens a
+/// semantics container of its own, so without the merge a screen reader reads
+/// every action as an unlabelled "button".
 class ListItem extends StatefulWidget {
   const ListItem(
       {super.key,
@@ -30,6 +37,21 @@ class _ListItemState extends State<ListItem> {
   bool showBar = false;
   bool hovered = false;
 
+  /// Start and stop are slow enough to be tapped twice. While one is in flight
+  /// both controls report it instead of silently queueing a second `wsl.exe`.
+  bool isBusy = false;
+
+  /// The Expander's header is one big HoverButton, and its focus ring is drawn
+  /// around the chevron alone — 1,100px from the name it belongs to (IA-05) —
+  /// while any focused child of the header lights it a second time (IA-06).
+  /// Tracking the three regions separately is what tells "the row is the tab
+  /// stop" apart from "a control inside the row is".
+  bool rowFocused = false;
+  bool leadingFocused = false;
+  bool contentFocused = false;
+
+  bool get headerFocused => rowFocused && !leadingFocused && !contentFocused;
+
   void syncing(var item) {
     setState(() {
       isSyncing = item;
@@ -39,73 +61,200 @@ class _ListItemState extends State<ListItem> {
   bool isRunning(String distroName, List<String> runningList) =>
       runningList.contains(distroName);
 
+  /// What the row calls itself. LN-01 cuts this at half the row width, so
+  /// the same string is also the header's tooltip (audit LN-23).
+  String headerLabel() => isRunning(widget.item, widget.running)
+      ? '${distroLabel(widget.item)} (${'running-text'.i18n()})'
+      : distroLabel(widget.item);
+
+  /// Watches a region of the row for focus without becoming a tab stop itself.
+  Widget watchFocus(Widget child, ValueChanged<bool> onChanged) => Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (focused) {
+          if (mounted) setState(() => onChanged(focused));
+        },
+        child: child,
+      );
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8.0, left: 12.0, right: 12.0),
-      child: Expander(
+      child: watchFocus(
+        // The ring the header would have drawn round its chevron is switched
+        // off and redrawn around the whole row; the buttons inside restore the
+        // theme's ring by merging an empty override over the suppression.
+        // Hover lights the same whole-row ring — the Expander's own hover
+        // effect reached only the chevron, 660px from the cursor (LN-09).
+        MouseRegion(
+          onEnter: (_) => setState(() => hovered = true),
+          onExit: (_) => setState(() => hovered = false),
+          child: FocusBorder(
+            focused: headerFocused || hovered,
+            child: FocusTheme(
+              data: const FocusThemeData(
+                primaryBorder: BorderSide.none,
+                secondaryBorder: BorderSide.none,
+              ),
+              child: buildRow(context),
+            ),
+          ),
+        ),
+        (focused) => rowFocused = focused,
+      ),
+    );
+  }
+
+  Widget buildRow(BuildContext context) {
+    return Expander(
           initiallyExpanded: false,
-          leading: Row(children: [
-            Tooltip(
-              message: 'start-text'.i18n(),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: IconButton(
-                  icon: const Icon(FluentIcons.play),
-                  onPressed: () {
-                    startInstance();
-                  },
+          leading: watchFocus(
+              FocusTheme(
+                  data: const FocusThemeData(),
+                  child: Row(children: [
+            // On a running distro the first button opens another terminal —
+            // its tooltip saying "Start" over an already-running instance
+            // promised the wrong thing (audit LN-26).
+            MergeSemantics(
+              child: Tooltip(
+                message: isRunning(widget.item, widget.running)
+                    ? 'openterminal-text'.i18n()
+                    : 'start-text'.i18n(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    key: const ValueKey('test-listitem-start'),
+                    icon: isBusy
+                        ? const SizedBox.square(
+                            dimension: 16.0,
+                            child: ProgressRing(strokeWidth: 2.0))
+                        : Icon(
+                            isRunning(widget.item, widget.running)
+                                ? FluentIcons.command_prompt
+                                : FluentIcons.play,
+                            size: 16.0),
+                    onPressed: isBusy
+                        ? null
+                        : () {
+                            startInstance();
+                          },
+                  ),
                 ),
               ),
             ),
-            isRunning(widget.item, widget.running)
-                ? Tooltip(
-                    message: 'stop-text'.i18n(),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: IconButton(
-                        icon: const Icon(FluentIcons.stop),
-                        onPressed: () {
-                          stopInstance();
-                        },
-                      ),
+            // Kept in the tree while the distro is stopped — its footprint
+            // is maintained invisibly, so the name does not jump ~30px
+            // sideways every time a distro starts or stops (audit LN-02).
+            // Hidden means disabled, so no invisible tab stop comes back.
+            Visibility(
+              visible: isRunning(widget.item, widget.running),
+              maintainSize: true,
+              maintainAnimation: true,
+              maintainState: true,
+              child: MergeSemantics(
+                child: Tooltip(
+                  message: 'stop-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      key: const ValueKey('test-listitem-stop'),
+                      icon: isBusy
+                          ? const SizedBox.square(
+                              dimension: 16.0,
+                              child: ProgressRing(strokeWidth: 2.0))
+                          : const Icon(FluentIcons.stop, size: 16.0),
+                      onPressed:
+                          (isBusy || !isRunning(widget.item, widget.running))
+                              ? null
+                              : () {
+                                  stopInstance();
+                                },
                     ),
-                  )
-                : const Text(''),
-          ]),
+                  ),
+                ),
+              ),
+            ),
+                  ])),
+              (focused) => leadingFocused = focused),
           header: Row(
             mainAxisSize: MainAxisSize.max,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              isRunning(widget.item, widget.running)
-                  ? (Text(
-                      '${distroLabel(widget.item)} (${'running-text'.i18n()})'))
-                  : Text(distroLabel(widget.item)),
-              Text(widget.trailing),
+              Expanded(
+                child: Tooltip(
+                  message: headerLabel(),
+                  child: Text(
+                    headerLabel(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Sized to its text, not to a flex share: `Expanded` +
+              // `Flexible` both at flex 1 split the header 50/50 and cut the
+              // name at half width beside ~480px of nothing (audit LN-01).
+              // The tooltip says what the bare "1.65 GB" actually is
+              // (LN-25), and a failed size read shows a dash instead of
+              // silently blanking.
+              Tooltip(
+                message: widget.trailing.isEmpty
+                    ? 'diskusageunavailable-text'.i18n()
+                    : 'sizeondiskhint-text'.i18n(),
+                child: Text(
+                  widget.trailing.isEmpty ? '—' : widget.trailing,
+                  maxLines: 1,
+                  textAlign: TextAlign.right,
+                ),
+              ),
             ],
           ),
-          content: Bar(
-            widget: widget,
-            isCleaning: isCleaning,
-            onCleaningChanged: (value) {
-              if (mounted) {
-                setState(() {
-                  isCleaning = value;
-                });
-              }
-            },
-          )),
-    );
+          content: watchFocus(
+              FocusTheme(
+                data: const FocusThemeData(),
+                child: Bar(
+                  widget: widget,
+                  isCleaning: isCleaning,
+                  onCleaningChanged: (value) {
+                    if (mounted) {
+                      setState(() {
+                        isCleaning = value;
+                      });
+                    }
+                  },
+                ),
+              ),
+              (focused) => contentFocused = focused));
   }
 
-  void stopInstance() {
+  void _setBusy(bool value) {
+    if (mounted) setState(() => isBusy = value);
+  }
+
+  Future<void> stopInstance() async {
     plausible.event(name: "wsl_stopped");
-    WSLApi().stop(widget.item);
-    Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
-        loading: false, duration: const Duration(seconds: 3));
+    _setBusy(true);
+    try {
+      Notify.message('stoppinginstance-text'.i18n([distroLabel(widget.item)]),
+          loading: true);
+      await WSLApi().stop(widget.item);
+      Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
+          severity: InfoBarSeverity.success,
+          loading: false,
+          duration: const Duration(seconds: 3));
+    } catch (e) {
+      final failure = WslFailure.from(e);
+      Notify.message(
+          '${'stopfailed-text'.i18n([distroLabel(widget.item)])} ${failure.shortReason}'.trim(),
+          severity: InfoBarSeverity.error);
+      diagnoseWithAi(failure.details);
+    } finally {
+      _setBusy(false);
+    }
   }
 
-  void startInstance() {
+  void startInstance() async {
     plausible.event(name: "wsl_started");
     String? startPath = prefs.getString('StartPath_${widget.item}') ?? '';
     String? startName = prefs.getString('StartUser_${widget.item}') ?? '';
@@ -118,14 +267,28 @@ class _ListItemState extends State<ListItem> {
       // Replace faulty semicolons (e.g. "; ;" or ";;")
       startCmd = startCmd.replaceAll(RegExp(r';[ ]*;'), ';');
     }
-    // Normal start
-    WSLApi().start(widget.item,
-        startPath: startPath, startUser: startName, startCmd: startCmd);
-
-    Future.delayed(
-        const Duration(milliseconds: 500),
-        Notify.message('${widget.item} ${'started-text'.i18n()}.',
-            duration: const Duration(seconds: 3)));
+    _setBusy(true);
+    try {
+      Notify.message('startinginstance-text'.i18n([distroLabel(widget.item)]),
+          loading: true);
+      // Awaited, and the toast posted afterwards. `Future.delayed(d, f(...))`
+      // evaluates `f(...)` immediately and hands its result to the timer, so
+      // the "started" toast used to appear before the process had spawned —
+      // and the catch below could never run against a fire-and-forget call.
+      await WSLApi().start(widget.item,
+          startPath: startPath, startUser: startName, startCmd: startCmd);
+      Notify.message('${widget.item} ${'started-text'.i18n()}.',
+          severity: InfoBarSeverity.success,
+          duration: const Duration(seconds: 3));
+    } catch (e) {
+      final failure = WslFailure.from(e);
+      Notify.message(
+          '${'startfailed-text'.i18n([distroLabel(widget.item)])} ${failure.shortReason}'.trim(),
+          severity: InfoBarSeverity.error);
+      diagnoseWithAi(failure.details);
+    } finally {
+      _setBusy(false);
+    }
   }
 }
 
@@ -189,193 +352,280 @@ class Bar extends StatelessWidget {
                       items: actions,
                     ),
                   )
-                : const SizedBox();
+                // Says what would fill the ~85% of the expanded row that sat
+                // empty with no explanation (audit LN-07).
+                : Text('nosnippetshint-text'.i18n(),
+                    style: TextStyle(
+                        fontSize: 12.0, color: secondaryTextColor(context)));
           }),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Tooltip(
-                message: 'saveastemplate-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.save_template, size: 16.0),
-                    onPressed: () =>
-                        // Open remove dialog
-                        dialog(
-                            item: widget.item,
-                            title: 'savesatemplatequestion-text'
-                                .i18n([widget.item]),
-                            body: 'saveastemplatebody-text'.i18n(),
-                            submitText: 'saveastemplate-text'.i18n(),
-                            submitInput: false,
-                            submitStyle: ButtonStyle(
-                              backgroundColor: ButtonState.all(Colors.red),
-                              foregroundColor: ButtonState.all(Colors.white),
-                            ),
-                            onSubmit: (inputText) async {
-                              await Templates().saveTemplate(widget.item);
-                            }),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'saveastemplate-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      // Distinct from copy's two-pages silhouette four
+                      // positions along (audit LN-06).
+                      icon: const Icon(FluentIcons.archive, size: 16.0),
+                      onPressed: () =>
+                          // Open remove dialog
+                          dialog(
+                              item: widget.item,
+                              title: 'savesatemplatequestion-text'
+                                  .i18n([widget.item]),
+                              body: 'saveastemplatebody-text'.i18n(),
+                              submitText: 'saveastemplate-text'.i18n(),
+                              submitInput: false,
+                              submitStyle: ButtonStyle(
+                                backgroundColor: ButtonState.all(Colors.red),
+                                foregroundColor: ButtonState.all(Colors.white),
+                              ),
+                              onSubmit: (inputText) async {
+                                await Templates().saveTemplate(widget.item);
+                              }),
+                    ),
                   ),
                 ),
               ),
-              Tooltip(
-                message: 'openwithexplorer-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.open_folder_horizontal,
-                        size: 16.0),
-                    onPressed: () {
-                      plausible.event(name: "wsl_explorer");
-                      WSLApi().startExplorer(widget.item);
-                    },
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'openwithexplorer-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.open_folder_horizontal,
+                          size: 16.0),
+                      onPressed: () {
+                        plausible.event(name: "wsl_explorer");
+                        WSLApi().startExplorer(widget.item);
+                      },
+                    ),
                   ),
                 ),
               ),
-              Tooltip(
-                message: 'openwithvscode-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.visual_studio_for_windows,
-                        size: 16.0),
-                    onPressed: () {
-                      plausible.event(name: "wsl_vscode");
-                      // Get path
-                      String? path =
-                          prefs.getString('StartPath_${widget.item}') ?? '';
-                      WSLApi().startVSCode(widget.item, path: path);
-                    },
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'openwithvscode-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      // An outline glyph like its eight neighbours — the
+                      // solid VS bowtie was the heaviest mark in the strip
+                      // and pulled the eye to the least important action
+                      // (audit LN-05).
+                      icon: const Icon(FluentIcons.file_code, size: 16.0),
+                      onPressed: () {
+                        plausible.event(name: "wsl_vscode");
+                        // Get path
+                        String? path =
+                            prefs.getString('StartPath_${widget.item}') ?? '';
+                        WSLApi().startVSCode(widget.item, path: path);
+                      },
+                    ),
                   ),
                 ),
               ),
-              Tooltip(
-                message: 'copy-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.copy, size: 16.0),
-                    onPressed: () {
-                      copyDialog(widget.item);
-                    },
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'copy-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.copy, size: 16.0),
+                      onPressed: () {
+                        copyDialog(widget.item);
+                      },
+                    ),
                   ),
                 ),
               ),
-              Tooltip(
-                message: 'rename-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.rename, size: 16.0),
-                    onPressed: () {
-                      dialog(
-                          item: widget.item,
-                          title:
-                              '${'rename-text'.i18n()} \'${distroLabel(widget.item)}\'',
-                          body: 'renameinfo-text'.i18n(),
-                          submitText: 'rename-text'.i18n(),
-                          submitStyle: const ButtonStyle(),
-                          onSubmit: (inputText) {
-                            Notify.message(
-                                'renaminginstance-text'.i18n(
-                                    [distroLabel(widget.item), inputText]),
-                                loading: true);
-                            prefs.setString(
-                                'DistroName_${widget.item}', inputText);
-                            Notify.message('renamedinstance-text'
-                                .i18n([distroLabel(widget.item), inputText]));
-                          });
-                    },
-                  ),
-                ),
-              ),
-              Tooltip(
-                message: 'cleanup-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                      icon: const Icon(FluentIcons.broom, size: 16.0),
-                      onPressed: isCleaning
-                          ? null
-                          : () {
-                              dialog(
-                                  item: widget.item,
-                                  title:
-                                      'cleanuptitle-text'.i18n([widget.item]),
-                                  body: 'cleanupbody-text'.i18n(),
-                                  submitText: 'continue-text'.i18n(),
-                                  submitStyle: ButtonStyle(
-                                    backgroundColor:
-                                        ButtonState.all(Colors.red),
-                                    foregroundColor:
-                                        ButtonState.all(Colors.white),
-                                  ),
-                                  submitInput: false,
-                                  cancelText: 'cancel-text'.i18n(),
-                                  onSubmit: (inputText) async {
-                                    onCleaningChanged(true);
-                                    // Show initial notification
-                                    Notify.message(
-                                        'Cleaning up ${widget.item}. Exporting, removing and importing back...',
-                                        loading: true);
-
-                                    try {
-                                      await WSLApi().cleanup(widget.item,
-                                          onProgress: (status) {
-                                        Notify.message(
-                                            'Cleaning up ${widget.item}: $status',
-                                            loading: true);
-                                      });
-                                      // Show success notification
-                                      Notify.message(
-                                          'Successfully cleaned up ${widget.item}');
-                                    } catch (error) {
-                                      // Show error notification
-                                      Notify.message(
-                                          'Failed to clean up ${widget.item}: ${error.toString()}');
-                                    } finally {
-                                      onCleaningChanged(false);
-                                    }
-                                  });
-                            }),
-                ),
-              ),
-              Tooltip(
-                message: 'delete-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                      icon: const Icon(FluentIcons.delete, size: 16.0),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'rename-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      // A pencil, not the abstract =|) mark nothing reads
+                      // as renaming (audit LN-06).
+                      icon: const Icon(FluentIcons.edit, size: 16.0),
                       onPressed: () {
                         dialog(
                             item: widget.item,
-                            title: 'deleteinstancequestion-text'
-                                .i18n([distroLabel(widget.item)]),
-                            body: 'deleteinstancebody-text'.i18n(),
-                            submitText: 'delete-text'.i18n(),
-                            submitInput: false,
-                            submitStyle: ButtonStyle(
-                              backgroundColor: ButtonState.all(Colors.red),
-                              foregroundColor: ButtonState.all(Colors.white),
-                            ),
-                            onSubmit: (inputText) async {
-                              await WSLApi().remove(widget.item);
+                            title:
+                                '${'rename-text'.i18n()} \'${distroLabel(widget.item)}\'',
+                            body: 'renameinfo-text'.i18n(),
+                            submitText: 'rename-text'.i18n(),
+                            submitStyle: const ButtonStyle(),
+                            onSubmit: (inputText) {
                               Notify.message(
-                                  'deletedinstance-text'.i18n([widget.item]));
+                                  'renaminginstance-text'.i18n(
+                                      [distroLabel(widget.item), inputText]),
+                                  loading: true);
+                              prefs.setString(
+                                  'DistroName_${widget.item}', inputText);
+                              Notify.message(
+                                  'renamedinstance-text'.i18n(
+                                      [distroLabel(widget.item), inputText]),
+                                  severity: InfoBarSeverity.success);
                             });
-                      }),
+                      },
+                    ),
+                  ),
                 ),
               ),
-              Tooltip(
-                message: 'settings-text'.i18n(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                      icon: const Icon(FluentIcons.settings, size: 16.0),
+              // Next to Compact deliberately: "80 GB allocated, 12 GB used"
+              // is the question a user asks *before* reaching for the broom,
+              // and #303 is someone whose compact filled the drive because
+              // nothing showed them the numbers first (audit F-11).
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'diskusage-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon:
+                          // A usage-share glyph, not a server rack (LN-06).
+                          const Icon(FluentIcons.pie_single, size: 16.0),
                       onPressed: () {
-                        settingsDialog(widget.item);
-                      }),
+                        plausible.event(name: "wsl_disk");
+                        diskDialog(widget.item);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'cleanup-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        icon: const Icon(FluentIcons.broom, size: 16.0),
+                        onPressed: isCleaning
+                            ? null
+                            : () {
+                                dialog(
+                                    item: widget.item,
+                                    title:
+                                        'cleanuptitle-text'.i18n([widget.item]),
+                                    body: 'cleanupbody-text'.i18n(),
+                                    submitText: 'continue-text'.i18n(),
+                                    submitStyle: ButtonStyle(
+                                      backgroundColor:
+                                          ButtonState.all(Colors.red),
+                                      foregroundColor:
+                                          ButtonState.all(Colors.white),
+                                    ),
+                                    submitInput: false,
+                                    cancelText: 'cancel-text'.i18n(),
+                                    onSubmit: (inputText) async {
+                                      onCleaningChanged(true);
+                                      // Show initial notification
+                                      Notify.message(
+                                          'cleaningupinstance-text'
+                                              .i18n([distroLabel(widget.item)]),
+                                          loading: true);
+
+                                      try {
+                                        await WSLApi().cleanup(widget.item,
+                                            onProgress: (status) {
+                                          Notify.message(
+                                              'cleaningupprogress-text'.i18n(
+                                                  [distroLabel(widget.item), status]),
+                                              loading: true);
+                                        });
+                                        // Show success notification
+                                        Notify.message(
+                                            'cleanedupinstance-text'
+                                                .i18n([distroLabel(widget.item)]),
+                                            severity: InfoBarSeverity.success);
+                                      } catch (error) {
+                                        final failure = WslFailure.from(error);
+                                        Notify.message(
+                                            '${'cleanupfailed-text'.i18n([
+                                              distroLabel(widget.item)
+                                            ])} ${failure.shortReason}'.trim(),
+                                            severity: InfoBarSeverity.error);
+                                        diagnoseWithAi(failure.details);
+                                      } finally {
+                                        onCleaningChanged(false);
+                                      }
+                                    });
+                              }),
+                  ),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'settings-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        icon: const Icon(FluentIcons.settings, size: 16.0),
+                        onPressed: () {
+                          settingsDialog(widget.item);
+                        }),
+                  ),
+                ),
+              ),
+              // Delete is the only control in this strip that destroys the
+              // distro, and it used to sit between the broom and the gear —
+              // 32px from two buttons a user reaches for routinely (audit
+              // LN-04). It is last now, behind a separator, and carries the
+              // same destructive colour its confirmation's submit button has.
+              const Divider(
+                direction: Axis.vertical,
+                size: 20.0,
+                style: DividerThemeData(
+                  verticalMargin: EdgeInsets.symmetric(horizontal: 6.0),
+                ),
+              ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'delete-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        icon: Icon(FluentIcons.delete,
+                            size: 16.0, color: destructiveColor(context)),
+                        onPressed: () {
+                          dialog(
+                              item: widget.item,
+                              title: 'deleteinstancequestion-text'
+                                  .i18n([distroLabel(widget.item)]),
+                              body: 'deleteinstancebody-text'.i18n(),
+                              submitText: 'delete-text'.i18n(),
+                              submitInput: false,
+                              submitStyle: ButtonStyle(
+                                backgroundColor: ButtonState.all(Colors.red),
+                                foregroundColor: ButtonState.all(Colors.white),
+                              ),
+                              onSubmit: (inputText) async {
+                                try {
+                                  Notify.message(
+                                      'deletinginstance-text'
+                                          .i18n([distroLabel(widget.item)]),
+                                      loading: true);
+                                  await WSLApi().remove(widget.item);
+                                  Notify.message(
+                                      'deletedinstance-text'
+                                          .i18n([widget.item]),
+                                      severity: InfoBarSeverity.success);
+                                } catch (e) {
+                                  final failure = WslFailure.from(e);
+                                  Notify.message(
+                                      '${'deletefailed-text'.i18n([
+                                        distroLabel(widget.item)
+                                      ])} ${failure.shortReason}'.trim(),
+                                      severity: InfoBarSeverity.error);
+                                  diagnoseWithAi(failure.details);
+                                }
+                              });
+                        }),
+                  ),
                 ),
               ),
             ],

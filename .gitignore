@@ -52,3 +52,21 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local tooling / agent configs
+/-o
+.opencode/
+.slim/
+opencode.jsonc
+opencode-mem.jsonc
+qwencode.json
+roo-code-settings.json
+vscode-settings.json
+semble-search-agent.md
+# Local session notes, not for the public remote.
+SESSION-HANDOFF.md
+
+# Maestro
+# Playbook Phase-*.md documents stay tracked; only generated output is ignored.
+.maestro/screenshots/
+.maestro/playbooks/**/Working/

@@ -1,15 +1,58 @@
+import 'dart:io' show Platform;
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/components/beta_badge.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
+import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
+import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
+import 'package:wsl2distromanager/api/wsl_capabilities.dart';
+import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/named_button.dart';
+import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/components/unsaved_changes.dart';
+import 'package:wsl2distromanager/components/wsl_size.dart';
+import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/theme.dart';
 
-enum SettingsType { bool, text, size }
+/// How a `.wslconfig` key is rendered. One member per documented value type in
+/// `wsl-config.md`: `size` is byte-valued and carries an optional unit suffix,
+/// `number` is a plain count, and `enumeration` is a closed set of values that
+/// must not be typeable by hand (doc/audit/wsl-docs/ P05-09, P05-11).
+enum SettingsType { bool, text, size, number, enumeration }
+
+/// Asks before `wsl --shutdown`, then runs [onConfirmed].
+///
+/// Both buttons that call `WSLApi().restart()` stop *every* running instance
+/// and kill every process inside them, including an editor open over `\\wsl$`.
+/// Neither said so and neither asked (audit ST-04).
+void confirmStopWsl(BuildContext context, VoidCallback onConfirmed) {
+  dialog(
+    hostContext: context,
+    item: '',
+    title: 'stopwslquestion-text'.i18n(),
+    body: 'stopwslbody-text'.i18n(),
+    submitText: 'stopwsl-text'.i18n(),
+    submitInput: false,
+    submitStyle: ButtonStyle(
+      backgroundColor: ButtonState.all(Colors.red),
+      foregroundColor: ButtonState.all(Colors.white),
+    ),
+    onSubmit: (_) => onConfirmed(),
+  );
+}
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -22,6 +65,21 @@ class SettingsPageState extends State<SettingsPage> {
   Map<String, TextEditingController> _settings =
       <String, TextEditingController>{};
 
+  /// The `.wslconfig` file as it was read, mutated in place by Save.
+  WslConfigFile? _config;
+
+  /// Every documented key's value at load time.
+  ///
+  /// Save compares against this and writes **only** what changed. That is what
+  /// makes "load → Save leaves the file byte-identical apart from the key the
+  /// user edited" true: the old loop re-emitted every non-empty key into
+  /// `[wsl2]` on every Save, which is how a hand-added `[experimental]` key was
+  /// silently relocated into a section WSL ignores it in (audit CC-3, R-4).
+  Map<String, String> _loadedConfig = <String, String>{};
+
+  /// What the installed wsl.exe can do, once the probe answers.
+  WslCapabilities? _capabilities;
+
   final TextEditingController _syncIpTextController = TextEditingController();
   final TextEditingController _syncPasswordController = TextEditingController();
   final TextEditingController _repoTextController = TextEditingController();
@@ -30,8 +88,145 @@ class SettingsPageState extends State<SettingsPage> {
   final TextEditingController _terminalController = TextEditingController();
   final TextEditingController _vscodeController = TextEditingController();
   final TextEditingController _dockerMirrorController = TextEditingController();
+  final TextEditingController _remoteWslTargetController =
+      TextEditingController();
+  final TextEditingController _byokBaseUrlController = TextEditingController();
+  final TextEditingController _byokApiKeyController = TextEditingController();
+  final TextEditingController _byokModelController = TextEditingController();
+  bool _useRemoteWsl = false;
+  bool _mcpEnabled = false;
+  bool _mcpTokenVisible = false;
+  bool _tunnelStarting = false;
+  String? _tunnelError;
   bool showDocker = false;
   BuildContext? currentContext;
+
+  /// The language the picker currently shows. Held in the draft rather than
+  /// written on pick: it used to be the one control on the screen that ignored
+  /// Save, so a mis-click could not be undone by leaving (audit ST-02).
+  String _draftLanguage = 'en';
+
+  /// The draft as it stood after the last load or Save, so [_isDirty] is a
+  /// comparison rather than a flag every control has to remember to set.
+  Map<String, String> _savedDraft = <String, String>{};
+
+  /// Whether the dirty guard is currently registered, so [_onDraftChanged]
+  /// only rebuilds when the answer actually changes.
+  bool _guardRegistered = false;
+  final AiService _aiService = AiService();
+  final LicenseManager _licenseManager = LicenseManager();
+  final WslMcpService _mcpService = WslMcpService();
+  final CloudflareTunnelService _tunnelService = CloudflareTunnelService();
+
+  bool _isRemoteWslTargetValid(String target) => isValidRemoteTarget(target);
+
+  /// Every controller whose text Save persists, so dirty tracking and the
+  /// revert path both work off one list instead of a dozen field names.
+  List<TextEditingController> get _draftControllers => <TextEditingController>[
+        _syncIpTextController,
+        _syncPasswordController,
+        _repoTextController,
+        _dockerrepoController,
+        _editorController,
+        _terminalController,
+        _vscodeController,
+        _dockerMirrorController,
+        _remoteWslTargetController,
+        _byokBaseUrlController,
+        _byokApiKeyController,
+        _byokModelController,
+        ..._settings.values,
+      ];
+
+  /// The whole draft as one comparable map.
+  Map<String, String> _draftValues() => <String, String>{
+        for (final entry in _settings.entries)
+          'wslconfig:${entry.key}': entry.value.text,
+        'SyncIP': _syncIpTextController.text,
+        'SyncPassword': _syncPasswordController.text,
+        'RepoLink': _repoTextController.text,
+        'DockerRepoLink': _dockerrepoController.text,
+        'Editor': _editorController.text,
+        'Terminal': _terminalController.text,
+        'VSCodeCmd': _vscodeController.text,
+        'DockerMirror': _dockerMirrorController.text,
+        'RemoteWSLTarget': _remoteWslTargetController.text,
+        'ByokBaseUrl': _byokBaseUrlController.text,
+        'ByokApiKey': _byokApiKeyController.text,
+        'ByokModel': _byokModelController.text,
+        'UseRemoteWSL': _useRemoteWsl.toString(),
+        'language': _draftLanguage,
+      };
+
+  /// True while the screen holds edits the user has not saved.
+  bool get _isDirty => !mapEquals(_savedDraft, _draftValues());
+
+  /// Called by every control in the draft. Registers or releases the exit
+  /// guard and repaints the unsaved marker, but only when dirtiness flips.
+  void _onDraftChanged() {
+    final dirty = _isDirty;
+    if (dirty == _guardRegistered) return;
+    _guardRegistered = dirty;
+    if (dirty) {
+      UnsavedChangesGuard.register(_confirmLeave);
+    } else {
+      UnsavedChangesGuard.release(_confirmLeave);
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// Answer for [UnsavedChangesGuard]: true when the caller may leave.
+  Future<bool> _confirmLeave() async {
+    if (!_isDirty) return true;
+    final context = currentContext;
+    if (context == null || !mounted) return true;
+    switch (await showUnsavedChangesDialog(context)) {
+      case UnsavedChangesChoice.cancel:
+        return false;
+      case UnsavedChangesChoice.discard:
+        _revertDraft();
+        return true;
+      case UnsavedChangesChoice.save:
+        if (!mounted) return true;
+        return saveSettings(currentContext!);
+    }
+  }
+
+  /// Put every control back to the last saved value.
+  void _revertDraft() {
+    final saved = _savedDraft;
+    void restore(TextEditingController controller, String key) {
+      final value = saved[key] ?? '';
+      if (controller.text != value) controller.text = value;
+    }
+
+    for (final entry in _settings.entries) {
+      restore(entry.value, 'wslconfig:${entry.key}');
+    }
+    restore(_syncIpTextController, 'SyncIP');
+    restore(_syncPasswordController, 'SyncPassword');
+    restore(_repoTextController, 'RepoLink');
+    restore(_dockerrepoController, 'DockerRepoLink');
+    restore(_editorController, 'Editor');
+    restore(_terminalController, 'Terminal');
+    restore(_vscodeController, 'VSCodeCmd');
+    restore(_dockerMirrorController, 'DockerMirror');
+    restore(_remoteWslTargetController, 'RemoteWSLTarget');
+    restore(_byokBaseUrlController, 'ByokBaseUrl');
+    restore(_byokApiKeyController, 'ByokApiKey');
+    restore(_byokModelController, 'ByokModel');
+    _useRemoteWsl = saved['UseRemoteWSL'] == 'true';
+    _applyLanguage(saved['language'] ?? _draftLanguage, persist: false);
+    _onDraftChanged();
+    if (mounted) setState(() {});
+  }
+
+  /// Take the current draft as the new baseline and drop the exit guard.
+  void _markSaved() {
+    _savedDraft = _draftValues();
+    _guardRegistered = false;
+    UnsavedChangesGuard.release(_confirmLeave);
+  }
 
   @override
   void initState() {
@@ -41,17 +236,41 @@ class SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
-    // Save settings
-    if (currentContext != null) {
-      saveSettings(currentContext!, dispose: true);
+    // No save-on-dispose. It was meant to make leaving the screen commit and
+    // observably never fired, which is exactly what made ST-01 a blocker: the
+    // code believed in auto-save while the screen discarded everything. The
+    // contract is now the Save button plus the exit prompt.
+    UnsavedChangesGuard.release(_confirmLeave);
+    for (final controller in _draftControllers) {
+      controller.removeListener(_onDraftChanged);
     }
+    _byokBaseUrlController.dispose();
+    _byokApiKeyController.dispose();
+    _byokModelController.dispose();
     super.dispose();
   }
 
   void readData() async {
-    final Map<String, String> settings = await WSLApi().readConfig();
+    // The whole file, not a flat key→value map: Save writes back into this
+    // model so comments, blank lines, key order, unknown keys and the sections
+    // they sit in all survive a round trip (doc/audit/wsl-docs/ P05-02).
+    _config = await WSLApi().readWslConfig();
+    if (_config == null) {
+      // Unreadable, not empty. Every control still renders, but Save is a
+      // no-op — replacing a file we could not read with the one key the user
+      // touched is worse than not saving.
+      Notify.message('wslconfigwritefailed-text'.i18n());
+    }
+    final Map<String, String> settings =
+        _config?.flatten() ?? <String, String>{};
+    _loadedConfig = Map<String, String>.from(settings);
     settings.forEach((key, value) {
       _settings[key] = TextEditingController(text: value);
+    });
+    // The version the `--manage` affordances gate on, and the answer to
+    // "which WSL do I have" the app never used to give (P05-08).
+    WSLApi().capabilities.load().then((capabilities) {
+      if (mounted) setState(() => _capabilities = capabilities);
     });
     String? syncIP = prefs.getString('SyncIP');
     if (syncIP != null && syncIP != '') {
@@ -87,11 +306,74 @@ class SettingsPageState extends State<SettingsPage> {
     if (dockerMirror != null && dockerMirror != '') {
       _dockerMirrorController.text = dockerMirror;
     }
+    // A *chosen* path renders as real text; only the fallback default stays
+    // a placeholder. Both used to render as placeholder grey, so "set" and
+    // "unset" were indistinguishable (audit ST-25).
+    String? distroPath = prefs.getString('DistroPath');
+    if (distroPath != null && distroPath.trim().isNotEmpty) {
+      _settings['Default Distro Location'] =
+          TextEditingController(text: distroPath);
+    }
+    String? dataPath = prefs.getString('DataPath');
+    if (dataPath != null && dataPath.trim().isNotEmpty) {
+      _settings['General Data Location'] =
+          TextEditingController(text: dataPath);
+    }
+    _useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
+    String? remoteTarget = prefs.getString('RemoteWSLTarget');
+    if (remoteTarget != null && remoteTarget.trim().isNotEmpty) {
+      _remoteWslTargetController.text = remoteTarget;
+    }
     showDocker = prefs.getBool('showDocker') ?? false;
+    _byokBaseUrlController.text = prefs.getString('ByokBaseUrl') ?? '';
+    _byokApiKeyController.text = _aiService.byokApiKey;
+    _byokModelController.text = prefs.getString('ByokModel') ?? '';
+    _mcpEnabled = _mcpService.enabled;
+    for (final controller in _draftControllers) {
+      controller.removeListener(_onDraftChanged);
+      controller.addListener(_onDraftChanged);
+    }
+    _savedDraft = _draftValues();
+    _guardRegistered = false;
+    UnsavedChangesGuard.release(_confirmLeave);
     if (!mounted) return;
     setState(() {
       _settings = _settings;
     });
+  }
+
+  bool _languageResolved = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The stored language may be absent, in which case the picker has to show
+    // the locale the app actually resolved to — which needs a context.
+    if (_languageResolved) return;
+    _languageResolved = true;
+    var stored = prefs.getString('language') ??
+        Localizations.localeOf(context).toString();
+    if (!languageOptions.containsKey(stored)) {
+      stored = Localizations.localeOf(context).languageCode;
+    }
+    if (!languageOptions.containsKey(stored)) stored = 'en';
+    _draftLanguage = stored;
+    _savedDraft = _draftValues();
+  }
+
+  /// Show [lang] immediately, and write it only when Save does.
+  ///
+  /// The picker used to call `prefs.setString` from `onChanged` — the one
+  /// control on the screen that ignored Save, with no way to undo a mis-click
+  /// — and then told the user to restart the app to see it (ST-02).
+  void _applyLanguage(String lang, {required bool persist}) {
+    _draftLanguage = lang;
+    if (persist) prefs.setString('language', lang);
+    final parts = lang.split('_');
+    final locale =
+        parts.length == 2 ? Locale(parts[0], parts[1]) : Locale(parts[0]);
+    if (!mounted) return;
+    context.read<AppTheme>().locale = locale;
   }
 
   @override
@@ -114,24 +396,10 @@ class SettingsPageState extends State<SettingsPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Tooltip(
-                message: 'editwslconfig-text'.i18n(),
-                child: Button(
-                    style: ButtonStyle(
-                        padding: ButtonState.all(const EdgeInsets.only(
-                            left: 15.0, right: 15.0, top: 10.0, bottom: 10.0))),
-                    onPressed: () {
-                      WSLApi().editConfig();
-                    },
-                    child: Text('editwslconfig-text'.i18n())),
-              ),
-              const SizedBox(
-                width: 10.0,
-              ),
               Row(
                 children: [
                   Tooltip(
-                    message: 'stopwsl-text'.i18n(),
+                    message: 'editwslconfighint-text'.i18n(),
                     child: Button(
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
@@ -140,30 +408,75 @@ class SettingsPageState extends State<SettingsPage> {
                                 top: 10.0,
                                 bottom: 10.0))),
                         onPressed: () {
-                          WSLApi().restart();
-                          hasPushed = false;
-
-                          Navigator.popAndPushNamed(context, '/');
+                          WSLApi().editConfig();
                         },
-                        child: Text('stopwsl-text'.i18n())),
+                        child: Text('editwslconfig-text'.i18n())),
                   ),
-                  const SizedBox(
-                    width: 10.0,
-                  ),
+                  const SizedBox(width: 10.0),
+                  // Stop WSL used to sit 10px from Save, styled identically,
+                  // and shut every running instance down on one click with no
+                  // confirmation (audit ST-04). It is now on the opposite side
+                  // of the footer and asks first.
                   Tooltip(
-                    message: 'save-text'.i18n(),
+                    message: 'stopwslhint-text'.i18n(),
                     child: Button(
+                        key: const ValueKey('test-settings-stopwsl'),
                         style: ButtonStyle(
                             padding: ButtonState.all(const EdgeInsets.only(
                                 left: 15.0,
-                                right: 20.0,
+                                right: 15.0,
                                 top: 10.0,
                                 bottom: 10.0))),
-                        onPressed: () {
-                          saveSettings(context);
-                        },
-                        child: Text('save-text'.i18n())),
+                        onPressed: () => confirmStopWsl(context, () {
+                              WSLApi().restart();
+                              Notify.message('shuttingdownwsl-text'.i18n(),
+                                  severity: InfoBarSeverity.success);
+                              hasPushed = false;
+                              // Leaving the screen is an exit route like any
+                              // other, so it asks about unsaved edits (ST-01).
+                              navigateGuarded('home');
+                            }),
+                        child: Text('stopwsl-text'.i18n())),
                   ),
+                ],
+              ),
+              const SizedBox(
+                width: 10.0,
+              ),
+              Row(
+                children: [
+                  if (_isDirty) ...[
+                    Text('unsavedchanges-marker-text'.i18n(),
+                        key: const ValueKey('test-settings-dirty'),
+                        style: FluentTheme.of(context)
+                            .typography
+                            .caption
+                            ?.copyWith(color: secondaryTextColor(context))),
+                    const SizedBox(width: 10.0),
+                    Button(
+                        key: const ValueKey('test-settings-discard'),
+                        style: ButtonStyle(
+                            padding: ButtonState.all(const EdgeInsets.only(
+                                left: 15.0,
+                                right: 15.0,
+                                top: 10.0,
+                                bottom: 10.0))),
+                        onPressed: _revertDraft,
+                        child: Text('discardchanges-text'.i18n())),
+                    const SizedBox(width: 10.0),
+                  ],
+                  Button(
+                      key: const ValueKey('test-settings-save'),
+                      style: ButtonStyle(
+                          padding: ButtonState.all(const EdgeInsets.only(
+                              left: 15.0,
+                              right: 20.0,
+                              top: 10.0,
+                              bottom: 10.0))),
+                      onPressed: () {
+                        saveSettings(context);
+                      },
+                      child: Text('save-text'.i18n())),
                 ],
               ),
             ],
@@ -173,7 +486,57 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void saveSettings(BuildContext context, {bool dispose = false}) {
+  /// Persist the draft. Answers false when a validation error stopped it, so
+  /// the exit prompt can keep the user on the screen instead of leaving with
+  /// the edits unwritten.
+  /// The `.wslconfig` keys whose values have a shape WSL will reject.
+  /// Save refuses to write an unparseable one: WSL reports a bad value on
+  /// stderr with exit code 0 at every distro start, so writing it means the
+  /// app can never learn it was wrong (audit ST-05).
+  static const Map<String, SettingsType> _numericWslKeys = {
+    'memory': SettingsType.size,
+    'swap': SettingsType.size,
+    'defaultVhdSize': SettingsType.size,
+    'processors': SettingsType.number,
+    'vmIdleTimeout': SettingsType.number,
+    'maxCrashDumpCount': SettingsType.number,
+    'initialAutoProxyTimeout': SettingsType.number,
+  };
+
+  /// The first key holding a value WSL would reject, or null when clean.
+  String? _firstInvalidWslValue() {
+    for (final entry in _numericWslKeys.entries) {
+      final raw = _settings[entry.key]?.text.trim() ?? '';
+      if (raw.isEmpty) continue;
+      final ok = entry.value == SettingsType.size
+          ? parseWslSize(raw, unit: 'GB') != null
+          : parseWslCount(raw) != null;
+      if (!ok) return entry.key;
+    }
+    return null;
+  }
+
+  Future<bool> saveSettings(BuildContext context) async {
+    final remoteTarget = _remoteWslTargetController.text.trim();
+    if (_useRemoteWsl && !_isRemoteWslTargetValid(remoteTarget)) {
+      Notify.message('remote-wsl-target-required-text'.i18n(),
+          severity: InfoBarSeverity.warning);
+      return false;
+    }
+
+    // Typed `eight gigabytes` into Memory used to land in the file verbatim
+    // and break every distro start with nothing on screen (audit ST-05).
+    final invalid = _firstInvalidWslValue();
+    if (invalid != null) {
+      final labelKey = '${invalid.toLowerCase()}-text';
+      final prose = labelKey.i18n();
+      Notify.message(
+          'settinginvalidvalue-text'
+              .i18n([prose == labelKey ? invalid : prose]),
+          severity: InfoBarSeverity.warning);
+      return false;
+    }
+
     plausible.event(name: "global_settings_saved");
     // Sync target ip setting _syncIpTextController
     if (_syncIpTextController.text.isNotEmpty) {
@@ -187,18 +550,19 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("SyncPassword");
     }
 
-    // Save repo link
+    // Save repo link. Empty removes the key: Save used to materialise the
+    // default as a stored value the user never chose (audit ST-26).
     if (_repoTextController.text.isNotEmpty) {
       prefs.setString("RepoLink", _repoTextController.text);
     } else {
-      prefs.setString("RepoLink", defaultRepoLink);
+      prefs.remove("RepoLink");
     }
 
-    // Save docker repo link
+    // Save docker repo link. Same ST-26 rule.
     if (_dockerrepoController.text.isNotEmpty) {
       prefs.setString("DockerRepoLink", _dockerrepoController.text);
     } else {
-      prefs.setString("DockerRepoLink", "https://registry-1.docker.io");
+      prefs.remove("DockerRepoLink");
     }
 
     // Save editor
@@ -229,6 +593,18 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("DockerMirror");
     }
 
+    prefs.setBool("UseRemoteWSL", _useRemoteWsl);
+    if (_isRemoteWslTargetValid(remoteTarget)) {
+      prefs.setString("RemoteWSLTarget", remoteTarget);
+    } else {
+      prefs.remove("RemoteWSLTarget");
+    }
+
+    // BYOK settings
+    _aiService.setByokBaseUrl(_byokBaseUrlController.text);
+    _aiService.setByokApiKey(_byokApiKeyController.text);
+    _aiService.setByokModel(_byokModelController.text);
+
     // Distro location setting
     if (_settings['Default Distro Location']!.text.isNotEmpty) {
       prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
@@ -238,31 +614,42 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.setString("DataPath", _settings['General Data Location']!.text);
     }
 
-    final experimentalKeys = [
-      'autoMemoryReclaim',
-      'sparseVhd',
-      'bestEffortDnsParsing',
-      'dnsTunnelingIpAddress',
-      'initialAutoProxyTimeout',
-      'ignoredPorts',
-      'hostAddressLoopback'
-    ];
-
-    _settings.forEach((key, value) {
-      if (key != 'Default Distro Location' &&
-          key != 'General Data Location' &&
-          value.text.isNotEmpty) {
-        String section = 'wsl2';
-        if (experimentalKeys.contains(key)) {
-          section = 'experimental';
-        }
-        WSLApi().setConfig(section, key, value.text);
-      }
-    });
+    await _saveWslConfig();
     hasPushed = false;
+    _applyLanguage(_draftLanguage, persist: true);
+    _markSaved();
+    if (mounted) setState(() {});
 
-    if (!dispose) {
-      router.pushNamed('home');
+    // Save used to end with `router.pushNamed('home')`, so pressing it closed
+    // the screen: nothing said what had been written, and a second edit meant
+    // navigating back (ST-03). It confirms in place instead.
+    Notify.message('settingssaved-text'.i18n(),
+        severity: InfoBarSeverity.success);
+    return true;
+  }
+
+  /// The two `settingsWidget` names that are app preferences rather than
+  /// `.wslconfig` keys, and must never reach the file.
+  static const Set<String> _appPreferenceSettings = <String>{
+    'Default Distro Location',
+    'General Data Location',
+  };
+
+  /// Write back only what the user actually changed — see
+  /// [applyWslConfigEdits], which is where the diff and its reasoning live.
+  Future<void> _saveWslConfig() async {
+    final config = _config;
+    if (config == null) return;
+
+    final edits = <String, String>{};
+    _settings.forEach((key, controller) {
+      if (_appPreferenceSettings.contains(key)) return;
+      edits[key] = controller.text;
+    });
+
+    if (applyWslConfigEdits(config, _loadedConfig, edits) == 0) return;
+    if (!await WSLApi().writeWslConfig(config)) {
+      Notify.message('wslconfigwritefailed-text'.i18n());
     }
   }
 
@@ -278,6 +665,16 @@ class SettingsPageState extends State<SettingsPage> {
         Expander(
           header: Text('dockersettings-text'.i18n()),
           content: _buildDockerSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: _betaHeader('byok-settings-text'.i18n()),
+          content: _buildAiSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: _betaHeader('mcp-settings-text'.i18n()),
+          content: _buildMcpSettings(context),
         ),
         const SizedBox(height: 10),
         Expander(
@@ -306,12 +703,13 @@ class SettingsPageState extends State<SettingsPage> {
             title: 'defaultdistrolocation-text'.i18n(),
             name: 'Default Distro Location',
             tooltip: 'distropath-text'.i18n(),
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+            suffix: NamedIconButton(
+              label: 'choosefolder-text'.i18n(),
+              icon: FluentIcons.open_folder_horizontal,
               onPressed: () async {
                 String? path = await FilePicker.platform.getDirectoryPath(
-                  initialDirectory:
-                      prefs.getString("DistroPath") ?? defaultPath,
+                  initialDirectory: prefs.getString("DistroPath") ??
+                      getDefaultStorageRootPath(),
                 );
                 if (path != null &&
                     _settings['Default Distro Location'] != null) {
@@ -321,18 +719,21 @@ class SettingsPageState extends State<SettingsPage> {
                 }
               },
             ),
-            placeholder: prefs.getString("DistroPath") ?? defaultPath),
+            // The default alone: a chosen value lives in the box itself now
+            // (ST-25).
+            placeholder: getDefaultStorageRootPath()),
         settingsWidget(context,
             title: 'defaultdatalocation-text'.i18n(),
             name: 'General Data Location',
             tooltip: 'datapath-text'.i18n(),
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
+            suffix: NamedIconButton(
+              label: 'choosefolder-text'.i18n(),
+              icon: FluentIcons.open_folder_horizontal,
               onPressed: () async {
                 String? path = await FilePicker.platform.getDirectoryPath(
                   initialDirectory: prefs.getString("DataPath") ??
                       prefs.getString("DistroPath") ??
-                      defaultPath,
+                      getDefaultStorageRootPath(),
                 );
                 if (path != null &&
                     _settings['General Data Location'] != null) {
@@ -342,33 +743,29 @@ class SettingsPageState extends State<SettingsPage> {
                 }
               },
             ),
-            placeholder: prefs.getString("DataPath") ??
-                prefs.getString("DistroPath") ??
-                defaultPath),
+            placeholder:
+                prefs.getString("DistroPath") ?? getDefaultStorageRootPath()),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
             label: 'defaulteditor-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'defaulteditor-text'.i18n(),
-              child: TextBox(
-                controller: _editorController,
-                placeholder: 'notepad.exe',
-                suffix: IconButton(
-                  icon: const Icon(FluentIcons.open_folder_horizontal,
-                      size: 15.0),
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['exe'],
-                    );
-                    if (result != null) {
-                      _editorController.text = result.files.single.path!;
-                    }
-                  },
-                ),
+            child: TextBox(
+              controller: _editorController,
+              placeholder: 'notepad.exe',
+              suffix: NamedIconButton(
+                label: 'choosefile-text'.i18n(),
+                icon: FluentIcons.open_folder_horizontal,
+                onPressed: () async {
+                  FilePickerResult? result =
+                      await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['exe'],
+                  );
+                  if (result != null) {
+                    _editorController.text = result.files.single.path!;
+                  }
+                },
               ),
             ),
           ),
@@ -378,25 +775,22 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'defaultterminal-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'defaultterminal-text'.i18n(),
-              child: TextBox(
-                controller: _terminalController,
-                placeholder: 'wt.exe',
-                suffix: IconButton(
-                  icon: const Icon(FluentIcons.open_folder_horizontal,
-                      size: 15.0),
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['exe'],
-                    );
-                    if (result != null) {
-                      _terminalController.text = result.files.single.path!;
-                    }
-                  },
-                ),
+            child: TextBox(
+              controller: _terminalController,
+              placeholder: 'wt.exe',
+              suffix: NamedIconButton(
+                label: 'choosefile-text'.i18n(),
+                icon: FluentIcons.open_folder_horizontal,
+                onPressed: () async {
+                  FilePickerResult? result =
+                      await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['exe'],
+                  );
+                  if (result != null) {
+                    _terminalController.text = result.files.single.path!;
+                  }
+                },
               ),
             ),
           ),
@@ -406,11 +800,52 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'defaultvscode-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: TextBox(
+              controller: _vscodeController,
+              placeholder: 'code',
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'remote-wsl-over-ssh-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                ToggleSwitch(
+                  checked: _useRemoteWsl,
+                  onChanged: (value) {
+                    setState(() {
+                      _useRemoteWsl = value;
+                    });
+                    _onDraftChanged();
+                  },
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Text(
+                    'remote-wsl-over-ssh-info-text'.i18n(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'remote-ssh-target-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Tooltip(
-              message: 'defaultvscode-text'.i18n(),
+              message: 'remote-ssh-target-format-text'.i18n(),
+              // Live only while the toggle that reads it is on (audit ST-24).
               child: TextBox(
-                controller: _vscodeController,
-                placeholder: 'code',
+                controller: _remoteWslTargetController,
+                enabled: _useRemoteWsl,
+                placeholder: _useRemoteWsl
+                    ? 'remote-ssh-target-placeholder-text'.i18n()
+                    : null,
               ),
             ),
           ),
@@ -420,45 +855,421 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'language-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-                message: 'language-text'.i18n(),
-                // Menu
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'languagechange-text'.i18n(),
-                    ),
-                    const SizedBox(
-                      height: 20.0,
-                    ),
-                    Builder(
-                      builder: (context) {
-                        var lang = Localizations.localeOf(context).languageCode;
-                        var selectedLanguage =
-                            prefs.getString('language') ?? lang;
+            // Menu
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'languagechange-text'.i18n(),
+                ),
+                const SizedBox(
+                  height: 20.0,
+                ),
+                // Every zh variant collapsed to the same languageCode
+                // before, which left the ComboBox with duplicate values
+                // and showed raw locale codes as labels.
+                ComboBox<String>(
+                    key: const ValueKey('test-language-combo'),
+                    value: languageOptions.containsKey(_draftLanguage)
+                        ? _draftLanguage
+                        : 'en',
+                    items: languageOptions.entries
+                        .map((e) => ComboBoxItem(
+                            value: e.key, child: Text(e.value)))
+                        .toList(),
+                    onChanged: (language) {
+                      if (language == null) return;
+                      _applyLanguage(language, persist: false);
+                      _onDraftChanged();
+                      setState(() {});
+                    }),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-                        // Language menu
-                        return ComboBox<String>(
-                            value: selectedLanguage,
-                            items: supportedLocalesList
-                                .map((e) => ComboBoxItem(
-                                    value: e.languageCode,
-                                    child: Text(e.toString())))
-                                .toList(),
-                            onChanged: (language) {
-                              String curLanguage = language ?? lang;
-                              prefs.setString('language', curLanguage);
-                              setState(() {
-                                selectedLanguage = curLanguage;
-                              });
+  Widget _betaHeader(String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label),
+        const SizedBox(width: 8),
+        const BetaBadge(),
+      ],
+    );
+  }
+
+  Widget _buildAiSettings(BuildContext context) {
+    final isPro = _licenseManager.isPro;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            'byok-info-text'.i18n(),
+            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          ),
+        ),
+        if (!isPro)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoBar(
+              title: Text('byok-pro-required-text'.i18n()),
+              severity: InfoBarSeverity.info,
+              action: Button(
+                key: const ValueKey('test-byok-upgrade'),
+                onPressed: () => navigateGuarded('license'),
+                child: Text('upgrade-text'.i18n()),
+              ),
+            ),
+          ),
+        // No enable toggle — the key is the only chat path, not an option.
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            // The lock and its reason sit on the field itself, not in a
+            // notice 90px above it (audit PS-12).
+            label: isPro
+                ? 'byok-baseurl-text'.i18n()
+                : '${'byok-baseurl-text'.i18n()} — ${'byok-locked-text'.i18n()}',
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'byok-baseurl-hint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-byok-baseurl-input'),
+                controller: _byokBaseUrlController,
+                enabled: isPro,
+                // No placeholder while locked: near-normal-weight example
+                // text made the disabled fields read as filled in (PS-12).
+                placeholder: isPro ? AiService.defaultByokBaseUrl : null,
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: isPro
+                ? 'byok-apikey-text'.i18n()
+                : '${'byok-apikey-text'.i18n()} — ${'byok-locked-text'.i18n()}',
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'byok-apikey-hint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-byok-apikey-input'),
+                controller: _byokApiKeyController,
+                enabled: isPro,
+                obscureText: true,
+                placeholder: isPro ? 'sk-...' : null,
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: isPro
+                ? 'byok-model-text'.i18n()
+                : '${'byok-model-text'.i18n()} — ${'byok-locked-text'.i18n()}',
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Tooltip(
+              message: 'byok-model-hint-text'.i18n(),
+              child: TextBox(
+                key: const ValueKey('test-byok-model-input'),
+                controller: _byokModelController,
+                enabled: isPro,
+                placeholder: isPro ? AiService.defaultByokModel : null,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMcpSettings(BuildContext context) {
+    final isPro = _licenseManager.isPro;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            'mcp-info-text'.i18n(),
+            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          ),
+        ),
+        if (!isPro)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoBar(
+              title: Text('mcp-pro-required-text'.i18n()),
+              severity: InfoBarSeverity.info,
+              action: Button(
+                key: const ValueKey('test-mcp-upgrade'),
+                onPressed: () => navigateGuarded('license'),
+                child: Text('upgrade-text'.i18n()),
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'mcp-toggle-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                // A free user's toggle is disabled rather than live: it used to
+                // render exactly like the working switches around it and then
+                // replace the whole screen with the licence page, dropping any
+                // unsaved settings on the way (audit PS-11).
+                ToggleSwitch(
+                  key: const ValueKey('test-mcp-toggle'),
+                  checked: _mcpEnabled && isPro,
+                  onChanged: isPro
+                      ? (value) {
+                          setState(() => _mcpEnabled = value);
+                          _mcpService.setEnabled(value);
+                        }
+                      : null,
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Text('mcp-toggle-hint-text'.i18n(),
+                      style: isPro
+                          ? null
+                          : TextStyle(color: disabledTextColor(context))),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_mcpEnabled && isPro) ...[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'mcp-endpoint-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      key: const ValueKey('test-mcp-endpoint'),
+                      readOnly: true,
+                      controller:
+                          TextEditingController(text: _mcpService.endpointUrl),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  NamedIconButton(
+                    label: 'copyendpoint-text'.i18n(),
+                    icon: FluentIcons.copy,
+                    // A copy with no acknowledgement is indistinguishable
+                    // from a missed click (audit ST-21).
+                    onPressed: () {
+                      Clipboard.setData(
+                          ClipboardData(text: _mcpService.endpointUrl));
+                      Notify.message('copied-text'.i18n(),
+                          severity: InfoBarSeverity.success,
+                          duration: const Duration(seconds: 2));
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'mcp-token-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      key: const ValueKey('test-mcp-token'),
+                      readOnly: true,
+                      obscureText: !_mcpTokenVisible,
+                      controller:
+                          TextEditingController(text: _mcpService.token),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  NamedIconButton(
+                    label: _mcpTokenVisible
+                        ? 'hidetoken-text'.i18n()
+                        : 'showtoken-text'.i18n(),
+                    icon:
+                        _mcpTokenVisible ? FluentIcons.hide3 : FluentIcons.view,
+                    onPressed: () =>
+                        setState(() => _mcpTokenVisible = !_mcpTokenVisible),
+                  ),
+                  const SizedBox(width: 4),
+                  // Two identical copy glyphs 60 px apart: only the name
+                  // tells them apart (audit ST-18).
+                  NamedIconButton(
+                    label: 'copytoken-text'.i18n(),
+                    icon: FluentIcons.copy,
+                    onPressed: () {
+                      Clipboard.setData(
+                          ClipboardData(text: _mcpService.token));
+                      Notify.message('copied-text'.i18n(),
+                          severity: InfoBarSeverity.success,
+                          duration: const Duration(seconds: 2));
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  // Rotating the token silently broke every client already
+                  // configured with the old one — no confirmation, no notice,
+                  // no undo, one click from a copy button (audit ST-19).
+                  NamedIconButton(
+                    key: const ValueKey('test-mcp-regenerate-token'),
+                    label: 'regeneratetoken-text'.i18n(),
+                    icon: FluentIcons.refresh,
+                    onPressed: () => dialog(
+                      hostContext: context,
+                      item: '',
+                      title: 'regeneratetokenquestion-text'.i18n(),
+                      body: 'regeneratetokenbody-text'.i18n(),
+                      submitText: 'regeneratetoken-text'.i18n(),
+                      submitInput: false,
+                      submitStyle: ButtonStyle(
+                        backgroundColor: ButtonState.all(Colors.red),
+                        foregroundColor: ButtonState.all(Colors.white),
+                      ),
+                      onSubmit: (_) {
+                        setState(() => _mcpService.regenerateToken());
+                        Notify.message('tokenregenerated-text'.i18n(),
+                            severity: InfoBarSeverity.success);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Only while the tunnel is actually up: shown whenever MCP was
+          // enabled, this warning contradicted the "only reachable from this
+          // machine" hint two lines above it (audit ST-20).
+          if (_tunnelService.isRunning)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoBar(
+                title: Text('mcp-tunnel-warning-text'.i18n()),
+                severity: InfoBarSeverity.warning,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'mcp-tunnel-toggle-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  ToggleSwitch(
+                    key: const ValueKey('test-mcp-tunnel-toggle'),
+                    checked: _tunnelService.isRunning,
+                    onChanged: _tunnelStarting
+                        ? null
+                        : (value) async {
+                            setState(() {
+                              _tunnelStarting = true;
+                              _tunnelError = null;
                             });
+                            try {
+                              if (value) {
+                                await _tunnelService.start(WslMcpService.port);
+                              } else {
+                                await _tunnelService.stop();
+                              }
+                            } catch (e) {
+                              _tunnelError = '${'mcp-tunnel-failed-text'.i18n()} '
+                                      '${WslFailure.from(e).shortReason}'
+                                  .trim();
+                            } finally {
+                              if (mounted) {
+                                setState(() => _tunnelStarting = false);
+                              }
+                            }
+                          },
+                  ),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child: Text('mcp-tunnel-toggle-hint-text'.i18n()),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_tunnelStarting)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: _buildInlineTunnelStatus(),
+            ),
+          if (_tunnelError != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                _tunnelError!,
+                style: TextStyle(
+                    color: Colors.errorPrimaryColor, fontSize: 12),
+              ),
+            ),
+          if (_tunnelService.isRunning && _tunnelService.publicUrl != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoLabel(
+                label: 'mcp-tunnel-url-text'.i18n(),
+                labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        key: const ValueKey('test-mcp-tunnel-url'),
+                        readOnly: true,
+                        controller: TextEditingController(
+                            text: _tunnelService.publicUrl),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    NamedIconButton(
+                      label: 'copytunnelurl-text'.i18n(),
+                      icon: FluentIcons.copy,
+                      onPressed: () {
+                        Clipboard.setData(
+                            ClipboardData(text: _tunnelService.publicUrl!));
+                        Notify.message('copied-text'.i18n(),
+                            severity: InfoBarSeverity.success,
+                            duration: const Duration(seconds: 2));
                       },
                     ),
                   ],
-                )),
-          ),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInlineTunnelStatus() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox.square(
+          dimension: 12,
+          child: ProgressRing(strokeWidth: 2),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'mcp-tunnel-connecting-text'.i18n(),
+          style: TextStyle(fontSize: 12, color: secondaryTextColor(context)),
         ),
       ],
     );
@@ -475,17 +1286,15 @@ class SettingsPageState extends State<SettingsPage> {
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
             child: Row(
               children: [
-                Tooltip(
-                    message: 'showdockershort-text'.i18n(),
-                    child: ToggleSwitch(
-                      checked: showDocker,
-                      onChanged: (value) {
-                        setState(() {
-                          showDocker = value;
-                          prefs.setBool('showDocker', value);
-                        });
-                      },
-                    )),
+                ToggleSwitch(
+                  checked: showDocker,
+                  onChanged: (value) {
+                    setState(() {
+                      showDocker = value;
+                      prefs.setBool('showDocker', value);
+                    });
+                  },
+                ),
                 const SizedBox(
                   width: 10.0,
                 ),
@@ -513,12 +1322,22 @@ class SettingsPageState extends State<SettingsPage> {
           child: InfoLabel(
             label: 'dockerrepo-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'dockerrepo-text'.i18n(),
-              child: TextBox(
-                controller: _dockerrepoController,
-                placeholder: 'https://registry-1.docker.io',
-              ),
+            child: TextBox(
+              controller: _dockerrepoController,
+              placeholder: 'https://registry-1.docker.io',
+            ),
+          ),
+        ),
+        // Moved out of the Sync group: this is the download source for new
+        // distro images and has nothing to do with sync (audit ST-23).
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'repofordistro-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: TextBox(
+              controller: _repoTextController,
+              placeholder: defaultRepoLink,
             ),
           ),
         ),
@@ -530,17 +1349,24 @@ class SettingsPageState extends State<SettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // What "sync" actually syncs, like every other group added by Phase
+        // 05 explains itself (audit ST-23).
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            'sync-info-text'.i18n(),
+            style:
+                const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
             label: 'syncipaddress-text'.i18n(),
             labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'syncipaddress-text'.i18n(),
-              child: TextBox(
-                controller: _syncIpTextController,
-                placeholder: '192.168.1.20',
-              ),
+            child: TextBox(
+              controller: _syncIpTextController,
+              placeholder: '192.168.1.20',
             ),
           ),
         ),
@@ -552,23 +1378,11 @@ class SettingsPageState extends State<SettingsPage> {
             child: Tooltip(
               message: 'syncpasswordhint-text'.i18n(),
               child: TextBox(
+                // No example password in a masked field: readable
+                // placeholder text there reads as a stored value, and the
+                // example itself was a weak password (ST-23).
                 controller: _syncPasswordController,
-                placeholder: 'SecretPassword123',
                 obscureText: true,
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: InfoLabel(
-            label: 'repofordistro-text'.i18n(),
-            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            child: Tooltip(
-              message: 'repofordistro-text'.i18n(),
-              child: TextBox(
-                controller: _repoTextController,
-                placeholder: defaultRepoLink,
               ),
             ),
           ),
@@ -583,51 +1397,69 @@ class SettingsPageState extends State<SettingsPage> {
       children: [
         Padding(
           padding: const EdgeInsets.all(10.0),
-          child: Text(
-            'globalconfigurationinfo-text'.i18n(),
-            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'globalconfigurationinfo-text'.i18n(),
+                  style: const TextStyle(
+                      fontSize: 12.0, fontStyle: FontStyle.italic),
+                ),
+              ),
+              const SizedBox(width: 12.0),
+              // The note used to end "run wsl --shutdown" — a terminal
+              // instruction printed above a button that does exactly that
+              // (audit ST-13, IA-20). The button now sits with the sentence.
+              Tooltip(
+                message: 'restartwslinfo-text'.i18n(),
+                child: Button(
+                  key: const ValueKey('test-globalconfig-restart-wsl'),
+                  onPressed: () => confirmStopWsl(context, () {
+                    WSLApi().restart();
+                    Notify.message('shuttingdownwsl-text'.i18n(),
+                        severity: InfoBarSeverity.success);
+                  }),
+                  child: Text('restartwsl-text'.i18n()),
+                ),
+              ),
+            ],
           ),
         ),
+        _wslVersionPanel(context),
         settingsWidget(context,
             title: 'kernel',
             tooltip: 'absolutewindowspath-text'.i18n(),
-            placeholder: ''),
+            placeholder: '',
+            suffix: _filePickerSuffix('kernel')),
         settingsWidget(context,
             title: 'kernelModules',
             tooltip: 'kernelmodulesinfo-text'.i18n(),
             placeholder: '',
-            suffix: IconButton(
-              icon: const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
-              onPressed: () async {
-                FilePickerResult? result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['vhdx'],
-                );
-                if (result != null) {
-                  _settings['kernelModules']!.text = result.files.single.path!;
-                }
-              },
-            )),
+            suffix: _filePickerSuffix('kernelModules', extensions: ['vhdx'])),
         settingsWidget(context,
             title: 'memory',
             tooltip: 'memoryinfo-text'.i18n(),
             type: SettingsType.size,
             sizePostfix: 'GB',
             sizeMin: 1,
-            sizeMax:
-                (SysInfo.getTotalPhysicalMemory() ~/ 1024 ~/ 1024 ~/ 1024) + 1,
+            sizeMax: _hostMemoryGb + 1,
             placeholder: ''),
         settingsWidget(context,
             title: 'processors',
             tooltip: 'processorinfo-text'.i18n(),
-            type: SettingsType.size,
+            type: SettingsType.number,
             sizeMin: 1,
-            sizeMax: SysInfo.cores.length,
+            // Platform.numberOfProcessors, not SysInfo.cores: the latter
+            // reported 1 core on the audit host (ST-08).
+            sizeMax: Platform.numberOfProcessors,
             placeholder: ''),
         settingsWidget(context,
             title: 'localhostForwarding',
             tooltip: 'wildcardinfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _networkingMode() != 'mirrored',
+            disabledReason: 'ignoredinmirrored-text'.i18n()),
         settingsWidget(context,
             title: 'kernelCommandLine',
             tooltip: 'kernelcmdinfo-text'.i18n(),
@@ -637,9 +1469,18 @@ class SettingsPageState extends State<SettingsPage> {
             tooltip: 'safemodeinfo-text'.i18n(),
             type: SettingsType.bool),
         settingsWidget(context,
-            title: 'swap', tooltip: 'swapinfo-text'.i18n(), placeholder: ''),
+            title: 'swap',
+            tooltip: 'swapinfo-text'.i18n(),
+            type: SettingsType.size,
+            sizePostfix: 'GB',
+            sizeMin: 0,
+            sizeMax: _hostMemoryGb * 2,
+            placeholder: ''),
         settingsWidget(context,
-            title: 'swapFile', tooltip: 'vhdinfo-text'.i18n(), placeholder: ''),
+            title: 'swapFile',
+            tooltip: 'vhdinfo-text'.i18n(),
+            placeholder: '%Temp%\\swap.vhdx',
+            suffix: _filePickerSuffix('swapFile', extensions: ['vhdx'])),
         settingsWidget(context,
             title: 'guiApplications',
             tooltip: 'guiinfo-text'.i18n(),
@@ -655,18 +1496,33 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'vmIdleTimeout',
             tooltip: 'vmidleinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.number,
+            unitLabel: 'milliseconds-text'.i18n(),
+            placeholder: '60000'),
         settingsWidget(context,
             title: 'maxCrashDumpCount',
             tooltip: 'maxcrashdumpcountinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.number,
+            placeholder: '10'),
         settingsWidget(context,
             title: 'dnsProxy',
             tooltip: 'dnsproxyinfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _networkingMode() == 'nat',
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['${'networkingmode-text'.i18n()} = nat'])),
         settingsWidget(context,
             title: 'networkingMode',
             tooltip: 'networkingmodeinfo-text'.i18n(),
+            type: SettingsType.enumeration,
+            options: const [
+              'none',
+              'nat',
+              'bridged',
+              'mirrored',
+              'virtioproxy'
+            ],
+            optionNotes: {'bridged': 'deprecatedvalue-text'.i18n()},
             placeholder: 'nat'),
         settingsWidget(context,
             title: 'firewall',
@@ -683,8 +1539,162 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'defaultVhdSize',
             tooltip: 'defaultvhdsizeinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.size,
+            sizePostfix: 'GB',
+            placeholder: 'unitexample-text'.i18n()),
       ],
+    );
+  }
+
+  /// Which WSL is installed, what it said while being asked, and the one-click
+  /// update (P05-08, P05-23).
+  ///
+  /// The version is not decoration: everything from `--manage` on is gated on
+  /// it, and until now the app could not answer "which WSL do I have" anywhere.
+  /// The warnings underneath are the half a version number cannot supply —
+  /// wsl.exe refuses a `.wslconfig` key, or an unsupported host CPU, on stderr
+  /// **with exit code 0** (runtime R-1, R-4), and the app used to discard every
+  /// one of those lines.
+  Widget _wslVersionPanel(BuildContext context) {
+    final capabilities = _capabilities;
+    final label = capabilities == null
+        ? '…'
+        : (capabilities.version ??
+            (capabilities.wslMissing
+                ? 'wslnotfound-text'.i18n()
+                : 'wslinbox-text'.i18n()));
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: InfoLabel(
+        label: 'wslversion-text'.i18n(),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(label),
+                const SizedBox(width: 12.0),
+                Button(
+                  onPressed: _updatingWsl
+                      ? null
+                      : () => _runWslUpdate(webDownload: false),
+                  child: Text('updatewsl-text'.i18n()),
+                ),
+                const SizedBox(width: 8.0),
+                Tooltip(
+                  message: 'updatewslwebdownloadinfo-text'.i18n(),
+                  child: Button(
+                    onPressed: _updatingWsl
+                        ? null
+                        : () => _runWslUpdate(webDownload: true),
+                    child: Text('updatewslwebdownload-text'.i18n()),
+                  ),
+                ),
+              ],
+            ),
+            // Split by what the line is about. The panel used to head every
+            // line of both probes' stderr with "WSL reported:" inside the
+            // .wslconfig section, so a virtualisation warning read as a
+            // complaint about the config file (audit ST-07).
+            if (capabilities != null && capabilities.configWarnings.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '${'wslreported-text'.i18n()}\n'
+                  '${capabilities.configWarnings.join('\n')}',
+                  style: TextStyle(
+                      color: Colors.warningPrimaryColor, fontSize: 12),
+                ),
+              ),
+            if (capabilities != null && capabilities.otherWarnings.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '${'wslstartupwarnings-text'.i18n()}\n'
+                  '${capabilities.otherWarnings.join('\n')}',
+                  style: TextStyle(
+                      color: Colors.warningPrimaryColor, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _updatingWsl = false;
+
+  Future<void> _runWslUpdate({required bool webDownload}) async {
+    setState(() => _updatingWsl = true);
+    Notify.message('updatingwsl-text'.i18n(), loading: true);
+    final result = await WSLApi().updateWsl(webDownload: webDownload);
+    // `--update` prints its progress and its "already up to date" answer on
+    // stdout, so the text is worth showing either way rather than a bare
+    // success/failure.
+    Notify.message(result.ok
+        ? '${'wslupdated-text'.i18n()} ${result.text}'.trim()
+        : 'wslupdatefailed-text'.i18n([result.text]));
+    WSLApi().capabilities.reset();
+    final capabilities = await WSLApi().capabilities.load();
+    if (!mounted) return;
+    setState(() {
+      _updatingWsl = false;
+      _capabilities = capabilities;
+    });
+  }
+
+  /// Host memory in whole GB, the ceiling the `memory` and `swap` sliders are
+  /// scaled against.
+  ///
+  /// `SysInfo.getTotalPhysicalMemory()` returns 0 on some hosts (measured in
+  /// the audit: 0 bytes and 1 core, so the Memory / Processors / Swap sliders
+  /// never rendered at all — ST-08). win32's `GlobalMemoryStatusEx` is the
+  /// authoritative answer on Windows; SysInfo stays as the fallback.
+  int get _hostMemoryGb {
+    final win32Bytes = hostPhysicalMemoryBytes();
+    final bytes =
+        win32Bytes > 0 ? win32Bytes : SysInfo.getTotalPhysicalMemory();
+    return bytes ~/ 1024 ~/ 1024 ~/ 1024;
+  }
+
+  /// A `.wslconfig` boolean read the way WSL reads it: an absent key means the
+  /// key's documented default, not `false`. Used for the conditional
+  /// dependencies below, so an untouched `dnsTunneling` does not grey out the
+  /// two keys it gates (doc/audit/wsl-docs/ CC-6).
+  ///
+  /// The default comes from [kWslConfigBoolDefaults], the same table
+  /// [_tristateToggle] renders from — one place for the twelve documented
+  /// defaults rather than a literal at each call site.
+  bool _configBool(String name) {
+    final value = _settings[name]?.text.trim().toLowerCase() ?? '';
+    if (value.isEmpty) return kWslConfigBoolDefaults[name] ?? false;
+    return value == 'true';
+  }
+
+  /// `networkingMode` as WSL resolves it: unset or unrecognised means NAT.
+  String _networkingMode() {
+    final value = _settings['networkingMode']?.text.trim().toLowerCase() ?? '';
+    const known = ['none', 'nat', 'bridged', 'mirrored', 'virtioproxy'];
+    return known.contains(value) ? value : 'nat';
+  }
+
+  /// The folder-picker button shared by every `.wslconfig` path key. Restricted
+  /// to [extensions] where the documentation names a file type.
+  Widget _filePickerSuffix(String name, {List<String>? extensions}) {
+    return NamedIconButton(
+      label: 'choosefile-text'.i18n(),
+      icon: FluentIcons.open_folder_horizontal,
+      onPressed: () async {
+        FilePickerResult? result = await FilePicker.platform.pickFiles(
+          type: extensions == null ? FileType.any : FileType.custom,
+          allowedExtensions: extensions,
+        );
+        if (result != null) {
+          _settings[name]!.text = result.files.single.path!;
+        }
+      },
     );
   }
 
@@ -695,7 +1705,9 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'autoMemoryReclaim',
             tooltip: 'automemoryreclaiminfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.enumeration,
+            options: const ['disabled', 'gradual', 'dropCache'],
+            placeholder: 'dropCache'),
         settingsWidget(context,
             title: 'sparseVhd',
             tooltip: 'sparsevhdinfo-text'.i18n(),
@@ -703,23 +1715,39 @@ class SettingsPageState extends State<SettingsPage> {
         settingsWidget(context,
             title: 'bestEffortDnsParsing',
             tooltip: 'besteffortdnsparsinginfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _configBool('dnsTunneling'),
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['${'dnstunneling-text'.i18n()} = true'])),
         settingsWidget(context,
             title: 'dnsTunnelingIpAddress',
             tooltip: 'dnstunnelingipaddressinfo-text'.i18n(),
-            placeholder: ''),
+            placeholder: '10.255.255.254',
+            enabled: _configBool('dnsTunneling'),
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['${'dnstunneling-text'.i18n()} = true'])),
         settingsWidget(context,
             title: 'initialAutoProxyTimeout',
             tooltip: 'initialautoproxytimeoutinfo-text'.i18n(),
-            placeholder: ''),
+            type: SettingsType.number,
+            unitLabel: 'milliseconds-text'.i18n(),
+            placeholder: '1000',
+            enabled: _configBool('autoProxy'),
+            disabledReason: 'onlyapplieswhen-text'.i18n(['${'autoproxy-text'.i18n()} = true'])),
         settingsWidget(context,
             title: 'ignoredPorts',
             tooltip: 'ignoredportsinfo-text'.i18n(),
-            placeholder: ''),
+            placeholder: '3000,9000,9090',
+            enabled: _networkingMode() == 'mirrored',
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['${'networkingmode-text'.i18n()} = mirrored'])),
         settingsWidget(context,
             title: 'hostAddressLoopback',
             tooltip: 'hostaddressloopbackinfo-text'.i18n(),
-            type: SettingsType.bool),
+            type: SettingsType.bool,
+            enabled: _networkingMode() == 'mirrored',
+            disabledReason:
+                'onlyapplieswhen-text'.i18n(['${'networkingmode-text'.i18n()} = mirrored'])),
       ],
     );
   }
@@ -735,6 +1763,11 @@ class SettingsPageState extends State<SettingsPage> {
     String sizePostfix = '',
     int sizeMax = 0,
     int sizeMin = 0,
+    String unitLabel = '',
+    List<String> options = const <String>[],
+    Map<String, String> optionNotes = const <String, String>{},
+    bool enabled = true,
+    String disabledReason = '',
   }) {
     if (name.isEmpty) {
       name = title;
@@ -742,8 +1775,21 @@ class SettingsPageState extends State<SettingsPage> {
     if (_settings[name] == null) {
       _settings[name] = TextEditingController(text: '');
     }
-    // First letter to capital
-    title = title.replaceFirst(title[0], title[0].toUpperCase());
+    // A prose label where one exists, with the raw `.wslconfig` key kept as a
+    // small annotation. The control used to be titled with the bare camelCase
+    // key — "MaxCrashDumpCount" — while the prose labels sat unrendered in
+    // en.json (audit ST-09).
+    final rawKey = title;
+    final labelKey = '${title.toLowerCase()}-text';
+    final prose = labelKey.i18n();
+    // One parenthetical: "VM idle timeout (vmIdleTimeout, milliseconds)",
+    // not "(vmIdleTimeout) (milliseconds)" stacked.
+    final annotation =
+        unitLabel.isEmpty ? rawKey : '$rawKey, $unitLabel';
+    title = prose == labelKey
+        ? '${title.replaceFirst(title[0], title[0].toUpperCase())}'
+            '${unitLabel.isEmpty ? '' : ' ($unitLabel)'}'
+        : '$prose ($annotation)';
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: InfoLabel(
@@ -756,58 +1802,52 @@ class SettingsPageState extends State<SettingsPage> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Text(tooltip,
-                    style: TextStyle(color: Colors.grey[100], fontSize: 12)),
+                    style: TextStyle(
+                        color: secondaryTextColor(context), fontSize: 12)),
+              ),
+            // The documented "Only applicable when…" conditions. The control is
+            // disabled rather than hidden, so the key stays discoverable and
+            // the reason says why WSL would ignore it right now.
+            // Secondary, not disabled, text: this line is the one sentence
+            // that explains why the control below will not move, and in the
+            // disabled colour it measured 2.51:1 — the least legible text on
+            // the screen doing the most necessary job (audit ST-10).
+            if (!enabled && disabledReason.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(disabledReason,
+                    style: TextStyle(
+                        color: secondaryTextColor(context),
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic)),
               ),
             Padding(
               padding: const EdgeInsets.only(top: 0.0),
               child: Builder(
                 builder: (context) {
-                  double size = double.tryParse(
-                          _settings[name]!.text.replaceAll(sizePostfix, '')) ??
-                      sizeMin.toDouble();
                   switch (type) {
+                    case SettingsType.bool:
+                      return _tristateToggle(context, name, enabled: enabled);
+                    case SettingsType.enumeration:
+                      return _enumerationBox(name,
+                          options: options,
+                          notes: optionNotes,
+                          placeholder: placeholder,
+                          enabled: enabled);
+                    case SettingsType.size:
+                    case SettingsType.number:
+                      return _numericSetting(context, name,
+                          type: type,
+                          sizePostfix: sizePostfix,
+                          sizeMin: sizeMin,
+                          sizeMax: sizeMax,
+                          placeholder: placeholder,
+                          enabled: enabled);
                     case SettingsType.text:
                       return TextBox(
                         controller: _settings[name],
                         placeholder: placeholder,
-                        suffix: suffix != 0 ? suffix : Container(),
-                      );
-                    case SettingsType.bool:
-                      return ToggleSwitch(
-                          checked: _settings[name]!.text == 'true',
-                          onChanged: (value) {
-                            _settings[name]!.text = value ? 'true' : 'false';
-                            setState(() {
-                              _settings = _settings;
-                            });
-                          },
-                          content: Text(_settings[name]!.text));
-                    case SettingsType.size:
-                      if (_settings[name] == null) {
-                        _settings[name] = TextEditingController(
-                            text: sizeMin.toDouble().toString());
-                      }
-                      return SizedBox(
-                          width: MediaQuery.of(context).size.width,
-                          child: Slider(
-                              min: sizeMin.toDouble(),
-                              max: sizeMax.toDouble(),
-                              //divisions: 1,
-                              value: size,
-                              style: SliderThemeData(
-                                labelBackgroundColor: AppTheme().color,
-                              ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _settings[name]!.text =
-                                      value.toInt().toString() + sizePostfix;
-                                });
-                              },
-                              label: _settings[name]!.text));
-                    default:
-                      return TextBox(
-                        controller: _settings[name],
-                        placeholder: placeholder,
+                        enabled: enabled,
                         suffix: suffix != 0 ? suffix : Container(),
                       );
                   }
@@ -818,5 +1858,216 @@ class SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+
+  /// A boolean `.wslconfig` key with the third state the format actually has.
+  ///
+  /// An absent key means the key's **documented default**, and seven of the
+  /// twelve booleans on this screen default to `true` — every one of which used
+  /// to render off, with an empty label, on the ordinary case of a machine with
+  /// no `.wslconfig` at all. A user reading the screen concluded the opposite
+  /// of the truth for all seven (audit CC-1).
+  ///
+  /// The undo button empties the controller, which [_saveWslConfig] turns into
+  /// a line *removed* from the file. That third state had nowhere to be written
+  /// until P05-02 gave the engine a delete branch (CC-11), which is why this
+  /// ships with the engine rather than before it.
+  Widget _tristateToggle(BuildContext context, String name,
+      {required bool enabled}) {
+    final raw = _settings[name]!.text.trim();
+    final isSet = raw.isNotEmpty;
+    final documented = kWslConfigBoolDefaults[name];
+    final checked = isSet ? raw.toLowerCase() == 'true' : (documented ?? false);
+
+    return Row(
+      children: [
+        ToggleSwitch(
+          checked: checked,
+          onChanged: enabled
+              ? (value) {
+                  _settings[name]!.text = value ? 'true' : 'false';
+                  setState(() {
+                    _settings = _settings;
+                  });
+                }
+              : null,
+          content: Text(isSet
+              ? raw
+              : '${checked ? 'true' : 'false'} '
+                  '(${'settingdefault-text'.i18n()})'),
+        ),
+        if (isSet && enabled)
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: NamedIconButton(
+              label: 'resettodefault-text'.i18n(),
+              icon: FluentIcons.undo,
+              iconSize: 14.0,
+              onPressed: () {
+                _settings[name]!.text = '';
+                setState(() {
+                  _settings = _settings;
+                });
+              },
+            ),
+          ),
+        // No trailing "Not set — using the default" caption: the switch
+        // label already says "(Default)", and stating the one fact twice in
+        // two type styles, twelve times down the page, was ST-15.
+      ],
+    );
+  }
+
+  /// A closed set of documented values. Anything already in the file that is not
+  /// one of them is kept as an extra item rather than dropped, so opening the
+  /// screen never rewrites a value the user put there by hand — and never trips
+  /// `ComboBox`'s "value must be among the items" assert.
+  Widget _enumerationBox(
+    String name, {
+    required List<String> options,
+    required Map<String, String> notes,
+    required String placeholder,
+    required bool enabled,
+  }) {
+    final current = _settings[name]!.text.trim();
+    final match = options.cast<String?>().firstWhere(
+        (option) => option!.toLowerCase() == current.toLowerCase(),
+        orElse: () => null);
+    final selected = current.isEmpty ? null : (match ?? current);
+    final items = <String>[
+      ...options,
+      if (selected != null && match == null) selected,
+    ];
+
+    // A DropDownButton, not a ComboBox: the ComboBox popup anchors on the
+    // selected item, so with a late value chosen it opened over its own
+    // field (audit ST-17); this flyout opens below and marks the current
+    // value. The leading "Not set" entry is the un-choose the booleans have
+    // always had — an enumeration used to be un-clearable once touched
+    // (ST-16): it empties the value, which Save writes as a removed line, so
+    // the documented default applies again.
+    return DropDownButton(
+      title: Expanded(
+        child: Text(
+          selected == null
+              ? (placeholder.isEmpty ? 'settingunset-text'.i18n() : placeholder)
+              : selected,
+          textAlign: TextAlign.start,
+          style: selected == null
+              ? TextStyle(color: secondaryTextColor(context))
+              : null,
+        ),
+      ),
+      items: [
+        MenuFlyoutItem(
+          selected: selected == null,
+          leading: selected == null
+              ? const Icon(FluentIcons.check_mark, size: 12.0)
+              : const SizedBox.square(dimension: 12.0),
+          text: Text('settingunset-text'.i18n()),
+          onPressed: enabled
+              ? () => setState(() => _settings[name]!.text = '')
+              : null,
+        ),
+        const MenuFlyoutSeparator(),
+        for (final option in items)
+          MenuFlyoutItem(
+            selected: option == selected,
+            leading: option == selected
+                ? const Icon(FluentIcons.check_mark, size: 12.0)
+                : const SizedBox.square(dimension: 12.0),
+            text: Text(notes.containsKey(option)
+                ? '$option — ${notes[option]}'
+                : option),
+            onPressed: enabled
+                ? () => setState(() => _settings[name]!.text = option)
+                : null,
+          ),
+      ],
+    );
+  }
+
+  /// The `size` and `number` keys.
+  ///
+  /// A slider only when the value the file holds actually fits on it: a
+  /// documented-legal `memory=8589934592` or a `processors=64` copied from a
+  /// bigger machine is out of range, and `Slider` asserts on that in its
+  /// constructor (doc/audit/wsl-docs/ CC-9). Those fall back to a text box that
+  /// says so, so the value is left exactly as written instead of being silently
+  /// clamped or snapped to the minimum.
+  Widget _numericSetting(
+    BuildContext context,
+    String name, {
+    required SettingsType type,
+    required String sizePostfix,
+    required int sizeMin,
+    required int sizeMax,
+    required String placeholder,
+    required bool enabled,
+  }) {
+    final raw = _settings[name]!.text.trim();
+    final double? value = type == SettingsType.size
+        ? parseWslSize(raw,
+            unit: sizePostfix.isEmpty ? 'B' : sizePostfix,
+            bareUnitMax: sizeMax.toDouble())
+        : parseWslCount(raw)?.toDouble();
+    final hasSlider = sizeMax > sizeMin;
+    final fits = wslSliderFits(value, min: sizeMin, max: sizeMax);
+
+    if (!hasSlider || (raw.isNotEmpty && !fits)) {
+      String warning = '';
+      if (raw.isNotEmpty && value == null) {
+        warning = type == SettingsType.size
+            ? 'settinginvalidsize-text'.i18n()
+            : 'settinginvalidnumber-text'.i18n();
+      } else if (hasSlider && raw.isNotEmpty) {
+        warning =
+            'settingoutofrange-text'.i18n(['$sizeMin – $sizeMax$sizePostfix']);
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextBox(
+            controller: _settings[name],
+            placeholder: placeholder,
+            enabled: enabled,
+            // Validation runs on the keystroke, not on whatever unrelated
+            // rebuild happened next (audit ST-06).
+            onChanged: (_) => setState(() {}),
+          ),
+          if (warning.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                warning,
+                style:
+                    TextStyle(color: Colors.warningPrimaryColor, fontSize: 12),
+              ),
+            ),
+        ],
+      );
+    }
+
+    return SizedBox(
+        width: MediaQuery.of(context).size.width,
+        child: Slider(
+            min: sizeMin.toDouble(),
+            max: sizeMax.toDouble(),
+            value: value ?? sizeMin.toDouble(),
+            style: SliderThemeData(
+              labelBackgroundColor: AppTheme().color,
+            ),
+            onChanged: enabled
+                ? (value) {
+                    setState(() {
+                      _settings[name]!.text = type == SettingsType.size
+                          ? formatWslSize(value, sizePostfix)
+                          : value.round().toString();
+                    });
+                  }
+                : null,
+            label: _settings[name]!.text.isEmpty
+                ? '$sizeMin$sizePostfix'
+                : _settings[name]!.text));
   }
 }

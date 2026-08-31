@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:wsl2distromanager/components/ai_diagnosis.dart';
+import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
+import 'package:wsl2distromanager/nav/router.dart';
 import 'list_item.dart';
 import 'helpers.dart';
 
@@ -22,6 +26,7 @@ class DistroListState extends State<DistroList> {
   Map<String, bool> hover = {};
   bool isSyncing = false;
   bool showDocker = false;
+  int reloadTick = 0;
 
   void syncing(var item) {
     if (mounted) {
@@ -52,15 +57,21 @@ class DistroListState extends State<DistroList> {
       await Future.delayed(const Duration(seconds: 5));
       // Check if state disposed
       if (mounted) {
-        setState(() {});
+        setState(() {
+          reloadTick++;
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final remoteEnabled = widget.api.useRemoteWsl;
+    final remoteTarget = widget.api.remoteTargetLabel;
+
     // List as FutureBuilder with WSLApi
     return FutureBuilder<Instances>(
+      key: const ValueKey('test-distro-list'),
       future: widget.api.list(showDocker),
       initialData: GlobalVariable.initialSnapshot,
       builder: (context, snapshot) {
@@ -72,9 +83,43 @@ class DistroListState extends State<DistroList> {
           List<String> running = snapshot.data?.running ?? [];
           // Check if there are distros
           if (list.isEmpty) {
+            // Two unrelated states used to share one sentence written from
+            // the code's point of view — "No instances found or there is a
+            // migration in progress" (audit LN-22). A move leaves its marker
+            // in prefs, so the ordinary first-run state can speak to a new
+            // user instead.
+            final moving = prefs.getString('MoveOp_Distro') != null;
+            // The CTA sits under the sentence that motivates it. Pinned to
+            // the bottom-right corner it shared ~44x28px with the AI chat
+            // FAB, which covered exactly the spot a user clicks after
+            // reading "no instances found" (audit LN-21).
             return Expanded(
               child: Center(
-                child: Text('noinstancesfound-text'.i18n()),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text((moving
+                            ? 'moveinprogress-text'
+                            : 'noinstancesfound-text')
+                        .i18n()),
+                    if (!moving) ...[
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () {
+                          router.pushNamed('addinstance');
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(FluentIcons.add),
+                            const SizedBox(width: 8),
+                            Text('addinstance-text'.i18n()),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             );
           }
@@ -95,13 +140,115 @@ class DistroListState extends State<DistroList> {
             ),
           );
         } else if (snapshot.hasError) {
-          return Text('${snapshot.error}');
+          // Not `snapshot.error.toString()`: that put `Exception: <localized
+          // WSL prose>` on the page and offered a Retry that could only fail
+          // the same way. The sentence is translated and mapped from the
+          // stable error code; the raw text keeps its place underneath, and a
+          // remote failure gets the one remedy that actually changes the
+          // outcome — going back to the local WSL (audit LN-17, LN-18).
+          final failure = WslFailure.from(snapshot.error);
+          return Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ErrorBody(
+                      failure: failure,
+                      leading: remoteEnabled
+                          ? 'listfailedremote-text'.i18n([
+                              remoteTarget.isEmpty
+                                  ? 'remotenotset-text'.i18n()
+                                  : remoteTarget
+                            ])
+                          : 'listfailed-text'.i18n(),
+                      hint: remoteEnabled
+                          ? 'listfailedremotehint-text'.i18n()
+                          : 'listfailedhint-text'.i18n(),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (remoteEnabled)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: FilledButton(
+                              key: const ValueKey('test-list-use-local'),
+                              onPressed: () async {
+                                await prefs.setBool('UseRemoteWSL', false);
+                                if (mounted) {
+                                  setState(() {
+                                    reloadTick++;
+                                  });
+                                }
+                              },
+                              child: Text('uselocalwsl-text'.i18n()),
+                            ),
+                          ),
+                        Button(
+                          key: const ValueKey('test-list-retry'),
+                          onPressed: () {
+                            if (mounted) {
+                              setState(() {
+                                reloadTick++;
+                              });
+                            }
+                          },
+                          child: Text('retry-text'.i18n()),
+                        ),
+                        const SizedBox(width: 8),
+                        AiDiagnoseButton(errorMessage: failure.details),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
         }
 
         // By default, show a loading spinner.
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 20.0),
-          child: Center(child: ProgressRing()),
+        //
+        // `Expanded`, like the data and error branches: a bare `Padding` has
+        // no height to centre within, so the spinner drew at y=90 and the
+        // error that replaced it at y=420 — 330 px of jump when the load
+        // resolved (audit LN-20).
+        return Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ProgressRing(),
+                if (remoteEnabled) ...[
+                  const SizedBox(height: 10),
+                  Text('connectingtoremote-text'.i18n([
+                    remoteTarget.isEmpty ? 'remotenotset-text'.i18n() : remoteTarget
+                  ])),
+                  const SizedBox(height: 12),
+                  // `getSshClientOptions` sets no ConnectTimeout, so an
+                  // unreachable host holds this for the OS default TCP
+                  // timeout. Going back to the local WSL is the one action
+                  // that ends the wait, and it is the same remedy the error
+                  // branch offers.
+                  Button(
+                    key: const ValueKey('test-list-loading-use-local'),
+                    onPressed: () async {
+                      await prefs.setBool('UseRemoteWSL', false);
+                      if (mounted) {
+                        setState(() {
+                          reloadTick++;
+                        });
+                      }
+                    },
+                    child: Text('uselocalwsl-text'.i18n()),
+                  ),
+                ],
+              ],
+            ),
+          ),
         );
       },
     );

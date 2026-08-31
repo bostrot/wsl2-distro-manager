@@ -3,11 +3,27 @@ import 'package:go_router/go_router.dart';
 import 'package:plausible_analytics/navigator_observer.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
+import 'package:wsl2distromanager/screens/ai_workspace_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
+import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
+import 'package:wsl2distromanager/screens/license_screen.dart';
+import 'package:wsl2distromanager/screens/package_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/screens/template_screen.dart';
+
+/// Go to the route called [name], asking the current screen first when it is
+/// holding unsaved edits (audit ST-01).
+///
+/// Every in-app navigation that replaces the body goes through here; a bare
+/// `router.pushNamed` bypasses the prompt and is what made Settings lose work.
+Future<void> navigateGuarded(String name, {String? path}) async {
+  if (path != null && router.state.uri.toString() == path) return;
+  if (!await UnsavedChangesGuard.confirmLeave()) return;
+  router.pushNamed(name);
+}
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -54,6 +70,34 @@ final router = GoRouter(
           path: '/templates',
           name: 'templates',
           builder: (context, state) => const TemplatePage(),
+        ),
+
+        /// License / Pro
+        GoRoute(
+          path: '/license',
+          name: 'license',
+          builder: (context, state) => const LicenseScreen(),
+        ),
+
+        /// AI Workspace
+        GoRoute(
+          path: '/ai-workspace',
+          name: 'ai-workspace',
+          builder: (context, state) => const AiWorkspacePage(),
+        ),
+
+        /// Create a new instance
+        GoRoute(
+          path: '/addinstance',
+          name: 'addinstance',
+          builder: (context, state) => const CreatePage(),
+        ),
+
+        /// Custom distro packaging (`.wsl`, wsl-distribution.conf)
+        GoRoute(
+          path: '/package',
+          name: 'package',
+          builder: (context, state) => const PackagePage(),
         ),
       ],
     ),

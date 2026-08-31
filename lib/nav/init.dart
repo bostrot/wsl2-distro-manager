@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter/gestures.dart';
@@ -9,9 +11,10 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/changelog_dialog.dart';
 import 'package:wsl2distromanager/dialogs/firststart_dialog.dart';
+import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
 
-initRoot(statusMsg) async {
+initRoot(NotifyMessage statusMsg) async {
   // Call constructor to initialize
   Notify();
   Notify.message = statusMsg;
@@ -20,14 +23,14 @@ initRoot(statusMsg) async {
   String? version = prefs.getString('version');
   String? lastChangelogVersion = prefs.getString('LastChangelogVersion');
 
-  // Get system dark mode
-  var brightness =
-      WidgetsBinding.instance.platformDispatcher.platformBrightness;
-
-  if (brightness == Brightness.dark) {
-    AppTheme().mode = ThemeMode.dark;
-  } else if (brightness == Brightness.light) {
-    AppTheme().mode = ThemeMode.light;
+  // Seed the theme from the system only on a first run. The setter persists,
+  // so doing this unconditionally overwrote the user's saved choice on every
+  // start.
+  if (prefs.getString('themeMode') == null) {
+    var brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    AppTheme().mode =
+        brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
   }
 
   if (version == null) {
@@ -56,6 +59,10 @@ initRoot(statusMsg) async {
       await prefs.setString('LastChangelogVersion', currentVersion);
     }
   }
+
+  // Asked on a later start rather than right after a creation, so the
+  // prompt never lands on top of the dialog the user just closed.
+  unawaited(maybeShowRatingPrompt());
 
   // Check for interrupted move operation
   String? moveOpDistro = prefs.getString('MoveOp_Distro');
@@ -92,15 +99,18 @@ initRoot(statusMsg) async {
     if (updateUrl != '') {
       statusMsg('',
           useWidget: true,
-          widget: RichText(
+          duration: const Duration(minutes: 1),
+          // Text.rich rather than RichText: the spans with no colour of
+          // their own inherit the surrounding DefaultTextStyle, where
+          // RichText would need a hardcoded per-theme guess (audit TL-03).
+          widget: Text.rich(
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.clip,
-              text: TextSpan(children: [
+              TextSpan(children: [
                 TextSpan(
                     text: '${'newversion-text'.i18n()} ',
-                    style:
-                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
+                    style: const TextStyle(fontSize: 14.0)),
                 TextSpan(
                     text: '${'downloadnow-text'.i18n()} ',
                     style: TextStyle(
@@ -111,8 +121,7 @@ initRoot(statusMsg) async {
                       ..onTap = () => launchUrl(Uri.parse(updateUrl))),
                 TextSpan(
                     text: '${'orcheck-text'.i18n()} ',
-                    style:
-                        TextStyle(fontSize: 14.0, color: AppTheme().textColor)),
+                    style: const TextStyle(fontSize: 14.0)),
                 TextSpan(
                     text: '${'windowsstore-text'.i18n()} ',
                     style: TextStyle(

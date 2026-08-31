@@ -58,9 +58,16 @@ jobs:
       - name: Replace version in pubspec.yaml for msix
         run: |
           (Get-Content .\pubspec.yaml) -replace('msix_version: (.*)', 'msix_version: ${{ steps.get_version.outputs.version }}.0') | Set-Content .\pubspec.yaml
+      # Pin the SDK — see the note in test.yml. Release builds must not
+      # change underneath us between runs.
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.41.6'
+
+      - name: Check translations
+        run: dart run scripts/check_translations.dart
+
       - run: flutter config --enable-windows-desktop
       - run: flutter build windows
       - run: dart run msix:create
@@ -68,9 +75,14 @@ jobs:
       - name: Prepare installer inputs
         shell: pwsh
         run: |
+          # Pinned to an immutable commit, not 'master': upstream edits the
+          # file in place, which silently invalidates the checksum below and
+          # breaks the release (it did, on 2026-08-21). Bump the ref and the
+          # hash together, deliberately.
+          $codeDependenciesRef = '7ab4aac42af899d9836715bdd4a292c5cd087024'
           $codeDependenciesPath = Join-Path $PWD 'installer\CodeDependencies.iss'
-          $codeDependenciesUrl = 'https://raw.githubusercontent.com/DomGries/InnoDependencyInstaller/master/CodeDependencies.iss'
-          $codeDependenciesSha256 = 'D57E218B36CB77D7A83F0558B3C13C391585AEA92F560CF9FDFEDBC87FAE5D10'
+          $codeDependenciesUrl = "https://raw.githubusercontent.com/DomGries/InnoDependencyInstaller/$codeDependenciesRef/CodeDependencies.iss"
+          $codeDependenciesSha256 = '0EF2A8E1924EEDD5D96B5BDBA3774E7A14024F16954D66DA06F3FD53DC3161F4'
 
           if (-not (Test-Path $codeDependenciesPath)) {
             Write-Host 'Downloading CodeDependencies.iss for InnoDependencyInstaller...'
