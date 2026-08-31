@@ -45,7 +45,7 @@ class QuickPageState extends State<QuickPage> {
     if (_instances.isEmpty) return const SizedBox.shrink();
     return DropDownButton(
       leading: const Icon(FluentIcons.play, size: 14.0),
-      title: Text('runquickaction-text'.i18n()),
+      title: Text('runininstance-text'.i18n()),
       items: [
         for (final instance in _instances)
           MenuFlyoutItem(

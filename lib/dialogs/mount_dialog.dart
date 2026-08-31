@@ -513,9 +513,14 @@ class _MountDialogState extends State<MountDialog> {
           const SizedBox(height: 10),
           InfoLabel(
             label: 'mountoptions-text'.i18n(),
-            child: TextBox(
-              controller: _optionsController,
-              placeholder: 'mountoptionshint-text'.i18n(),
+            // Short example in the box; the ro/rw constraint lives in the
+            // tooltip — as a placeholder the sentence clipped mid-word.
+            child: Tooltip(
+              message: 'mountoptionshint-text'.i18n(),
+              child: TextBox(
+                controller: _optionsController,
+                placeholder: 'mountoptionsplaceholder-text'.i18n(),
+              ),
             ),
           ),
         ],
@@ -609,9 +614,12 @@ class _MountDialogState extends State<MountDialog> {
           const SizedBox(height: 10),
           InfoLabel(
             label: 'mountoptions-text'.i18n(),
-            child: TextBox(
-              controller: _vhdOptionsController,
-              placeholder: 'mountoptionshint-text'.i18n(),
+            child: Tooltip(
+              message: 'mountoptionshint-text'.i18n(),
+              child: TextBox(
+                controller: _vhdOptionsController,
+                placeholder: 'mountoptionsplaceholder-text'.i18n(),
+              ),
             ),
           ),
         ],

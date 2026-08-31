@@ -565,7 +565,7 @@
   "deletetemplate-text": "Vorlage löschen",
   "editwslconfighint-text": "Öffnet .wslconfig im Standard-Texteditor. Änderungen wirken sich erst nach einem Neustart von WSL aus.",
   "stopwslhint-text": "Fährt die virtuelle WSL-Maschine herunter. Alle laufenden Instanzen werden beendet und nicht gespeicherte Arbeit darin geht verloren.",
-  "startstopservinghint-text": "Stellt diese Instanz im Netzwerk bereit, damit ein anderer Rechner mit WSL Manager sie herunterladen kann. Erneut drücken, um die Bereitstellung zu beenden.",
+  "startstopservinghint-text": "Stellt diese Instanz im Netzwerk bereit, damit ein anderer Rechner mit WSL Manager sie herunterladen kann.",
   "downloadoverridehint-text": "Lädt diese Instanz von dem unter Sync eingetragenen Rechner und ersetzt die lokale Kopie.",
   "deviceid-text": "Geräte-ID",
   "included-text": "Enthalten",
@@ -670,5 +670,7 @@
   "nothingmounted-text": "Derzeit ist über diese App nichts eingebunden.",
   "mountlanding-text": "Der Datenträger erscheint in jeder Instanz unter /mnt/wsl/.",
   "startserving-text": "Im Netzwerk bereitstellen",
-  "stopserving-text": "Bereitstellung beenden"
+  "stopserving-text": "Bereitstellung beenden",
+  "mountoptionsplaceholder-text": "z. B. data=ordered",
+  "runininstance-text": "In Instanz ausführen"
 }

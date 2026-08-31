@@ -99,7 +99,7 @@
   "stopwsl-text": "WSL'i Durdur",
   "defaultdistrolocation-text": "Varsayılan Dağıtım Konumu",
   "distropath-text": "Kopyalanan dağıtımların varsayılan olarak kaydedileceği yol",
-  "syncipaddress-text": "Senkronizasyon hedefi IP Adresi",
+  "syncipaddress-text": "Senkronizasyon hedefinin IP adresi",
   "syncpassword-text": "Senkronizasyon Şifresi",
   "syncpasswordhint-text": "Senkronizasyon kimlik doğrulaması için şifre",
   "repofordistro-text": "Dağıtımlar için Ek repo",
@@ -217,7 +217,7 @@
   "networkingmodeinfo-text": "WSL'nin ağa nasıl bağlanacağı: none, nat, bridged, mirrored veya virtioproxy. Varsayılan: nat; tanınmayan bir değer de nat'a düşer. bridged, WSL 2.4.5'ten beri kullanımdan kaldırılmıştır.",
   "firewall-text": "Güvenlik Duvarı",
   "firewallinfo-text": "Windows Güvenlik Duvarı kurallarının, WSL 2 VM'nin Hyper-V trafiği dahil olmak üzere WSL ağ trafiğini filtrelemesine izin verir. Varsayılan: açık.",
-  "dnstunneling-text": "DNS Tünelleme",
+  "dnstunneling-text": "DNS tünelleme",
   "dnstunnelinginfo-text": "DNS isteklerinin WSL'den Windows'a nasıl iletileceğini değiştirir. Varsayılan: açık.",
   "autoproxy-text": "Otomatik Proxy",
   "autoproxyinfo-text": "WSL'yi Windows'un HTTP proxy bilgilerini kullanmaya zorlar. Varsayılan: açık. Yalnızca Windows 11'de kullanılabilir.",
@@ -564,7 +564,7 @@
   "deletetemplate-text": "Şablonu sil",
   "editwslconfighint-text": ".wslconfig dosyasını varsayılan metin düzenleyicinizde açar. Değişiklikler WSL yeniden başlatıldıktan sonra geçerli olur.",
   "stopwslhint-text": "WSL sanal makinesini kapatır. Çalışan tüm örnekler durur ve içlerindeki kaydedilmemiş çalışmalar kaybolur.",
-  "startstopservinghint-text": "Bu örneği ağ üzerinden paylaşır; WSL Manager çalıştıran başka bir makine indirebilir. Durdurmak için tekrar basın.",
+  "startstopservinghint-text": "Bu örneği ağ üzerinden paylaşır; WSL Manager çalıştıran başka bir makine indirebilir.",
   "downloadoverridehint-text": "Bu örneği Sync altında ayarlanan makineden indirir ve yerel kopyanın üzerine yazar.",
   "deviceid-text": "Cihaz kimliği",
   "included-text": "Dahil",
@@ -669,5 +669,7 @@
   "nothingmounted-text": "Şu anda bu uygulama üzerinden bağlanmış bir şey yok.",
   "mountlanding-text": "Disk her dağıtımda /mnt/wsl/ altında görünür.",
   "startserving-text": "Ağda sun",
-  "stopserving-text": "Sunmayı durdur"
+  "stopserving-text": "Sunmayı durdur",
+  "mountoptionsplaceholder-text": "örn. data=ordered",
+  "runininstance-text": "Örnekte çalıştır"
 }

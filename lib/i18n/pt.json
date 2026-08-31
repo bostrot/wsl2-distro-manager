@@ -566,7 +566,7 @@
   "deletetemplate-text": "Excluir modelo",
   "editwslconfighint-text": "Abre o .wslconfig no seu editor de texto padrão. As alterações passam a valer depois de reiniciar o WSL.",
   "stopwslhint-text": "Desliga a máquina virtual do WSL. Todas as instâncias em execução param e o trabalho não salvo dentro delas é perdido.",
-  "startstopservinghint-text": "Disponibiliza esta instância na rede para que outra máquina com o WSL Manager possa baixá-la. Pressione de novo para parar.",
+  "startstopservinghint-text": "Disponibiliza esta instância na rede para que outra máquina com o WSL Manager possa baixá-la.",
   "downloadoverridehint-text": "Baixa esta instância da máquina configurada em Sync e substitui a cópia local.",
   "deviceid-text": "ID do dispositivo",
   "included-text": "Incluído",
@@ -671,5 +671,7 @@
   "nothingmounted-text": "Nada está montado por este aplicativo no momento.",
   "mountlanding-text": "O disco aparece em todas as instâncias em /mnt/wsl/.",
   "startserving-text": "Servir na rede",
-  "stopserving-text": "Parar de servir"
+  "stopserving-text": "Parar de servir",
+  "mountoptionsplaceholder-text": "ex.: data=ordered",
+  "runininstance-text": "Executar na instância"
 }

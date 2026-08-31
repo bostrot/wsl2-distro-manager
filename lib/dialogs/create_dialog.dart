@@ -573,6 +573,9 @@ class _CreateWidgetState extends State<CreateWidget> {
       CreateSourceType type, String labelKey, String descKey) {
     return MenuFlyoutItem(
       selected: sourceType == type,
+      leading: sourceType == type
+          ? const Icon(FluentIcons.check_mark, size: 12.0)
+          : const SizedBox.square(dimension: 12.0),
       text: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

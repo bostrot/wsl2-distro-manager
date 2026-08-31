@@ -564,7 +564,7 @@
   "deletetemplate-text": "Eliminar plantilla",
   "editwslconfighint-text": "Abre .wslconfig en tu editor de texto predeterminado. Los cambios se aplican después de reiniciar WSL.",
   "stopwslhint-text": "Apaga la máquina virtual de WSL. Todas las instancias en ejecución se detienen y se pierde el trabajo sin guardar que haya dentro.",
-  "startstopservinghint-text": "Publica esta instancia en la red para que otro equipo con WSL Manager pueda descargarla. Púlsalo de nuevo para dejar de publicarla.",
+  "startstopservinghint-text": "Publica esta instancia en la red para que otro equipo con WSL Manager pueda descargarla.",
   "downloadoverridehint-text": "Descarga esta instancia desde el equipo configurado en Sync y reemplaza la copia local.",
   "deviceid-text": "ID del dispositivo",
   "included-text": "Incluido",
@@ -669,5 +669,7 @@
   "nothingmounted-text": "Actualmente no hay nada montado a través de esta aplicación.",
   "mountlanding-text": "El disco aparece en todas las instancias bajo /mnt/wsl/.",
   "startserving-text": "Servir en la red",
-  "stopserving-text": "Dejar de servir"
+  "stopserving-text": "Dejar de servir",
+  "mountoptionsplaceholder-text": "p. ej. data=ordered",
+  "runininstance-text": "Ejecutar en una instancia"
 }

@@ -564,7 +564,7 @@
   "deletetemplate-text": "テンプレートを削除",
   "editwslconfighint-text": "既定のテキストエディターで .wslconfig を開きます。変更は WSL の再起動後に反映されます。",
   "stopwslhint-text": "WSL の仮想マシンをシャットダウンします。実行中のインスタンスはすべて停止し、保存していない作業は失われます。",
-  "startstopservinghint-text": "このインスタンスをネットワークに公開し、WSL Manager を実行している別のマシンからダウンロードできるようにします。もう一度押すと公開を停止します。",
+  "startstopservinghint-text": "このインスタンスをネットワークに公開し、WSL Manager を実行している別のマシンからダウンロードできるようにします。",
   "downloadoverridehint-text": "同期設定で指定したマシンからこのインスタンスをダウンロードし、ローカルのコピーを置き換えます。",
   "deviceid-text": "デバイス ID",
   "included-text": "利用可能",
@@ -669,5 +669,7 @@
   "nothingmounted-text": "現在このアプリ経由でマウントされているものはありません。",
   "mountlanding-text": "ディスクはすべてのインスタンスの /mnt/wsl/ 配下に表示されます。",
   "startserving-text": "ネットワークで配信",
-  "stopserving-text": "配信を停止"
+  "stopserving-text": "配信を停止",
+  "mountoptionsplaceholder-text": "例: data=ordered",
+  "runininstance-text": "インスタンスで実行"
 }

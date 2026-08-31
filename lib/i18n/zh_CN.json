@@ -565,7 +565,7 @@
   "deletetemplate-text": "删除模板",
   "editwslconfighint-text": "在默认文本编辑器中打开 .wslconfig。更改在重启 WSL 后生效。",
   "stopwslhint-text": "关闭 WSL 虚拟机。所有正在运行的实例都会停止，其中未保存的工作会丢失。",
-  "startstopservinghint-text": "在网络上共享此实例，让另一台运行 WSL Manager 的计算机下载。再次按下可停止共享。",
+  "startstopservinghint-text": "在网络上共享此实例，让另一台运行 WSL Manager 的计算机下载。",
   "downloadoverridehint-text": "从同步设置中指定的计算机下载此实例，并覆盖本地副本。",
   "deviceid-text": "设备 ID",
   "included-text": "包含",
@@ -670,5 +670,7 @@
   "nothingmounted-text": "当前没有通过本应用挂载任何内容。",
   "mountlanding-text": "磁盘会出现在每个实例的 /mnt/wsl/ 下。",
   "startserving-text": "在网络上提供",
-  "stopserving-text": "停止提供"
+  "stopserving-text": "停止提供",
+  "mountoptionsplaceholder-text": "例如 data=ordered",
+  "runininstance-text": "在实例中运行"
 }

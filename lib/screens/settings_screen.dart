@@ -1782,12 +1782,14 @@ class SettingsPageState extends State<SettingsPage> {
     final rawKey = title;
     final labelKey = '${title.toLowerCase()}-text';
     final prose = labelKey.i18n();
+    // One parenthetical: "VM idle timeout (vmIdleTimeout, milliseconds)",
+    // not "(vmIdleTimeout) (milliseconds)" stacked.
+    final annotation =
+        unitLabel.isEmpty ? rawKey : '$rawKey, $unitLabel';
     title = prose == labelKey
-        ? title.replaceFirst(title[0], title[0].toUpperCase())
-        : '$prose ($rawKey)';
-    if (unitLabel.isNotEmpty) {
-      title = '$title ($unitLabel)';
-    }
+        ? '${title.replaceFirst(title[0], title[0].toUpperCase())}'
+            '${unitLabel.isEmpty ? '' : ' ($unitLabel)'}'
+        : '$prose ($annotation)';
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: InfoLabel(
@@ -1959,6 +1961,9 @@ class SettingsPageState extends State<SettingsPage> {
       items: [
         MenuFlyoutItem(
           selected: selected == null,
+          leading: selected == null
+              ? const Icon(FluentIcons.check_mark, size: 12.0)
+              : const SizedBox.square(dimension: 12.0),
           text: Text('settingunset-text'.i18n()),
           onPressed: enabled
               ? () => setState(() => _settings[name]!.text = '')
@@ -1968,6 +1973,9 @@ class SettingsPageState extends State<SettingsPage> {
         for (final option in items)
           MenuFlyoutItem(
             selected: option == selected,
+            leading: option == selected
+                ? const Icon(FluentIcons.check_mark, size: 12.0)
+                : const SizedBox.square(dimension: 12.0),
             text: Text(notes.containsKey(option)
                 ? '$option — ${notes[option]}'
                 : option),

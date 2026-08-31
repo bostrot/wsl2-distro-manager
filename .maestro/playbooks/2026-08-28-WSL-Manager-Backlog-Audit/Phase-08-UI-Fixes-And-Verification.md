@@ -422,3 +422,31 @@ Apply the Phase 01 repo conventions throughout: CRLF-safe edits, format only tou
   - Move every item completed across Phases 01–08 into a dated done section with a one-line statement of how it was verified
   - Keep only genuinely open items in "Now", including anything deferred from the audits, with a pointer to the relevant `doc/audit/` file
   - Commit the UI fixes, the tests and the updated `TODO.md` on `beta`, then summarise for the user what changed, what still needs a manual step (the `images.json` CDN push), and what was deliberately deferred.
+
+## Post-completion nit hunt (2026-08-31)
+
+A second critical visual walk of every surface the Phase 08 commits reshaped
+(fresh ForcePro debug run at 1400x860, captures `n01`–`n14`) surfaced seven
+residual nits, all fixed the same day:
+
+- **M1** — the mount-options placeholder was a full sentence and clipped
+  mid-word; now a short example (`mountoptionsplaceholder-text`) with the
+  ro/rw constraint moved to a tooltip, both mount forms.
+- **S2** — prose-labelled settings stacked two parentheticals
+  ("… (vmIdleTimeout) (milliseconds)"); folded into one
+  ("… (vmIdleTimeout, milliseconds)").
+- **S3** — `dnsproxy-text`/`dnstunneling-text` had escaped the sentence-case
+  sweep ("DNS Proxy" → "DNS proxy"); hu/tr equivalents fixed too.
+- **S4** — DropDownButton flyouts never marked the current value (fluent's
+  `selected:` is invisible at a glance); leading check mark added in the
+  settings enum flyout and the create source-type flyout.
+- **S5** — `syncipaddress-text` "IP Address of sync target" → "IP address of
+  the sync target" (hu/tr rewordings alongside).
+- **S6** — a snippet row's run flyout said "Run a snippet" while listing
+  instances; new `runininstance-text` ("Run in instance", ×9 locales).
+- **S7** — `startstopservinghint-text` still ended "Press again to stop
+  serving.", stale since the button relabels itself; sentence dropped in all
+  nine locales.
+
+Verified: `flutter analyze` (same two pre-existing warnings only),
+`flutter test` **830 passing**, `check_translations` exit 0.
