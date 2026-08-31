@@ -1,4 +1,5 @@
-// Local HTTP endpoint exposing the WSL API to MCP clients. Pro-gated.
+// Local HTTP endpoint exposing the VM backend (WSL on Windows, Apple
+// Virtualization on macOS) to MCP clients. Pro-gated.
 //
 // It can run arbitrary commands, so it binds to 127.0.0.1 only (never the
 // LAN, unlike the distro-sync server in components/sync.dart) and requires
@@ -14,7 +15,8 @@ import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -36,15 +38,15 @@ class WslMcpService {
   static HttpServer? _server;
   static WslTerminalManager? _terminalManager;
 
-  final WSLApi wslApi;
+  final VmBackend wslApi;
   final McpServerFactory serverFactory;
   final CloudflareTunnelService tunnel;
 
   WslMcpService({
-    WSLApi? wslApi,
+    VmBackend? wslApi,
     McpServerFactory? serverFactory,
     CloudflareTunnelService? tunnel,
-  })  : wslApi = wslApi ?? WSLApi(),
+  })  : wslApi = wslApi ?? vmBackend(),
         serverFactory = serverFactory ?? _defaultMcpServerFactory,
         tunnel = tunnel ?? CloudflareTunnelService();
 
@@ -78,11 +80,21 @@ class WslMcpService {
 
   /// Claude Desktop's config file path, or null when it is not installed.
   String? claudeDesktopConfigPath() {
-    final appData = Platform.environment['APPDATA'];
-    final dirPath = claudeDesktopConfigDirOverride ??
-        (appData == null || appData.isEmpty ? null : '$appData\\Claude');
+    String? dirPath = claudeDesktopConfigDirOverride;
+    if (dirPath == null) {
+      if (Platform.isMacOS) {
+        final home = Platform.environment['HOME'];
+        dirPath = home == null || home.isEmpty
+            ? null
+            : '$home/Library/Application Support/Claude';
+      } else {
+        final appData = Platform.environment['APPDATA'];
+        dirPath =
+            appData == null || appData.isEmpty ? null : '$appData\\Claude';
+      }
+    }
     if (dirPath == null || !Directory(dirPath).existsSync()) return null;
-    return '$dirPath\\claude_desktop_config.json';
+    return '$dirPath${Platform.pathSeparator}claude_desktop_config.json';
   }
 
   /// One-click Claude Desktop hookup: writes a `wsl-manager` entry into

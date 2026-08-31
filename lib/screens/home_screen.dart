@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -22,7 +23,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  WSLApi api = WSLApi();
+  final VmBackend api = vmBackend();
   List<String> distroNames = [];
 
   /// One key for the life of the page. Re-created inline on every build, it

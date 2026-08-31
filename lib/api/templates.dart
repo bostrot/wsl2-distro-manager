@@ -2,19 +2,24 @@ import 'dart:io';
 
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
 /// This class handles all template related functions.
-/// Templates are distros that are saved as ext4 files with additional metadata
-/// saved in the SharedPreferences.
+/// Templates are instances exported to a file (ext4 tarballs on WSL, raw
+/// disk images on the Apple backend) with additional metadata saved in the
+/// SharedPreferences.
 class Templates {
-  final WSLApi wslApi;
+  final VmBackend wslApi;
 
-  Templates({WSLApi? wslApi}) : wslApi = wslApi ?? WSLApi();
+  Templates({VmBackend? wslApi}) : wslApi = wslApi ?? vmBackend();
+
+  /// File extension for template files on this backend, without the dot.
+  String get extension => wslApi.templateExtension;
 
   /// Save a distro as a template by [name]
   Future<void> saveTemplate(String name) async {
@@ -35,7 +40,8 @@ class Templates {
     plausible.event(name: "wsl_saveastemplate");
     Notify.message('$templateName ${'savingastemplate-text'.i18n()}.',
         loading: true);
-    await wslApi.export(name, getTemplatePath().file('$templateName.ext4'));
+    await wslApi.export(
+        name, getTemplatePath().file('$templateName.$extension'));
     templates ??= [];
     templates.add(templateName);
     prefs.setStringList('templates', templates);
@@ -119,8 +125,9 @@ class Templates {
           .listSync()
           .whereType<File>()
           .map((file) => file.uri.pathSegments.last)
-          .where((file) => file.endsWith('.ext4'))
-          .map((file) => file.substring(0, file.length - '.ext4'.length))
+          .where((file) => file.endsWith('.$extension'))
+          .map((file) =>
+              file.substring(0, file.length - '.$extension'.length))
           .toList()
         ..sort();
     } on FileSystemException {
@@ -139,7 +146,7 @@ class Templates {
   /// Return the path to a template by [name].
   /// e.g. C:\WSL2-Distros\templates\ubuntu.ext4
   String getTemplateFilePath(String name) {
-    return getTemplatePath().file('$name.ext4');
+    return getTemplatePath().file('$name.$extension');
   }
 
   /// Get template size by [name], in a unit that keeps digits.

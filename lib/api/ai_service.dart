@@ -15,7 +15,7 @@ import 'package:wsl2distromanager/api/mcp/todo_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/api/todo_store.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 class AiMessage {
@@ -170,7 +170,7 @@ class AiService {
   /// narrower list.
   List<McpTool>? _tools;
   List<McpTool> get tools => _tools ??= [
-        ...buildWslMcpTools(WSLApi(), WslTerminalManager(wslApi: WSLApi())),
+        ...buildWslMcpTools(vmBackend(), WslTerminalManager()),
         ...buildTodoTools(TodoStore.instance),
       ];
 
@@ -180,7 +180,11 @@ class AiService {
   /// System prompt: says what the assistant is and that its tools act on the
   /// user's real machine, so it uses them instead of answering from nothing
   /// (the "I don't have access to your system" reply the tools exist to fix).
-  String get _systemPrompt => '''
+  String get _systemPrompt => isAppleHost
+      ? '''
+You are the AI assistant built into WSL Manager on macOS, a GUI for managing native virtual machines via Apple's Virtualization framework. You have tools that operate on the user's REAL VMs on this Mac. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see the VMs, vm_create_linux / vm_create_macos to create one, wsl_run_command to run something inside a running VM (over SSH).
+Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.'''
+      : '''
 You are the AI assistant built into WSL Distro Manager, a Windows GUI for managing WSL2 Linux distributions. You have tools that operate on the user's REAL WSL installation on this machine. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see installed distros, wsl_list_catalog / wsl_list_online_distros for what can be installed, wsl_run_command to run something inside a distro.
 Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.
 You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one with your tools, and mark it done with todo_set_done as soon as you finish it.''';

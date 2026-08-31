@@ -6,10 +6,15 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/dialogs/mount_dialog.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/nav/linkaction.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
-final List<NavigationPaneItem> originalItems = [
+/// Rebuilt on every access so the entries follow the active backend's
+/// feature set (WSL-only destinations disappear on the Apple backend).
+List<NavigationPaneItem> get originalItems {
+  final features = vmBackend().features;
+  return [
   PaneItem(
     key: const Key('/'),
     icon: const Icon(FluentIcons.home),
@@ -19,6 +24,7 @@ final List<NavigationPaneItem> originalItems = [
       navigateGuarded('home', path: '/');
     },
   ),
+  if (features.quickActions)
   PaneItem(
     key: const Key('/quickactions'),
     // Distinct from the Templates item's file_template at 16px (LN-11).
@@ -38,6 +44,7 @@ final List<NavigationPaneItem> originalItems = [
       navigateGuarded('templates', path: '/templates');
     },
   ),
+  if (features.aiWorkspace)
   PaneItem(
     key: const Key('/ai-workspace'),
     icon: const Icon(FluentIcons.robot),
@@ -77,6 +84,7 @@ final List<NavigationPaneItem> originalItems = [
       navigateGuarded('addinstance', path: '/addinstance');
     },
   ),
+  if (features.packaging)
   PaneItem(
     key: const Key('/package'),
     icon: const Icon(FluentIcons.package),
@@ -89,6 +97,7 @@ final List<NavigationPaneItem> originalItems = [
   // A PaneItemAction, not a PaneItem: this opens a modal, and as a PaneItem
   // it was pixel-identical to the seven real destinations while the pane's
   // selection stayed wherever it was (audit LN-16).
+  if (features.mountDisk)
   PaneItemAction(
     icon: const Icon(FluentIcons.hard_drive),
     title: Text('mountdisk-text'.i18n()),
@@ -97,7 +106,8 @@ final List<NavigationPaneItem> originalItems = [
       showMountDialog();
     },
   ),
-];
+  ];
+}
 
 /// Rebuilt on every access: the label and badge depend on the licence state,
 /// and a PaneItem title has to be a real Text — fluent_ui reads the string out

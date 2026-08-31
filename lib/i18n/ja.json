@@ -489,7 +489,8 @@
   "installpackage-text": "パッケージをインストール",
   "installingpackage-text": "パッケージをインストールしています...",
   "installedpackage-text": "パッケージをインストールしました。%s",
-  "installpackagefailed-text": "インストールに失敗しました: %s",
+  "installpackagefailed-text": "インストールに失敗しました: %s"
+,
   "startinginstance-text": "%s を起動しています...",
   "stoppinginstance-text": "%s を停止しています...",
   "deletinginstance-text": "%s を削除しています...",
@@ -727,5 +728,17 @@
   "sandbox-session-new-text": "チャット履歴なし",
   "ai-sessions-text": "チャット セッション",
   "sandbox-image-default-text": "最新の Ubuntu（既定）",
-  "sandbox-disk-space-text": "空きディスク容量が不足しています。サンドボックスには約 3 GB 必要です。"
-}
+  "sandbox-disk-space-text": "空きディスク容量が不足しています。サンドボックスには約 3 GB 必要です。",
+  "vmcreateinfo-text": "VMはAppleのVirtualizationフレームワークでネイティブに動作します。VMを起動すると画面ウィンドウが開きます。",
+  "vmguestos-text": "ゲストOS",
+  "vminstalleriso-text": "インストーラーISO（任意）",
+  "vmbaseimage-text": "ベースディスクイメージ（任意）",
+  "vmbaseimagehint-text": "rawディスクイメージ（Linuxクラウドイメージやエクスポートしたテンプレートなど）。両方空欄にすると空のディスクになります。",
+  "vmrestoreimage-text": "macOS復元イメージ（.ipsw、任意）",
+  "vmrestoreimagehint-text": "空欄にすると最新のサポート版を自動ダウンロードします（数GB）。",
+  "vmmacosrequiresapplesilicon-text": "macOSゲストにはApple SiliconのMacが必要です。",
+  "vmdisksize-text": "ディスクサイズ（GB）",
+  "vmcpus-text": "プロセッサ数",
+  "vmmemorygb-text": "メモリ（GB）",
+  "vmcreated-text": "VM %s を作成しました。",
+  "vmcreatefailed-text": "VM %s の作成に失敗しました:"}

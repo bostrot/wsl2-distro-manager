@@ -491,7 +491,8 @@
   "installpackage-text": "Instalar pacote",
   "installingpackage-text": "A instalar o pacote...",
   "installedpackage-text": "Pacote instalado. %s",
-  "installpackagefailed-text": "Falha na instalação: %s",
+  "installpackagefailed-text": "Falha na instalação: %s"
+,
   "startinginstance-text": "Iniciando %s...",
   "stoppinginstance-text": "Parando %s...",
   "deletinginstance-text": "Excluindo %s...",
@@ -729,5 +730,17 @@
   "sandbox-session-new-text": "ainda sem chat",
   "ai-sessions-text": "Sessões de chat",
   "sandbox-image-default-text": "Ubuntu mais recente (padrão)",
-  "sandbox-disk-space-text": "Espaço em disco insuficiente — uma sandbox precisa de cerca de 3 GB."
-}
+  "sandbox-disk-space-text": "Espaço em disco insuficiente — uma sandbox precisa de cerca de 3 GB.",
+  "vmcreateinfo-text": "As VMs são executadas nativamente através do framework Virtualization da Apple. Iniciar uma VM abre uma janela com a sua tela.",
+  "vmguestos-text": "Sistema operacional convidado",
+  "vminstalleriso-text": "ISO de instalação (opcional)",
+  "vmbaseimage-text": "Imagem de disco base (opcional)",
+  "vmbaseimagehint-text": "Imagem de disco raw, por ex. uma imagem cloud de Linux ou um modelo exportado. Deixe ambos os campos vazios para um disco em branco.",
+  "vmrestoreimage-text": "Imagem de restauração do macOS (.ipsw, opcional)",
+  "vmrestoreimagehint-text": "Deixe vazio para baixar automaticamente a versão mais recente suportada (vários GB).",
+  "vmmacosrequiresapplesilicon-text": "Convidados macOS exigem um Mac com Apple Silicon.",
+  "vmdisksize-text": "Tamanho do disco (GB)",
+  "vmcpus-text": "Processadores",
+  "vmmemorygb-text": "Memória (GB)",
+  "vmcreated-text": "VM %s criada.",
+  "vmcreatefailed-text": "Falha ao criar a VM %s:"}

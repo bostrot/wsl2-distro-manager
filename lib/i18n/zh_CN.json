@@ -490,7 +490,8 @@
   "installpackage-text": "安装软件包",
   "installingpackage-text": "正在安装软件包…",
   "installedpackage-text": "软件包已安装。%s",
-  "installpackagefailed-text": "安装失败：%s",
+  "installpackagefailed-text": "安装失败：%s"
+,
   "startinginstance-text": "正在启动 %s...",
   "stoppinginstance-text": "正在停止 %s...",
   "deletinginstance-text": "正在删除 %s...",
@@ -728,5 +729,17 @@
   "sandbox-session-new-text": "尚无聊天",
   "ai-sessions-text": "聊天会话",
   "sandbox-image-default-text": "最新 Ubuntu（默认）",
-  "sandbox-disk-space-text": "可用磁盘空间不足——一个沙盒大约需要 3 GB。"
-}
+  "sandbox-disk-space-text": "可用磁盘空间不足——一个沙盒大约需要 3 GB。",
+  "vmcreateinfo-text": "虚拟机通过 Apple 的 Virtualization 框架原生运行。启动虚拟机会打开一个显示其画面的窗口。",
+  "vmguestos-text": "客户机操作系统",
+  "vminstalleriso-text": "安装镜像 ISO（可选）",
+  "vmbaseimage-text": "基础磁盘镜像（可选）",
+  "vmbaseimagehint-text": "raw 磁盘镜像，例如 Linux 云镜像或导出的模板。两项都留空则创建空白磁盘。",
+  "vmrestoreimage-text": "macOS 恢复镜像（.ipsw，可选）",
+  "vmrestoreimagehint-text": "留空将自动下载最新支持的版本（数 GB）。",
+  "vmmacosrequiresapplesilicon-text": "macOS 客户机需要 Apple Silicon 芯片的 Mac。",
+  "vmdisksize-text": "磁盘大小（GB）",
+  "vmcpus-text": "处理器数",
+  "vmmemorygb-text": "内存（GB）",
+  "vmcreated-text": "已创建虚拟机 %s。",
+  "vmcreatefailed-text": "创建虚拟机 %s 失败："}

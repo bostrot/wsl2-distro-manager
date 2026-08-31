@@ -14,6 +14,7 @@ import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/api/shell.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
@@ -138,8 +139,10 @@ void main() async {
 
   // Probe AI Workspace in the background so the screen has results by the
   // time it opens. Not awaited; the screen joins this same memoized run.
+  // The workspace lives in a dedicated WSL distro, so hosts on another
+  // backend (macOS) never probe it.
   final aiWorkspaceService = AiWorkspaceService(broker: executionBroker);
-  if (LicenseManager().isPro) {
+  if (LicenseManager().isPro && vmBackend().features.aiWorkspace) {
     unawaited(aiWorkspaceService.ensureInitialized());
   }
 

@@ -1,40 +1,57 @@
-// The WSL tools exposed over MCP: the full lifecycle (create, configure,
-// operate, destroy), global and per-distro configuration, introspection,
-// file transfer and disk management.
+// The VM-management tools exposed over MCP. The generic lifecycle set
+// (list, info, export, delete, stop, shutdown, snippets, terminal
+// sessions) works against any VmBackend, so the same MCP surface manages
+// WSL distros on Windows and Apple Virtualization VMs on macOS. The
+// WSL-specific families (wsl.conf, .wslconfig, packaging, mounting,
+// diskpart) are only registered when the backend is WSL, and the Apple
+// backend brings its own vm_* creation tools.
 //
 // The one-way operations are gated instead of hidden: unregistering needs an
 // explicit confirm flag and points at the export tool first, so an agent can
-// provision and tear down distros without a human clicking through the GUI —
-// but never deletes one on a whim.
+// provision and tear down instances without a human clicking through the GUI
+// — but never deletes one on a whim.
 
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/app.dart';
+import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/distro_package.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/api/mount_service.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 
 List<McpTool> buildWslMcpTools(
-  WSLApi wslApi,
+  VmBackend backend,
   WslTerminalManager terminalManager, {
   MountService? mountService,
   Dio? dio,
   App? app,
   DistroPackager? packager,
 }) {
-  final mount = mountService ?? MountService();
-  final http = dio ?? Dio();
-  final catalog = app ?? App();
-  final distroPackager = packager ?? DistroPackager(api: wslApi);
   return [
-    // =========================================================================
-    // Introspection
-    // =========================================================================
+    ..._genericTools(backend),
+    if (backend is WSLApi)
+      ..._wslOnlyTools(
+        backend,
+        mountService: mountService,
+        dio: dio,
+        app: app,
+        packager: packager,
+      ),
+    if (backend is AppleVmApi) ..._appleVmTools(backend),
+    ..._terminalTools(terminalManager),
+  ];
+}
+
+/// Tools that make sense for every backend: they only use the shared
+/// [VmBackend] surface (plus the backend-neutral snippet store).
+List<McpTool> _genericTools(VmBackend backend) {
+  return [
     McpTool(
       name: 'wsl_list_distros',
       description:
@@ -44,7 +61,7 @@ List<McpTool> buildWslMcpTools(
         'properties': {},
       },
       handler: (_) async {
-        final instances = await wslApi.list(false);
+        final instances = await backend.list(false);
         final lines = instances.all.map((name) {
           final running = instances.running.contains(name);
           return '$name (${running ? "running" : "stopped"})';
@@ -69,14 +86,14 @@ List<McpTool> buildWslMcpTools(
       },
       handler: (args) async {
         final distro = _requireString(args, 'distro');
-        final instances = await wslApi.list(false);
+        final instances = await backend.list(false);
         if (!instances.all.contains(distro)) {
           throw ArgumentError('No distro named "$distro". Installed: '
               '${instances.all.isEmpty ? "none" : instances.all.join(", ")}');
         }
         final running = instances.running.contains(distro);
-        final path = wslApi.currentDistroPath(distro);
-        final size = await wslApi.getSize(distro);
+        final path = backend.currentDistroPath(distro);
+        final size = await backend.getSize(distro);
         return [
           'Name: $distro',
           'State: ${running ? "running" : "stopped"}',
@@ -85,6 +102,306 @@ List<McpTool> buildWslMcpTools(
         ].join('\n');
       },
     ),
+    McpTool(
+      name: 'wsl_export_distro',
+      description:
+          'Export a distro to a file (wsl --export) — the backup to take '
+          'before a risky change or an unregister. Format defaults to an '
+          'uncompressed tar; pass tar.gz, tar.xz or vhd to change it.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro to export.',
+          },
+          'out_path': {
+            'type': 'string',
+            'description': 'Windows path of the file to write.',
+          },
+          'format': {
+            'type': 'string',
+            'enum': ['tar', 'tar.gz', 'tar.xz', 'vhd'],
+            'description': 'Archive format. Optional.',
+          },
+        },
+        'required': ['distro', 'out_path'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final outPath = _requireString(args, 'out_path');
+        final format = (args['format'] as String?)?.trim();
+        final result = await backend.export(distro, outPath,
+            format: format == null || format.isEmpty || format == 'tar'
+                ? null
+                : format);
+        return result.trim().isEmpty
+            ? 'Exported $distro to $outPath.'
+            : result.trim();
+      },
+    ),
+    McpTool(
+      name: 'wsl_unregister_distro',
+      description:
+          'PERMANENTLY delete a distro and its disk (wsl --unregister). '
+          'Unrecoverable — take a backup with wsl_export_distro first. '
+          'Refuses to run unless confirm is true.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro to delete.',
+          },
+          'confirm': {
+            'type': 'boolean',
+            'description':
+                'Must be true. Confirms the permanent deletion is intended.',
+          },
+        },
+        'required': ['distro', 'confirm'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        if (args['confirm'] != true) {
+          throw ArgumentError(
+              'Refused: unregistering permanently deletes "$distro" and its '
+              'disk. Export a backup first (wsl_export_distro), then call '
+              'again with confirm: true.');
+        }
+        await backend.remove(distro);
+        return 'Unregistered $distro. Its disk is gone.';
+      },
+    ),
+    McpTool(
+      name: 'wsl_stop_distro',
+      description: 'Stop (terminate) a running WSL distro.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the WSL distro to stop.',
+          },
+        },
+        'required': ['distro'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        await backend.stop(distro);
+        return 'Stopped $distro.';
+      },
+    ),
+    McpTool(
+      name: 'wsl_shutdown',
+      description:
+          'Shut down every running distro and the WSL VM at once '
+          '(wsl --shutdown). Required for .wslconfig changes to apply. '
+          'wsl_stop_distro stops a single distro instead.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final result = await backend.shutdown();
+        return result.trim().isEmpty ? 'WSL shut down.' : result.trim();
+      },
+    ),
+    McpTool(
+      name: 'wsl_list_snippets',
+      description:
+          'List saved snippets (Snippets screen) — reusable shell scripts by '
+          'name.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final items = QuickAction().getFromPrefs();
+        if (items.isEmpty) return 'No snippets saved.';
+        return items
+            .map((s) => s.description.isEmpty
+                ? s.name
+                : '${s.name} — ${s.description}')
+            .join('\n');
+      },
+    ),
+    McpTool(
+      name: 'wsl_get_snippet',
+      description: 'Return the script body of a saved snippet by name.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Snippet name.'},
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final items = QuickAction().getFromPrefs();
+        for (final s in items) {
+          if (s.name == name) {
+            return s.content.isEmpty ? '(empty snippet)' : s.content;
+          }
+        }
+        throw ArgumentError('No snippet named "$name".');
+      },
+    ),
+    McpTool(
+      name: 'wsl_create_snippet',
+      description:
+          'Create or update a snippet (Snippets screen): a named, reusable '
+          'shell script the user can run against a distro later.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Snippet name.'},
+          'content': {
+            'type': 'string',
+            'description': 'The shell script body.',
+          },
+          'description': {
+            'type': 'string',
+            'description': 'Short description. Optional.',
+          },
+        },
+        'required': ['name', 'content'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final content = _requireString(args, 'content');
+        final description = (args['description'] as String?)?.trim() ?? '';
+        final existed =
+            QuickAction().getFromPrefs().any((s) => s.name == name);
+        QuickAction.addToPrefs(QuickActionItem(
+          name: name,
+          content: content,
+          description: description,
+        ));
+        return existed
+            ? 'Updated snippet "$name".'
+            : 'Created snippet "$name".';
+      },
+    ),
+    McpTool(
+      name: 'wsl_delete_snippet',
+      description: 'Delete a saved snippet by name.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Snippet name.'},
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final items = QuickAction().getFromPrefs();
+        if (!items.any((s) => s.name == name)) {
+          throw ArgumentError('No snippet named "$name".');
+        }
+        QuickAction.removeFromPrefs(QuickActionItem(name: name, content: ''));
+        return 'Deleted snippet "$name".';
+      },
+    ),
+    McpTool(
+      name: 'wsl_run_command',
+      description:
+          'Run a shell command inside a named instance (WSL distro, or VM '
+          'on macOS) and return its output. Starts a stopped WSL distro '
+          'automatically; a VM must be running. Defaults to root and a 300s '
+          'timeout; override with user, cwd and timeout_seconds.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Name of the instance to run the command in.',
+          },
+          'command': {
+            'type': 'string',
+            'description': 'Shell command to execute.',
+          },
+          'user': {
+            'type': 'string',
+            'description': 'User to run as. Defaults to root.',
+          },
+          'cwd': {
+            'type': 'string',
+            'description':
+                'Working directory inside the instance. On WSL a Windows '
+                'path like C:\\src also works.',
+          },
+          'timeout_seconds': {
+            'type': 'integer',
+            'description':
+                'Kill the command after this many seconds. Default 300, '
+                'max 3600.',
+          },
+        },
+        'required': ['distro', 'command'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final command = _requireString(args, 'command');
+        final user = (args['user'] as String?)?.trim() ?? '';
+        final cwd = (args['cwd'] as String?)?.trim() ?? '';
+        final timeoutSeconds =
+            ((args['timeout_seconds'] as num?)?.toInt() ?? 300)
+                .clamp(1, 3600);
+        if (backend is WSLApi) {
+          final out = await backend.runVerb([
+            '-d',
+            distro,
+            if (cwd.isNotEmpty) ...['--cd', cwd],
+            '-u',
+            user.isEmpty ? 'root' : user,
+            '--exec',
+            'bash',
+            '-c',
+            command,
+          ], timeout: Duration(seconds: timeoutSeconds));
+          if (out.exitCode != 0) {
+            return 'Exit code ${out.exitCode}.'
+                '${out.text.isEmpty ? "" : "\n${out.text}"}';
+          }
+          return out.text.isEmpty ? '(no output)' : out.text;
+        }
+        if (backend is AppleVmApi) {
+          final result = await backend.execCommand(distro, command,
+              user: user.isEmpty ? 'root' : user,
+              cwd: cwd,
+              timeout: Duration(seconds: timeoutSeconds));
+          final text = [
+            result.stdout.toString().trim(),
+            result.stderr.toString().trim(),
+          ].where((part) => part.isNotEmpty).join('\n');
+          if (result.exitCode != 0) {
+            return 'Exit code ${result.exitCode}.'
+                '${text.isEmpty ? "" : "\n$text"}';
+          }
+          return text.isEmpty ? '(no output)' : text;
+        }
+        final out = await backend.execCmdAsRoot(distro, command);
+        return out.trim().isEmpty ? '(no output)' : out.trim();
+      },
+    ),
+  ];
+}
+
+/// Tools that only exist on the WSL backend: wsl.exe verbs, wsl.conf and
+/// .wslconfig editing, packaging, UNC file transfer and disk plumbing.
+List<McpTool> _wslOnlyTools(
+  WSLApi wslApi, {
+  MountService? mountService,
+  Dio? dio,
+  App? app,
+  DistroPackager? packager,
+}) {
+  final mount = mountService ?? MountService();
+  final http = dio ?? Dio();
+  final catalog = app ?? App();
+  final distroPackager = packager ?? DistroPackager(api: wslApi);
+  return [
     McpTool(
       name: 'wsl_status',
       description:
@@ -104,9 +421,6 @@ List<McpTool> buildWslMcpTools(
         return parts.isEmpty ? 'WSL returned no status output.' : parts.join('\n\n');
       },
     ),
-    // =========================================================================
-    // Lifecycle
-    // =========================================================================
     McpTool(
       name: 'wsl_list_online_distros',
       description:
@@ -247,44 +561,6 @@ List<McpTool> buildWslMcpTools(
       },
     ),
     McpTool(
-      name: 'wsl_export_distro',
-      description:
-          'Export a distro to a file (wsl --export) — the backup to take '
-          'before a risky change or an unregister. Format defaults to an '
-          'uncompressed tar; pass tar.gz, tar.xz or vhd to change it.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {
-          'distro': {
-            'type': 'string',
-            'description': 'Name of the WSL distro to export.',
-          },
-          'out_path': {
-            'type': 'string',
-            'description': 'Windows path of the file to write.',
-          },
-          'format': {
-            'type': 'string',
-            'enum': ['tar', 'tar.gz', 'tar.xz', 'vhd'],
-            'description': 'Archive format. Optional.',
-          },
-        },
-        'required': ['distro', 'out_path'],
-      },
-      handler: (args) async {
-        final distro = _requireString(args, 'distro');
-        final outPath = _requireString(args, 'out_path');
-        final format = (args['format'] as String?)?.trim();
-        final result = await wslApi.export(distro, outPath,
-            format: format == null || format.isEmpty || format == 'tar'
-                ? null
-                : format);
-        return result.trim().isEmpty
-            ? 'Exported $distro to $outPath.'
-            : result.trim();
-      },
-    ),
-    McpTool(
       name: 'wsl_package_distro',
       description:
           'Package a distro as a portable .wsl file (the "Distro packages" '
@@ -362,42 +638,6 @@ List<McpTool> buildWslMcpTools(
             out, 'Installed ${name == null || name.isEmpty ? path : name}.');
       },
     ),
-    McpTool(
-      name: 'wsl_unregister_distro',
-      description:
-          'PERMANENTLY delete a distro and its disk (wsl --unregister). '
-          'Unrecoverable — take a backup with wsl_export_distro first. '
-          'Refuses to run unless confirm is true.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {
-          'distro': {
-            'type': 'string',
-            'description': 'Name of the WSL distro to delete.',
-          },
-          'confirm': {
-            'type': 'boolean',
-            'description':
-                'Must be true. Confirms the permanent deletion is intended.',
-          },
-        },
-        'required': ['distro', 'confirm'],
-      },
-      handler: (args) async {
-        final distro = _requireString(args, 'distro');
-        if (args['confirm'] != true) {
-          throw ArgumentError(
-              'Refused: unregistering permanently deletes "$distro" and its '
-              'disk. Export a backup first (wsl_export_distro), then call '
-              'again with confirm: true.');
-        }
-        await wslApi.remove(distro);
-        return 'Unregistered $distro. Its disk is gone.';
-      },
-    ),
-    // =========================================================================
-    // Configuration
-    // =========================================================================
     McpTool(
       name: 'wsl_get_wsl_conf',
       description:
@@ -599,109 +839,6 @@ List<McpTool> buildWslMcpTools(
         return _verbReport(out, '$distro is now WSL $version.');
       },
     ),
-    // =========================================================================
-    // Operate
-    // =========================================================================
-    McpTool(
-      name: 'wsl_run_command',
-      description:
-          'Run a shell command inside a named WSL distro and return its '
-          'output. Starts the distro first if it is not already running. '
-          'Defaults to root, the distro\'s home directory and a 300s '
-          'timeout; override with user, cwd and timeout_seconds.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {
-          'distro': {
-            'type': 'string',
-            'description': 'Name of the WSL distro to run the command in.',
-          },
-          'command': {
-            'type': 'string',
-            'description': 'Shell command to execute.',
-          },
-          'user': {
-            'type': 'string',
-            'description': 'Linux user to run as. Defaults to root.',
-          },
-          'cwd': {
-            'type': 'string',
-            'description':
-                'Working directory inside the distro (Linux path), or a '
-                'Windows path like C:\\src.',
-          },
-          'timeout_seconds': {
-            'type': 'integer',
-            'description':
-                'Kill the command after this many seconds. Default 300, '
-                'max 3600.',
-          },
-        },
-        'required': ['distro', 'command'],
-      },
-      handler: (args) async {
-        final distro = _requireString(args, 'distro');
-        final command = _requireString(args, 'command');
-        final user = (args['user'] as String?)?.trim() ?? '';
-        final cwd = (args['cwd'] as String?)?.trim() ?? '';
-        final timeoutSeconds =
-            ((args['timeout_seconds'] as num?)?.toInt() ?? 300)
-                .clamp(1, 3600);
-        final out = await wslApi.runVerb([
-          '-d',
-          distro,
-          if (cwd.isNotEmpty) ...['--cd', cwd],
-          '-u',
-          user.isEmpty ? 'root' : user,
-          '--exec',
-          'bash',
-          '-c',
-          command,
-        ], timeout: Duration(seconds: timeoutSeconds));
-        if (out.exitCode != 0) {
-          return 'Exit code ${out.exitCode}.'
-              '${out.text.isEmpty ? "" : "\n${out.text}"}';
-        }
-        return out.text.isEmpty ? '(no output)' : out.text;
-      },
-    ),
-    McpTool(
-      name: 'wsl_stop_distro',
-      description: 'Stop (terminate) a running WSL distro.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {
-          'distro': {
-            'type': 'string',
-            'description': 'Name of the WSL distro to stop.',
-          },
-        },
-        'required': ['distro'],
-      },
-      handler: (args) async {
-        final distro = _requireString(args, 'distro');
-        await wslApi.stop(distro);
-        return 'Stopped $distro.';
-      },
-    ),
-    McpTool(
-      name: 'wsl_shutdown',
-      description:
-          'Shut down every running distro and the WSL VM at once '
-          '(wsl --shutdown). Required for .wslconfig changes to apply. '
-          'wsl_stop_distro stops a single distro instead.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {},
-      },
-      handler: (_) async {
-        final result = await wslApi.shutdown();
-        return result.trim().isEmpty ? 'WSL shut down.' : result.trim();
-      },
-    ),
-    // =========================================================================
-    // File transfer
-    // =========================================================================
     McpTool(
       name: 'wsl_copy_to',
       description:
@@ -786,9 +923,6 @@ List<McpTool> buildWslMcpTools(
         return 'Copied $distro:$linuxPath to $winPath.';
       },
     ),
-    // =========================================================================
-    // Disks
-    // =========================================================================
     McpTool(
       name: 'wsl_move_distro',
       description:
@@ -935,108 +1069,6 @@ List<McpTool> buildWslMcpTools(
         return 'Unmounted $disk.';
       },
     ),
-    // =========================================================================
-    // Snippets (the Snippets screen's quick actions)
-    // =========================================================================
-    McpTool(
-      name: 'wsl_list_snippets',
-      description:
-          'List saved snippets (Snippets screen) — reusable shell scripts by '
-          'name.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {},
-      },
-      handler: (_) async {
-        final items = QuickAction().getFromPrefs();
-        if (items.isEmpty) return 'No snippets saved.';
-        return items
-            .map((s) => s.description.isEmpty
-                ? s.name
-                : '${s.name} — ${s.description}')
-            .join('\n');
-      },
-    ),
-    McpTool(
-      name: 'wsl_get_snippet',
-      description: 'Return the script body of a saved snippet by name.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {
-          'name': {'type': 'string', 'description': 'Snippet name.'},
-        },
-        'required': ['name'],
-      },
-      handler: (args) async {
-        final name = _requireString(args, 'name');
-        final items = QuickAction().getFromPrefs();
-        for (final s in items) {
-          if (s.name == name) {
-            return s.content.isEmpty ? '(empty snippet)' : s.content;
-          }
-        }
-        throw ArgumentError('No snippet named "$name".');
-      },
-    ),
-    McpTool(
-      name: 'wsl_create_snippet',
-      description:
-          'Create or update a snippet (Snippets screen): a named, reusable '
-          'shell script the user can run against a distro later.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {
-          'name': {'type': 'string', 'description': 'Snippet name.'},
-          'content': {
-            'type': 'string',
-            'description': 'The shell script body.',
-          },
-          'description': {
-            'type': 'string',
-            'description': 'Short description. Optional.',
-          },
-        },
-        'required': ['name', 'content'],
-      },
-      handler: (args) async {
-        final name = _requireString(args, 'name');
-        final content = _requireString(args, 'content');
-        final description = (args['description'] as String?)?.trim() ?? '';
-        final existed =
-            QuickAction().getFromPrefs().any((s) => s.name == name);
-        QuickAction.addToPrefs(QuickActionItem(
-          name: name,
-          content: content,
-          description: description,
-        ));
-        return existed
-            ? 'Updated snippet "$name".'
-            : 'Created snippet "$name".';
-      },
-    ),
-    McpTool(
-      name: 'wsl_delete_snippet',
-      description: 'Delete a saved snippet by name.',
-      inputSchema: const {
-        'type': 'object',
-        'properties': {
-          'name': {'type': 'string', 'description': 'Snippet name.'},
-        },
-        'required': ['name'],
-      },
-      handler: (args) async {
-        final name = _requireString(args, 'name');
-        final items = QuickAction().getFromPrefs();
-        if (!items.any((s) => s.name == name)) {
-          throw ArgumentError('No snippet named "$name".');
-        }
-        QuickAction.removeFromPrefs(QuickActionItem(name: name, content: ''));
-        return 'Deleted snippet "$name".';
-      },
-    ),
-    // =========================================================================
-    // Disk discovery (the Mount disk screen)
-    // =========================================================================
     McpTool(
       name: 'wsl_list_physical_disks',
       description:
@@ -1066,9 +1098,172 @@ List<McpTool> buildWslMcpTools(
         return disks.isEmpty ? 'No disks are mounted.' : disks.join('\n');
       },
     ),
-    // =========================================================================
-    // Terminal sessions
-    // =========================================================================
+  ];
+}
+
+/// Tools only the Apple Virtualization backend offers: VM creation and
+/// guest networking.
+List<McpTool> _appleVmTools(AppleVmApi api) {
+  return [
+    McpTool(
+      name: 'vm_create_linux',
+      description:
+          'Create a new Linux VM (Apple Virtualization framework). '
+          'Provide iso_path for an installer, or image_path for an existing '
+          'raw disk image (cloud image / exported template); with neither '
+          'the VM gets a blank disk. A cloud-init seed with the store SSH '
+          'key is attached, so cloud images come up reachable for '
+          'wsl_run_command.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Name of the new VM.'},
+          'iso_path': {
+            'type': 'string',
+            'description': 'Installer ISO to attach. Optional.',
+          },
+          'image_path': {
+            'type': 'string',
+            'description': 'Raw disk image to seed the disk from. Optional.',
+          },
+          'disk_size_gb': {'type': 'integer', 'description': 'Default 32.'},
+          'cpus': {'type': 'integer', 'description': 'Default 2.'},
+          'memory_gb': {'type': 'integer', 'description': 'Default 4.'},
+          'user': {
+            'type': 'string',
+            'description': 'Default guest user for cloud-init. Default "user".',
+          },
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        await api.createLinuxVm(
+          name,
+          isoPath: (args['iso_path'] as String?)?.trim(),
+          imagePath: (args['image_path'] as String?)?.trim(),
+          diskSizeGb: (args['disk_size_gb'] as num?)?.toInt() ?? 32,
+          cpus: (args['cpus'] as num?)?.toInt() ?? 2,
+          memoryGb: (args['memory_gb'] as num?)?.toInt() ?? 4,
+          user: (args['user'] as String?)?.trim().isNotEmpty == true
+              ? (args['user'] as String).trim()
+              : 'user',
+        );
+        return 'Created VM $name.';
+      },
+    ),
+    McpTool(
+      name: 'vm_create_macos',
+      description:
+          'Create a macOS guest VM (Apple Silicon only). Installs from a '
+          'local .ipsw restore image, or downloads the latest supported one '
+          '(several GB) when restore_image_path is omitted. Takes many '
+          'minutes.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Name of the new VM.'},
+          'restore_image_path': {
+            'type': 'string',
+            'description': 'Local .ipsw path. Optional.',
+          },
+          'disk_size_gb': {'type': 'integer', 'description': 'Default 64.'},
+          'cpus': {'type': 'integer', 'description': 'Default 4.'},
+          'memory_gb': {'type': 'integer', 'description': 'Default 8.'},
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        await api.createMacosVm(
+          name,
+          restoreImagePath: (args['restore_image_path'] as String?)?.trim(),
+          diskSizeGb: (args['disk_size_gb'] as num?)?.toInt() ?? 64,
+          cpus: (args['cpus'] as num?)?.toInt() ?? 4,
+          memoryGb: (args['memory_gb'] as num?)?.toInt() ?? 8,
+        );
+        return 'Created macOS VM $name.';
+      },
+    ),
+    McpTool(
+      name: 'vm_start',
+      description:
+          'Start a VM. Headless by default; set gui to open its display '
+          'window on the host.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Name of the VM.'},
+          'gui': {
+            'type': 'boolean',
+            'description': 'Open the VM display window. Default false.',
+          },
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        if (args['gui'] == true) {
+          await api.start(name);
+        } else {
+          await api.startHeadless(name);
+        }
+        return 'Started $name.';
+      },
+    ),
+    McpTool(
+      name: 'vm_ip',
+      description:
+          'The IP address of a running VM (from its DHCP lease), for SSH or '
+          'reaching services inside it.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Name of the VM.'},
+        },
+        'required': ['name'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final ip = await api.guestIp(name);
+        return ip ??
+            '$name has no IP address yet (not running, still booting, or '
+                'no DHCP lease).';
+      },
+    ),
+    McpTool(
+      name: 'vm_import_image',
+      description:
+          'Create a VM from an existing raw disk image (e.g. an exported '
+          'template). The image is copied into the VM store.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'name': {'type': 'string', 'description': 'Name of the new VM.'},
+          'image_path': {
+            'type': 'string',
+            'description': 'Path of the raw disk image to import.',
+          },
+        },
+        'required': ['name', 'image_path'],
+      },
+      handler: (args) async {
+        final name = _requireString(args, 'name');
+        final image = _requireString(args, 'image_path');
+        if (!File(image).existsSync()) {
+          throw ArgumentError('image_path not found: $image');
+        }
+        await api.import(name, '', image);
+        return 'Imported $name from $image.';
+      },
+    ),
+  ];
+}
+
+/// Persistent shell sessions, built on [VmBackend.startShell] — a WSL shell
+/// on Windows, an SSH session into the VM on macOS.
+List<McpTool> _terminalTools(WslTerminalManager terminalManager) {
+  return [
     McpTool(
       name: 'wsl_terminal_start',
       description:

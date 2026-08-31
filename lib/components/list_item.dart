@@ -1,5 +1,7 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
@@ -31,6 +33,7 @@ class ListItem extends StatefulWidget {
 }
 
 class _ListItemState extends State<ListItem> {
+  final VmBackend api = vmBackend();
   Map<String, bool> hover = {};
   bool isSyncing = false;
   bool isCleaning = false;
@@ -238,7 +241,7 @@ class _ListItemState extends State<ListItem> {
     try {
       Notify.message('stoppinginstance-text'.i18n([distroLabel(widget.item)]),
           loading: true);
-      await WSLApi().stop(widget.item);
+      await api.stop(widget.item);
       Notify.message('${widget.item} ${'stopped-text'.i18n()}.',
           severity: InfoBarSeverity.success,
           loading: false,
@@ -275,7 +278,7 @@ class _ListItemState extends State<ListItem> {
       // evaluates `f(...)` immediately and hands its result to the timer, so
       // the "started" toast used to appear before the process had spawned —
       // and the catch below could never run against a fire-and-forget call.
-      await WSLApi().start(widget.item,
+      await api.start(widget.item,
           startPath: startPath, startUser: startName, startCmd: startCmd);
       Notify.message('${widget.item} ${'started-text'.i18n()}.',
           severity: InfoBarSeverity.success,
@@ -305,6 +308,8 @@ class Bar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final VmBackend api = vmBackend();
+    final VmFeatures features = api.features;
     return Container(
       decoration: const BoxDecoration(
           borderRadius: BorderRadius.only(
@@ -314,7 +319,9 @@ class Bar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Builder(builder: (childcontext) {
-            // Quick actions
+            // Quick actions are scripted in-distro commands; backends
+            // without that capability get no dead dropdown or hint.
+            if (!features.quickActions) return const SizedBox.shrink();
             List<MenuFlyoutItem> actions = [];
             List<String>? quickSettingsTitles =
                 prefs.getStringList("quickSettingsTitles");
@@ -400,12 +407,13 @@ class Bar extends StatelessWidget {
                           size: 16.0),
                       onPressed: () {
                         plausible.event(name: "wsl_explorer");
-                        WSLApi().startExplorer(widget.item);
+                        api.startExplorer(widget.item);
                       },
                     ),
                   ),
                 ),
               ),
+              if (features.hostIntegration)
               MergeSemantics(
                 child: Tooltip(
                   message: 'openwithvscode-text'.i18n(),
@@ -480,6 +488,7 @@ class Bar extends StatelessWidget {
               // is the question a user asks *before* reaching for the broom,
               // and #303 is someone whose compact filled the drive because
               // nothing showed them the numbers first (audit F-11).
+              if (features.cleanup)
               MergeSemantics(
                 child: Tooltip(
                   message: 'diskusage-text'.i18n(),
@@ -497,6 +506,7 @@ class Bar extends StatelessWidget {
                   ),
                 ),
               ),
+              if (features.cleanup)
               MergeSemantics(
                 child: Tooltip(
                   message: 'cleanup-text'.i18n(),
@@ -558,6 +568,7 @@ class Bar extends StatelessWidget {
                   ),
                 ),
               ),
+              if (features.wslConfig)
               MergeSemantics(
                 child: Tooltip(
                   message: 'settings-text'.i18n(),
@@ -609,7 +620,7 @@ class Bar extends StatelessWidget {
                                       'deletinginstance-text'
                                           .i18n([distroLabel(widget.item)]),
                                       loading: true);
-                                  await WSLApi().remove(widget.item);
+                                  await api.remove(widget.item);
                                   Notify.message(
                                       'deletedinstance-text'
                                           .i18n([widget.item]),

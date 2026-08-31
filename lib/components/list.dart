@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:localization/localization.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
@@ -16,7 +16,7 @@ import 'helpers.dart';
 class DistroList extends StatefulWidget {
   const DistroList({super.key, required this.api});
 
-  final WSLApi api;
+  final VmBackend api;
 
   @override
   DistroListState createState() => DistroListState();
@@ -66,8 +66,8 @@ class DistroListState extends State<DistroList> {
 
   @override
   Widget build(BuildContext context) {
-    final remoteEnabled = widget.api.useRemoteWsl;
-    final remoteTarget = widget.api.remoteTargetLabel;
+    final remoteEnabled = widget.api.isRemote;
+    final remoteTarget = widget.api.remoteLabel;
 
     // List as FutureBuilder with WSLApi
     return FutureBuilder<Instances>(
@@ -131,7 +131,7 @@ class DistroListState extends State<DistroList> {
             newList.add(ListItem(
               item: item,
               running: running,
-              trailing: getInstanceSize(item),
+              trailing: widget.api.instanceSizeLabel(item),
             ));
           }
           return Expanded(

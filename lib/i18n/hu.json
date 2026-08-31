@@ -489,7 +489,8 @@
   "installpackage-text": "Csomag telepítése",
   "installingpackage-text": "A csomag telepítése...",
   "installedpackage-text": "A csomag telepítve. %s",
-  "installpackagefailed-text": "A telepítés nem sikerült: %s",
+  "installpackagefailed-text": "A telepítés nem sikerült: %s"
+,
   "startinginstance-text": "%s indítása...",
   "stoppinginstance-text": "%s leállítása...",
   "deletinginstance-text": "%s törlése...",
@@ -727,5 +728,17 @@
   "sandbox-session-new-text": "még nincs csevegés",
   "ai-sessions-text": "Csevegési munkamenetek",
   "sandbox-image-default-text": "Legújabb Ubuntu (alapértelmezett)",
-  "sandbox-disk-space-text": "Nincs elég szabad lemezterület — egy homokozóhoz kb. 3 GB kell."
-}
+  "sandbox-disk-space-text": "Nincs elég szabad lemezterület — egy homokozóhoz kb. 3 GB kell.",
+  "vmcreateinfo-text": "A VM-ek natívan futnak az Apple Virtualization keretrendszerén keresztül. A VM indításakor megnyílik egy ablak a képernyőjével.",
+  "vmguestos-text": "Vendég operációs rendszer",
+  "vminstalleriso-text": "Telepítő ISO (opcionális)",
+  "vmbaseimage-text": "Alap lemezkép (opcionális)",
+  "vmbaseimagehint-text": "Raw lemezkép, pl. Linux cloud image vagy exportált sablon. Hagyd üresen mindkét mezőt üres lemezhez.",
+  "vmrestoreimage-text": "macOS helyreállítási kép (.ipsw, opcionális)",
+  "vmrestoreimagehint-text": "Hagyd üresen a legújabb támogatott verzió automatikus letöltéséhez (több GB).",
+  "vmmacosrequiresapplesilicon-text": "A macOS vendégekhez Apple Silicon Mac szükséges.",
+  "vmdisksize-text": "Lemezméret (GB)",
+  "vmcpus-text": "Processzorok",
+  "vmmemorygb-text": "Memória (GB)",
+  "vmcreated-text": "A(z) %s VM létrejött.",
+  "vmcreatefailed-text": "A(z) %s VM létrehozása sikertelen:"}

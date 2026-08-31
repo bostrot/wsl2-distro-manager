@@ -490,7 +490,8 @@
   "installpackage-text": "Paket installieren",
   "installingpackage-text": "Paket wird installiert ...",
   "installedpackage-text": "Paket installiert. %s",
-  "installpackagefailed-text": "Installation fehlgeschlagen: %s",
+  "installpackagefailed-text": "Installation fehlgeschlagen: %s"
+,
   "startinginstance-text": "%s wird gestartet ...",
   "stoppinginstance-text": "%s wird gestoppt ...",
   "deletinginstance-text": "%s wird gelöscht ...",
@@ -728,5 +729,17 @@
   "sandbox-session-new-text": "noch kein Chat",
   "ai-sessions-text": "Chat-Sitzungen",
   "sandbox-image-default-text": "Neuestes Ubuntu (Standard)",
-  "sandbox-disk-space-text": "Nicht genug freier Speicherplatz — eine Sandbox braucht etwa 3 GB."
-}
+  "sandbox-disk-space-text": "Nicht genug freier Speicherplatz — eine Sandbox braucht etwa 3 GB.",
+  "vmcreateinfo-text": "VMs laufen nativ über Apples Virtualization-Framework. Beim Starten einer VM öffnet sich ein Fenster mit ihrer Anzeige.",
+  "vmguestos-text": "Gast-Betriebssystem",
+  "vminstalleriso-text": "Installations-ISO (optional)",
+  "vmbaseimage-text": "Basis-Festplattenabbild (optional)",
+  "vmbaseimagehint-text": "Raw-Festplattenabbild, z. B. ein Linux-Cloud-Image oder eine exportierte Vorlage. Beide Felder leer lassen für eine leere Festplatte.",
+  "vmrestoreimage-text": "macOS-Wiederherstellungsabbild (.ipsw, optional)",
+  "vmrestoreimagehint-text": "Leer lassen, um automatisch die neueste unterstützte Version herunterzuladen (mehrere GB).",
+  "vmmacosrequiresapplesilicon-text": "macOS-Gäste benötigen einen Mac mit Apple Silicon.",
+  "vmdisksize-text": "Festplattengröße (GB)",
+  "vmcpus-text": "Prozessoren",
+  "vmmemorygb-text": "Arbeitsspeicher (GB)",
+  "vmcreated-text": "VM %s erstellt.",
+  "vmcreatefailed-text": "Erstellen der VM %s fehlgeschlagen:"}

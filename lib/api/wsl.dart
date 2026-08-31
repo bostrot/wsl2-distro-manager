@@ -15,6 +15,7 @@ import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/execution/models.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/wsl_args.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
@@ -26,6 +27,8 @@ import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+
+export 'package:wsl2distromanager/api/vm/vm_backend.dart' show Instances;
 
 /// The command the "no terminal found" dialog offers to copy.
 ///
@@ -98,19 +101,12 @@ String formatElapsed(Duration elapsed) {
   return '$m:$s';
 }
 
-/// Used to store the instances of WSL in a list.
-class Instances {
-  List<String> running = [];
-  List<String> all = [];
-  Instances(this.all, this.running);
-}
-
 bool inited = false;
 
 /// This class is used to interact with WSL. It contains all the functions
 /// needed to interact with WSL based on Process.run and Process.start.
 /// Most functions will return the UTF8 converted stdout of the process.
-class WSLApi {
+class WSLApi extends VmBackend {
   final Shell shell;
   final ExecutionBroker? _broker;
   static const Duration _remoteListTimeout = Duration(seconds: 12);
@@ -155,6 +151,24 @@ class WSLApi {
     }
   }
 
+  @override
+  String get backendId => 'wsl';
+
+  @override
+  String get instanceNoun => 'distro';
+
+  @override
+  VmFeatures get features => const VmFeatures(
+        wslConfig: true,
+        quickActions: true,
+        packaging: true,
+        mountDisk: true,
+        aiWorkspace: true,
+        cleanup: true,
+        hostIntegration: true,
+        templatesDeprecated: true,
+      );
+
   /// Where `--version` / `--status` answers come from.
   ///
   /// The app-wide singleton in production, so the probe runs once for the whole
@@ -192,6 +206,12 @@ class WSLApi {
   }
 
   bool get useRemoteWsl => _useRemoteWsl;
+
+  @override
+  bool get isRemote => _useRemoteWsl;
+
+  @override
+  String get remoteLabel => remoteTargetLabel;
 
   String get remoteTargetLabel {
     final target = prefs.getString('RemoteWSLTarget')?.trim() ?? '';
@@ -522,6 +542,7 @@ class WSLApi {
   /// [getInstancePath] has the opposite order — it is the "where should a new
   /// instance go" answer, and it writes the preference back — so it is only
   /// the fallback here, for a distro whose disk cannot be found on disk at all.
+  @override
   String currentDistroPath(String distro) {
     final vhdx = findVhdxPath(distro);
     if (vhdx != null) return p.dirname(vhdx);
@@ -543,6 +564,7 @@ class WSLApi {
   /// Get distro size of [distroName] a string with a GB suffix.
   /// Returns null if size is 0.
   /// e.g. "2.00 GB"
+  @override
   Future<String?> getSize(String distroName) async {
     if (_useRemoteWsl) {
       final vhdxPath = '${_remoteInstallPathFor(distroName)}\\ext4.vhdx';
@@ -564,6 +586,10 @@ class WSLApi {
     final double size = byteSize / 1024 / 1024 / 1024; // Convert to GB
     return '${'size-text'.i18n()}: ${size.toStringAsFixed(2)} GB';
   }
+
+  @override
+  String instanceSizeLabel(String distribution) =>
+      getInstanceSize(distribution);
 
   /// Create directory
   void mkRootDir({String? path}) {
@@ -603,6 +629,7 @@ class WSLApi {
   /// Returns a future rather than `void` so the caller can report the outcome:
   /// as an `async void` the spawn failure never reached the call site's catch,
   /// and the "started" toast fired before the process existed.
+  @override
   Future<void> start(String distribution,
       {String startPath = '',
       String startUser = '',
@@ -668,6 +695,7 @@ class WSLApi {
     }
   }
 
+  @override
   /// Stop a WSL distro by name
   Future<String> stop(String distribution) async {
     ProcessResult results = await _runWsl(['--terminate', distribution]);
@@ -693,6 +721,7 @@ class WSLApi {
   }
 
   /// Shutdown WSL
+  @override
   Future<String> shutdown() async {
     ProcessResult results = await _runWsl(['--shutdown']);
     return results.stdout;
@@ -932,6 +961,7 @@ class WSLApi {
   }
 
   /// Start Explorer
+  @override
   void startExplorer(String distribution) async {
     if (_useRemoteWsl) {
       if (Platform.isLinux) {
@@ -1008,6 +1038,7 @@ class WSLApi {
   }
 
   /// Copy a WSL distro by name
+  @override
   Future<String> copy(String distribution, String newName) async {
     String exportPath;
     if (_useRemoteWsl) {
@@ -1120,6 +1151,7 @@ class WSLApi {
   /// compression formats run the risk of breaking compatibility with older WSL
   /// versions". The flag itself needs WSL 2.4.4, so callers gate on
   /// [WslCapabilities.supportsWslPackages] before passing it.
+  @override
   Future<String> export(String distribution, String location,
       {String? format}) async {
     ProcessResult results = await _runWsl([
@@ -1141,6 +1173,7 @@ class WSLApi {
 
   /// Remove a WSL distro by name.
   /// Uses Process.start with a timeout to avoid hanging on stuck distros.
+  @override
   Future<String> remove(String distribution) async {
     final timeout = const Duration(seconds: 30);
     Process process;
@@ -1322,6 +1355,7 @@ class WSLApi {
   /// unquoted result. `runInShell` is false for the same class of reason —
   /// `cmd.exe /c` would eat `&`, `|`, `<`, `>` and `^` before wsl.exe ever
   /// saw them. See lib/api/wsl_args.dart.
+  @override
   Future<String> execCmdAsRoot(String distribution, String cmd) async {
     ProcessResult results = await _runWsl(
         wslShellArgs(distribution, cmd, user: 'root'),
@@ -1338,6 +1372,7 @@ class WSLApi {
   /// that need to drive a session across multiple calls: write lines to
   /// `process.stdin`, read `process.stdout`/`process.stderr` as they arrive,
   /// and `process.kill()` when done.
+  @override
   Future<Process> startShell(String distribution, {String? user}) {
     return _startWsl(
       ['-d', distribution, '-u', user ?? 'root'],
@@ -1409,6 +1444,7 @@ class WSLApi {
   }
 
   /// Import a WSL distro by name
+  @override
   Future<String> import(
       String distribution, String installLocation, String filename,
       {bool isVhd = false}) async {
@@ -1813,9 +1849,8 @@ exit 0''';
     return fields[1] == 'P';
   }
 
-  var lastDistroList = Instances([], []);
-
   /// Returns list of WSL distros
+  @override
   Future<Instances> list(bool showDocker) async {
     ProcessResult results;
     try {
@@ -2085,6 +2120,7 @@ try {
   }
 
   /// Returns list of WSL distros
+  @override
   Future<List<String>> listRunning() async {
     ProcessResult results;
     try {
@@ -2371,17 +2407,6 @@ try {
     }
   }
 
-  /// Convert process bytes to readable text while preserving valid UTF-8.
-  String utf8Convert(List<int> bytes) {
-    if (bytes.isEmpty) {
-      return '';
-    }
-
-    final decoded = const Utf8Decoder(allowMalformed: true).convert(bytes);
-    // Keep common whitespace while stripping other control characters.
-    return decoded.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
-  }
-
   /// Read [path] from inside [distro] as root.
   ///
   /// Returns null when the distro could not be reached at all, which is the
@@ -2643,6 +2668,7 @@ try {
   }
 
   /// Get default user of a distro
+  @override
   Future<String> getDefaultUser(String distribution) async {
     ProcessResult result = await _runWsl(wslExecArgs(distribution, ['whoami']),
         stdoutEncoding: null, stderrEncoding: null);

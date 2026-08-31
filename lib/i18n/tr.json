@@ -489,7 +489,8 @@
   "installpackage-text": "Paketi kur",
   "installingpackage-text": "Paket kuruluyor...",
   "installedpackage-text": "Paket kuruldu. %s",
-  "installpackagefailed-text": "Kurulum başarısız: %s",
+  "installpackagefailed-text": "Kurulum başarısız: %s"
+,
   "startinginstance-text": "%s başlatılıyor...",
   "stoppinginstance-text": "%s durduruluyor...",
   "deletinginstance-text": "%s siliniyor...",
@@ -727,5 +728,17 @@
   "sandbox-session-new-text": "henüz sohbet yok",
   "ai-sessions-text": "Sohbet oturumları",
   "sandbox-image-default-text": "En yeni Ubuntu (varsayılan)",
-  "sandbox-disk-space-text": "Yeterli boş disk alanı yok — bir kum havuzu yaklaşık 3 GB gerektirir."
-}
+  "sandbox-disk-space-text": "Yeterli boş disk alanı yok — bir kum havuzu yaklaşık 3 GB gerektirir.",
+  "vmcreateinfo-text": "Sanal makineler Apple'ın Virtualization çatısı üzerinden yerel olarak çalışır. Bir VM başlatıldığında ekranını gösteren bir pencere açılır.",
+  "vmguestos-text": "Konuk işletim sistemi",
+  "vminstalleriso-text": "Kurulum ISO'su (isteğe bağlı)",
+  "vmbaseimage-text": "Temel disk kalıbı (isteğe bağlı)",
+  "vmbaseimagehint-text": "Raw disk kalıbı, örn. bir Linux bulut kalıbı veya dışa aktarılmış bir şablon. Boş bir disk için iki alanı da boş bırakın.",
+  "vmrestoreimage-text": "macOS geri yükleme kalıbı (.ipsw, isteğe bağlı)",
+  "vmrestoreimagehint-text": "Desteklenen en yeni sürümü otomatik indirmek için boş bırakın (birkaç GB).",
+  "vmmacosrequiresapplesilicon-text": "macOS konukları Apple Silicon işlemcili bir Mac gerektirir.",
+  "vmdisksize-text": "Disk boyutu (GB)",
+  "vmcpus-text": "İşlemciler",
+  "vmmemorygb-text": "Bellek (GB)",
+  "vmcreated-text": "%s sanal makinesi oluşturuldu.",
+  "vmcreatefailed-text": "%s sanal makinesi oluşturulamadı:"}

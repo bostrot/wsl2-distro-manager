@@ -13,6 +13,7 @@ import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/api/remote_target.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
@@ -687,11 +688,13 @@ class SettingsPageState extends State<SettingsPage> {
           header: Text('generalsettings-text'.i18n()),
           content: _buildGeneralSettings(context),
         ),
+        if (!isAppleHost) ...[
         const SizedBox(height: 10),
         Expander(
           header: Text('dockersettings-text'.i18n()),
           content: _buildDockerSettings(context),
         ),
+        ],
         const SizedBox(height: 10),
         Expander(
           header: _betaHeader('byok-settings-text'.i18n()),
@@ -702,6 +705,7 @@ class SettingsPageState extends State<SettingsPage> {
           header: _betaHeader('mcp-settings-text'.i18n()),
           content: _buildMcpSettings(context),
         ),
+        if (!isAppleHost) ...[
         const SizedBox(height: 10),
         Expander(
           header: Text('syncsettings-text'.i18n()),
@@ -717,6 +721,7 @@ class SettingsPageState extends State<SettingsPage> {
           header: Text('experimental-text'.i18n()),
           content: _buildExperimentalSettings(context),
         ),
+        ],
       ],
     );
   }
@@ -832,6 +837,7 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        if (!isAppleHost)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
@@ -858,6 +864,7 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        if (!isAppleHost)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

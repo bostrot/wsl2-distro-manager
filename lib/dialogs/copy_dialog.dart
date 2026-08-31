@@ -1,5 +1,7 @@
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
@@ -9,7 +11,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 /// Copy Dialog
 /// @param item: distro name
 copyDialog(item) async {
-  WSLApi api = WSLApi();
+  final VmBackend api = vmBackend();
   plausible.event(page: 'copy');
   // Fetched before the dialog opens so the validator below can refuse a
   // duplicate name up front — Copy used to skip the duplicate check Create
@@ -50,15 +52,22 @@ copyDialog(item) async {
         String results;
         final useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
 
-        // Check if old distro has path
-        String? oldDistroPath = prefs.getString('Path_$item');
-        if (oldDistroPath != null && oldDistroPath.isNotEmpty) {
-          // Stop distro
-          await api.stop(item);
-          // Copy vhd
-          results = await api.copyVhd(item, inputText);
+        if (api is WSLApi) {
+          // Check if old distro has path
+          String? oldDistroPath = prefs.getString('Path_$item');
+          if (oldDistroPath != null && oldDistroPath.isNotEmpty) {
+            // Stop distro
+            await api.stop(item);
+            // Copy vhd
+            results = await api.copyVhd(item, inputText);
+          } else {
+            // Export and import copy
+            results = await api.copy(item, inputText);
+          }
         } else {
-          // Export and import copy
+          // Other backends clone through export/import; the source must not
+          // be running while its disk is copied.
+          await api.stop(item);
           results = await api.copy(item, inputText);
         }
 
@@ -75,11 +84,13 @@ copyDialog(item) async {
         prefs.setString('StartPath_$inputText', startPath);
         prefs.setString('StartUser_$inputText', startName);
         // Save distro path
-        prefs.setString(
-            'Path_$inputText',
-            useRemoteWsl
-                ? api.remoteInstallPath(inputText)
-                : getInstancePath(inputText).path);
+        if (api is WSLApi) {
+          prefs.setString(
+              'Path_$inputText',
+              useRemoteWsl
+                  ? api.remoteInstallPath(inputText)
+                  : getInstancePath(inputText).path);
+        }
         Notify.message(
             'donecopyinginstance-text'.i18n([distroLabel(item), inputText]),
             severity: InfoBarSeverity.success,

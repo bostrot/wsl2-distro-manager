@@ -2,13 +2,15 @@
 // calls, so a client can drive a REPL or a long-running program that needs
 // stdin after starting. Contrast wsl_run_command, which is one-shot.
 //
-// Built on WSLApi.startShell(), the same primitive execCmds()/runCmds() use.
+// Built on VmBackend.startShell() — the WSL default-shell spawn on
+// Windows, an SSH session into the VM on macOS.
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 
 class WslTerminalSession {
   final String id;
@@ -90,11 +92,11 @@ class WslTerminalSession {
 }
 
 class WslTerminalManager {
-  final WSLApi wslApi;
+  final VmBackend wslApi;
   final Map<String, WslTerminalSession> _sessions = {};
   int _nextId = 1;
 
-  WslTerminalManager({WSLApi? wslApi}) : wslApi = wslApi ?? WSLApi();
+  WslTerminalManager({VmBackend? wslApi}) : wslApi = wslApi ?? vmBackend();
 
   List<WslTerminalSession> get sessions => _sessions.values.toList();
 

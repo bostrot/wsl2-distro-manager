@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/nav/router.dart';
@@ -145,7 +146,10 @@ class _TemplatePageState extends State<TemplatePage> {
                       color: secondaryTextColor(context), fontSize: 12)),
             ),
             // Distro packages cover the same ground in the official WSL
-            // format; templates are on their way out and say so up front.
+            // format; templates are on their way out there and say so up
+            // front. On backends without packaging (Apple virtualization)
+            // templates stay a first-class feature, so no banner.
+            if (vmBackend().features.templatesDeprecated)
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: InfoBar(
