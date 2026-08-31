@@ -724,5 +724,6 @@
   "ai-tasks-title": "タスク",
   "ai-tasks-work-text": "タスクを進める",
   "ai-tasks-add-hint-text": "タスクを追加…",
-  "sandbox-session-new-text": "チャット履歴なし"
+  "sandbox-session-new-text": "チャット履歴なし",
+  "ai-sessions-text": "チャット セッション"
 }

@@ -725,5 +725,6 @@
   "ai-tasks-title": "Aufgaben",
   "ai-tasks-work-text": "Aufgaben abarbeiten",
   "ai-tasks-add-hint-text": "Aufgabe hinzufügen …",
-  "sandbox-session-new-text": "noch kein Chat"
+  "sandbox-session-new-text": "noch kein Chat",
+  "ai-sessions-text": "Chat-Sitzungen"
 }

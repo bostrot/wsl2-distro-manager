@@ -725,5 +725,6 @@
   "ai-tasks-title": "任务",
   "ai-tasks-work-text": "处理这些任务",
   "ai-tasks-add-hint-text": "添加任务…",
-  "sandbox-session-new-text": "尚无聊天"
+  "sandbox-session-new-text": "尚无聊天",
+  "ai-sessions-text": "聊天会话"
 }

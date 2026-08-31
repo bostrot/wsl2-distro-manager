@@ -724,5 +724,6 @@
   "ai-tasks-title": "Görevler",
   "ai-tasks-work-text": "Görevleri hallet",
   "ai-tasks-add-hint-text": "Görev ekle…",
-  "sandbox-session-new-text": "henüz sohbet yok"
+  "sandbox-session-new-text": "henüz sohbet yok",
+  "ai-sessions-text": "Sohbet oturumları"
 }

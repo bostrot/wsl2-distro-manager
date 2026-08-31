@@ -35,6 +35,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _todoInputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FlyoutController _sessionsFlyout = FlyoutController();
   bool _isLoading = false;
   bool _tasksExpanded = false;
 
@@ -450,11 +451,27 @@ class _AiChatPanelState extends State<AiChatPanel> {
     if (sandboxes.isEmpty && _sandbox == null) {
       return const SizedBox.shrink();
     }
+    // An icon-only button like its clear/close neighbours, not a
+    // DropDownButton: the empty title left a stray gap between the history
+    // glyph and the chevron (user-reported).
+    return FlyoutTarget(
+      controller: _sessionsFlyout,
+      child: NamedIconButton(
+        key: const ValueKey('test-chat-sessions'),
+        label: 'ai-sessions-text'.i18n(),
+        icon: FluentIcons.history,
+        iconSize: 14,
+        onPressed: () => _sessionsFlyout.showFlyout(
+          builder: (context) => _sessionsMenu(),
+        ),
+      ),
+    );
+  }
+
+  MenuFlyout _sessionsMenu() {
+    final sandboxes = SandboxService().list();
     final withHistory = SandboxChat.sessions().toSet();
-    return DropDownButton(
-      key: const ValueKey('test-chat-sessions'),
-      leading: const Icon(FluentIcons.history, size: 12),
-      title: const SizedBox.shrink(),
+    return MenuFlyout(
       items: [
         MenuFlyoutItem(
           selected: _sandbox == null,
@@ -718,6 +735,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
   @override
   void dispose() {
     _todos.removeListener(_onTodosChanged);
+    _sessionsFlyout.dispose();
     _inputController.dispose();
     _todoInputController.dispose();
     _scrollController.dispose();

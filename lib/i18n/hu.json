@@ -724,5 +724,6 @@
   "ai-tasks-title": "Feladatok",
   "ai-tasks-work-text": "Feladatok elvégzése",
   "ai-tasks-add-hint-text": "Feladat hozzáadása…",
-  "sandbox-session-new-text": "még nincs csevegés"
+  "sandbox-session-new-text": "még nincs csevegés",
+  "ai-sessions-text": "Csevegési munkamenetek"
 }
