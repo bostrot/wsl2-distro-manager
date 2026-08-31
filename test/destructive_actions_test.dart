@@ -19,6 +19,8 @@ import 'package:plausible_analytics/plausible_analytics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/mount_service.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/ai_chat_panel.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -63,6 +65,14 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     plausible = _MockPlausible();
+    // The row under test is the WSL one; on a macOS dev host the default
+    // backend would otherwise be Apple virtualization and hide half the
+    // strip.
+    vmBackendBuilder = () => WSLApi(shell: MockShell());
+  });
+
+  tearDown(() {
+    vmBackendBuilder = defaultVmBackendBuilder;
   });
 
   group('the distro row (LN-04)', () {

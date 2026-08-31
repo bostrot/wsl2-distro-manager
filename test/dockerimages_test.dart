@@ -5,6 +5,9 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+@TestOn('windows')
+library dockerimages_test;
+
 import 'dart:io';
 import 'dart:ui';
 

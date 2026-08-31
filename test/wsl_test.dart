@@ -124,7 +124,7 @@ void main() {
     );
   }
 
-  test('Create instance test', () async {
+  test('Create instance test', skip: !Platform.isWindows, () async {
     // Save original state of distroRootfsLinks and restore after test to prevent test pollution
     final originalDistroRootfsLinks =
         Map<String, String>.from(distroRootfsLinks);
@@ -868,7 +868,7 @@ systemd = true
       }
     });
 
-    test('cleanup() finds the disk when the stored path is stale', () async {
+    test('cleanup() finds the disk when the stored path is stale', skip: !Platform.isWindows, () async {
       mockShell.distros.add('moved');
       File('C:/WSL2-Distros/moved/ext4.vhdx').createSync(recursive: true);
       await prefs.setString('Path_moved', r'C:\gone\moved');
@@ -1663,7 +1663,7 @@ systemd = true
       });
     }
 
-    test('currentDistroPath resolves the disk, not the stale preference',
+    test('currentDistroPath resolves the disk, not the stale preference', skip: !Platform.isWindows,
         () async {
       stageStaleDistro('stalepref');
 
@@ -1673,7 +1673,7 @@ systemd = true
       expect(resolved.toLowerCase(), isNot(contains('-gone')));
     });
 
-    test('vhdxSizeBytes measures the resolved disk', () async {
+    test('vhdxSizeBytes measures the resolved disk', skip: !Platform.isWindows, () async {
       // 3 MB clears move()'s 1 MB floor without asking the build machine for
       // real disk; the assertion is on the exact length either way.
       const size = 3 * 1024 * 1024;

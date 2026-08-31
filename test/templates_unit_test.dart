@@ -14,6 +14,9 @@ class MockWSLApi implements WSLApi {
   bool throwOnImport = false;
 
   @override
+  String get templateExtension => 'ext4';
+
+  @override
   Future<String> export(String distroName, String path,
       {String? format}) async {
     // Create dummy file
