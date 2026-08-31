@@ -392,6 +392,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
               systemPrompt: systemPrompt ?? _systemPrompt);
     } finally {
       runStatus.value = null;
+      streamingText.value = '';
     }
   }
 
@@ -402,6 +403,204 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     final token = CancelToken();
     cancel.onCancel(token.cancel);
     return token;
+  }
+
+  /// Text of the reply currently being streamed, live, so the panel can
+  /// render tokens as they arrive instead of a spinner until the very end.
+  /// Empty when nothing is streaming.
+  final ValueNotifier<String> streamingText = ValueNotifier<String>('');
+
+  DateTime _lastStreamEmit = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Publishes a streaming delta, repainting at most every ~80ms — token
+  /// deltas arrive far faster than a rebuild is worth.
+  void _emitStreamDelta(String full, void Function()? onUpdate) {
+    streamingText.value = full;
+    final now = DateTime.now();
+    if (now.difference(_lastStreamEmit).inMilliseconds >= 80) {
+      _lastStreamEmit = now;
+      onUpdate?.call();
+    }
+  }
+
+  /// Every `data:` JSON payload of an SSE response, in order — or, when the
+  /// body is not SSE at all (a mocked test, a proxy that ignored
+  /// `stream: true`), the whole body parsed as one payload. That fallback is
+  /// what keeps streaming an upgrade instead of a new hard requirement.
+  Future<List<Map<String, dynamic>>> _ssePayloads(Response response) async {
+    final body = response.data;
+    if (body is! ResponseBody) {
+      // Non-stream responseType — already-decoded JSON.
+      final data = body is String ? json.decode(body) : body;
+      return [data as Map<String, dynamic>];
+    }
+    final payloads = <Map<String, dynamic>>[];
+    final buffer = StringBuffer();
+    var sawSse = false;
+    await for (final line in utf8.decoder
+        .bind(body.stream)
+        .transform(const LineSplitter())) {
+      if (line.startsWith('data:')) {
+        sawSse = true;
+        final data = line.substring(5).trim();
+        if (data.isEmpty || data == '[DONE]') continue;
+        try {
+          payloads.add(json.decode(data) as Map<String, dynamic>);
+        } catch (_) {}
+        continue;
+      }
+      // `event:` lines, comments and blanks are framing; anything else is a
+      // plain JSON body arriving in pieces.
+      if (!sawSse) buffer.write(line);
+    }
+    if (!sawSse && buffer.isNotEmpty) {
+      payloads.add(json.decode(buffer.toString()) as Map<String, dynamic>);
+    }
+    return payloads;
+  }
+
+  /// Assembles one OpenAI chat message out of [response] — streamed deltas
+  /// or a complete body alike. Returns the same map shape the non-streaming
+  /// code always consumed: {'message': ..., with usage already accounted}.
+  Future<Map<String, dynamic>?> _byokMessage(
+      Response response, void Function()? onUpdate) async {
+    final payloads = await _ssePayloads(response);
+    // Complete-body case: exactly the old shape.
+    if (payloads.length == 1 && payloads.single.containsKey('choices')) {
+      final only = payloads.single;
+      final choices = only['choices'] as List?;
+      final message = choices != null && choices.isNotEmpty
+          ? (choices.first as Map)['message']
+          : null;
+      if (message is Map) {
+        _addUsage(only);
+        return Map<String, dynamic>.from(message);
+      }
+    }
+    // Streamed case: fold the deltas.
+    final content = StringBuffer();
+    final toolCalls = <int, Map<String, dynamic>>{};
+    for (final payload in payloads) {
+      _addUsage(payload);
+      final choices = payload['choices'] as List?;
+      if (choices == null || choices.isEmpty) continue;
+      final delta = (choices.first as Map)['delta'];
+      if (delta is! Map) continue;
+      final text = delta['content'];
+      if (text is String && text.isNotEmpty) {
+        content.write(text);
+        _emitStreamDelta(content.toString(), onUpdate);
+      }
+      final calls = delta['tool_calls'];
+      if (calls is List) {
+        for (final c in calls) {
+          if (c is! Map) continue;
+          final index = (c['index'] as num?)?.toInt() ?? 0;
+          final entry = toolCalls.putIfAbsent(
+              index,
+              () => {
+                    'id': '',
+                    'type': 'function',
+                    'function': {'name': '', 'arguments': ''},
+                  });
+          if (c['id'] is String && (c['id'] as String).isNotEmpty) {
+            entry['id'] = c['id'];
+          }
+          final fn = c['function'];
+          if (fn is Map) {
+            final f = entry['function'] as Map<String, dynamic>;
+            if (fn['name'] is String && (fn['name'] as String).isNotEmpty) {
+              f['name'] = '${f['name']}${fn['name']}';
+            }
+            if (fn['arguments'] is String) {
+              f['arguments'] = '${f['arguments']}${fn['arguments']}';
+            }
+          }
+        }
+      }
+    }
+    if (content.isEmpty && toolCalls.isEmpty) return null;
+    final ordered = toolCalls.keys.toList()..sort();
+    return {
+      'role': 'assistant',
+      'content': content.isEmpty ? null : content.toString(),
+      if (toolCalls.isNotEmpty)
+        'tool_calls': [for (final i in ordered) toolCalls[i]],
+    };
+  }
+
+  /// Assembles one Claude message out of [response] — streamed events or a
+  /// complete body alike: {'content': blocks, 'stop_reason': ...}.
+  Future<Map<String, dynamic>> _claudeMessage(
+      Response response, void Function()? onUpdate) async {
+    final payloads = await _ssePayloads(response);
+    if (payloads.length == 1 && payloads.single.containsKey('content')) {
+      _addUsage(payloads.single);
+      return payloads.single;
+    }
+    final blocks = <int, Map<String, dynamic>>{};
+    final jsonBuffers = <int, StringBuffer>{};
+    String? stopReason;
+    for (final event in payloads) {
+      switch (event['type']) {
+        case 'message_start':
+          final message = event['message'];
+          if (message is Map<String, dynamic>) _addUsage(message);
+          break;
+        case 'content_block_start':
+          final index = (event['index'] as num?)?.toInt() ?? 0;
+          final block = event['content_block'];
+          if (block is Map) {
+            blocks[index] = Map<String, dynamic>.from(block);
+            if (block['type'] == 'tool_use') {
+              jsonBuffers[index] = StringBuffer();
+            }
+          }
+          break;
+        case 'content_block_delta':
+          final index = (event['index'] as num?)?.toInt() ?? 0;
+          final delta = event['delta'];
+          if (delta is! Map) break;
+          if (delta['type'] == 'text_delta' && delta['text'] is String) {
+            final block = blocks.putIfAbsent(
+                index, () => {'type': 'text', 'text': ''});
+            block['text'] = '${block['text'] ?? ''}${delta['text']}';
+            _emitStreamDelta(block['text'] as String, onUpdate);
+          } else if (delta['type'] == 'input_json_delta' &&
+              delta['partial_json'] is String) {
+            jsonBuffers
+                .putIfAbsent(index, () => StringBuffer())
+                .write(delta['partial_json']);
+          }
+          break;
+        case 'content_block_stop':
+          final index = (event['index'] as num?)?.toInt() ?? 0;
+          final buffer = jsonBuffers[index];
+          final block = blocks[index];
+          if (buffer != null && block != null) {
+            try {
+              block['input'] = buffer.isEmpty
+                  ? <String, dynamic>{}
+                  : json.decode(buffer.toString());
+            } catch (_) {
+              block['input'] = <String, dynamic>{};
+            }
+          }
+          break;
+        case 'message_delta':
+          final delta = event['delta'];
+          if (delta is Map && delta['stop_reason'] is String) {
+            stopReason = delta['stop_reason'] as String;
+          }
+          _addUsage(event);
+          break;
+      }
+    }
+    final ordered = blocks.keys.toList()..sort();
+    return {
+      'content': [for (final i in ordered) blocks[i]],
+      'stop_reason': stopReason,
+    };
   }
 
   /// True when [e] is dio reporting our own cancellation, which the loops
@@ -498,12 +697,16 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       cancel?.throwIfCancelled();
       _reportStep(i);
       _elideOldToolResults(messages);
-      final Response response;
+      final Map<String, dynamic>? message;
       try {
-        response = await _dio.post(
+        // `stream: true` + a stream response type: tokens render as they
+        // arrive. Providers (and mocks) that answer with a plain JSON body
+        // instead are folded back in by [_ssePayloads]'s fallback.
+        final response = await _dio.post(
           '$byokBaseUrl/chat/completions',
           cancelToken: _dioTokenFor(cancel),
           options: Options(
+            responseType: ResponseType.stream,
             headers: {
               'Authorization': 'Bearer $byokApiKey',
               'Content-Type': 'application/json',
@@ -513,31 +716,23 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
           ),
           data: json.encode({
             'model': byokModel,
+            'stream': true,
             'messages': messages,
             if (toolSpecs.isNotEmpty) 'tools': toolSpecs,
             if (toolSpecs.isNotEmpty) 'tool_choice': 'auto',
           }),
         );
+        message = await _byokMessage(response, onUpdate);
       } on DioException catch (e) {
         if (_isDioCancel(e)) throw const CancelledException();
         if (kDebugMode) debugPrint('BYOK request failed: $e');
         throw Exception('byok-request-failed');
       }
-      if (response.statusCode != 200) {
-        throw Exception('byok-request-failed');
-      }
-
-      final data =
-          response.data is String ? json.decode(response.data) : response.data;
-      _addUsage(data as Map<String, dynamic>);
-      final choices = data['choices'] as List?;
-      final message = choices != null && choices.isNotEmpty
-          ? (choices.first['message'] as Map<String, dynamic>?)
-          : null;
       final toolCalls = message?['tool_calls'] as List?;
       final content = message?['content'] as String?;
 
       if (toolCalls == null || toolCalls.isEmpty) {
+        streamingText.value = '';
         if (content == null || content.trim().isEmpty) {
           throw Exception('byok-empty-response');
         }
@@ -545,6 +740,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       }
 
       // A model that narrates before calling ("Let me check…") — surface it.
+      streamingText.value = '';
       if (content != null && content.trim().isNotEmpty) {
         _noteAssistant(transcript, persist, content, onUpdate);
       }
@@ -737,12 +933,13 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       cancel?.throwIfCancelled();
       _reportStep(i);
       _elideOldToolResults(messages);
-      final Response response;
+      final Map<String, dynamic> map;
       try {
-        response = await _dio.post(
+        final response = await _dio.post(
           claudeMessagesEndpoint,
           cancelToken: _dioTokenFor(cancel),
           options: Options(
+            responseType: ResponseType.stream,
             headers: await _claudeHeaders(),
             sendTimeout: const Duration(seconds: 30),
             receiveTimeout: const Duration(seconds: 120),
@@ -750,24 +947,18 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
           data: json.encode({
             'model': claudeModel,
             'max_tokens': 4096,
+            'stream': true,
             'system': systemPrompt,
             'messages': messages,
             if (toolSpecs.isNotEmpty) 'tools': toolSpecs,
           }),
         );
+        map = await _claudeMessage(response, onUpdate);
       } on DioException catch (e) {
         if (_isDioCancel(e)) throw const CancelledException();
         if (kDebugMode) debugPrint('Claude request failed: $e');
         throw Exception('claude-request-failed');
       }
-      if (response.statusCode != 200) {
-        throw Exception('claude-request-failed');
-      }
-
-      final data =
-          response.data is String ? json.decode(response.data) : response.data;
-      final map = data as Map<String, dynamic>;
-      _addUsage(map);
       final blocks = (map['content'] as List?) ?? const [];
       final stopReason = map['stop_reason'] as String?;
 
@@ -779,6 +970,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       final toolUses =
           blocks.where((b) => b is Map && b['type'] == 'tool_use').toList();
 
+      streamingText.value = '';
       if (stopReason != 'tool_use' || toolUses.isEmpty) {
         if (textOut.isEmpty) throw Exception('claude-empty-response');
         return textOut;

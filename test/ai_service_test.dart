@@ -489,6 +489,118 @@ void main() {
       expect(adapter.requests, hasLength(2));
     });
 
+    test('BYOK: an SSE stream assembles text deltas into the reply', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [];
+      await ai.init();
+      ai.clearHistory();
+
+      const sse = 'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n'
+          'data: {"choices":[{"delta":{"content":"lo!"}}]}\n\n'
+          'data: {"usage":{"total_tokens":42},"choices":[]}\n\n'
+          'data: [DONE]\n\n';
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        // The request opts into streaming…
+        final body =
+            json.decode(options.data as String) as Map<String, dynamic>;
+        expect(body['stream'], true);
+        return ResponseBody.fromString(sse, 200, headers: {
+          Headers.contentTypeHeader: ['text/event-stream'],
+        });
+      });
+
+      expect(await ai.sendMessage('hi'), 'Hello!');
+    });
+
+    test('BYOK: streamed tool_call fragments reassemble and execute',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [echoTool];
+      await ai.init();
+      ai.clearHistory();
+
+      var call = 0;
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          // The name arrives whole, the arguments split across two deltas —
+          // exactly how providers stream function calls.
+          const sse =
+              'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"echo","arguments":"{\\"te"}}]}}]}\n\n'
+              'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"xt\\":\\"hi\\"}"}}]}}]}\n\n'
+              'data: [DONE]\n\n';
+          return ResponseBody.fromString(sse, 200, headers: {
+            Headers.contentTypeHeader: ['text/event-stream'],
+          });
+        }
+        // Round two must carry the executed tool result back.
+        final body =
+            json.decode(options.data as String) as Map<String, dynamic>;
+        final msgs = body['messages'] as List;
+        expect(
+            msgs.any((m) => m['role'] == 'tool' && m['content'] == 'echoed:hi'),
+            true);
+        return ResponseBody.fromString(
+            'data: {"choices":[{"delta":{"content":"done"}}]}\n\ndata: [DONE]\n\n',
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['text/event-stream'],
+            });
+      });
+
+      expect(await ai.sendMessage('echo hi'), 'done');
+      expect(echoArgs.single['text'], 'hi');
+    });
+
+    test('Claude: SSE events assemble text and tool_use input', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setAiProvider('claude');
+      prefs.setString('ClaudeRefreshToken', 'rt-1');
+      prefs.setString('ClaudeAccessToken', 'at-1');
+      prefs.setInt(
+          'ClaudeTokenExpiry',
+          DateTime.now()
+              .add(const Duration(hours: 1))
+              .millisecondsSinceEpoch);
+      ai.toolsForTesting = [echoTool];
+      await ai.init();
+      ai.clearHistory();
+
+      var call = 0;
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          const sse =
+              'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"t1","name":"echo"}}\n\n'
+              'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"text\\":"}}\n\n'
+              'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"\\"hi\\"}"}}\n\n'
+              'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}\n\n'
+              'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":7}}\n\n';
+          return ResponseBody.fromString(sse, 200, headers: {
+            Headers.contentTypeHeader: ['text/event-stream'],
+          });
+        }
+        const sse =
+            'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}\n\n'
+            'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"all done"}}\n\n'
+            'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}\n\n';
+        return ResponseBody.fromString(sse, 200, headers: {
+          Headers.contentTypeHeader: ['text/event-stream'],
+        });
+      });
+
+      expect(await ai.sendMessage('echo hi'), 'all done');
+      expect(echoArgs.single['text'], 'hi');
+    });
+
     test('cancel stops the loop: no further request, transcript kept',
         () async {
       final ai = AiService();

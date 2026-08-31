@@ -27,6 +27,7 @@ dependencies:
   go_router: ^17.0.0
   http: ^1.6.0
   localization: ^2.1.1
+  markdown: ^7.2.2
   package_info_plus: ^9.0.0
   path: ^1.9.1
   plausible_analytics: ^0.3.0

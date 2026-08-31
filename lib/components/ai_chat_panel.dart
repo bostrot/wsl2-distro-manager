@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
@@ -375,8 +377,21 @@ class _AiChatPanelState extends State<AiChatPanel> {
               : ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(12),
-                  itemCount: history.length,
+                  // One extra slot: the reply currently streaming in, drawn
+                  // live under the history (plan item 6, streaming).
+                  itemCount: history.length + 1,
                   itemBuilder: (context, index) {
+                    if (index == history.length) {
+                      final live = _ai.streamingText.value;
+                      if (!_isLoading || live.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return _buildMessageBubble(AiMessage(
+                        role: 'assistant',
+                        content: live,
+                        timestamp: DateTime.now(),
+                      ));
+                    }
                     final msg = history[index];
                     return _buildMessageBubble(msg);
                   },
@@ -722,6 +737,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
               child: msg.role == 'assistant'
                   ? MarkdownBody(
                       data: msg.content,
+                      // Fenced code blocks get a copy button — the assistant
+                      // hands out commands, and retyping them defeats the
+                      // point (plan item 6).
+                      builders: {'pre': _CodeBlockBuilder(context)},
                       styleSheet: MarkdownStyleSheet(
                         p: const TextStyle(fontSize: 12),
                         code: TextStyle(
@@ -772,5 +791,56 @@ class _AiChatPanelState extends State<AiChatPanel> {
     _todoInputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+}
+
+/// A fenced code block with a copy button in its corner.
+///
+/// Replaces flutter_markdown's default `pre` rendering; inline code keeps the
+/// default style. The copy is acknowledged through the status bar — a silent
+/// copy is indistinguishable from a missed click (audit ST-21).
+class _CodeBlockBuilder extends MarkdownElementBuilder {
+  _CodeBlockBuilder(this.context);
+
+  final BuildContext context;
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final code = element.textContent.trimRight();
+    return Stack(
+      children: [
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.fromLTRB(8, 8, 32, 8),
+          decoration: BoxDecoration(
+            color: subtleFillColor(context),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            code,
+            style: const TextStyle(fontSize: 11, fontFamily: 'Consolas'),
+          ),
+        ),
+        Positioned(
+          top: 6,
+          right: 2,
+          child: MergeSemantics(
+            child: Tooltip(
+              message: 'copy-text'.i18n(),
+              child: IconButton(
+                icon: const Icon(FluentIcons.copy, size: 12),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  Notify.message('copied-text'.i18n(),
+                      severity: InfoBarSeverity.success,
+                      duration: const Duration(seconds: 2));
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
