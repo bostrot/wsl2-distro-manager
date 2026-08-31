@@ -184,9 +184,18 @@ class RootPageState extends State<RootPage> with WindowListener {
         // enabled-looking — in dark (audit IA-03, LN-13), so it is only built
         // when it can actually do something.
         leading: () {
-          if (widget.shellContext == null || !router.canPop()) return null;
+          // With the native macOS title bar hidden (main.dart), the traffic
+          // lights float over the app bar's left edge; everything the bar
+          // puts there has to start to their right.
+          const macTrafficLightInset = 70.0;
+          final needsMacInset = !kIsWeb && Platform.isMacOS;
+          if (widget.shellContext == null || !router.canPop()) {
+            return needsMacInset
+                ? const SizedBox(width: macTrafficLightInset)
+                : null;
+          }
 
-          return Builder(
+          final Widget back = Builder(
             builder: (context) => PaneItem(
               icon: const Center(child: Icon(FluentIcons.back, size: 12.0)),
               title: Text(localizations.backButtonTooltip),
@@ -207,6 +216,14 @@ class RootPageState extends State<RootPage> with WindowListener {
               displayMode: PaneDisplayMode.compact,
             ),
           );
+          if (needsMacInset) {
+            return Padding(
+              padding:
+                  const EdgeInsetsDirectional.only(start: macTrafficLightInset),
+              child: back,
+            );
+          }
+          return back;
         }(),
         title: () {
           if (kIsWeb) {

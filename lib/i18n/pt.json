@@ -743,4 +743,13 @@
   "vmcpus-text": "Processadores",
   "vmmemorygb-text": "Memória (GB)",
   "vmcreated-text": "VM %s criada.",
-  "vmcreatefailed-text": "Falha ao criar a VM %s:"}
+  "vmcreatefailed-text": "Falha ao criar a VM %s:",
+  "web-buy-detail-text": "Compre uma vez em wslmanager.com e desbloqueie todos os recursos Pro — chat de IA (com sua própria chave de API), servidor MCP e mais. Sem assinatura, atualizações gratuitas.",
+  "web-price-text": "US$ 9,99, pagamento único.",
+  "web-buy-btn": "Comprar em wslmanager.com",
+  "core-vm-management-feature": "Gerenciar máquinas virtuais localmente",
+  "plan-free-detail-vm": "Tudo para gerenciar máquinas virtuais localmente. Os recursos de IA não estão incluídos.",
+  "vmstoppedimmediately-text": "A VM parou logo após iniciar — provavelmente nada inicializável foi encontrado. Anexe uma ISO de instalação ou crie a VM a partir de uma imagem de disco base.",
+  "mcp-settings-vm-text": "Servidor MCP (API de VM)",
+  "templatesinfo-vm-text": "Um modelo é uma imagem de disco de VM salva a partir da qual você pode criar novas VMs. Salve um com o botão de arquivo em uma linha de VM na tela inicial."
+}

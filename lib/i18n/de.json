@@ -742,4 +742,13 @@
   "vmcpus-text": "Prozessoren",
   "vmmemorygb-text": "Arbeitsspeicher (GB)",
   "vmcreated-text": "VM %s erstellt.",
-  "vmcreatefailed-text": "Erstellen der VM %s fehlgeschlagen:"}
+  "vmcreatefailed-text": "Erstellen der VM %s fehlgeschlagen:",
+  "web-buy-detail-text": "Einmal auf wslmanager.com kaufen und alle Pro-Funktionen freischalten — KI-Chat (mit eigenem API-Schlüssel), MCP-Server und mehr. Kein Abo, kostenlose Updates.",
+  "web-price-text": "9,99 US-Dollar, einmalig.",
+  "web-buy-btn": "Auf wslmanager.com kaufen",
+  "core-vm-management-feature": "Virtuelle Maschinen lokal verwalten",
+  "plan-free-detail-vm": "Alles zum lokalen Verwalten virtueller Maschinen. KI-Funktionen sind nicht enthalten.",
+  "vmstoppedimmediately-text": "Die VM hat sich direkt nach dem Start wieder beendet — vermutlich wurde nichts Bootfähiges gefunden. Hänge eine Installations-ISO an oder erstelle die VM aus einem Basis-Festplattenabbild.",
+  "mcp-settings-vm-text": "MCP-Server (VM-API)",
+  "templatesinfo-vm-text": "Eine Vorlage ist ein gespeichertes VM-Festplattenabbild, aus dem du neue VMs erzeugen kannst. Speichere eine über den Archiv-Button in einer VM-Zeile auf der Startseite."
+}

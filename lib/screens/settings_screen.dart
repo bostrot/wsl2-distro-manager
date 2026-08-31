@@ -706,7 +706,9 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 10),
         Expander(
-          header: _betaHeader('mcp-settings-text'.i18n()),
+          header: _betaHeader(
+              (isAppleHost ? 'mcp-settings-vm-text' : 'mcp-settings-text')
+                  .i18n()),
           content: _buildMcpSettings(context),
         ),
         if (!isAppleHost) ...[
@@ -734,6 +736,10 @@ class SettingsPageState extends State<SettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The Apple backend keeps everything under the data location; the
+        // per-distro path, host editor/terminal and VS Code hooks are WSL
+        // flows.
+        if (!isAppleHost)
         settingsWidget(context,
             title: 'defaultdistrolocation-text'.i18n(),
             name: 'Default Distro Location',
@@ -780,6 +786,7 @@ class SettingsPageState extends State<SettingsPage> {
             ),
             placeholder:
                 prefs.getString("DistroPath") ?? getDefaultStorageRootPath()),
+        if (!isAppleHost)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
@@ -805,6 +812,7 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        if (!isAppleHost)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
@@ -830,6 +838,7 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        if (!isAppleHost)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

@@ -742,4 +742,13 @@
   "vmcpus-text": "处理器数",
   "vmmemorygb-text": "内存（GB）",
   "vmcreated-text": "已创建虚拟机 %s。",
-  "vmcreatefailed-text": "创建虚拟机 %s 失败："}
+  "vmcreatefailed-text": "创建虚拟机 %s 失败：",
+  "web-buy-detail-text": "在 wslmanager.com 一次购买，解锁全部 Pro 功能 — AI 聊天（使用自己的 API 密钥）、MCP 服务器等。无订阅，免费更新。",
+  "web-price-text": "9.99 美元，一次性付费。",
+  "web-buy-btn": "在 wslmanager.com 购买",
+  "core-vm-management-feature": "本地管理虚拟机",
+  "plan-free-detail-vm": "本地管理虚拟机所需的一切。不包含 AI 功能。",
+  "vmstoppedimmediately-text": "虚拟机启动后立即停止 — 很可能没有找到可引导的系统。请挂载安装镜像 ISO，或从基础磁盘镜像创建虚拟机。",
+  "mcp-settings-vm-text": "MCP 服务器（VM API）",
+  "templatesinfo-vm-text": "模板是保存的虚拟机磁盘镜像，可用来快速创建新虚拟机。在主页虚拟机行中点击归档按钮即可保存。"
+}

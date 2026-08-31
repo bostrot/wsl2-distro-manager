@@ -741,4 +741,13 @@
   "vmcpus-text": "Procesadores",
   "vmmemorygb-text": "Memoria (GB)",
   "vmcreated-text": "VM %s creada.",
-  "vmcreatefailed-text": "Error al crear la VM %s:"}
+  "vmcreatefailed-text": "Error al crear la VM %s:",
+  "web-buy-detail-text": "Compra una vez en wslmanager.com y desbloquea todas las funciones Pro — chat de IA (con tu propia clave de API), servidor MCP y más. Sin suscripción, actualizaciones gratuitas.",
+  "web-price-text": "9,99 US$, pago único.",
+  "web-buy-btn": "Comprar en wslmanager.com",
+  "core-vm-management-feature": "Gestionar máquinas virtuales localmente",
+  "plan-free-detail-vm": "Todo para gestionar máquinas virtuales localmente. Las funciones de IA no están incluidas.",
+  "vmstoppedimmediately-text": "La VM se detuvo justo después de iniciarse — probablemente no se encontró nada arrancable. Adjunta una ISO de instalación o crea la VM desde una imagen de disco base.",
+  "mcp-settings-vm-text": "Servidor MCP (API de VM)",
+  "templatesinfo-vm-text": "Una plantilla es una imagen de disco de VM guardada desde la que puedes crear nuevas VM. Guarda una con el botón de archivo en una fila de VM en Inicio."
+}

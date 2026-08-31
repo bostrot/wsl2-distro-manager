@@ -741,4 +741,13 @@
   "vmcpus-text": "Processzorok",
   "vmmemorygb-text": "Memória (GB)",
   "vmcreated-text": "A(z) %s VM létrejött.",
-  "vmcreatefailed-text": "A(z) %s VM létrehozása sikertelen:"}
+  "vmcreatefailed-text": "A(z) %s VM létrehozása sikertelen:",
+  "web-buy-detail-text": "Vásárold meg egyszer a wslmanager.com oldalon, és minden Pro funkció elérhetővé válik — AI-chat (saját API-kulccsal), MCP-szerver és több. Nincs előfizetés, ingyenes frissítések.",
+  "web-price-text": "9,99 USD, egyszeri.",
+  "web-buy-btn": "Vásárlás a wslmanager.com oldalon",
+  "core-vm-management-feature": "Virtuális gépek helyi kezelése",
+  "plan-free-detail-vm": "Minden a virtuális gépek helyi kezeléséhez. Az AI-funkciók nem tartoznak bele.",
+  "vmstoppedimmediately-text": "A VM közvetlenül az indítás után leállt — valószínűleg nem talált bootolható rendszert. Csatolj telepítő ISO-t, vagy hozd létre a VM-et alap lemezképből.",
+  "mcp-settings-vm-text": "MCP-szerver (VM API)",
+  "templatesinfo-vm-text": "A sablon egy elmentett VM-lemezkép, amelyből új VM-eket hozhatsz létre. Mentsd el az archívum gombbal a kezdőlap VM-sorában."
+}

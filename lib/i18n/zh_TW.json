@@ -742,4 +742,13 @@
   "vmcpus-text": "處理器數",
   "vmmemorygb-text": "記憶體（GB）",
   "vmcreated-text": "已建立虛擬機 %s。",
-  "vmcreatefailed-text": "建立虛擬機 %s 失敗："}
+  "vmcreatefailed-text": "建立虛擬機 %s 失敗：",
+  "web-buy-detail-text": "在 wslmanager.com 一次購買，解鎖全部 Pro 功能 — AI 聊天（使用自己的 API 金鑰）、MCP 伺服器等。無訂閱，免費更新。",
+  "web-price-text": "9.99 美元，一次性付費。",
+  "web-buy-btn": "在 wslmanager.com 購買",
+  "core-vm-management-feature": "本機管理虛擬機",
+  "plan-free-detail-vm": "本機管理虛擬機所需的一切。不包含 AI 功能。",
+  "vmstoppedimmediately-text": "虛擬機啟動後隨即停止 — 很可能沒有找到可開機的系統。請掛載安裝映像 ISO，或從基礎磁碟映像建立虛擬機。",
+  "mcp-settings-vm-text": "MCP 伺服器（VM API）",
+  "templatesinfo-vm-text": "範本是保存的虛擬機磁碟映像，可用來快速建立新虛擬機。在主頁虛擬機列中點擊封存按鈕即可保存。"
+}

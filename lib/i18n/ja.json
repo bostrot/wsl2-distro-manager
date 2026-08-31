@@ -741,4 +741,13 @@
   "vmcpus-text": "プロセッサ数",
   "vmmemorygb-text": "メモリ（GB）",
   "vmcreated-text": "VM %s を作成しました。",
-  "vmcreatefailed-text": "VM %s の作成に失敗しました:"}
+  "vmcreatefailed-text": "VM %s の作成に失敗しました:",
+  "web-buy-detail-text": "wslmanager.com で一度購入すれば、すべてのPro機能が使えます — AIチャット（自分のAPIキー使用）、MCPサーバーなど。サブスクリプションなし、アップデート無料。",
+  "web-price-text": "US$9.99（買い切り）",
+  "web-buy-btn": "wslmanager.com で購入",
+  "core-vm-management-feature": "仮想マシンをローカルで管理",
+  "plan-free-detail-vm": "仮想マシンのローカル管理に必要なすべて。AI機能は含まれません。",
+  "vmstoppedimmediately-text": "VMは起動直後に停止しました — ブート可能なものが見つからなかった可能性があります。インストーラーISOを接続するか、ベースディスクイメージからVMを作成してください。",
+  "mcp-settings-vm-text": "MCPサーバー（VM API）",
+  "templatesinfo-vm-text": "テンプレートは保存されたVMディスクイメージで、そこから新しいVMを作成できます。ホームのVM行にあるアーカイブボタンで保存できます。"
+}

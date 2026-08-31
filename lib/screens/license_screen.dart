@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -43,7 +44,8 @@ class _LicenseScreenState extends State<LicenseScreen> {
     // launchable https URLs, which silently disabled the one thing this
     // screen asks the user to do (audit PS-07).
     try {
-      await launchUrl(Uri.parse(windowsStoreUrl),
+      // No Microsoft Store on macOS: Pro is bought on the project website.
+      await launchUrl(Uri.parse(isAppleHost ? macBuyUrl : windowsStoreUrl),
           mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
@@ -246,7 +248,10 @@ class _LicenseScreenState extends State<LicenseScreen> {
                 Text(
                   isPro
                       ? 'plan-store-detail'.i18n()
-                      : 'plan-free-detail'.i18n(),
+                      : (isAppleHost
+                              ? 'plan-free-detail-vm'
+                              : 'plan-free-detail')
+                          .i18n(),
                   style: const TextStyle(fontSize: 14, height: 1.4),
                 ),
               ],
@@ -270,7 +275,8 @@ class _LicenseScreenState extends State<LicenseScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'store-buy-detail-text'.i18n(),
+            (isAppleHost ? 'web-buy-detail-text' : 'store-buy-detail-text')
+                .i18n(),
             style: TextStyle(fontSize: 13, color: secondaryTextColor(context)),
           ),
           const SizedBox(height: 8),
@@ -278,7 +284,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
           // screen never answered (audit PS-02). The number is the US Store
           // price; the button's Store page shows the buyer's own.
           Text(
-            'store-price-text'.i18n(),
+            (isAppleHost ? 'web-price-text' : 'store-price-text').i18n(),
             key: const ValueKey('test-license-price'),
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
@@ -296,7 +302,8 @@ class _LicenseScreenState extends State<LicenseScreen> {
                   children: [
                     const Icon(FluentIcons.shop, size: 16),
                     const SizedBox(width: 8),
-                    Text('store-buy-btn'.i18n()),
+                    Text((isAppleHost ? 'web-buy-btn' : 'store-buy-btn')
+                        .i18n()),
                   ],
                 ),
               ),
@@ -313,14 +320,22 @@ class _LicenseScreenState extends State<LicenseScreen> {
     final accent = FluentTheme.of(context).accentColor;
     // Each row: [i18n key, included in Free, included in Pro].
     final rows = <List<Object>>[
-      ['core-wsl-management-feature', true, true],
+      // On macOS the free tier manages native VMs, and the AI Workspace
+      // (a WSL-only feature) must not be sold there.
+      [
+        isAppleHost
+            ? 'core-vm-management-feature'
+            : 'core-wsl-management-feature',
+        true,
+        true
+      ],
       ['ai-config-assistant-feature', false, true],
       // "Smart Recommendations" and "Script Generation" are gone: the first
       // ships in the free tier and the second does not exist anywhere in the
       // app, so both rows were selling something other than what Pro is
       // (audit PS-01).
       ['error-diagnosis-feature', false, true],
-      ['ai-workspace-feature', false, true],
+      if (!isAppleHost) ['ai-workspace-feature', false, true],
     ];
 
     const columnWidth = 64.0;

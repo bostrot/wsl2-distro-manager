@@ -86,6 +86,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
   final isLinux = !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
+  final isMacOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
   // if it's not on the web, windows or android, load the accent color
   if (!kIsWeb &&
@@ -114,6 +115,11 @@ void main() async {
         );
       } else if (isLinux) {
         await windowManager.setAsFrameless();
+      } else if (isMacOS) {
+        // One bar, like Windows: hide the native title bar (the traffic
+        // lights stay, overlaying the app bar, which insets its leading for
+        // them — see root_screen.dart).
+        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
       }
       await windowManager.setMinimumSize(const Size(700, 500));
       await restoreWindowBounds();

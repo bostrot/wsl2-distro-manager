@@ -741,4 +741,13 @@
   "vmcpus-text": "Processors",
   "vmmemorygb-text": "Memory (GB)",
   "vmcreated-text": "VM %s created.",
-  "vmcreatefailed-text": "Creating VM %s failed:"}
+  "vmcreatefailed-text": "Creating VM %s failed:",
+  "web-buy-detail-text": "Buy once on wslmanager.com and unlock all Pro features — AI Chat (with your own API key), MCP server, and more. No subscription, free updates.",
+  "web-price-text": "US$ 9.99, one-time.",
+  "web-buy-btn": "Buy on wslmanager.com",
+  "core-vm-management-feature": "Manage virtual machines locally",
+  "plan-free-detail-vm": "Everything for managing virtual machines locally. AI features are not included.",
+  "vmstoppedimmediately-text": "The VM stopped right after starting — most likely nothing bootable was found. Attach an installer ISO or create the VM from a base disk image.",
+  "mcp-settings-vm-text": "MCP Server (VM API)",
+  "templatesinfo-vm-text": "A template is a saved VM disk image you can stamp new VMs from. Save one with the archive button in a VM row on Home."
+}

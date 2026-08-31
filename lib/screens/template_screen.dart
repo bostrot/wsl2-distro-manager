@@ -117,7 +117,10 @@ class _TemplatePageState extends State<TemplatePage> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Text(
-                'templatesinfo-text'.i18n(),
+                (vmBackend().features.templatesDeprecated
+                    ? 'templatesinfo-text'
+                    : 'templatesinfo-vm-text')
+                .i18n(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: secondaryTextColor(context), fontSize: 12),
@@ -141,7 +144,10 @@ class _TemplatePageState extends State<TemplatePage> {
             ),
             Padding(
               padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
-              child: Text('templatesinfo-text'.i18n(),
+              child: Text((vmBackend().features.templatesDeprecated
+                    ? 'templatesinfo-text'
+                    : 'templatesinfo-vm-text')
+                .i18n(),
                   style: TextStyle(
                       color: secondaryTextColor(context), fontSize: 12)),
             ),

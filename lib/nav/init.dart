@@ -7,6 +7,7 @@ import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/changelog_dialog.dart';
@@ -119,6 +120,8 @@ initRoot(NotifyMessage statusMsg) async {
                         fontWeight: FontWeight.bold),
                     recognizer: TapGestureRecognizer()
                       ..onTap = () => launchUrl(Uri.parse(updateUrl))),
+                // The Store alternative only exists for the Windows build.
+                if (!isAppleHost) ...[
                 TextSpan(
                     text: '${'orcheck-text'.i18n()} ',
                     style: const TextStyle(fontSize: 14.0)),
@@ -130,6 +133,7 @@ initRoot(NotifyMessage statusMsg) async {
                         fontWeight: FontWeight.bold),
                     recognizer: TapGestureRecognizer()
                       ..onTap = () => launchUrl(Uri.parse(windowsStoreUrl))),
+                ],
               ])));
     }
   });
