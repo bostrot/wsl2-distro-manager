@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -486,6 +487,93 @@ void main() {
       expect(reply, 'all done');
       expect(echoArgs.single['text'], 'hi');
       expect(adapter.requests, hasLength(2));
+    });
+
+    test('cancel stops the loop: no further request, transcript kept',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.clearHistory();
+
+      final signal = CancelSignal();
+      ai.toolsForTesting = [
+        McpTool(
+          name: 'echo',
+          description: 'echoes',
+          inputSchema: const {'type': 'object', 'properties': {}},
+          handler: (_) async {
+            // The user presses Cancel while a tool is running: the loop must
+            // stop before the next provider request fires.
+            signal.cancel();
+            return 'done anyway';
+          },
+        )
+      ];
+      await ai.init();
+
+      final adapter = _RecordingAdapter((_) => ResponseBody.fromString(
+            json.encode({
+              'choices': [
+                {
+                  'message': {
+                    'role': 'assistant',
+                    'content': null,
+                    'tool_calls': [
+                      {
+                        'id': 'c1',
+                        'type': 'function',
+                        'function': {'name': 'echo', 'arguments': '{}'},
+                      }
+                    ],
+                  }
+                }
+              ]
+            }),
+            200,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ));
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      await expectLater(
+          ai.sendMessage('go', cancel: signal), throwsA(isA<CancelledException>()));
+
+      // Exactly one request — the loop never came back for round two.
+      expect(adapter.requests, hasLength(1));
+      // What ran, ran: the user turn and the tool note survive the cancel.
+      expect(ai.conversationHistory.any((m) => m.role == 'user'), true);
+      expect(ai.conversationHistory.any((m) => m.role == 'tool'), true);
+    });
+
+    test('capTranscript keeps only the newest turns within both budgets', () {
+      final msgs = [
+        for (var i = 0; i < 100; i++)
+          AiMessage(
+              role: i.isEven ? 'user' : 'assistant',
+              content: 'message $i',
+              timestamp: DateTime.now()),
+        // Tool notes never go over the wire at all.
+        AiMessage(role: 'tool', content: 'wsl_run_command', timestamp: DateTime.now()),
+      ];
+      final capped = AiService.capTranscript(msgs);
+      expect(capped.length, 30);
+      expect(capped.last.content, 'message 99');
+      expect(capped.first.content, 'message 70');
+      expect(capped.any((m) => m.role == 'tool'), false);
+
+      // One enormous old message cannot smuggle the char budget away from
+      // the recent turns — the newest message always survives.
+      final huge = [
+        AiMessage(
+            role: 'user', content: 'x' * 100000, timestamp: DateTime.now()),
+        AiMessage(role: 'assistant', content: 'small', timestamp: DateTime.now()),
+      ];
+      final cappedHuge = AiService.capTranscript(huge);
+      expect(cappedHuge.last.content, 'small');
+      expect(cappedHuge.length, 1);
     });
 
     test('with no tools it still answers in one turn', () async {

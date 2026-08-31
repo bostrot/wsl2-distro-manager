@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'dart:convert';
@@ -203,7 +204,8 @@ class SandboxChat {
 You are an assistant confined to a single sandboxed Linux environment (a WSL distro named "$distro"). Everything you do happens INSIDE it through the sandbox_* tools — you cannot see or affect the user's Windows machine or any other distro, and there is no such thing to reach. Use sandbox_run_command to inspect and work inside the sandbox. After acting, say briefly what you did. Keep answers concise.
 You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one inside the sandbox, and mark it done with todo_set_done as soon as you finish it.''';
 
-  Future<String> send(String query, {void Function()? onUpdate}) async {
+  Future<String> send(String query,
+      {void Function()? onUpdate, CancelSignal? cancel}) async {
     if (!LicenseManager().isPro) throw Exception('pro-required');
     if (!_ai.hasAiConfigured) {
       throw Exception(_ai.usesClaudeAccount
@@ -216,12 +218,19 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     onUpdate?.call();
     try {
       final reply = await _ai.runAgentOn(_history, _tools,
-          onUpdate: onUpdate, systemPrompt: _systemPrompt, persist: _persist);
+          onUpdate: onUpdate,
+          systemPrompt: _systemPrompt,
+          persist: _persist,
+          cancel: cancel);
       _history.add(AiMessage(
           role: 'assistant', content: reply, timestamp: DateTime.now()));
       _persist();
       onUpdate?.call();
       return reply;
+    } on CancelledException {
+      // A cancel keeps what already happened; only the reply is absent.
+      _persist();
+      rethrow;
     } catch (e) {
       // Roll back to the last user turn so a retry is clean.
       while (_history.isNotEmpty && _history.last.role != 'user') {

@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/claude_auth.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
@@ -199,7 +200,51 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   /// blow the context, so it is capped.
   static const int _maxToolResultChars = 6000;
 
-  Future<String> sendMessage(String query, {void Function()? onUpdate}) async {
+  /// How many prior user/assistant turns one request carries. The transcript
+  /// itself is unbounded (it persists across sessions now); what goes over
+  /// the wire is not — the `take(10)` cap was lost when tool-use landed and
+  /// every request grew with the conversation forever.
+  static const int _maxHistoryMessages = 30;
+
+  /// Character budget for the same history slice, so thirty short turns pass
+  /// but thirty pasted logs do not.
+  static const int _maxHistoryChars = 30000;
+
+  /// In-run message-list budget: past this many entries, the *oldest* tool
+  /// results are elided (structure kept — both protocols require the
+  /// call/result pairing to stay intact).
+  static const int _maxRunMessages = 40;
+
+  /// Live progress of the current agent run ("step 3 · 12.4k tokens"), or
+  /// null when idle. The panel renders it next to the spinner so a long run
+  /// is visibly moving rather than hanging.
+  final ValueNotifier<String?> runStatus = ValueNotifier<String?>(null);
+
+  int _runTokens = 0;
+
+  void _reportStep(int iteration) {
+    runStatus.value = _runTokens > 0
+        ? 'step ${iteration + 1} · ${(_runTokens / 1000).toStringAsFixed(1)}k tokens'
+        : 'step ${iteration + 1}';
+  }
+
+  void _addUsage(Map<String, dynamic> data) {
+    final usage = data['usage'];
+    if (usage is! Map) return;
+    // OpenAI: total_tokens. Claude: input_tokens + output_tokens.
+    final total = usage['total_tokens'];
+    if (total is num) {
+      _runTokens += total.toInt();
+      return;
+    }
+    final input = usage['input_tokens'];
+    final output = usage['output_tokens'];
+    if (input is num) _runTokens += input.toInt();
+    if (output is num) _runTokens += output.toInt();
+  }
+
+  Future<String> sendMessage(String query,
+      {void Function()? onUpdate, CancelSignal? cancel}) async {
     if (!_license.isPro) {
       throw Exception('pro-required');
     }
@@ -218,7 +263,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     _saveConversation();
 
     try {
-      final reply = await runAgent(tools, onUpdate: onUpdate);
+      final reply = await runAgent(tools, onUpdate: onUpdate, cancel: cancel);
 
       final assistantMsg = AiMessage(
         role: 'assistant',
@@ -229,6 +274,11 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       _saveConversation();
 
       return reply;
+    } on CancelledException {
+      // The user got what they asked for. What already ran, ran — the tool
+      // notes stay in the transcript; only the never-written reply is absent.
+      _saveConversation();
+      rethrow;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('AI service error: $e');
@@ -299,10 +349,13 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   /// chat transcript.
   @visibleForTesting
   Future<String> runAgent(List<McpTool> toolList,
-          {void Function()? onUpdate, String? systemPrompt}) =>
+          {void Function()? onUpdate,
+          String? systemPrompt,
+          CancelSignal? cancel}) =>
       runAgentOn(_conversationHistory, toolList,
           onUpdate: onUpdate,
           systemPrompt: systemPrompt,
+          cancel: cancel,
           persist: _saveConversation);
 
   /// Runs the agent loop against an arbitrary [transcript] — the same core
@@ -310,30 +363,110 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   /// with its own history and its own locked-down tools) reuses it instead of
   /// duplicating the provider plumbing. [persist] is called whenever the
   /// transcript grows; pass null for an ephemeral chat.
+  ///
+  /// [cancel] genuinely stops the run: it is checked before every provider
+  /// request and every tool execution, and it aborts the in-flight HTTP call
+  /// — Cancel used to only make the UI *look* stopped while tools kept
+  /// running on the real machine and requests kept billing the user's key.
   Future<String> runAgentOn(
     List<AiMessage> transcript,
     List<McpTool> toolList, {
     void Function()? onUpdate,
     String? systemPrompt,
     void Function()? persist,
-  }) =>
-      usesClaudeAccount
-          ? _runClaudeAgent(transcript, toolList,
+    CancelSignal? cancel,
+  }) async {
+    _runTokens = 0;
+    runStatus.value = null;
+    try {
+      return usesClaudeAccount
+          ? await _runClaudeAgent(transcript, toolList,
               onUpdate: onUpdate,
               persist: persist,
+              cancel: cancel,
               systemPrompt: systemPrompt ?? _systemPrompt)
-          : _runByokAgent(transcript, toolList,
+          : await _runByokAgent(transcript, toolList,
               onUpdate: onUpdate,
               persist: persist,
+              cancel: cancel,
               systemPrompt: systemPrompt ?? _systemPrompt);
+    } finally {
+      runStatus.value = null;
+    }
+  }
+
+  /// A dio token that fires when [cancel] does, so an in-flight request is
+  /// torn down instead of merely having its answer ignored.
+  CancelToken? _dioTokenFor(CancelSignal? cancel) {
+    if (cancel == null) return null;
+    final token = CancelToken();
+    cancel.onCancel(token.cancel);
+    return token;
+  }
+
+  /// True when [e] is dio reporting our own cancellation, which the loops
+  /// convert to [CancelledException] rather than a request failure.
+  static bool _isDioCancel(DioException e) =>
+      e.type == DioExceptionType.cancel;
 
   /// The prior transcript as provider messages: user and assistant turns only
   /// (the `tool` notes are UI-side and would not be valid protocol messages).
+  /// Capped from the *end* — most recent first to survive — by both message
+  /// count and characters, so a persistent conversation cannot grow every
+  /// request without bound.
   List<Map<String, dynamic>> _historyMessages(List<AiMessage> transcript) =>
-      transcript
-          .where((m) => m.role == 'user' || m.role == 'assistant')
+      capTranscript(transcript)
           .map((m) => {'role': m.role, 'content': m.content})
           .toList();
+
+  @visibleForTesting
+  static List<AiMessage> capTranscript(List<AiMessage> transcript) {
+    final relevant = transcript
+        .where((m) => m.role == 'user' || m.role == 'assistant')
+        .toList();
+    final kept = <AiMessage>[];
+    var chars = 0;
+    for (final m in relevant.reversed) {
+      if (kept.length >= _maxHistoryMessages) break;
+      if (kept.isNotEmpty && chars + m.content.length > _maxHistoryChars) {
+        break;
+      }
+      kept.add(m);
+      chars += m.content.length;
+    }
+    return kept.reversed.toList();
+  }
+
+  /// Elides the content of tool results that have scrolled far enough back in
+  /// this run's message list, keeping every entry (both protocols require the
+  /// call/result pairing to stay) but not its bulk.
+  static void _elideOldToolResults(List<Map<String, dynamic>> messages) {
+    if (messages.length <= _maxRunMessages) return;
+    const marker = '(elided earlier tool output)';
+    final cutoff = messages.length - _maxRunMessages;
+    for (var i = 0; i < cutoff; i++) {
+      final m = messages[i];
+      // OpenAI shape: {role: tool, content: <big string>}.
+      if (m['role'] == 'tool' && m['content'] is String) {
+        if ((m['content'] as String).length > marker.length) {
+          m['content'] = marker;
+        }
+        continue;
+      }
+      // Claude shape: {role: user, content: [{type: tool_result, ...}]}.
+      final content = m['content'];
+      if (m['role'] == 'user' && content is List) {
+        for (final block in content) {
+          if (block is Map &&
+              block['type'] == 'tool_result' &&
+              block['content'] is String &&
+              (block['content'] as String).length > marker.length) {
+            block['content'] = marker;
+          }
+        }
+      }
+    }
+  }
 
   /// OpenAI function-calling specs for [toolList].
   List<Map<String, dynamic>> _openAiToolSpecs(List<McpTool> toolList) =>
@@ -353,6 +486,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       List<AiMessage> transcript, List<McpTool> toolList,
       {void Function()? onUpdate,
       void Function()? persist,
+      CancelSignal? cancel,
       required String systemPrompt}) async {
     final messages = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemPrompt},
@@ -361,10 +495,14 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     final toolSpecs = _openAiToolSpecs(toolList);
 
     for (var i = 0; i < _maxToolIterations; i++) {
+      cancel?.throwIfCancelled();
+      _reportStep(i);
+      _elideOldToolResults(messages);
       final Response response;
       try {
         response = await _dio.post(
           '$byokBaseUrl/chat/completions',
+          cancelToken: _dioTokenFor(cancel),
           options: Options(
             headers: {
               'Authorization': 'Bearer $byokApiKey',
@@ -381,6 +519,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
           }),
         );
       } on DioException catch (e) {
+        if (_isDioCancel(e)) throw const CancelledException();
         if (kDebugMode) debugPrint('BYOK request failed: $e');
         throw Exception('byok-request-failed');
       }
@@ -390,7 +529,8 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
 
       final data =
           response.data is String ? json.decode(response.data) : response.data;
-      final choices = (data as Map<String, dynamic>)['choices'] as List?;
+      _addUsage(data as Map<String, dynamic>);
+      final choices = data['choices'] as List?;
       final message = choices != null && choices.isNotEmpty
           ? (choices.first['message'] as Map<String, dynamic>?)
           : null;
@@ -422,6 +562,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
         } else if (rawArgs is Map) {
           parsedArgs = Map<String, dynamic>.from(rawArgs);
         }
+        cancel?.throwIfCancelled();
         _noteTool(transcript, persist, name, onUpdate);
         final result = await _executeTool(toolList, name, parsedArgs);
         messages.add({
@@ -587,15 +728,20 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       List<AiMessage> transcript, List<McpTool> toolList,
       {void Function()? onUpdate,
       void Function()? persist,
+      CancelSignal? cancel,
       required String systemPrompt}) async {
     final messages = <Map<String, dynamic>>[..._historyMessages(transcript)];
     final toolSpecs = _claudeToolSpecs(toolList);
 
     for (var i = 0; i < _maxToolIterations; i++) {
+      cancel?.throwIfCancelled();
+      _reportStep(i);
+      _elideOldToolResults(messages);
       final Response response;
       try {
         response = await _dio.post(
           claudeMessagesEndpoint,
+          cancelToken: _dioTokenFor(cancel),
           options: Options(
             headers: await _claudeHeaders(),
             sendTimeout: const Duration(seconds: 30),
@@ -610,6 +756,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
           }),
         );
       } on DioException catch (e) {
+        if (_isDioCancel(e)) throw const CancelledException();
         if (kDebugMode) debugPrint('Claude request failed: $e');
         throw Exception('claude-request-failed');
       }
@@ -620,6 +767,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       final data =
           response.data is String ? json.decode(response.data) : response.data;
       final map = data as Map<String, dynamic>;
+      _addUsage(map);
       final blocks = (map['content'] as List?) ?? const [];
       final stopReason = map['stop_reason'] as String?;
 
@@ -647,6 +795,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
         final input = u['input'] is Map
             ? Map<String, dynamic>.from(u['input'] as Map)
             : <String, dynamic>{};
+        cancel?.throwIfCancelled();
         _noteTool(transcript, persist, name, onUpdate);
         final result = await _executeTool(toolList, name, input);
         toolResults.add({

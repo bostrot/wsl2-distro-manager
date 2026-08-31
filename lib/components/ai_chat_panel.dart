@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
 import 'package:wsl2distromanager/api/todo_store.dart';
@@ -38,6 +39,14 @@ class _AiChatPanelState extends State<AiChatPanel> {
   final FlyoutController _sessionsFlyout = FlyoutController();
   bool _isLoading = false;
   bool _tasksExpanded = false;
+
+  /// The signal that genuinely stops the current run — tools and the
+  /// in-flight request included, not just the UI (plan item 1).
+  CancelSignal? _runCancel;
+
+  /// Set by Cancel so the task runner's auto-continue stops too, instead of
+  /// immediately dispatching the next round of the queue.
+  bool _stopTasksRequested = false;
 
   /// How many times a "work on tasks" run may auto-continue itself before it
   /// stops on its own — a queue that never drains must not loop forever.
@@ -99,12 +108,14 @@ class _AiChatPanelState extends State<AiChatPanel> {
   /// run makes no progress, or after [_maxAutoContinue] rounds.
   Future<void> _workOnTasks() async {
     if (_isLoading || !_todos.hasOpen) return;
+    _stopTasksRequested = false;
     await _dispatch(
         'Work through the task list until every item is done. Use todo_list '
         'to see what is left, do each task with your tools, and call '
         'todo_set_done the moment you finish one.');
     var rounds = 0;
     while (mounted &&
+        !_stopTasksRequested &&
         _todos.hasOpen &&
         rounds < _maxAutoContinue &&
         !_isLoading) {
@@ -114,6 +125,17 @@ class _AiChatPanelState extends State<AiChatPanel> {
       // No progress this round — stop rather than spin.
       if (_todos.openCount >= before) break;
     }
+  }
+
+  /// One button stops everything: the in-flight request, further tool
+  /// executions, and the task runner's auto-continue.
+  void _cancelRun() {
+    _stopTasksRequested = true;
+    _runCancel?.cancel();
+    setState(() {
+      _requestGeneration++;
+      _isLoading = false;
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -143,6 +165,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
 
     _unblock();
     final generation = ++_requestGeneration;
+    final cancel = _runCancel = CancelSignal();
     setState(() {
       _isLoading = true;
     });
@@ -160,14 +183,17 @@ class _AiChatPanelState extends State<AiChatPanel> {
       }
 
       if (_sandbox != null) {
-        await _sandbox!.send(text, onUpdate: onUpdate);
+        await _sandbox!.send(text, onUpdate: onUpdate, cancel: cancel);
       } else {
-        await _ai.sendMessage(text, onUpdate: onUpdate);
+        await _ai.sendMessage(text, onUpdate: onUpdate, cancel: cancel);
       }
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _isLoading = false;
       });
+    } on CancelledException {
+      // The user pressed Cancel — the run is already unwound and reported.
+      return;
     } catch (e) {
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
@@ -365,20 +391,26 @@ class _AiChatPanelState extends State<AiChatPanel> {
               children: [
                 const SizedBox(width: 16, height: 16, child: ProgressRing()),
                 const SizedBox(width: 8),
-                Text(
-                  'ai-generating-text'.i18n(),
-                  style: TextStyle(
-                      fontSize: 11, color: secondaryTextColor(context)),
+                // "Generating… · step 12 · 34.5k tokens": a long agent run is
+                // visibly moving, not hanging (plan item 3).
+                Expanded(
+                  child: ValueListenableBuilder<String?>(
+                    valueListenable: _ai.runStatus,
+                    builder: (context, status, _) => Text(
+                      status == null
+                          ? 'ai-generating-text'.i18n()
+                          : "${'ai-generating-text'.i18n()} · $status",
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11, color: secondaryTextColor(context)),
+                    ),
+                  ),
                 ),
-                const Spacer(),
-                // The way out of a hung request (PS-34). The orphaned reply
-                // is dropped by the generation check in _sendMessage.
+                // Really stops the run — request, tools and auto-continue —
+                // not just this panel's spinner (plan item 1).
                 Button(
                   key: const ValueKey('test-chat-cancel-request'),
-                  onPressed: () => setState(() {
-                    _requestGeneration++;
-                    _isLoading = false;
-                  }),
+                  onPressed: _cancelRun,
                   child: Text('cancel-text'.i18n()),
                 ),
               ],
