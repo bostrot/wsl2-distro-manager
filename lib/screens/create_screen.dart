@@ -225,19 +225,32 @@ class _CreatePageState extends State<CreatePage> {
     return ValueListenableBuilder<bool>(
       valueListenable: _creating,
       builder: (context, isCreating, _) {
-        return SingleChildScrollView(
+        // The form is ~400px tall; pinned into the top-left corner of a
+        // desktop window it left two thirds of the page dead. Centre the
+        // block in whatever height the window has; below that the scroll
+        // view takes over as before.
+        return LayoutBuilder(
+            builder: (context, viewport) => SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (viewport.maxHeight - 48).clamp(0.0, double.infinity),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'createnewinstance-text'.i18n(),
                 style: FluentTheme.of(context).typography.titleLarge,
               ),
               const SizedBox(height: 16),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: CreateWidget(
+              CreateWidget(
                   nameController: _nameController,
                   api: _api,
                   autoSuggestBox: _autoSuggestBox,
@@ -248,7 +261,6 @@ class _CreatePageState extends State<CreatePage> {
                   createError: _createError,
                   createUserEnabled: _createUser,
                   nameTaken: _nameTaken,
-                ),
               ),
               if (isCreating)
                 ValueListenableBuilder<CreateProgress?>(
@@ -287,8 +299,12 @@ class _CreatePageState extends State<CreatePage> {
                 ],
               ),
             ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
+        ));
       },
     );
   }
