@@ -6,6 +6,65 @@ reports under `doc/audit/` and the playbook under
 
 ---
 
+## Next — hardening the AI features before release (planned 2026-09-01)
+
+Ordered by risk-to-users, not effort. Verified against the code, not guessed.
+
+### 1. Make Cancel actually cancel the agent run (highest value)
+Cancel today only bumps `_requestGeneration`, so the UI drops the reply — but
+the agent loop in `ai_service.dart` keeps running: tools keep executing on the
+real machine and requests keep billing the user's key, now for up to 100
+steps. Thread a `CancelSignal` (exists in `api/cancellation.dart`) through
+`runAgentOn` → both provider loops → `_executeTool`, checked before each
+iteration and each tool call. The task runner's auto-continue must honour it
+too.
+
+### 2. Cap the context the agent sends per turn
+`_historyMessages()` serialises the **whole** transcript into every request —
+the old `take(10)` cap was lost when tool-use landed. A long-lived chat (they
+persist now) grows every request without bound. Keep the last ~30 user/
+assistant turns (chars-capped), and within one run cap the accumulated
+tool-result messages the same way `_maxToolResultChars` caps one result.
+
+### 3. Live run telemetry + a hard stop
+With 100 steps × 6 auto-continue rounds possible, the panel should show
+"step 12 — 34k tokens" style progress during a run and offer one button that
+stops run *and* auto-continue. Falls out of #1 almost for free.
+
+### 4. Sandbox creation: progress, disk check, cancel
+- `dio.download` has `onReceiveProgress`; the "downloading" stage should show
+  a percentage (the image is ~700 MB).
+- Check `freeSpaceBytes()` (exists in wsl.dart, unused here) before starting
+  and refuse below ~3 GB — this machine hit **0 bytes free** on 2026-08-31
+  and the failure mode was a hung Dart compiler, not a clean error.
+- A `CancelSignal` for the download; delete the partial file.
+
+### 5. Sandbox honesty: document the network caveat
+The sandbox isolates the *tools* (host/other-distro access is impossible by
+construction), but the distro itself has normal outbound network. Say so in
+the sandbox InfoBar and README — "isolated" must not overpromise. True
+network lockdown (wsl.conf / firewall) is a research item, not a quick fix.
+
+### 6. Chat polish (cheap, high-touch)
+- Copy button on assistant code blocks.
+- Sandbox picker: let "Add custom Ubuntu distro" offer the whole catalog, not
+  just Ubuntu (the plumbing already takes any rootfs URL).
+- Guard the dock when its sandbox is deleted mid-session (show the assistant
+  instead of a dead transcript).
+- Streaming responses (SSE) — biggest UX win, biggest effort; both provider
+  APIs support it. Do last.
+
+### 7. Release train (mostly manual, blocks everything shipping)
+- Bump version, write real "What's new" (the audit closed 214 findings; then
+  MCP/AI/sandbox landed) — the Store text still describes an old release.
+- Submit the draft (Submission 71) after the keywords question.
+- **Remove the local `return true;` Pro grant in `license_manager.dart`
+  before any build leaves this machine.**
+- The two standing manual items below (CDN push, Sign in with Claude client
+  ID) gate the catalogue freshness and the Claude provider respectively.
+
+---
+
 ## Now
 
 ### Push `images.json` to the CDN — the one manual step left from the audit
