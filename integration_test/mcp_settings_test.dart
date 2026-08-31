@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/main.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -17,7 +18,12 @@ void main() {
 
   group('MCP server settings', () {
     setUp(() async {
-      SharedPreferences.setMockInitialValues({});
+      // A first start would open the welcome dialog, whose modal barrier
+      // swallows every tap this test performs.
+      SharedPreferences.setMockInitialValues({
+        'version': currentVersion,
+        'LastChangelogVersion': currentVersion,
+      });
       prefs = await SharedPreferences.getInstance();
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;
@@ -86,7 +92,9 @@ void main() {
       // which doesn't belong in an automated test.
       expect(find.byKey(const ValueKey('test-mcp-tunnel-toggle')),
           findsOneWidget);
-      expect(find.text('mcp-tunnel-warning-text'.i18n()), findsOneWidget);
+      // The public-exposure warning is tied to the tunnel actually running
+      // (audit ST-20), so merely enabling the server must not show it.
+      expect(find.text('mcp-tunnel-warning-text'.i18n()), findsNothing);
     });
   });
 }

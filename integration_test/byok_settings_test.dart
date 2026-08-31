@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/main.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -17,7 +18,12 @@ void main() {
 
   group('BYOK settings', () {
     setUp(() async {
-      SharedPreferences.setMockInitialValues({});
+      // A first start would open the welcome dialog, whose modal barrier
+      // swallows every tap this test performs.
+      SharedPreferences.setMockInitialValues({
+        'version': currentVersion,
+        'LastChangelogVersion': currentVersion,
+      });
       prefs = await SharedPreferences.getInstance();
       GlobalVariable.aiPanelVisible = false;
       GlobalVariable.testProEnabled = false;

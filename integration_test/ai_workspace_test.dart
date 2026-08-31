@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -12,6 +14,13 @@ import 'package:wsl2distromanager/nav/router.dart';
 /// We use pump() with explicit durations instead of pumpAndSettle() after navigation.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  // The AI Workspace lives in a dedicated WSL distro; on macOS the Apple
+  // virtualization backend deliberately has no such screen or nav entry.
+  if (Platform.isMacOS) {
+    test('AI Workspace is a WSL-backend feature; nothing to test here', () {});
+    return;
+  }
 
   group('AI Workspace Navigation', () {
     setUp(() async {

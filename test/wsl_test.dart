@@ -191,7 +191,7 @@ void main() {
     expect(statusMessages.any((m) => m.contains('cOv...NO')), false);
   });
 
-  test('Copy instance test', () async {
+  test('Copy instance test', skip: !Platform.isWindows, () async {
     // Setup: create 'test'
     mockShell.distros.add('test');
     File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
@@ -216,7 +216,7 @@ void main() {
     expect(await isInstance('testcopy2'), false);
   });
 
-  test('Cleanup test', () async {
+  test('Cleanup test', skip: !Platform.isWindows, () async {
     // Create a new instance
     mockShell.distros.add('test');
     File('C:/WSL2-Distros/test/ext4.vhdx').createSync(recursive: true);
