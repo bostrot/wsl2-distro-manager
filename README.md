@@ -37,7 +37,7 @@
 
 **Get instances running faster**
 - [x] Use any Docker image as a distro — Docker itself is not required
-- [x] Save a configured distro as a template and spin up fresh copies from it
+- [x] Package a configured distro as a portable `.wsl` file that installs on any machine (templates are deprecated in favour of these)
 - [x] Turnkey Linux and other LXC containers (experimental)
 - [x] Snippets: keep your setup commands in the app and run them on any instance
 - [x] Point the app at your own repository of rootfs images
@@ -55,13 +55,97 @@
 
 **Pro** *(optional one-time purchase on the Microsoft Store — not a subscription)*
 - [x] **AI Workspace** — run Hermes Agent, OpenClaw and Open WebUI in a dedicated, isolated WSL distro
-- [x] **MCP server** — expose WSL to Claude Desktop and other MCP clients; agents can list distros, run commands and drive real terminal sessions
-- [x] **AI assistant** — configuration help, script generation and error diagnosis
+- [x] **AI assistant with tools** — the built-in chat can actually *operate* your WSL: it lists and inspects distros, runs commands, edits config, creates snippets, mounts disks and packages distros through the same tools the MCP server exposes
+- [x] **Sandboxed AI** — spin up a throwaway Ubuntu distro and give an AI chat access to *only* the inside of that sandbox
+- [x] **Task queue** — hand the assistant a checklist and let it work through it, ticking items off as it goes
+- [x] **MCP server** — expose WSL to Claude Desktop, Claude Code, opencode and other MCP clients
 
-> The AI assistant features run on **your own** OpenAI-compatible API key. No AI
-> service is hosted or included, there is no quota, and no requests pass through
-> anyone else's servers. Pro unlocks the features in the app; it does not buy AI
+> The AI features run on credentials **you** bring — your own OpenAI-compatible
+> API key, or your **Claude subscription** (Sign in with Claude). No AI service
+> is hosted or included, there is no quota, and no requests pass through anyone
+> else's servers. Pro unlocks the features in the app; it does not buy AI
 > credits. See [Free vs Pro](https://github.com/bostrot/wsl2-distro-manager/wiki/Pro-Version).
+
+## 🤖 AI assistant & MCP
+
+The AI assistant is an **agent**, not just a chat box: it is given the same tool
+set the MCP server exposes, so when you ask "what distros do I have?" or "install
+Ubuntu and set my default user" it calls real tools against your WSL rather than
+guessing. Tool calls are shown inline as it works.
+
+**Pick a provider** in **Settings → Bring Your Own AI Key**:
+
+- **Own API key** — any OpenAI-compatible endpoint (OpenAI, Azure, a LiteLLM
+  proxy, Ollama, LM Studio, …). Enter the base URL, key and model. The **Load
+  model list** button fills an autocomplete from the provider's `/models`, and
+  **Test connection** proves the credentials work before you open the chat.
+- **Claude subscription** — *Sign in with Claude* (OAuth): the chat then runs on
+  your Claude plan through the Messages API. No API key to paste.
+
+**Sandboxes** (AI Workspace → *Add custom Ubuntu distro*) create a throwaway
+Ubuntu distro. Its chat is handed only the `sandbox_*` tools, which are locked to
+that one distro — the model can run anything *inside* the sandbox and can never
+see your Windows host or any other distro.
+
+**Task queue** — open the *Tasks* section at the top of the chat, add items, and
+press ▶. The assistant works through them with its tools and checks each off as
+it finishes; you can keep adding tasks while it runs.
+
+### Connecting external AI clients (MCP)
+
+Turn on **Settings → MCP Server** (Pro). It serves the MCP protocol at
+`http://127.0.0.1:59133/mcp`, loopback-only, guarded by a bearer token shown in
+the same panel. The tools cover the full lifecycle — create, import, configure,
+run, package and (with a confirm flag) unregister distros, plus snippets, disk
+mounting and persistent terminal sessions.
+
+**Claude Desktop** — click **Connect Claude Desktop** in the MCP panel. It writes
+the entry below into `claude_desktop_config.json` for you (needs Node.js);
+restart Claude Desktop afterwards. To do it by hand, or for any other stdio MCP
+client, bridge the HTTP endpoint with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
+
+```jsonc
+// claude_desktop_config.json  (%APPDATA%\Claude\)
+{
+  "mcpServers": {
+    "wsl-manager": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote",
+        "http://127.0.0.1:59133/mcp",
+        "--header", "Authorization:${AUTH_HEADER}"
+      ],
+      "env": { "AUTH_HEADER": "Bearer <TOKEN FROM THE MCP PANEL>" }
+    }
+  }
+}
+```
+
+**Claude Code** — same bridge, one command:
+
+```bash
+claude mcp add wsl-manager -- npx -y mcp-remote http://127.0.0.1:59133/mcp \
+  --header "Authorization: Bearer <TOKEN>"
+```
+
+**opencode** — add it under `mcp` in your `opencode.json` (or `~/.config/opencode/opencode.json`):
+
+```jsonc
+{
+  "mcp": {
+    "wsl-manager": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-remote", "http://127.0.0.1:59133/mcp",
+                  "--header", "Authorization: Bearer <TOKEN>"]
+    }
+  }
+}
+```
+
+Any MCP client that speaks streamable HTTP can also point straight at the
+endpoint with an `Authorization: Bearer <TOKEN>` header, skipping `mcp-remote`.
+To reach it from another machine, enable the built-in **Cloudflare tunnel**
+toggle in the same panel and use the public URL it prints.
 
 ## 📦 Install
 
