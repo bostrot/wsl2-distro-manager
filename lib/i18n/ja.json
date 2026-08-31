@@ -671,5 +671,8 @@
   "startserving-text": "ネットワークで配信",
   "stopserving-text": "配信を停止",
   "mountoptionsplaceholder-text": "例: data=ordered",
-  "runininstance-text": "インスタンスで実行"
+  "runininstance-text": "インスタンスで実行",
+  "templatesdeprecated-text": "テンプレートは非推奨になりました",
+  "templatesdeprecatedinfo-text": "ディストリビューションパッケージは、公式の WSL 形式で同じ役割を果たします。パッケージはこのアプリに限らず、WSL のある任意のマシンにインストールできます。テンプレートは将来のリリースで削除されるか、ディストリビューションパッケージに統合されます。",
+  "opendistropackages-text": "ディストリビューションパッケージを開く"
 }

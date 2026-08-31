@@ -3,6 +3,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
+import 'package:wsl2distromanager/nav/router.dart';
 
 /// Template Screen
 class TemplatePage extends StatefulWidget {
@@ -142,6 +143,23 @@ class _TemplatePageState extends State<TemplatePage> {
               child: Text('templatesinfo-text'.i18n(),
                   style: TextStyle(
                       color: secondaryTextColor(context), fontSize: 12)),
+            ),
+            // Distro packages cover the same ground in the official WSL
+            // format; templates are on their way out and say so up front.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: InfoBar(
+                key: const ValueKey('test-templates-deprecated'),
+                severity: InfoBarSeverity.warning,
+                isLong: true,
+                title: Text('templatesdeprecated-text'.i18n()),
+                content: Text('templatesdeprecatedinfo-text'.i18n()),
+                action: Button(
+                  onPressed: () =>
+                      navigateGuarded('package', path: '/package'),
+                  child: Text('opendistropackages-text'.i18n()),
+                ),
+              ),
             ),
             Expanded(
                 child: ListView.builder(

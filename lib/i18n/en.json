@@ -671,5 +671,8 @@
   "startserving-text": "Serve on network",
   "stopserving-text": "Stop serving",
   "mountoptionsplaceholder-text": "e.g. data=ordered",
-  "runininstance-text": "Run in instance"
+  "runininstance-text": "Run in instance",
+  "templatesdeprecated-text": "Templates are deprecated",
+  "templatesdeprecatedinfo-text": "Distro packages do the same job in the official WSL format — a package installs on any machine with WSL, not just through this app. Templates will be removed or merged into distro packages in a future release.",
+  "opendistropackages-text": "Open Distro packages"
 }

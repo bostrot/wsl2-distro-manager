@@ -672,5 +672,8 @@
   "startserving-text": "在網路上提供",
   "stopserving-text": "停止提供",
   "mountoptionsplaceholder-text": "例如 data=ordered",
-  "runininstance-text": "在執行個體中執行"
+  "runininstance-text": "在執行個體中執行",
+  "templatesdeprecated-text": "範本已棄用",
+  "templatesdeprecatedinfo-text": "發行版本套件以官方 WSL 格式提供相同功能——套件可安裝到任何裝有 WSL 的電腦上，而不僅限於本應用程式。範本將在未來版本中移除或併入發行版本套件。",
+  "opendistropackages-text": "開啟發行版本套件"
 }

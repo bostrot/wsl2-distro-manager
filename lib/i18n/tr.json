@@ -671,5 +671,8 @@
   "startserving-text": "Ağda sun",
   "stopserving-text": "Sunmayı durdur",
   "mountoptionsplaceholder-text": "örn. data=ordered",
-  "runininstance-text": "Örnekte çalıştır"
+  "runininstance-text": "Örnekte çalıştır",
+  "templatesdeprecated-text": "Şablonlar kullanımdan kaldırılıyor",
+  "templatesdeprecatedinfo-text": "Dağıtım paketleri aynı işi resmi WSL biçiminde yapar — bir paket yalnızca bu uygulama üzerinden değil, WSL bulunan her makineye kurulabilir. Şablonlar gelecekteki bir sürümde kaldırılacak veya dağıtım paketleriyle birleştirilecek.",
+  "opendistropackages-text": "Dağıtım paketlerini aç"
 }

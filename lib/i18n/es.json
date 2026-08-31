@@ -671,5 +671,8 @@
   "startserving-text": "Servir en la red",
   "stopserving-text": "Dejar de servir",
   "mountoptionsplaceholder-text": "p. ej. data=ordered",
-  "runininstance-text": "Ejecutar en una instancia"
+  "runininstance-text": "Ejecutar en una instancia",
+  "templatesdeprecated-text": "Las plantillas están obsoletas",
+  "templatesdeprecatedinfo-text": "Los paquetes de distribución hacen lo mismo en el formato oficial de WSL: un paquete se instala en cualquier equipo con WSL, no solo desde esta aplicación. Las plantillas se eliminarán o se fusionarán con los paquetes de distribución en una versión futura.",
+  "opendistropackages-text": "Abrir paquetes de distribución"
 }

@@ -672,5 +672,8 @@
   "startserving-text": "Im Netzwerk bereitstellen",
   "stopserving-text": "Bereitstellung beenden",
   "mountoptionsplaceholder-text": "z. B. data=ordered",
-  "runininstance-text": "In Instanz ausführen"
+  "runininstance-text": "In Instanz ausführen",
+  "templatesdeprecated-text": "Vorlagen sind veraltet",
+  "templatesdeprecatedinfo-text": "Distributionspakete erfüllen denselben Zweck im offiziellen WSL-Format — ein Paket lässt sich auf jedem Rechner mit WSL installieren, nicht nur über diese App. Vorlagen werden in einer künftigen Version entfernt oder in Distributionspakete überführt.",
+  "opendistropackages-text": "Distributionspakete öffnen"
 }

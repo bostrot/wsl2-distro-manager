@@ -671,5 +671,8 @@
   "startserving-text": "Kiszolgálás a hálózaton",
   "stopserving-text": "Kiszolgálás leállítása",
   "mountoptionsplaceholder-text": "pl. data=ordered",
-  "runininstance-text": "Futtatás példányban"
+  "runininstance-text": "Futtatás példányban",
+  "templatesdeprecated-text": "A sablonok elavultak",
+  "templatesdeprecatedinfo-text": "A disztribúciócsomagok ugyanezt nyújtják a hivatalos WSL-formátumban — egy csomag bármely WSL-t futtató gépre telepíthető, nem csak ezen az alkalmazáson keresztül. A sablonok egy későbbi kiadásban megszűnnek, vagy beolvadnak a disztribúciócsomagokba.",
+  "opendistropackages-text": "Disztribúciócsomagok megnyitása"
 }

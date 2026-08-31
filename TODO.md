@@ -85,6 +85,15 @@ slots are in place. Never submitted.
 
 ## Decisions open
 
+### Remove or merge Templates into Distro packages
+Templates (app-internal snapshot tars) and Distro packages (official `.wsl`
+files with `wsl-distribution.conf`) solve the same problem; packages are the
+portable superset. The Templates screen now carries a deprecation banner
+pointing at Distro packages (2026-08-31). Open: pick removal or merge — a
+merge would mean a "convert template to package" path so existing template
+files are not orphaned — and drop the Home-row archive button along with it.
+
+
 ### Mac version with Apple Virtualization
 Microsoft Store and Mac App Store share no entitlements, so a cross-platform
 user pays twice. Recommendation: accept that rather than build a licence

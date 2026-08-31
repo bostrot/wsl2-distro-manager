@@ -673,5 +673,8 @@
   "startserving-text": "Servir na rede",
   "stopserving-text": "Parar de servir",
   "mountoptionsplaceholder-text": "ex.: data=ordered",
-  "runininstance-text": "Executar na instância"
+  "runininstance-text": "Executar na instância",
+  "templatesdeprecated-text": "Os modelos estão obsoletos",
+  "templatesdeprecatedinfo-text": "Os pacotes de distribuição fazem o mesmo no formato oficial do WSL — um pacote pode ser instalado em qualquer máquina com WSL, não só por este app. Os modelos serão removidos ou incorporados aos pacotes de distribuição em uma versão futura.",
+  "opendistropackages-text": "Abrir pacotes de distribuição"
 }

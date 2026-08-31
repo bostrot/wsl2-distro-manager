@@ -672,5 +672,8 @@
   "startserving-text": "在网络上提供",
   "stopserving-text": "停止提供",
   "mountoptionsplaceholder-text": "例如 data=ordered",
-  "runininstance-text": "在实例中运行"
+  "runininstance-text": "在实例中运行",
+  "templatesdeprecated-text": "模板已弃用",
+  "templatesdeprecatedinfo-text": "发行版软件包以官方 WSL 格式实现同样的功能——软件包可安装到任何装有 WSL 的计算机上，而不仅限于本应用。模板将在未来版本中移除或并入发行版软件包。",
+  "opendistropackages-text": "打开发行版软件包"
 }
