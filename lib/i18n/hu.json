@@ -749,5 +749,6 @@
   "plan-free-detail-vm": "Minden a virtuális gépek helyi kezeléséhez. Az AI-funkciók nem tartoznak bele.",
   "vmstoppedimmediately-text": "A VM közvetlenül az indítás után leállt — valószínűleg nem talált bootolható rendszert. Csatolj telepítő ISO-t, vagy hozd létre a VM-et alap lemezképből.",
   "mcp-settings-vm-text": "MCP-szerver (VM API)",
-  "templatesinfo-vm-text": "A sablon egy elmentett VM-lemezkép, amelyből új VM-eket hozhatsz létre. Mentsd el az archívum gombbal a kezdőlap VM-sorában."
+  "templatesinfo-vm-text": "A sablon egy elmentett VM-lemezkép, amelyből új VM-eket hozhatsz létre. Mentsd el az archívum gombbal a kezdőlap VM-sorában.",
+  "vmisoplaceholder-text": "Válassz letöltendő telepítőt, vagy adj meg helyi ISO-útvonalat"
 }

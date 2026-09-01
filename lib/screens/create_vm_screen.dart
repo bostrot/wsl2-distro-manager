@@ -2,7 +2,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/wsl.dart' show formatTransferSize;
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -14,6 +17,9 @@ AppleVmApi Function() appleVmApiBuilder = () {
   final backend = vmBackend();
   return backend is AppleVmApi ? backend : AppleVmApi();
 };
+
+/// Test seam: replaces the installer catalog (and its network) in tests.
+VmImageCatalog Function() vmImageCatalogBuilder = () => VmImageCatalog();
 
 /// Create-page for native VMs on macOS (Apple Virtualization framework).
 ///
@@ -41,6 +47,11 @@ class _CreateVmPageState extends State<CreateVmPage> {
   String _guestOs = 'linux';
   bool _creating = false;
   String? _nameError;
+
+  /// Live while a catalog ISO is being fetched; the Cancel button stops it.
+  CancelSignal? _cancelSignal;
+  String? _downloadLabel;
+  double? _downloadFraction;
 
   @override
   void initState() {
@@ -97,6 +108,55 @@ class _CreateVmPageState extends State<CreateVmPage> {
       _nameError = null;
       _creating = true;
     });
+
+    // A catalog pick downloads (or reuses) the installer first; a plain
+    // path goes straight through.
+    var isoPath = _iso.text.trim();
+    final catalogEntry =
+        _guestOs == 'linux' ? VmImageCatalog.entryFor(isoPath) : null;
+    if (catalogEntry != null) {
+      final token = CancelSignal();
+      _cancelSignal = token;
+      try {
+        isoPath = await vmImageCatalogBuilder().download(
+          catalogEntry,
+          cancelSignal: token,
+          onProgress: (received, total) {
+            if (!mounted) return;
+            setState(() {
+              _downloadFraction =
+                  total > 0 ? (received / total).clamp(0.0, 1.0) : null;
+              _downloadLabel = total > 0
+                  ? '${'downloading-text'.i18n()} '
+                      '${(received / total * 100).toStringAsFixed(0)}% '
+                      '(${formatTransferSize(received)} / '
+                      '${formatTransferSize(total)})'
+                  : '${'downloading-text'.i18n()} '
+                      '${formatTransferSize(received)}';
+            });
+          },
+        );
+      } on CancelledException {
+        Notify.message('');
+        if (mounted) setState(() => _creating = false);
+        return;
+      } catch (error) {
+        Notify.message(
+            '${'errordownloading-text'.i18n()} ${catalogEntry.name}: $error',
+            severity: InfoBarSeverity.error);
+        if (mounted) setState(() => _creating = false);
+        return;
+      } finally {
+        _cancelSignal = null;
+        if (mounted) {
+          setState(() {
+            _downloadLabel = null;
+            _downloadFraction = null;
+          });
+        }
+      }
+    }
+
     Notify.message('creatinginstance-text'.i18n([name]), loading: true);
     try {
       if (_guestOs == 'macos') {
@@ -110,7 +170,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
       } else {
         await api.createLinuxVm(
           name,
-          isoPath: _iso.text.trim(),
+          isoPath: isoPath,
           imagePath: _image.text.trim(),
           diskSizeGb: _intOf(_diskSize, 32),
           cpus: _intOf(_cpus, 2),
@@ -133,6 +193,65 @@ class _CreateVmPageState extends State<CreateVmPage> {
     } finally {
       if (mounted) setState(() => _creating = false);
     }
+  }
+
+  /// The installer picker: an autocomplete over the curated arm64 ISO
+  /// catalog (picked entries are downloaded and cached, the way the Windows
+  /// create screen offers its rootfs catalogue), while a local path or the
+  /// file picker keeps working unchanged.
+  Widget _isoField() {
+    return InfoLabel(
+      label: 'vminstalleriso-text'.i18n(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: AutoSuggestBox<String>(
+                  key: const ValueKey('test-vm-iso'),
+                  controller: _iso,
+                  enabled: !_creating,
+                  placeholder: 'vmisoplaceholder-text'.i18n(),
+                  items: [
+                    for (final name in VmImageCatalog.names)
+                      AutoSuggestBoxItem<String>(value: name, label: name),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Button(
+                onPressed:
+                    _creating ? null : () => _pickFile(_iso, const ['iso']),
+                child: Text('selectfile-text'.i18n()),
+              ),
+            ],
+          ),
+          if (_downloadLabel != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ProgressBar(
+                      value: _downloadFraction == null
+                          ? null
+                          : (_downloadFraction! * 100).clamp(0.0, 100.0),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(_downloadLabel!,
+                      key: const ValueKey('test-vm-iso-progress'),
+                      style: TextStyle(
+                          fontSize: 12, color: secondaryTextColor(context))),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _fileField(String label, TextEditingController controller,
@@ -229,12 +348,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
               ),
               const SizedBox(height: 12),
               if (isLinux) ...[
-                _fileField(
-                  'vminstalleriso-text'.i18n(),
-                  _iso,
-                  const ['iso'],
-                  key: const ValueKey('test-vm-iso'),
-                ),
+                _isoField(),
                 const SizedBox(height: 12),
                 _fileField(
                   'vmbaseimage-text'.i18n(),
@@ -288,8 +402,12 @@ class _CreateVmPageState extends State<CreateVmPage> {
                   const SizedBox(width: 8),
                   Button(
                     key: const ValueKey('test-vm-cancel-button'),
+                    // While a catalog download runs, Cancel stops it; the
+                    // rest of a create is too quick to need one.
                     onPressed: _creating
-                        ? null
+                        ? (_cancelSignal == null
+                            ? null
+                            : () => _cancelSignal?.cancel())
                         : () {
                             if (router.canPop()) {
                               router.pop();

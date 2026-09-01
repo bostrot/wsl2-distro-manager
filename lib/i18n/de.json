@@ -750,5 +750,6 @@
   "plan-free-detail-vm": "Alles zum lokalen Verwalten virtueller Maschinen. KI-Funktionen sind nicht enthalten.",
   "vmstoppedimmediately-text": "Die VM hat sich direkt nach dem Start wieder beendet — vermutlich wurde nichts Bootfähiges gefunden. Hänge eine Installations-ISO an oder erstelle die VM aus einem Basis-Festplattenabbild.",
   "mcp-settings-vm-text": "MCP-Server (VM-API)",
-  "templatesinfo-vm-text": "Eine Vorlage ist ein gespeichertes VM-Festplattenabbild, aus dem du neue VMs erzeugen kannst. Speichere eine über den Archiv-Button in einer VM-Zeile auf der Startseite."
+  "templatesinfo-vm-text": "Eine Vorlage ist ein gespeichertes VM-Festplattenabbild, aus dem du neue VMs erzeugen kannst. Speichere eine über den Archiv-Button in einer VM-Zeile auf der Startseite.",
+  "vmisoplaceholder-text": "Installer zum Herunterladen wählen oder lokalen ISO-Pfad eingeben"
 }

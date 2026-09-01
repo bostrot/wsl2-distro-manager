@@ -749,5 +749,6 @@
   "plan-free-detail-vm": "Sanal makineleri yerel olarak yönetmek için gereken her şey. Yapay zekâ özellikleri dahil değildir.",
   "vmstoppedimmediately-text": "Sanal makine başladıktan hemen sonra durdu — büyük olasılıkla önyüklenebilir bir şey bulunamadı. Bir kurulum ISO'su ekleyin veya sanal makineyi bir temel disk kalıbından oluşturun.",
   "mcp-settings-vm-text": "MCP Sunucusu (VM API)",
-  "templatesinfo-vm-text": "Şablon, yeni sanal makineler oluşturabileceğiniz kayıtlı bir VM disk kalıbıdır. Ana sayfadaki bir VM satırında arşiv düğmesiyle kaydedin."
+  "templatesinfo-vm-text": "Şablon, yeni sanal makineler oluşturabileceğiniz kayıtlı bir VM disk kalıbıdır. Ana sayfadaki bir VM satırında arşiv düğmesiyle kaydedin.",
+  "vmisoplaceholder-text": "İndirilecek bir kurulum medyası seçin veya yerel ISO yolu girin"
 }

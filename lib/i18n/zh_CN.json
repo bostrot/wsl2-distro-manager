@@ -750,5 +750,6 @@
   "plan-free-detail-vm": "本地管理虚拟机所需的一切。不包含 AI 功能。",
   "vmstoppedimmediately-text": "虚拟机启动后立即停止 — 很可能没有找到可引导的系统。请挂载安装镜像 ISO，或从基础磁盘镜像创建虚拟机。",
   "mcp-settings-vm-text": "MCP 服务器（VM API）",
-  "templatesinfo-vm-text": "模板是保存的虚拟机磁盘镜像，可用来快速创建新虚拟机。在主页虚拟机行中点击归档按钮即可保存。"
+  "templatesinfo-vm-text": "模板是保存的虚拟机磁盘镜像，可用来快速创建新虚拟机。在主页虚拟机行中点击归档按钮即可保存。",
+  "vmisoplaceholder-text": "选择要下载的安装镜像，或输入本地 ISO 路径"
 }
