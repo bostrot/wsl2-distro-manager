@@ -768,5 +768,12 @@
   "vmcreatedwithservice-text": "VM %s erstellt. %s wird beim ersten Start installiert.",
   "installingservice-text": "Dienst wird in %s installiert…",
   "installedservice-text": "Dienst in %s bereit unter %s.",
-  "installservicefailed-text": "Dienst konnte in %s nicht installiert werden: %s"
+  "installservicefailed-text": "Dienst konnte in %s nicht installiert werden: %s",
+  "ai-workspace-setup-text": "Der KI-Workspace läuft in einer eigenen Linux-VM ('ai-workspace'). Automatisch einrichten: Lädt Debian herunter (ca. 3 GB, wird bei Cache wiederverwendet), erstellt die VM und startet sie — beim ersten Mal ein paar Minuten.",
+  "ai-workspace-setup-btn": "Automatisch einrichten",
+  "ai-workspace-setup-busy-text": "Wird eingerichtet…",
+  "ai-workspace-setup-done-text": "Die Workspace-VM ist bereit.",
+  "ai-workspace-downloading-text": "Workspace-System wird heruntergeladen…",
+  "ai-workspace-starting-vm-text": "Workspace-VM wird gestartet…",
+  "ai-workspace-vm-unreachable-text": "Die Workspace-VM wurde über SSH nicht erreichbar. Prüfe ihre Konsole auf der Startseite und versuche es erneut."
 }

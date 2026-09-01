@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_workspace/runtime.dart';
@@ -24,6 +25,28 @@ Widget _page(AiWorkspaceService service) {
     value: service,
     child: const FluentApp(home: ScaffoldPage(content: AiWorkspacePage())),
   );
+}
+
+/// Missing until [setUp] runs — the shape of a Mac with no workspace VM.
+class _GuidedFakeRuntime extends WslWorkspaceRuntime {
+  bool present = false;
+  int setUpCalls = 0;
+
+  @override
+  Future<bool> exists(ExecutionBroker broker) async => present;
+
+  @override
+  Future<void> provision(ExecutionBroker broker,
+      {required void Function(String key) notify}) async {
+    throw Exception('ai-workspace-vm-missing-text');
+  }
+
+  @override
+  Future<void> setUp(ExecutionBroker broker,
+      {required void Function(String key) notify}) async {
+    setUpCalls++;
+    present = true;
+  }
 }
 
 void main() {
@@ -447,5 +470,33 @@ void main() {
         find.byKey(const ValueKey('test-ai-stop-hermesAgent')));
     expect(stop.onPressed, isNotNull,
         reason: 'Uninstall must not be the only way out of a stuck start');
+  });
+
+  testWidgets('a missing workspace VM offers guided setup, not an error',
+      (tester) async {
+    tester.view.physicalSize = _kSurface;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final runtime = _GuidedFakeRuntime();
+    final guided = AiWorkspaceService(
+      broker: ExecutionBroker(shell: testShell),
+      reachabilityChecker: (_) async => true,
+      runtime: runtime,
+    );
+
+    await tester.pumpWidget(_page(guided));
+    await tester.pumpAndSettle();
+
+    // The provisioning case renders the setup card, not the error view.
+    final setup = find.byKey(const ValueKey('test-workspace-setup'));
+    expect(setup, findsOneWidget);
+    expect(find.text('retry-text'.i18n()), findsNothing);
+
+    await tester.tap(setup);
+    await tester.pumpAndSettle();
+
+    expect(runtime.setUpCalls, 1);
+    // Setup succeeded, so the page moved on to the normal tool grid.
+    expect(find.byKey(const ValueKey('test-workspace-setup')), findsNothing);
   });
 }

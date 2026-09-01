@@ -1,4 +1,8 @@
+import 'package:localization/localization.dart';
+
+import '../../components/notify.dart';
 import '../apple/apple_vm_api.dart';
+import '../apple/vm_image_catalog.dart';
 import '../execution/broker.dart';
 import '../execution/models.dart';
 import '../vm/vm_platform.dart';
@@ -30,6 +34,13 @@ abstract class WorkspaceRuntime {
   /// created automatically.
   Future<void> provision(ExecutionBroker broker,
       {required void Function(String key) notify});
+
+  /// The explicit, user-confirmed setup — allowed to do heavy work
+  /// (downloads, VM creation) that [provision] must not start unasked.
+  /// Backends whose provision is already cheap just reuse it.
+  Future<void> setUp(ExecutionBroker broker,
+          {required void Function(String key) notify}) =>
+      provision(broker, notify: notify);
 }
 
 /// Picks the runtime for the active backend. Replaced by tests.
@@ -45,7 +56,7 @@ WorkspaceRuntime defaultWorkspaceRuntime() {
 }
 
 /// The dedicated WSL distro the workspace has always used.
-class WslWorkspaceRuntime implements WorkspaceRuntime {
+class WslWorkspaceRuntime extends WorkspaceRuntime {
   static const String distro = 'ai-workspace';
 
   @override
@@ -107,7 +118,7 @@ class WslWorkspaceRuntime implements WorkspaceRuntime {
 /// [vmName] to exist and be running, and explains how to make it when it is
 /// not. Once it is up, the tool scripts run in it exactly as they do in the
 /// WSL distro (they assume a Debian/Ubuntu userland with apt).
-class AppleWorkspaceRuntime implements WorkspaceRuntime {
+class AppleWorkspaceRuntime extends WorkspaceRuntime {
   AppleWorkspaceRuntime(this._api);
 
   static const String vmName = 'ai-workspace';
@@ -161,5 +172,51 @@ class AppleWorkspaceRuntime implements WorkspaceRuntime {
     if (!vm.running) {
       throw Exception('ai-workspace-vm-stopped-text');
     }
+  }
+
+  /// Delay between SSH reachability probes after starting the VM.
+  /// Injectable so tests do not sit through a boot's worth of sleeps.
+  Duration setUpRetryDelay = const Duration(seconds: 3);
+
+  /// The one-click path the AI Workspace page offers when the VM is absent:
+  /// download the Debian cloud image (reused from the ISO cache when
+  /// present), create the VM seeded from it, start it headless, and wait
+  /// until the guest answers over SSH — cloud-init needs a first boot to
+  /// create the user and install the store key.
+  @override
+  Future<void> setUp(ExecutionBroker broker,
+      {required void Function(String key) notify}) async {
+    var vm = await _api.vmInfo(vmName);
+    if (vm == null) {
+      final entry = VmImageCatalog.entryById('debian-13-cloud');
+      if (entry == null) {
+        throw Exception('ai-workspace-vm-missing-text');
+      }
+      Notify.message('ai-workspace-downloading-text'.i18n(), loading: true);
+      final image = await vmImageCatalogBuilder().download(entry,
+          onProgress: (received, total) {
+        if (total > 0) {
+          Notify.message(
+              '${'ai-workspace-downloading-text'.i18n()} '
+              '${(received / total * 100).toStringAsFixed(0)}%',
+              loading: true);
+        }
+      });
+      notify('ai-workspace-preparing-text');
+      await _api.createLinuxVm(vmName,
+          imagePath: image, diskSizeGb: 32, cpus: 2, memoryGb: 4);
+      vm = await _api.vmInfo(vmName);
+    }
+    if (vm != null && !vm.running) {
+      notify('ai-workspace-starting-vm-text');
+      await _api.startHeadless(vmName);
+    }
+    for (var attempt = 0; attempt < 40; attempt++) {
+      final probe = await broker
+          .run(script('true', timeout: const Duration(seconds: 15)));
+      if (probe.isSuccess) return;
+      await Future<void>.delayed(setUpRetryDelay);
+    }
+    throw Exception('ai-workspace-vm-unreachable-text');
   }
 }

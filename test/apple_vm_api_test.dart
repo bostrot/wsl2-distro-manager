@@ -18,6 +18,17 @@ class FakeVmctlShell implements Shell {
   final Map<String, int> exitCodes = {};
   final Map<String, String> errors = {};
 
+  /// Sequenced answers, consulted before [responses]: each call for the
+  /// subcommand pops the next entry, letting a test model state that
+  /// changes between calls (a VM that is stopped, then running).
+  final Map<String, List<String>> responseQueue = {};
+
+  String _responseFor(String command) {
+    final queue = responseQueue[command];
+    if (queue != null && queue.isNotEmpty) return queue.removeAt(0);
+    return responses[command] ?? '';
+  }
+
   String _commandOf(List<String> arguments) {
     // Skip the leading `--store <dir>`.
     var index = 0;
@@ -43,7 +54,7 @@ class FakeVmctlShell implements Shell {
     return ProcessResult(
       0,
       exitCodes[command] ?? 0,
-      responses[command] ?? '',
+      _responseFor(command),
       errors[command] ?? '',
     );
   }
@@ -59,7 +70,12 @@ class FakeVmctlShell implements Shell {
     ProcessStartMode mode = ProcessStartMode.normal,
   }) async {
     calls.add(['start:$executable', ...arguments]);
-    return MockProcess();
+    final command = _commandOf(arguments);
+    return MockProcess(
+      exitCode: exitCodes[command] ?? 0,
+      stdout: _responseFor(command),
+      stderr: errors[command] ?? '',
+    );
   }
 }
 

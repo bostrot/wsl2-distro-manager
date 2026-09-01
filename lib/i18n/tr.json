@@ -767,5 +767,12 @@
   "vmcreatedwithservice-text": "%s sanal makinesi oluşturuldu. %s ilk çalıştığında kurulur.",
   "installingservice-text": "%s içine hizmet kuruluyor…",
   "installedservice-text": "%s içindeki hizmet %s adresinde hazır.",
-  "installservicefailed-text": "%s içine hizmet kurulamadı: %s"
+  "installservicefailed-text": "%s içine hizmet kurulamadı: %s",
+  "ai-workspace-setup-text": "AI Workspace kendi Linux sanal makinesinde ('ai-workspace') çalışır. Otomatik kur: Debian'ı indirir (yaklaşık 3 GB, önbellekte varsa yeniden kullanılır), VM'yi oluşturur ve başlatır — ilk seferde birkaç dakika sürer.",
+  "ai-workspace-setup-btn": "Otomatik kur",
+  "ai-workspace-setup-busy-text": "Kuruluyor…",
+  "ai-workspace-setup-done-text": "Workspace VM hazır.",
+  "ai-workspace-downloading-text": "Workspace sistemi indiriliyor…",
+  "ai-workspace-starting-vm-text": "Workspace VM başlatılıyor…",
+  "ai-workspace-vm-unreachable-text": "Workspace VM'ye SSH ile erişilemedi. Ana ekrandan konsolunu kontrol edip yeniden deneyin."
 }

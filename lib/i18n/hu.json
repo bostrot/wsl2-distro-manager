@@ -767,5 +767,12 @@
   "vmcreatedwithservice-text": "A(z) %s VM létrejött. A(z) %s az első futáskor települ.",
   "installingservice-text": "Szolgáltatás telepítése itt: %s…",
   "installedservice-text": "A szolgáltatás készen áll itt: %s, cím: %s.",
-  "installservicefailed-text": "Nem sikerült telepíteni a szolgáltatást itt: %s: %s"
+  "installservicefailed-text": "Nem sikerült telepíteni a szolgáltatást itt: %s: %s",
+  "ai-workspace-setup-text": "Az AI Workspace saját Linux VM-ben fut ('ai-workspace'). Automatikus beállítás: letölti a Debiant (kb. 3 GB, gyorsítótárból újrahasznosítva), létrehozza és elindítja a VM-et — első alkalommal néhány perc.",
+  "ai-workspace-setup-btn": "Automatikus beállítás",
+  "ai-workspace-setup-busy-text": "Beállítás…",
+  "ai-workspace-setup-done-text": "A workspace VM készen áll.",
+  "ai-workspace-downloading-text": "Workspace-rendszer letöltése…",
+  "ai-workspace-starting-vm-text": "Workspace VM indítása…",
+  "ai-workspace-vm-unreachable-text": "A workspace VM nem vált elérhetővé SSH-n. Ellenőrizd a konzolját a kezdőoldalon, majd próbáld újra."
 }

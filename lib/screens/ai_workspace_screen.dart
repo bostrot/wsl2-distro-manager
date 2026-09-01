@@ -48,6 +48,11 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   // Gates only the distro check, not the page — cards render immediately.
   bool _preparingDistro = true;
   String? _error;
+
+  /// The raw runtime key behind [_error] when it was one of the known
+  /// VM-provisioning cases — those get the guided setup button.
+  String? _errorKey;
+  bool _settingUp = false;
   final Set<AiWorkspaceTool> _busyTools = {};
 
   /// Which action is in flight per tool. One shared busy flag used to put
@@ -232,8 +237,32 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     const known = {
       'ai-workspace-vm-missing-text',
       'ai-workspace-vm-stopped-text',
+      'ai-workspace-vm-unreachable-text',
     };
+    _errorKey = known.contains(raw) ? raw : null;
     return known.contains(raw) ? raw.i18n() : raw;
+  }
+
+  /// Whether the current error is one the guided setup can fix by itself:
+  /// a missing VM (download + create + boot) or a stopped one (boot).
+  bool get _setupCanFix =>
+      _errorKey == 'ai-workspace-vm-missing-text' ||
+      _errorKey == 'ai-workspace-vm-stopped-text';
+
+  Future<void> _runGuidedSetup() async {
+    setState(() => _settingUp = true);
+    try {
+      await _service.setUpEnvironment();
+      Notify.message('ai-workspace-setup-done-text'.i18n(),
+          severity: InfoBarSeverity.success);
+      await _retryInit();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = _friendlyInitError(e));
+      }
+    } finally {
+      if (mounted) setState(() => _settingUp = false);
+    }
   }
 
   Future<void> _retryInit() async {
@@ -505,7 +534,41 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       return _buildPaywall(context);
     }
 
-    // Only a missing distro blocks the whole page; everything else renders.
+    // A missing or stopped workspace VM is not an error the user must fix
+    // by hand: the guided setup downloads the cloud image, creates the VM
+    // and boots it. Only genuinely unexpected failures render as errors.
+    if (_error != null && _setupCanFix) {
+      final accent = FluentTheme.of(context).accentColor;
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(FluentIcons.robot, size: 42, color: accent),
+              const SizedBox(height: 16),
+              Text('ai-workspace-title'.i18n(),
+                  style: FluentTheme.of(context).typography.subtitle),
+              const SizedBox(height: 8),
+              Text(
+                'ai-workspace-setup-text'.i18n(),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: secondaryTextColor(context)),
+              ),
+              const SizedBox(height: 16),
+              BusyButton(
+                key: const ValueKey('test-workspace-setup'),
+                filled: true,
+                label: 'ai-workspace-setup-btn'.i18n(),
+                busyLabel: 'ai-workspace-setup-busy-text'.i18n(),
+                busy: _settingUp,
+                onPressed: _settingUp ? null : _runGuidedSetup,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (_error != null) {
       return Center(
         child: Column(

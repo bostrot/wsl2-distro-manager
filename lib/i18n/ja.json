@@ -767,5 +767,12 @@
   "vmcreatedwithservice-text": "VM %s を作成しました。%s は初回起動時にインストールされます。",
   "installingservice-text": "%s にサービスをインストール中…",
   "installedservice-text": "%s のサービスが %s で利用可能になりました。",
-  "installservicefailed-text": "%s へのサービスのインストールに失敗しました: %s"
+  "installservicefailed-text": "%s へのサービスのインストールに失敗しました: %s",
+  "ai-workspace-setup-text": "AI Workspaceは専用のLinux VM（'ai-workspace'）で動作します。自動セットアップ：Debianをダウンロードし（約3 GB、キャッシュがあれば再利用）、VMを作成して起動します。初回は数分かかります。",
+  "ai-workspace-setup-btn": "自動でセットアップ",
+  "ai-workspace-setup-busy-text": "セットアップ中…",
+  "ai-workspace-setup-done-text": "ワークスペースVMの準備ができました。",
+  "ai-workspace-downloading-text": "ワークスペースのシステムをダウンロード中…",
+  "ai-workspace-starting-vm-text": "ワークスペースVMを起動中…",
+  "ai-workspace-vm-unreachable-text": "ワークスペースVMにSSHで接続できませんでした。ホーム画面からコンソールを確認して、もう一度お試しください。"
 }

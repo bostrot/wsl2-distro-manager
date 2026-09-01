@@ -767,5 +767,12 @@
   "vmcreatedwithservice-text": "VM %s created. %s installs the first time it runs.",
   "installingservice-text": "Installing the service in %s…",
   "installedservice-text": "Service ready in %s at %s.",
-  "installservicefailed-text": "Could not install the service in %s: %s"
+  "installservicefailed-text": "Could not install the service in %s: %s",
+  "ai-workspace-setup-text": "The AI Workspace runs in its own Linux VM ('ai-workspace'). Set it up automatically: this downloads Debian (about 3 GB, reused if cached), creates the VM and starts it — a few minutes on first run.",
+  "ai-workspace-setup-btn": "Set up automatically",
+  "ai-workspace-setup-busy-text": "Setting up…",
+  "ai-workspace-setup-done-text": "The workspace VM is ready.",
+  "ai-workspace-downloading-text": "Downloading the workspace system…",
+  "ai-workspace-starting-vm-text": "Starting the workspace VM…",
+  "ai-workspace-vm-unreachable-text": "The workspace VM did not become reachable over SSH. Check its console from the Home screen, then try again."
 }

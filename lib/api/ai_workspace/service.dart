@@ -626,6 +626,15 @@ class AiWorkspaceService {
     _distroReady = true;
   }
 
+  /// The user-confirmed workspace setup: unlike [ensureDistro] it may do
+  /// heavy work (download an image, create and boot a VM). The page offers
+  /// it when [ensureDistro] reports the environment missing.
+  Future<void> setUpEnvironment() async {
+    await _runtime.setUp(_broker,
+        notify: (key) => Notify.message(key.i18n(), loading: true));
+    _distroReady = true;
+  }
+
   /// One-shot root command in the workspace environment, built by the active
   /// [WorkspaceRuntime].
   ExecutionRequest _req(String shellCommand, {Duration? timeout}) =>

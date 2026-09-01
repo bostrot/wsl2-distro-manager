@@ -768,5 +768,12 @@
   "vmcreatedwithservice-text": "已创建虚拟机 %s。%s 将在首次运行时安装。",
   "installingservice-text": "正在 %s 中安装服务…",
   "installedservice-text": "%s 中的服务已就绪，地址 %s。",
-  "installservicefailed-text": "无法在 %s 中安装服务：%s"
+  "installservicefailed-text": "无法在 %s 中安装服务：%s",
+  "ai-workspace-setup-text": "AI Workspace 运行在专属的 Linux 虚拟机（'ai-workspace'）中。自动设置：下载 Debian（约 3 GB，有缓存则复用），创建并启动虚拟机 — 首次需要几分钟。",
+  "ai-workspace-setup-btn": "自动设置",
+  "ai-workspace-setup-busy-text": "正在设置…",
+  "ai-workspace-setup-done-text": "工作区虚拟机已就绪。",
+  "ai-workspace-downloading-text": "正在下载工作区系统…",
+  "ai-workspace-starting-vm-text": "正在启动工作区虚拟机…",
+  "ai-workspace-vm-unreachable-text": "无法通过 SSH 连接到工作区虚拟机。请在主页查看其控制台，然后重试。"
 }
