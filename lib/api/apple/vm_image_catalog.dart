@@ -21,6 +21,14 @@ class VmIsoCatalogEntry {
     required this.indexUrl,
     required this.pattern,
   });
+
+  /// Stable slug the AI/MCP use to name an image, derived from [name]
+  /// (e.g. "Alpine Linux (virt)" → "alpine-virt").
+  String get id => name
+      .toLowerCase()
+      .replaceAll(RegExp(r'[()]'), '')
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
 }
 
 /// The curated arm64 installer ISOs the Create-VM page offers, and how they
@@ -73,6 +81,18 @@ class VmImageCatalog {
 
   static List<String> get names =>
       entries.map((entry) => entry.name).toList();
+
+  /// The slug for [entry], for the MCP tools.
+  static String idOf(VmIsoCatalogEntry entry) => entry.id;
+
+  /// Look an entry up by its slug id.
+  static VmIsoCatalogEntry? entryById(String id) {
+    final needle = id.trim().toLowerCase();
+    for (final entry in entries) {
+      if (entry.id == needle) return entry;
+    }
+    return null;
+  }
 
   static VmIsoCatalogEntry? entryFor(String name) {
     final trimmed = name.trim().toLowerCase();

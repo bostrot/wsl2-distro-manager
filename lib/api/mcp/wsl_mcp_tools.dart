@@ -16,6 +16,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
 import 'package:wsl2distromanager/api/distro_package.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
@@ -1165,25 +1166,50 @@ List<McpTool> _wslOnlyTools(
 List<McpTool> _appleVmTools(AppleVmApi api) {
   return [
     McpTool(
+      name: 'vm_list_images',
+      description:
+          'List the curated installer ISOs vm_create_linux can download by '
+          'id (Alpine, Ubuntu Server, Debian, Fedora). Use one of these ids '
+          'as the "catalog" argument to create a VM without a local file.',
+      inputSchema: const {'type': 'object', 'properties': {}},
+      handler: (_) async {
+        return VmImageCatalog.entries.isEmpty
+            ? 'No catalog images.'
+            : VmImageCatalog.entries
+                .map((e) => '${e.id}: ${e.name}')
+                .join('\n');
+      },
+    ),
+    McpTool(
       name: 'vm_create_linux',
       description:
-          'Create a new Linux VM (Apple Virtualization framework). '
-          'Provide iso_path for an installer, or image_path for an existing '
-          'raw disk image (cloud image / exported template); with neither '
-          'the VM gets a blank disk. A cloud-init seed with the store SSH '
-          'key is attached, so cloud images come up reachable for '
-          'wsl_run_command.',
+          'Create a new Linux VM (Apple Virtualization framework). A Linux VM '
+          'MUST have something to boot from — a blank disk boots into nothing '
+          'and stops at once — so provide exactly one of: catalog (an id from '
+          'vm_list_images, downloaded automatically), image_path (an existing '
+          'raw disk / cloud image), or iso_path (a local installer ISO). '
+          'Prefer a cloud image when the user wants a ready-to-use system: a '
+          'cloud-init seed with the store SSH key is attached, so it comes up '
+          'reachable for wsl_run_command with no manual install. An installer '
+          'ISO instead needs the user to run the installer in the VM window. '
+          'This tool refuses a create with no boot source.',
       inputSchema: const {
         'type': 'object',
         'properties': {
           'name': {'type': 'string', 'description': 'Name of the new VM.'},
+          'catalog': {
+            'type': 'string',
+            'description':
+                'Id from vm_list_images to download and boot, e.g. '
+                '"alpine-linux-virt". The easiest boot source.',
+          },
           'iso_path': {
             'type': 'string',
-            'description': 'Installer ISO to attach. Optional.',
+            'description': 'Local installer ISO to attach.',
           },
           'image_path': {
             'type': 'string',
-            'description': 'Raw disk image to seed the disk from. Optional.',
+            'description': 'Local raw disk / cloud image to seed the disk.',
           },
           'disk_size_gb': {'type': 'integer', 'description': 'Default 32.'},
           'cpus': {'type': 'integer', 'description': 'Default 2.'},
@@ -1197,10 +1223,30 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
       },
       handler: (args) async {
         final name = _requireString(args, 'name');
+        var isoPath = (args['iso_path'] as String?)?.trim() ?? '';
+        final imagePath = (args['image_path'] as String?)?.trim() ?? '';
+        final catalog = (args['catalog'] as String?)?.trim() ?? '';
+
+        if (catalog.isNotEmpty) {
+          final entry = VmImageCatalog.entryById(catalog);
+          if (entry == null) {
+            throw ArgumentError('No catalog image "$catalog". Ids: '
+                '${VmImageCatalog.entries.map(VmImageCatalog.idOf).join(", ")}');
+          }
+          isoPath = await VmImageCatalog().download(entry);
+        }
+
+        if (isoPath.isEmpty && imagePath.isEmpty) {
+          throw ArgumentError(
+              'A Linux VM needs a boot source. Pass a "catalog" id from '
+              'vm_list_images (recommended), an "image_path" (cloud image), '
+              'or an "iso_path" — a blank disk would boot into nothing.');
+        }
+
         await api.createLinuxVm(
           name,
-          isoPath: (args['iso_path'] as String?)?.trim(),
-          imagePath: (args['image_path'] as String?)?.trim(),
+          isoPath: isoPath,
+          imagePath: imagePath,
           diskSizeGb: (args['disk_size_gb'] as num?)?.toInt() ?? 32,
           cpus: (args['cpus'] as num?)?.toInt() ?? 2,
           memoryGb: (args['memory_gb'] as num?)?.toInt() ?? 4,

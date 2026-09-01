@@ -93,6 +93,7 @@ void main() {
       expect(
           names,
           containsAll([
+            'vm_list_images',
             'vm_create_linux',
             'vm_create_macos',
             'vm_start',
@@ -154,9 +155,36 @@ void main() {
           buildWslMcpTools(api, WslTerminalManager(wslApi: api));
       final create =
           tools.firstWhere((t) => t.name == 'vm_create_linux').handler;
-      final out = await create({'name': 'dev', 'cpus': 6});
+      final out = await create({'name': 'dev', 'cpus': 6, 'image_path': '/tmp/cloud.img'});
       expect(out, contains('dev'));
       expect(shell.calls.last, containsAll(['create', '--cpus', '6']));
+    });
+
+    test('vm_create_linux refuses a blank disk', () async {
+      final shell = FakeVmctlShell();
+      final api = AppleVmApi(
+          shell: shell,
+          helperPathOverride: '/fake/vmctl',
+          storeDirOverride: '/tmp/vm-mcp-test');
+      final tools =
+          buildWslMcpTools(api, WslTerminalManager(wslApi: api));
+      final create =
+          tools.firstWhere((t) => t.name == 'vm_create_linux').handler;
+      await expectLater(create({'name': 'blank'}), throwsArgumentError);
+      expect(shell.calls.any((c) => c.contains('create')), isFalse);
+    });
+
+    test('vm_list_images lists catalog ids', () async {
+      final api = AppleVmApi(
+          shell: FakeVmctlShell(),
+          helperPathOverride: '/fake/vmctl',
+          storeDirOverride: '/tmp/vm-mcp-test');
+      final tools =
+          buildWslMcpTools(api, WslTerminalManager(wslApi: api));
+      final out = await tools
+          .firstWhere((t) => t.name == 'vm_list_images')
+          .handler({});
+      expect(out, contains('alpine-linux-virt'));
     });
 
     test('vm_start is headless unless gui is asked for', () async {
