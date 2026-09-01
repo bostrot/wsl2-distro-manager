@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 import 'package:wsl2distromanager/screens/ai_workspace_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
+import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
@@ -88,12 +89,15 @@ final router = GoRouter(
           builder: (context, state) => const AiWorkspacePage(),
         ),
 
-        /// Create a new instance (WSL distro, or a native VM on macOS)
+        /// Create a new instance — a WSL distro when the active backend is
+        /// WSL (Windows, Linux, or a Mac pointed at a remote target), a
+        /// native VM otherwise.
         GoRoute(
           path: '/addinstance',
           name: 'addinstance',
-          builder: (context, state) =>
-              isAppleHost ? const CreateVmPage() : const CreatePage(),
+          builder: (context, state) => vmBackend() is AppleVmApi
+              ? const CreateVmPage()
+              : const CreatePage(),
         ),
 
         /// Custom distro packaging (`.wsl`, wsl-distribution.conf)

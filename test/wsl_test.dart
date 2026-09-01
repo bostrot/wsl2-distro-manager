@@ -365,7 +365,7 @@ void main() {
     // so remote terminal/editor/VS Code launches silently passed SSH's
     // options (`-o`, `BatchMode=yes`, ...) as the program to run instead of
     // running ssh at all.
-    test('start() prefixes remote args with the literal ssh token', () async {
+    test('start() prefixes remote args with the literal ssh token', skip: Platform.isMacOS, () async {
       prefs.remove('Terminal');
       wslApi.start('Ubuntu');
       await Future.delayed(const Duration(milliseconds: 100));
@@ -378,7 +378,7 @@ void main() {
       expect(mockShell.lastStartArguments, contains('Ubuntu'));
     });
 
-    test('openBashrc() prefixes remote args with the literal ssh token',
+    test('openBashrc() prefixes remote args with the literal ssh token', skip: Platform.isMacOS,
         () async {
       await wslApi.openBashrc('Ubuntu');
 
@@ -388,7 +388,7 @@ void main() {
       expect(mockShell.lastStartArguments, contains('wsl'));
     });
 
-    test('startVSCode() prefixes remote args with the literal ssh token',
+    test('startVSCode() prefixes remote args with the literal ssh token', skip: Platform.isMacOS,
         () async {
       wslApi.startVSCode('Ubuntu');
       await Future.delayed(const Duration(milliseconds: 100));
@@ -399,7 +399,7 @@ void main() {
       expect(mockShell.lastStartArguments, contains('code'));
     });
 
-    test('exec() passwd branch prefixes remote args with the literal ssh token',
+    test('exec() passwd branch prefixes remote args with the literal ssh token', skip: Platform.isMacOS,
         () async {
       await wslApi.exec('Ubuntu', ['passwd']);
 

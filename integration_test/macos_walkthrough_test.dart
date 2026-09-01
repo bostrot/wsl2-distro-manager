@@ -250,7 +250,9 @@ void main() {
     await tester.tap(find.text('generalsettings-text'.i18n()),
         warnIfMissed: false);
     await tester.pumpAndSettle();
-    expect(find.text('remote-wsl-over-ssh-text'.i18n()), findsNothing);
+    // Remote WSL is the one WSL entry point a Mac keeps: pointing it at a
+    // Windows host swaps the whole app to that host's distros.
+    expect(find.text('remote-wsl-over-ssh-text'.i18n()), findsOneWidget);
     await snap(tester, '10-settings-general');
   });
 

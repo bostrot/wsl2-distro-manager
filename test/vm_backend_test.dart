@@ -95,6 +95,32 @@ void main() {
       }
     });
 
+    test('a configured remote WSL target switches a Mac to the WSL backend',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'UseRemoteWSL': true,
+        'RemoteWSLTarget': 'eric@192.168.1.20',
+      });
+      prefs = await SharedPreferences.getInstance();
+      final backend = defaultVmBackendBuilder();
+      if (Platform.isMacOS) {
+        expect(backend, isA<WSLApi>(),
+            reason: 'remote WSL outranks native VMs when configured');
+        expect(backend.isRemote, isTrue);
+      } else {
+        expect(backend, isA<WSLApi>());
+      }
+      // An invalid target must not strand the Mac on a dead backend.
+      SharedPreferences.setMockInitialValues({
+        'UseRemoteWSL': true,
+        'RemoteWSLTarget': 'not a target',
+      });
+      prefs = await SharedPreferences.getInstance();
+      if (Platform.isMacOS) {
+        expect(defaultVmBackendBuilder(), isA<AppleVmApi>());
+      }
+    });
+
     test('the builder seam swaps the backend for the whole app', () {
       final fake = FakeBackend();
       vmBackendBuilder = () => fake;
@@ -108,7 +134,8 @@ void main() {
       expect(features.wslConfig, isTrue);
       expect(features.packaging, isTrue);
       expect(features.mountDisk, isTrue);
-      expect(features.aiWorkspace, isTrue);
+      // The AI Workspace needs a local wsl.exe, so it follows the host.
+      expect(features.aiWorkspace, Platform.isWindows);
       expect(features.quickActions, isTrue);
       expect(features.cleanup, isTrue);
       expect(features.hostIntegration, isTrue);

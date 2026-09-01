@@ -158,12 +158,15 @@ class WSLApi extends VmBackend {
   String get instanceNoun => 'distro';
 
   @override
-  VmFeatures get features => const VmFeatures(
+  VmFeatures get features => VmFeatures(
         wslConfig: true,
         quickActions: true,
         packaging: true,
         mountDisk: true,
-        aiWorkspace: true,
+        // The AI Workspace lives in a dedicated distro on the *local*
+        // wsl.exe; a macOS host driving a remote target has no local WSL to
+        // put it in.
+        aiWorkspace: Platform.isWindows,
         cleanup: true,
         hostIntegration: true,
         templatesDeprecated: true,
@@ -687,6 +690,13 @@ class WSLApi extends VmBackend {
       }
       return;
     }
+    if (_useRemoteWsl && Platform.isMacOS) {
+      await _startMacosTerminal(args);
+      if (kDebugMode) {
+        print("Done starting $distribution");
+      }
+      return;
+    }
 
     await shell.start(executable, args,
         mode: ProcessStartMode.detached, runInShell: true);
@@ -712,6 +722,10 @@ class WSLApi extends VmBackend {
 
     if (Platform.isLinux) {
       await _startLinuxTerminal(argsRc);
+      return '';
+    }
+    if (_useRemoteWsl && Platform.isMacOS) {
+      await _startMacosTerminal(argsRc);
       return '';
     }
 
@@ -769,6 +783,10 @@ class WSLApi extends VmBackend {
 
     if (Platform.isLinux) {
       await _startLinuxTerminal(args);
+      return;
+    }
+    if (_useRemoteWsl && Platform.isMacOS) {
+      await _startMacosTerminal(args);
       return;
     }
 
@@ -875,6 +893,21 @@ class WSLApi extends VmBackend {
         mode: ProcessStartMode.normal, runInShell: true);
   }
 
+  /// Launch [command] in a fresh Terminal.app window — macOS's stand-in for
+  /// the Windows `start` verb when this backend drives a remote target from
+  /// a Mac. A `.command` file avoids the automation-permission prompt an
+  /// AppleScript approach would raise.
+  Future<void> _startMacosTerminal(List<String> command) async {
+    String quote(String value) => "'${value.replaceAll("'", "'\\''")}'";
+    final script =
+        '#!/bin/bash\nexec ${command.map(quote).join(' ')}\n';
+    final scriptPath = getTmpPath().file('remote_terminal.command');
+    File(scriptPath).writeAsStringSync(script);
+    await shell.run('chmod', ['+x', scriptPath], runInShell: false);
+    await shell.start('open', [scriptPath],
+        mode: ProcessStartMode.detached, runInShell: false);
+  }
+
   Future<bool> _startLinuxTerminal(List<String> command) async {
     final launchAttempts = <List<String>>[
       ['xdg-terminal-exec', ...command],
@@ -964,12 +997,12 @@ class WSLApi extends VmBackend {
   @override
   void startExplorer(String distribution) async {
     if (_useRemoteWsl) {
-      if (Platform.isLinux) {
+      if (Platform.isLinux || Platform.isMacOS) {
         final remotePath = _windowsPathToSftpUriPath(
           _remoteDefaultInstallPath(distribution),
         );
         final uri = 'sftp://$_remoteTarget$remotePath';
-        await shell.start('xdg-open', [uri],
+        await shell.start(Platform.isLinux ? 'xdg-open' : 'open', [uri],
             mode: ProcessStartMode.detached, runInShell: false);
         return;
       }
@@ -1011,6 +1044,10 @@ class WSLApi extends VmBackend {
 
     if (_useRemoteWsl && Platform.isLinux) {
       await _startLinuxTerminal(launchWslHome);
+      return;
+    }
+    if (_useRemoteWsl && Platform.isMacOS) {
+      await _startMacosTerminal(launchWslHome);
       return;
     }
 
@@ -1411,6 +1448,9 @@ class WSLApi extends VmBackend {
         });
         if (_useRemoteWsl && Platform.isLinux) {
           await _startLinuxTerminal(args);
+          exitCode = 0;
+        } else if (_useRemoteWsl && Platform.isMacOS) {
+          await _startMacosTerminal(args);
           exitCode = 0;
         } else {
           // `""` is the console title `start` would otherwise take the first

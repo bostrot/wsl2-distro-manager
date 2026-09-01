@@ -422,9 +422,9 @@ class SettingsPageState extends State<SettingsPage> {
             children: [
               Row(
                 children: [
-                  // Both footer actions drive wsl.exe; other backends have
-                  // neither a .wslconfig nor a global WSL VM to stop.
-                  if (!isAppleHost) ...[
+                  // Both footer actions drive wsl.exe — locally or over the
+                  // configured remote target.
+                  if (!isAppleHost || _useRemoteWsl) ...[
                   Tooltip(
                     message: 'editwslconfighint-text'.i18n(),
                     child: Button(
@@ -695,7 +695,7 @@ class SettingsPageState extends State<SettingsPage> {
           header: Text('generalsettings-text'.i18n()),
           content: _buildGeneralSettings(context),
         ),
-        if (!isAppleHost) ...[
+        if (!isAppleHost || _useRemoteWsl) ...[
         const SizedBox(height: 10),
         Expander(
           header: Text('dockersettings-text'.i18n()),
@@ -714,7 +714,7 @@ class SettingsPageState extends State<SettingsPage> {
                   .i18n()),
           content: _buildMcpSettings(context),
         ),
-        if (!isAppleHost) ...[
+        if (!isAppleHost || _useRemoteWsl) ...[
         const SizedBox(height: 10),
         Expander(
           header: Text('syncsettings-text'.i18n()),
@@ -853,7 +853,6 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
-        if (!isAppleHost)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(
@@ -880,7 +879,6 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
-        if (!isAppleHost)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

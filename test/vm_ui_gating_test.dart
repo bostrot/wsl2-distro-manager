@@ -37,7 +37,9 @@ void main() {
       final keys = paneKeys();
       expect(keys, contains("[<'/quickactions'>]"));
       expect(keys, contains("[<'/templates'>]"));
-      expect(keys, contains("[<'/ai-workspace'>]"));
+      // The AI Workspace needs a local wsl.exe, so its entry follows the
+      // host platform even on the WSL backend.
+      expect(keys.contains("[<'/ai-workspace'>]"), Platform.isWindows);
       expect(keys, contains("[<'/package'>]"));
       expect(keys, contains("[<'/addinstance'>]"));
     });
