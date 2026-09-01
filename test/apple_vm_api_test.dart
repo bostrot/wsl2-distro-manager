@@ -378,6 +378,42 @@ void main() {
     });
   });
 
+  group('row labels', () {
+    test('the row shows real usage next to the allocation, and the IP',
+        () async {
+      final vmDir = Directory('${tempStore.path}/ubuntu')..createSync(recursive: true);
+      // 32 MiB logical (sparse allocation stand-in for the test).
+      final disk = File('${vmDir.path}/disk.img');
+      disk.writeAsBytesSync(List.filled(32 * 1024 * 1024, 0));
+      // du says 1.5 GiB of real blocks (value in KiB).
+      shell.responses['-k'] = '1572864\t${disk.path}';
+      shell.responses['list'] = json.encode({
+        'vms': [
+          {'name': 'ubuntu', 'state': 'running', 'ip': '192.168.64.7'},
+        ]
+      });
+
+      await api.list(false); // caches the IP
+      // First call kicks the du probe and shows the allocation alone.
+      expect(api.instanceMetaLabel('ubuntu'), '192.168.64.7 · 0.03 GB');
+      await Future<void>.delayed(Duration.zero);
+      expect(api.instanceMetaLabel('ubuntu'), '192.168.64.7 · 1.50 GB / 0.03 GB');
+    });
+
+    test('a stopped VM shows no IP', () async {
+      final vmDir = Directory('${tempStore.path}/quiet')..createSync(recursive: true);
+      File('${vmDir.path}/disk.img')
+          .writeAsBytesSync(List.filled(1024 * 1024, 0));
+      shell.responses['list'] = json.encode({
+        'vms': [
+          {'name': 'quiet', 'state': 'stopped', 'ip': '192.168.64.9'},
+        ]
+      });
+      await api.list(false);
+      expect(api.instanceMetaLabel('quiet'), isNot(contains('192.168')));
+    });
+  });
+
   group('runCommands', () {
     test('opens a Terminal .command that execs the snippet via vmctl',
         () async {

@@ -170,7 +170,7 @@ class DistroListState extends State<DistroList> {
             newList.add(ListItem(
               item: item,
               running: running,
-              trailing: widget.api.instanceSizeLabel(item),
+              trailing: widget.api.instanceMetaLabel(item),
             ));
           }
           return Expanded(

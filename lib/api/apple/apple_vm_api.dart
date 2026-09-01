@@ -175,10 +175,20 @@ class AppleVmApi extends VmBackend {
     try {
       final decoded = json.decode(out.trim().isEmpty ? '{}' : out);
       final vms = (decoded is Map ? decoded['vms'] : null) as List? ?? [];
-      return vms
+      final parsed = vms
           .whereType<Map>()
           .map((vm) => AppleVmInfo.fromJson(Map<String, dynamic>.from(vm)))
           .toList();
+      // Remember each running guest's IP so the row label can show it
+      // without an extra helper round-trip per rebuild.
+      _lastKnownIps.clear();
+      for (final vm in parsed) {
+        final ip = vm.ip;
+        if (vm.running && ip != null && ip.isNotEmpty) {
+          _lastKnownIps[vm.name] = ip;
+        }
+      }
+      return parsed;
     } on FormatException catch (error, stack) {
       logError(error, stack, null);
       throw AppleVmException('vmctl returned unreadable output: $out');
@@ -489,6 +499,13 @@ class AppleVmApi extends VmBackend {
     }
   }
 
+  /// Guest IPs from the last `vmctl list`, running VMs only.
+  final Map<String, String> _lastKnownIps = {};
+
+  /// Real on-disk usage per VM ("1.24 GB"), filled by a background `du`.
+  final Map<String, String> _diskUsageLabels = {};
+  final Set<String> _diskUsageProbes = {};
+
   @override
   String instanceSizeLabel(String distribution) {
     try {
@@ -496,10 +513,42 @@ class AppleVmApi extends VmBackend {
       if (!disk.existsSync()) return '';
       final size = disk.lengthSync();
       if (size <= 0) return '';
-      return '${(size / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+      final allocated = '${(size / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+      // The image is sparse, so its logical length is the *allocated* size
+      // every VM shows identically. Real usage comes from the file's blocks
+      // (`du`), probed in the background; until the first probe answers the
+      // honest thing to show is the allocation alone.
+      _probeDiskUsage(distribution, disk.path);
+      final used = _diskUsageLabels[distribution];
+      return used == null ? allocated : '$used / $allocated';
     } catch (_) {
       return '';
     }
+  }
+
+  void _probeDiskUsage(String distribution, String diskPath) {
+    if (_diskUsageProbes.contains(distribution)) return;
+    _diskUsageProbes.add(distribution);
+    shell
+        .run('du', ['-k', diskPath], runInShell: false)
+        .then((result) {
+          if (result.exitCode != 0) return;
+          final kb = int.tryParse(
+              result.stdout.toString().trim().split(RegExp(r'\s+')).first);
+          if (kb == null || kb < 0) return;
+          _diskUsageLabels[distribution] =
+              '${(kb / 1024 / 1024).toStringAsFixed(2)} GB';
+        })
+        .catchError((_) {})
+        .whenComplete(() => _diskUsageProbes.remove(distribution));
+  }
+
+  @override
+  String instanceMetaLabel(String distribution) {
+    final size = instanceSizeLabel(distribution);
+    final ip = _lastKnownIps[distribution];
+    if (ip == null || ip.isEmpty) return size;
+    return size.isEmpty ? ip : '$ip · $size';
   }
 
   @override

@@ -152,6 +152,11 @@ abstract class VmBackend {
   /// unknown.
   String instanceSizeLabel(String distribution) => '';
 
+  /// The full trailing label for a list row. Defaults to the size; backends
+  /// with more to say (the Apple backend adds the guest IP) override it.
+  String instanceMetaLabel(String distribution) =>
+      instanceSizeLabel(distribution);
+
   /// Convert process bytes to readable text while preserving valid UTF-8.
   String utf8Convert(List<int> bytes) {
     if (bytes.isEmpty) {
