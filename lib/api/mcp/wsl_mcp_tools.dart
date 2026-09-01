@@ -21,6 +21,8 @@ import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/api/mount_service.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
+import 'package:wsl2distromanager/api/recipes/recipe_catalog.dart';
+import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
@@ -383,6 +385,63 @@ List<McpTool> _genericTools(VmBackend backend) {
         }
         final out = await backend.execCmdAsRoot(distro, command);
         return out.trim().isEmpty ? '(no output)' : out.trim();
+      },
+    ),
+    // =========================================================================
+    // Service recipes — one-click storage/database/broker installs.
+    // =========================================================================
+    McpTool(
+      name: 'wsl_list_recipes',
+      description:
+          'List the built-in service recipes: one-click local storage '
+          '(MinIO/S3), databases (Postgres, MySQL, ClickHouse, Redis) and '
+          'message brokers (RabbitMQ, Kafka) that wsl_install_service sets '
+          'up inside an instance via Docker.',
+      inputSchema: const {'type': 'object', 'properties': {}},
+      handler: (_) async {
+        return RecipeCatalog.recipes
+            .map((r) =>
+                '${r.id}: ${r.name} (${r.category.name}) — ${r.description}')
+            .join('\n');
+      },
+    ),
+    McpTool(
+      name: 'wsl_install_service',
+      description:
+          'Install a service recipe (see wsl_list_recipes) into an instance: '
+          'ensures Docker is present, runs the service container, and returns '
+          'where it is reachable plus its dev credentials. The instance must '
+          'exist and — for a VM — be running.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'distro': {
+            'type': 'string',
+            'description': 'Instance (WSL distro or VM) to install into.',
+          },
+          'recipe': {
+            'type': 'string',
+            'description': 'Recipe id, e.g. minio, postgres, redis, rabbitmq.',
+          },
+        },
+        'required': ['distro', 'recipe'],
+      },
+      handler: (args) async {
+        final distro = _requireString(args, 'distro');
+        final recipeId = _requireString(args, 'recipe');
+        final recipe = RecipeCatalog.byId(recipeId);
+        if (recipe == null) {
+          throw ArgumentError('No recipe "$recipeId". Known ids: '
+              '${RecipeCatalog.recipes.map((r) => r.id).join(", ")}');
+        }
+        final result =
+            await RecipeService(backend: backend).apply(distro, recipe);
+        if (!result.ok) {
+          throw StateError('Installing ${recipe.name} failed: ${result.error}');
+        }
+        return 'Installed ${recipe.name} in $distro.\n'
+            'Reachable at: ${result.surface}\n'
+            'Credentials: ${result.credentials}';
       },
     ),
   ];

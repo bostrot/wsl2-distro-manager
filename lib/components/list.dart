@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/error_view.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'list_item.dart';
@@ -52,6 +54,40 @@ class DistroListState extends State<DistroList> {
     super.initState();
   }
 
+  /// Instances whose pending recipe is being installed right now, so the 5s
+  /// poll does not launch a second install over the first.
+  final Set<String> _installingRecipes = {};
+
+  /// For each running instance with a recipe queued at create time, install
+  /// it once and clear the queue on success (a not-yet-reachable VM retries
+  /// on a later poll). Fire-and-forget: a slow docker pull must not block
+  /// the list from rendering.
+  void _installPendingRecipes(List<String> running) {
+    for (final instance in running) {
+      if (_installingRecipes.contains(instance)) continue;
+      if (!RecipeService.hasPending(instance)) continue;
+      _installingRecipes.add(instance);
+      () async {
+        try {
+          Notify.message('installingservice-text'.i18n([instance]),
+              loading: true);
+          final result =
+              await RecipeService(backend: widget.api).applyPending(instance);
+          if (result == null) return;
+          Notify.message(
+              result.ok
+                  ? 'installedservice-text'.i18n([instance, result.surface])
+                  : 'installservicefailed-text'.i18n([instance, result.error]),
+              severity: result.ok
+                  ? InfoBarSeverity.success
+                  : InfoBarSeverity.warning);
+        } finally {
+          _installingRecipes.remove(instance);
+        }
+      }();
+    }
+  }
+
   void reloadEvery5Seconds() async {
     for (;;) {
       await Future.delayed(const Duration(seconds: 5));
@@ -81,6 +117,9 @@ class DistroListState extends State<DistroList> {
           List<Widget> newList = [];
           List<String> list = snapshot.data?.all ?? [];
           List<String> running = snapshot.data?.running ?? [];
+          // A service chosen at create time installs the first time its
+          // instance is running (a VM has to boot first).
+          _installPendingRecipes(running);
           // Check if there are distros
           if (list.isEmpty) {
             // Two unrelated states used to share one sentence written from
