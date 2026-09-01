@@ -79,6 +79,18 @@ class VmImageCatalog {
       kind: VmImageKind.cloudImage,
       idOverride: 'debian-13-cloud',
     ),
+    // The plain uefi-cloudinit variant (not "metal", not "tiny"): full
+    // cloud-init, so the seed's user, key and unlock all apply. qcow2 —
+    // vmctl converts while seeding the disk.
+    VmIsoCatalogEntry(
+      name: 'Alpine Linux (cloud image)',
+      indexUrl:
+          'https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/cloud/',
+      pattern:
+          RegExp(r'generic_alpine-[0-9.]+-aarch64-uefi-cloudinit-r0\.qcow2'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'alpine-cloud',
+    ),
     VmIsoCatalogEntry(
       name: 'Alpine Linux (virt)',
       indexUrl:

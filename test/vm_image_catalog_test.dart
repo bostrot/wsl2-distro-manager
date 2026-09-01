@@ -105,12 +105,19 @@ void main() {
       expect(entry.pattern.pattern, contains('genericcloud-arm64'));
       expect(entry.pattern.pattern, contains('raw'),
           reason: 'only raw images boot without a conversion tool');
-      // Everything else stays an installer.
+      // Alpine's cloud image rides the same path (qcow2, converted by
+      // vmctl); everything else stays an installer.
       expect(
           VmImageCatalog.entries
               .where((e) => e.isCloudImage)
               .map((e) => e.id),
-          ['debian-13-cloud']);
+          ['debian-13-cloud', 'alpine-cloud']);
+      final alpine = VmImageCatalog.entryById('alpine-cloud')!;
+      expect(alpine.pattern.pattern, isNot(contains('metal')));
+      expect('generic_alpine-3.24.1-aarch64-uefi-cloudinit-metal-r0.qcow2',
+          isNot(matches(alpine.pattern)));
+      expect('generic_alpine-3.24.1-aarch64-uefi-cloudinit-r0.qcow2',
+          matches(alpine.pattern));
     });
 
     test('names cover the curated distros and resolve back to entries', () {
