@@ -24,7 +24,11 @@ codesign --force --sign "$IDENTITY" \
 # carry the helper.
 DEV_BIN="$HOME/Library/Application Support/WSLManager/bin"
 mkdir -p "$DEV_BIN"
-cp "$VMCTL_BIN" "$DEV_BIN/vmctl"
+# Atomic install (copy + rename): overwriting a signed executable in place
+# poisons the kernel's code-signature cache for that inode, after which every
+# exec of it dies with SIGKILL until the file is replaced.
+cp "$VMCTL_BIN" "$DEV_BIN/vmctl.tmp"
+mv -f "$DEV_BIN/vmctl.tmp" "$DEV_BIN/vmctl"
 echo "==> vmctl installed for dev runs at $DEV_BIN/vmctl"
 
 if [[ "${VMCTL_ONLY:-0}" == "1" ]]; then
