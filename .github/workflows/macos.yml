@@ -1,0 +1,97 @@
+name: macOS
+
+on:
+  push:
+    paths:
+      - "lib/**"
+      - "macos/**"
+      - "assets/**"
+      - "scripts/**"
+      - "pubspec.yaml"
+      - ".github/workflows/macos.yml"
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    # Apple silicon runner: matches the arm64-only vmctl target and the
+    # Apple-silicon Xcode toolchain the app is developed against.
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same pin as test.yml — an unpinned 'stable' breaks CI with no change
+      # on our side.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.41.6'
+
+      - name: Check translations
+        run: dart run scripts/check_translations.dart
+
+      - name: Enable macOS Desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Run vmctl tests
+        run: ./scripts/test_vmctl.sh
+
+      # Ad-hoc signed until a Developer ID certificate lands in the repo
+      # secrets: the app runs locally and via right-click → Open elsewhere,
+      # but is not notarized. Set CODESIGN_IDENTITY from a secret to change
+      # that without touching the script.
+      - name: Build app with vmctl
+        run: ./scripts/build_macos.sh
+
+      - name: Get version
+        id: get_version
+        run: echo "version=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Package
+        run: |
+          APP="build/macos/Build/Products/Release/WSL Manager.app"
+          STAGE=$(mktemp -d)
+          cp -R "$APP" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "WSL Manager" -srcfolder "$STAGE" -ov -format UDZO \
+            "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" \
+            "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip"
+
+      - name: Upload nightly artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: |
+            wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg
+            wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip
+
+      # The Windows releaser creates the GitHub release on main; this only
+      # attaches the mac artifacts to it once it exists. Best effort: on a
+      # race (release not created yet) the nightly artifacts above still
+      # carry the build.
+      - name: Attach to release (main only)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in 1 2 3 4 5; do
+            if gh release upload "v${{ steps.get_version.outputs.version }}" \
+              "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg" \
+              "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip" \
+              --clobber; then
+              exit 0
+            fi
+            sleep 60
+          done
+          exit 1
