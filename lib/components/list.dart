@@ -88,15 +88,36 @@ class DistroListState extends State<DistroList> {
     }
   }
 
+  /// Consecutive [VmBackend.list] failures. One blip — a helper briefly
+  /// starved while a VM image is being copied, a wsl.exe hiccup — must not
+  /// replace the whole page with an error view when a known-good list
+  /// exists; only a persistent failure earns that.
+  int _listFailureStreak = 0;
+
+  Future<Instances> _listWithGrace() async {
+    try {
+      final result = await widget.api.list(showDocker);
+      _listFailureStreak = 0;
+      return result;
+    } catch (_) {
+      _listFailureStreak++;
+      final cached = widget.api.lastDistroList;
+      if (_listFailureStreak < 3 && cached.all.isNotEmpty) {
+        return cached;
+      }
+      rethrow;
+    }
+  }
+
   void reloadEvery5Seconds() async {
     for (;;) {
       await Future.delayed(const Duration(seconds: 5));
-      // Check if state disposed
-      if (mounted) {
-        setState(() {
-          reloadTick++;
-        });
-      }
+      // A disposed state must also stop the loop — before, every visit to
+      // the home page left another eternal timer chain behind.
+      if (!mounted) return;
+      setState(() {
+        reloadTick++;
+      });
     }
   }
 
@@ -108,7 +129,7 @@ class DistroListState extends State<DistroList> {
     // List as FutureBuilder with WSLApi
     return FutureBuilder<Instances>(
       key: const ValueKey('test-distro-list'),
-      future: widget.api.list(showDocker),
+      future: _listWithGrace(),
       initialData: GlobalVariable.initialSnapshot,
       builder: (context, snapshot) {
         // Update every 20 seconds
