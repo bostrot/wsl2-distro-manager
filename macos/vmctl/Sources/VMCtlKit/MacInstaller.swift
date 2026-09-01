@@ -50,7 +50,7 @@ public enum MacInstaller {
         try store.createDiskImage(at: store.diskPath(config.name), sizeBytes: diskSizeBytes)
         try store.saveConfig(config)
 
-        let vzConfig = try VMFactory.macosConfiguration(config, store: store, headless: true)
+        let vzConfig = try VMFactory.macosConfiguration(config, store: store)
         let vm = VZVirtualMachine(configuration: vzConfig)
 
         var installError: Error?

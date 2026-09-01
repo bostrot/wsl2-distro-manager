@@ -446,6 +446,12 @@ class AppleVmApi extends VmBackend {
     ]);
   }
 
+  /// Present a running VM's display window (opening it on first use — a
+  /// headless-started VM has its graphics device either way).
+  Future<void> showDisplay(String distribution) async {
+    await _runChecked(['show', '--name', distribution]);
+  }
+
   /// Open Terminal.app attached to the VM's serial console, starting the VM
   /// headless first when it is not running — a VM driven entirely from a
   /// terminal, no display window involved.

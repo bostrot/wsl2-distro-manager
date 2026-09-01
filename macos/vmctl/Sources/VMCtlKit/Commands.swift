@@ -106,6 +106,8 @@ public enum VmctlCLI {
                 return try exec(store, rest)
             case "console":
                 return try console(store, rest)
+            case "show":
+                try show(store, rest)
             case "shell":
                 return try shell(store, rest)
             case "help", "--help", "-h":
@@ -139,6 +141,7 @@ public enum VmctlCLI {
       exec --name N [--user U] -- CMD...    Run a command in the guest (SSH)
       shell --name N [--user U]             Interactive guest shell (SSH)
       console --name N                      Attach to the serial console
+      show --name N                         Open/front the VM's screen window
 
     """
 
@@ -245,7 +248,12 @@ public enum VmctlCLI {
         let bag = ArgumentBag(rest, flagNames: ["gui"])
         let name = try bag.require("name")
         _ = try store.loadConfig(name)
-        if store.isRunning(name) {
+        if let pid = store.runningPid(name) {
+            // Already up: with --gui the intent is "see it", so front the
+            // window instead of doing nothing.
+            if bag.flags.contains("gui") {
+                kill(pid, SIGUSR1)
+            }
             printJson(["started": name, "alreadyRunning": true])
             return
         }
@@ -456,6 +464,18 @@ public enum VmctlCLI {
         try ssh.run()
         ssh.waitUntilExit()
         return ssh.terminationStatus
+    }
+
+    /// Ask a running VM's daemon to present its display window.
+    static func show(_ store: VMStore, _ rest: [String]) throws {
+        let bag = ArgumentBag(rest, flagNames: [])
+        let name = try bag.require("name")
+        _ = try store.loadConfig(name)
+        guard let pid = store.runningPid(name) else {
+            throw VmctlError("VM \(name) is not running.")
+        }
+        kill(pid, SIGUSR1)
+        printJson(["shown": name])
     }
 
     /// Bridge this terminal to the VM's serial console socket, raw-mode, until

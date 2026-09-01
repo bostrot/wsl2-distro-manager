@@ -14,7 +14,9 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
     private let gui: Bool
     private var virtualMachine: VZVirtualMachine?
     private var signalSource: DispatchSourceSignal?
+    private var showSignalSource: DispatchSourceSignal?
     private var consoleRelay: ConsoleRelay?
+    private var window: NSWindow?
 
     public init(store: VMStore, config: VMConfig, gui: Bool) {
         self.store = store
@@ -38,7 +40,7 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
             FileHandle(fileDescriptor: $0.vmSideFd, closeOnDealloc: false)
         }
         let vzConfig = try VMFactory.configuration(
-            config, store: store, headless: !gui,
+            config, store: store,
             consoleInput: vmHandle, consoleOutput: vmHandle)
         let vm = VZVirtualMachine(configuration: vzConfig)
         vm.delegate = self
@@ -60,43 +62,55 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
             }
         }
 
+        // One AppKit loop for both modes: headless just starts with no
+        // window and the accessory activation policy, and can grow a window
+        // later when `vmctl show` sends SIGUSR1.
+        let app = NSApplication.shared
+        app.setActivationPolicy(gui ? .regular : .accessory)
         if gui {
-            runWithWindow(vm)
-        } else {
-            RunLoop.main.run()
+            showWindow()
         }
-        // Not reached; both branches run forever until exit().
+        app.run()
+        // Not reached; the loop runs until exit().
         exit(0)
     }
 
-    private func runWithWindow(_ vm: VZVirtualMachine) {
+    /// Present the VM's display, creating the window on first use — also the
+    /// re-open path after the user closed it.
+    private func showWindow() {
+        guard let vm = virtualMachine else { return }
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
 
-        let view = VZVirtualMachineView()
-        view.capturesSystemKeys = true
-        view.virtualMachine = vm
+        if window == nil {
+            let view = VZVirtualMachineView()
+            view.capturesSystemKeys = true
+            view.virtualMachine = vm
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1280, height: 800),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false)
-        window.title = config.name
-        window.contentView = view
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        app.activate(ignoringOtherApps: true)
+            let created = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1280, height: 800),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false)
+            created.title = config.name
+            created.contentView = view
+            // The window outlives its on-screen appearances; AppKit must not
+            // free it on close.
+            created.isReleasedWhenClosed = false
+            created.center()
 
-        // Closing the window is "close the screen", not "pull the plug": the
-        // VM keeps running headless and the app can be told to stop it.
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification, object: window, queue: nil
-        ) { _ in
-            app.setActivationPolicy(.accessory)
+            // Closing the window is "close the screen", not "pull the plug":
+            // the VM keeps running and the screen can be summoned again.
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification, object: created, queue: nil
+            ) { _ in
+                app.setActivationPolicy(.accessory)
+            }
+            window = created
         }
 
-        app.run()
+        window?.makeKeyAndOrderFront(nil)
+        app.activate(ignoringOtherApps: true)
     }
 
     private func installSignalHandler() {
@@ -107,6 +121,15 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
         }
         source.resume()
         signalSource = source
+
+        // SIGUSR1 = "show your screen" (`vmctl show`).
+        signal(SIGUSR1, SIG_IGN)
+        let show = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
+        show.setEventHandler { [weak self] in
+            self?.showWindow()
+        }
+        show.resume()
+        showSignalSource = show
     }
 
     private func requestShutdown() {

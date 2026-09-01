@@ -10,7 +10,6 @@ public enum VMFactory {
     public static func linuxConfiguration(
         _ config: VMConfig,
         store: VMStore,
-        headless: Bool,
         consoleInput: FileHandle? = nil,
         consoleOutput: FileHandle? = nil
     ) throws -> VZVirtualMachineConfiguration {
@@ -78,15 +77,16 @@ public enum VMFactory {
             }
         }
 
-        if !headless {
-            let graphics = VZVirtioGraphicsDeviceConfiguration()
-            graphics.scanouts = [
-                VZVirtioGraphicsScanoutConfiguration(widthInPixels: 1280, heightInPixels: 800)
-            ]
-            vzConfig.graphicsDevices = [graphics]
-            vzConfig.keyboards = [VZUSBKeyboardConfiguration()]
-            vzConfig.pointingDevices = [VZUSBScreenCoordinatePointingDeviceConfiguration()]
-        }
+        // Always present, even when no window opens at start: the display
+        // can be summoned later (`vmctl show`), and a device cannot be added
+        // to a running VM.
+        let graphics = VZVirtioGraphicsDeviceConfiguration()
+        graphics.scanouts = [
+            VZVirtioGraphicsScanoutConfiguration(widthInPixels: 1280, heightInPixels: 800)
+        ]
+        vzConfig.graphicsDevices = [graphics]
+        vzConfig.keyboards = [VZUSBKeyboardConfiguration()]
+        vzConfig.pointingDevices = [VZUSBScreenCoordinatePointingDeviceConfiguration()]
 
         try vzConfig.validate()
         return vzConfig
@@ -97,8 +97,7 @@ public enum VMFactory {
     #if arch(arm64)
     public static func macosConfiguration(
         _ config: VMConfig,
-        store: VMStore,
-        headless: Bool
+        store: VMStore
     ) throws -> VZVirtualMachineConfiguration {
         let vzConfig = VZVirtualMachineConfiguration()
         vzConfig.cpuCount = clampCpus(config.cpus)
@@ -145,18 +144,17 @@ public enum VMFactory {
     public static func configuration(
         _ config: VMConfig,
         store: VMStore,
-        headless: Bool,
         consoleInput: FileHandle? = nil,
         consoleOutput: FileHandle? = nil
     ) throws -> VZVirtualMachineConfiguration {
         switch config.os {
         case .linux:
-            return try linuxConfiguration(config, store: store, headless: headless,
+            return try linuxConfiguration(config, store: store,
                                           consoleInput: consoleInput,
                                           consoleOutput: consoleOutput)
         case .macos:
             #if arch(arm64)
-            return try macosConfiguration(config, store: store, headless: headless)
+            return try macosConfiguration(config, store: store)
             #else
             throw VmctlError("macOS guests require an Apple Silicon host.")
             #endif

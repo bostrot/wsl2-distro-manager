@@ -751,5 +751,6 @@
   "mcp-settings-vm-text": "MCPサーバー（VM API）",
   "templatesinfo-vm-text": "テンプレートは保存されたVMディスクイメージで、そこから新しいVMを作成できます。ホームのVM行にあるアーカイブボタンで保存できます。",
   "vmisoplaceholder-text": "ダウンロードするインストーラーを選ぶか、ローカルのISOパスを入力",
-  "vmopenconsole-text": "ターミナルでシリアルコンソールを開く"
+  "vmopenconsole-text": "ターミナルでシリアルコンソールを開く",
+  "vmshowdisplay-text": "画面を表示"
 }

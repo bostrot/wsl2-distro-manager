@@ -752,5 +752,6 @@
   "mcp-settings-vm-text": "MCP 伺服器（VM API）",
   "templatesinfo-vm-text": "範本是保存的虛擬機磁碟映像，可用來快速建立新虛擬機。在主頁虛擬機列中點擊封存按鈕即可保存。",
   "vmisoplaceholder-text": "選擇要下載的安裝映像，或輸入本機 ISO 路徑",
-  "vmopenconsole-text": "在終端機中開啟序列主控台"
+  "vmopenconsole-text": "在終端機中開啟序列主控台",
+  "vmshowdisplay-text": "顯示螢幕"
 }

@@ -298,6 +298,23 @@ void main() {
     });
   });
 
+  group('showDisplay', () {
+    test('asks the daemon to present the screen', () async {
+      shell.responses['show'] = '{"shown":"ubuntu"}';
+      await api.showDisplay('ubuntu');
+      expect(lastCall(), containsAll(['show', '--name', 'ubuntu']));
+    });
+
+    test('a stopped VM surfaces the helper error', () async {
+      shell.exitCodes['show'] = 1;
+      shell.errors['show'] = 'VM ubuntu is not running.';
+      expect(
+          () => api.showDisplay('ubuntu'),
+          throwsA(predicate(
+              (e) => e.toString().contains('is not running'))));
+    });
+  });
+
   group('openConsole', () {
     test('a stopped VM is started headless first', () async {
       shell.responses['start'] = '{"started":"ubuntu"}';

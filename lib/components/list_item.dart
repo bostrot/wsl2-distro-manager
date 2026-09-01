@@ -188,35 +188,40 @@ class _ListItemState extends State<ListItem> {
                 ),
               ),
             ),
-            // Boot a stopped VM straight into a Terminal serial console —
-            // no display window at any point. While running, the first
-            // button already is the terminal.
+            // Third slot, one concept per state: a stopped VM boots straight
+            // into a Terminal serial console (no display window at any
+            // point); a running VM summons its screen — the first button is
+            // already the terminal then.
             if (api.features.serialConsole)
-              Visibility(
-                visible: !isRunning(widget.item, widget.running),
-                maintainSize: true,
-                maintainAnimation: true,
-                maintainState: true,
-                child: MergeSemantics(
-                  child: Tooltip(
-                    message: 'vmopenconsole-text'.i18n(),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: IconButton(
-                        key: const ValueKey('test-listitem-console'),
-                        icon: isBusy
-                            ? const SizedBox.square(
-                                dimension: 16.0,
-                                child: ProgressRing(strokeWidth: 2.0))
-                            : const Icon(FluentIcons.command_prompt,
-                                size: 16.0),
-                        onPressed:
-                            (isBusy || isRunning(widget.item, widget.running))
-                                ? null
-                                : () {
-                                    openConsole();
-                                  },
-                      ),
+              MergeSemantics(
+                child: Tooltip(
+                  message: isRunning(widget.item, widget.running)
+                      ? 'vmshowdisplay-text'.i18n()
+                      : 'vmopenconsole-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      key: ValueKey(isRunning(widget.item, widget.running)
+                          ? 'test-listitem-screen'
+                          : 'test-listitem-console'),
+                      icon: isBusy
+                          ? const SizedBox.square(
+                              dimension: 16.0,
+                              child: ProgressRing(strokeWidth: 2.0))
+                          : Icon(
+                              isRunning(widget.item, widget.running)
+                                  ? FluentIcons.t_v_monitor
+                                  : FluentIcons.command_prompt,
+                              size: 16.0),
+                      onPressed: isBusy
+                          ? null
+                          : () {
+                              if (isRunning(widget.item, widget.running)) {
+                                showDisplay();
+                              } else {
+                                openConsole();
+                              }
+                            },
                     ),
                   ),
                 ),
@@ -290,6 +295,16 @@ class _ListItemState extends State<ListItem> {
           severity: InfoBarSeverity.error);
     } finally {
       _setBusy(false);
+    }
+  }
+
+  /// Front (or first-open) the running VM's display window.
+  Future<void> showDisplay() async {
+    try {
+      await (api as AppleVmApi).showDisplay(widget.item);
+    } catch (error) {
+      Notify.message('${'vmshowdisplay-text'.i18n()}: $error',
+          severity: InfoBarSeverity.error);
     }
   }
 

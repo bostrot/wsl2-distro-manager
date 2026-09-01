@@ -752,5 +752,6 @@
   "mcp-settings-vm-text": "MCP 服务器（VM API）",
   "templatesinfo-vm-text": "模板是保存的虚拟机磁盘镜像，可用来快速创建新虚拟机。在主页虚拟机行中点击归档按钮即可保存。",
   "vmisoplaceholder-text": "选择要下载的安装镜像，或输入本地 ISO 路径",
-  "vmopenconsole-text": "在终端中打开串行控制台"
+  "vmopenconsole-text": "在终端中打开串行控制台",
+  "vmshowdisplay-text": "显示屏幕"
 }
