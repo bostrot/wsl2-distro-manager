@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/ai_workspace/runtime.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
@@ -43,6 +44,10 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+    // Pin the WSL runtime so the service drives the injected test shell; on
+    // a macOS dev host the default is the Apple runtime, which would poll a
+    // real vmctl and hang.
+    workspaceRuntimeBuilder = WslWorkspaceRuntime.new;
     // The page skips every WSL call for non-Pro users, so nothing would poll.
     GlobalVariable.testProEnabled = true;
     testShell = TestShell();
@@ -53,6 +58,7 @@ void main() {
   });
 
   tearDown(() {
+    workspaceRuntimeBuilder = defaultWorkspaceRuntime;
     GlobalVariable.testProEnabled = false;
     testShell.reset();
   });
