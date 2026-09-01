@@ -7,7 +7,8 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:re_highlight/languages/bash.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
@@ -16,7 +17,7 @@ class QuickPage extends StatefulWidget {
   const QuickPage({Key? key, this.api}) : super(key: key);
 
   /// Injected in tests; the screen builds its own.
-  final WSLApi? api;
+  final VmBackend? api;
 
   @override
   QuickPageState createState() => QuickPageState();
@@ -52,7 +53,8 @@ class QuickPageState extends State<QuickPage> {
             text: Text(distroLabel(instance)),
             onPressed: () {
               plausible.event(name: "wsl_quickaction_run");
-              WSLApi().runCmds(instance, action.content.split('\n'),
+              (widget.api ?? vmBackend()).runCommands(
+                  instance, action.content.split('\n'),
                   user: prefs.getString('StartUser_$instance'));
             },
           ),
@@ -70,7 +72,7 @@ class QuickPageState extends State<QuickPage> {
     // screen must not spawn wsl.exe from initState.
     if (widget.api != null ||
         !Platform.environment.containsKey('FLUTTER_TEST')) {
-      (widget.api ?? WSLApi()).list(false).then((instances) {
+      (widget.api ?? vmBackend()).list(false).then((instances) {
         if (mounted) setState(() => _instances = instances.all);
       }).catchError((_) {});
     }

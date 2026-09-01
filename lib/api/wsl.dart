@@ -1335,6 +1335,11 @@ class WSLApi extends VmBackend {
     return processes;
   }
 
+  @override
+  Future<void> runCommands(String instance, List<String> commands,
+          {String? user}) =>
+      runCmds(instance, commands, user: user);
+
   /// Executes a command list in a WSL distro and open a terminal
   Future<Process> runCmds(
     String distribution,

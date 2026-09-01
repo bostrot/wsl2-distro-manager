@@ -100,6 +100,9 @@ class AppleVmApi extends VmBackend {
         createVm: true,
         serialConsole: true,
         aiWorkspace: true,
+        // Snippets are just saved scripts run inside an instance — works
+        // over SSH exactly as it does over wsl.exe.
+        quickActions: true,
       );
 
   /// The VM store: one directory per VM under the app's data path.
@@ -364,6 +367,35 @@ class AppleVmApi extends VmBackend {
       runInShell: false,
     );
   }
+
+  @override
+  Future<void> runCommands(String instance, List<String> commands,
+      {String? user}) async {
+    // Run the snippet in the guest over SSH and show its output in a
+    // Terminal window that stays open — the macOS analogue of WSLApi's
+    // runCmds. The script travels base64-encoded so nothing in it has to be
+    // escaped through the host shell, ssh's re-parse, or the guest shell.
+    final script = commands.join('\n');
+    final payload = base64.encode(utf8.encode(script));
+    // One argument after `--`: the guest shell decodes and runs the snippet.
+    final remote = 'printf %s $payload | base64 -d | sh';
+    final runner = '#!/bin/bash\n'
+        'echo "Running snippet in $instance…"\n'
+        '"${helperPath()}" --store "$storeDir" exec '
+        '--name "$instance" --user "${user ?? 'root'}" -- ${_shSingleQuote(remote)}\n'
+        'echo\n'
+        'read -n1 -r -p "Done. Press any key to close…" _\n';
+    final scriptPath = p.join(storeDir, instance, 'run', 'snippet.command');
+    File(scriptPath)
+      ..createSync(recursive: true)
+      ..writeAsStringSync(runner);
+    await shell.run('chmod', ['+x', scriptPath], runInShell: false);
+    await shell.start('open', [scriptPath],
+        mode: ProcessStartMode.detached, runInShell: false);
+  }
+
+  static String _shSingleQuote(String value) =>
+      "'${value.replaceAll("'", "'\\''")}'";
 
   @override
   Future<String> copy(String distribution, String newName) async {

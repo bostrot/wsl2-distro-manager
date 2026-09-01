@@ -67,6 +67,10 @@ class FakeBackend extends VmBackend {
   Future<String> getDefaultUser(String distribution) async => 'root';
 
   @override
+  Future<void> runCommands(String instance, List<String> commands,
+      {String? user}) async {}
+
+  @override
   Future<String> copy(String distribution, String newName) async => '';
 
   @override

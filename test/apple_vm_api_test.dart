@@ -112,13 +112,14 @@ void main() {
       expect(features.wslConfig, isFalse);
       expect(features.packaging, isFalse);
       expect(features.mountDisk, isFalse);
-      expect(features.quickActions, isFalse);
       expect(features.templatesDeprecated, isFalse);
       expect(features.createVm, isTrue);
-      // The AI Workspace runs in a dedicated Linux VM on this backend, so
-      // it is supported (unlike the WSL-only families above).
+      // The AI Workspace (a dedicated Linux VM), the serial console and
+      // snippets are all supported on this backend, unlike the WSL-only
+      // families above.
       expect(features.aiWorkspace, isTrue);
       expect(features.serialConsole, isTrue);
+      expect(features.quickActions, isTrue);
     });
   });
 
@@ -374,6 +375,23 @@ void main() {
               (e) => e.toString().contains('vmejectbeforestart-text'))));
       expect(shell.calls.any((c) => c.contains('start') && c.length > 2),
           isFalse, reason: 'the guard must fire before vmctl start');
+    });
+  });
+
+  group('runCommands', () {
+    test('opens a Terminal .command that execs the snippet via vmctl',
+        () async {
+      api.runCommands('ubuntu', ['echo hi', 'ls -la'], user: 'dev');
+      await Future<void>.delayed(Duration.zero);
+      final openCall = shell.calls.lastWhere((c) => c.first == 'start:open');
+      final scriptPath = openCall.last;
+      expect(scriptPath, endsWith('snippet.command'));
+      final script = File(scriptPath).readAsStringSync();
+      expect(script, contains('exec'));
+      expect(script, contains('--name "ubuntu"'));
+      expect(script, contains('--user "dev"'));
+      // The snippet travels base64-encoded, decoded in the guest.
+      expect(script, contains('base64 -d | sh'));
     });
   });
 

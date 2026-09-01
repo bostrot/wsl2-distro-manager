@@ -136,6 +136,12 @@ abstract class VmBackend {
   /// The user commands run as by default.
   Future<String> getDefaultUser(String distribution);
 
+  /// Run a snippet — a list of shell lines — inside [instance] as [user]
+  /// (root by default), surfacing output in a terminal window. Used by the
+  /// Snippets screen and the per-row quick-action menu; fire-and-forget.
+  Future<void> runCommands(String instance, List<String> commands,
+      {String? user});
+
   /// Duplicate an instance under a new name.
   Future<String> copy(String distribution, String newName);
 

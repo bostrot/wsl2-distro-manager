@@ -420,7 +420,7 @@ class Bar extends StatelessWidget {
                   ),
                   onPressed: () async {
                     plausible.event(name: "wsl_quickaction_run");
-                    WSLApi().runCmds(
+                    api.runCommands(
                         widget.item, quickSettingsContents[i].split('\n'),
                         user: user);
                   },

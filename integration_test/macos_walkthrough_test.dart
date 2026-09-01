@@ -105,10 +105,13 @@ void main() {
     await boot(tester);
     await snap(tester, '01-home');
 
-    // WSL-only destinations are gone; the shared ones are present.
-    expect(find.text('managequickactions-text'.i18n()), findsNothing);
+    // WSL-only destinations are gone; the shared ones (Snippets, AI
+    // Workspace) are present.
     expect(find.text('custompackage-text'.i18n()), findsNothing);
     expect(find.text('mountdisk-text'.i18n()), findsNothing);
+    // Snippets are backend-agnostic (saved scripts run in an instance), so
+    // the tab is shared — asserted on its icon (pane-mode independent).
+    expect(find.byIcon(FluentIcons.code), findsOneWidget);
     // The AI Workspace runs in a Linux VM on macOS, so its nav entry is
     // present (its screen then asks for a running ai-workspace VM). Asserted
     // on the robot icon, which is findable regardless of pane display mode.
