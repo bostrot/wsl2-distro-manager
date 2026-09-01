@@ -36,6 +36,50 @@ import Testing
         #expect(leases["11:22:33:44:55:66"] == "192.168.64.9")
     }
 
+    @Test func rfc4361IdentifierMatchesByMacSuffix() {
+        // Alpine's dhcpcd sends a DUID client-id; macOS records it as a long
+        // hw_address whose final six octets are the interface MAC.
+        let sample = """
+        {
+        	name=alpine
+        	ip_address=192.168.64.3
+        	hw_address=ff,d1:c1:6c:8e:0:1:0:1:32:29:d4:58:ea:fd:d1:c1:6c:8e
+        }
+        {
+        	name=plain
+        	ip_address=192.168.64.9
+        	hw_address=1,ea:fd:d1:c1:6c:8e
+        }
+        """
+        // The exact-MAC lease outranks the DUID one when both exist.
+        #expect(DHCPLeases.ipForMac("EA:FD:D1:C1:6C:8E", in: sample) == "192.168.64.9")
+        // With only the DUID lease present, the suffix match resolves it.
+        let duidOnly = sample.components(separatedBy: "{").prefix(2).joined(separator: "{")
+        #expect(DHCPLeases.ipForMac("EA:FD:D1:C1:6C:8E", in: duidOnly) == "192.168.64.3")
+        // A MAC that merely shares trailing octets must not match.
+        #expect(DHCPLeases.ipForMac("00:00:d1:c1:6c:8e", in: duidOnly) == nil)
+    }
+
+    @Test func networkdDuidLeaseResolvesByHostname() {
+        // systemd-networkd's default DUID is machine-id-derived: the MAC
+        // appears nowhere in the lease, so the hostname (pinned to the VM
+        // name by the seed) is the only key left.
+        let sample = """
+        {
+        	name=dtest
+        	ip_address=192.168.64.10
+        	hw_address=ff,f1:f5:dd:7f:0:2:0:0:ab:11:e5:db:f0:13:5d:b2:72:c8
+        }
+        """
+        #expect(DHCPLeases.ipFor(
+            mac: "fa:38:02:78:c3:e1", hostname: "dtest", in: sample)
+            == "192.168.64.10")
+        #expect(DHCPLeases.ipFor(
+            mac: "fa:38:02:78:c3:e1", hostname: "other", in: sample) == nil)
+        #expect(DHCPLeases.ipFor(
+            mac: "fa:38:02:78:c3:e1", in: sample) == nil)
+    }
+
     @Test func normalizeMacPadsAndLowercases() {
         #expect(DHCPLeases.normalizeMac("AA:B:1:22:3:F") == "aa:0b:01:22:03:0f")
     }

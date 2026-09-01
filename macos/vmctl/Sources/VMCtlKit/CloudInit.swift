@@ -7,6 +7,11 @@ import Foundation
 /// guest setup.
 public enum CloudInit {
     public static func userData(user: String, publicKey: String, hostname: String) -> String {
+        // /bin/sh, not bash: Alpine has no bash and a user with a missing
+        // shell cannot exec anything over SSH. The chpasswd block writes `*`
+        // hashes: `lock_passwd` leaves `!` in /etc/shadow, and Alpine's sshd
+        // refuses "locked" accounts even for public-key auth — `*` means
+        // "no password" without counting as locked.
         """
         #cloud-config
         hostname: \(hostname)
@@ -14,7 +19,7 @@ public enum CloudInit {
           - name: \(user)
             groups: [sudo, wheel]
             sudo: ALL=(ALL) NOPASSWD:ALL
-            shell: /bin/bash
+            shell: /bin/sh
             lock_passwd: true
             ssh_authorized_keys:
               - \(publicKey)
@@ -22,7 +27,41 @@ public enum CloudInit {
         ssh_authorized_keys:
           - \(publicKey)
         ssh_pwauth: false
+        chpasswd:
+          expire: false
+          users:
+            - name: root
+              password: "*"
+              type: hash
+            - name: \(user)
+              password: "*"
+              type: hash
         package_update: false
+        """
+    }
+
+    /// Without this, images that leave all networking to cloud-init (Debian
+    /// genericcloud) boot with the NIC down: no DHCP lease, no SSH, and the
+    /// VM looks dead.
+    ///
+    /// Explicit device names, not a `match` glob: cloud-init's ENI renderer
+    /// (Alpine) resolves a glob at write time and can produce a config that
+    /// names no real interface — replacing the image's working default with
+    /// nothing. The VZ virtio NIC is `enp0s1` under systemd naming and
+    /// `eth0` everywhere else; the entry for whichever name is absent is
+    /// inert. `dhcp-identifier: mac` because macOS bootpd never answers the
+    /// DUID client-id systemd-networkd sends by default.
+    public static func networkConfig() -> String {
+        """
+        version: 2
+        ethernets:
+          eth0:
+            dhcp4: true
+            dhcp-identifier: mac
+          enp0s1:
+            dhcp4: true
+            dhcp-identifier: mac
+
         """
     }
 
@@ -51,6 +90,8 @@ public enum CloudInit {
             .write(to: seedDir.appendingPathComponent("user-data"), atomically: true, encoding: .utf8)
         try metaData(hostname: hostname)
             .write(to: seedDir.appendingPathComponent("meta-data"), atomically: true, encoding: .utf8)
+        try networkConfig()
+            .write(to: seedDir.appendingPathComponent("network-config"), atomically: true, encoding: .utf8)
 
         try? fm.removeItem(at: isoURL)
         // hdiutil appends .iso itself when missing, so hand it the final name.

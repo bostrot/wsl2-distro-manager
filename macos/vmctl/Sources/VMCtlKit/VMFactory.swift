@@ -42,10 +42,13 @@ public enum VMFactory {
                 attachment: try VZDiskImageStorageDeviceAttachment(
                     url: URL(fileURLWithPath: isoPath), readOnly: true)))
         }
-        // Cloud-init seed, if the VM has one.
+        // Cloud-init seed, if the VM has one. Attached as virtio-blk, not
+        // USB: minimal cloud kernels (Alpine's linux-virt) ship no USB
+        // drivers at all, and a seed the guest cannot see means no user and
+        // no SSH key. Every cloud kernel speaks virtio.
         let seedURL = store.seedIsoPath(config.name)
         if FileManager.default.fileExists(atPath: seedURL.path) {
-            storage.append(VZUSBMassStorageDeviceConfiguration(
+            storage.append(VZVirtioBlockDeviceConfiguration(
                 attachment: try VZDiskImageStorageDeviceAttachment(
                     url: seedURL, readOnly: true)))
         }
