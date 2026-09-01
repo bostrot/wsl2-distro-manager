@@ -252,7 +252,9 @@ class _AiChatPanelState extends State<AiChatPanel> {
               Icon(_sandbox == null ? FluentIcons.chat : FluentIcons.cube_shape,
                   size: 16, color: FluentTheme.of(context).accentColor),
               const SizedBox(width: 8),
-              Expanded(
+              // The badge hugs the title; the leftover space sits between
+              // the pair and the action buttons, not inside it.
+              Flexible(
                 child: Text(
                   _sandbox == null
                       ? 'ai-assistant-title'.i18n()
@@ -268,6 +270,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
               ),
               const SizedBox(width: 6),
               const BetaBadge(),
+              const Spacer(),
               const SizedBox(width: 4),
               // Switch between the app assistant and sandbox sessions —
               // their transcripts persist, so any of them can be reopened.
