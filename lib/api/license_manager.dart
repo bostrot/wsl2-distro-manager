@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:win32/win32.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -34,7 +35,25 @@ class LicenseManager extends ChangeNotifier {
   @visibleForTesting
   static bool Function()? storeInstallCheckOverride;
 
-  bool get isPro => _storeLicensed;
+  /// Debug builds run as Pro, so every gated feature is testable straight
+  /// from `flutter run` — but never inside tests, whose assertions cover
+  /// both sides of the gate. Unit runs carry FLUTTER_TEST in the
+  /// environment; integration runs do not, but their binding is a test
+  /// binding, which a `flutter run` never has.
+  static bool get _debugPro {
+    if (!kDebugMode) return false;
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return false;
+    try {
+      if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+        return false;
+      }
+    } catch (_) {
+      // No binding yet — nothing test-flavoured is running.
+    }
+    return true;
+  }
+
+  bool get isPro => _debugPro || _storeLicensed;
 
   LicensePlan get plan => _storeLicensed ? LicensePlan.store : LicensePlan.none;
 
