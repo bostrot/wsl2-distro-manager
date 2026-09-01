@@ -53,6 +53,10 @@ func printJson(_ object: [String: Any]) {
 public enum VmctlCLI {
     static let sshOptions = [
         "-o", "BatchMode=yes",
+        // Only the store key: without this the user's ssh-agent keys are
+        // offered first and a guest with default MaxAuthTries (Alpine: 6)
+        // disconnects before the right key gets a turn.
+        "-o", "IdentitiesOnly=yes",
         "-o", "StrictHostKeyChecking=no",
         "-o", "UserKnownHostsFile=/dev/null",
         "-o", "ConnectTimeout=10",
@@ -148,7 +152,7 @@ public enum VmctlCLI {
     // MARK: commands
 
     static func list(_ store: VMStore) throws {
-        let entries = try store.listEntries { DHCPLeases.ipForMac($0.macAddress) }
+        let entries = try store.listEntries { DHCPLeases.ipFor(mac: $0.macAddress, hostname: $0.name) }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(["vms": entries])
@@ -214,7 +218,14 @@ public enum VmctlCLI {
             guard fm.fileExists(atPath: imagePath) else {
                 throw VmctlError("Disk image not found: \(imagePath)")
             }
-            try fm.copyItem(at: URL(fileURLWithPath: imagePath), to: store.diskPath(config.name))
+            if Qcow2.isQcow2(imagePath) {
+                // Most distros publish arm64 cloud images only as qcow2;
+                // convert while seeding so they Just Work as --image.
+                try Qcow2.convert(from: imagePath, to: store.diskPath(config.name).path)
+            } else {
+                try fm.copyItem(
+                    at: URL(fileURLWithPath: imagePath), to: store.diskPath(config.name))
+            }
         }
         // Creates the file when there was no image and grows it either way.
         try store.createDiskImage(at: store.diskPath(config.name), sizeBytes: diskSizeBytes)
@@ -354,7 +365,7 @@ public enum VmctlCLI {
         let config = try store.loadConfig(name)
         let running = store.isRunning(name)
         var out: [String: Any] = ["name": name, "state": running ? "running" : "stopped"]
-        if running, let ip = DHCPLeases.ipForMac(config.macAddress) {
+        if running, let ip = DHCPLeases.ipFor(mac: config.macAddress, hostname: config.name) {
             out["ip"] = ip
         }
         printJson(out)
@@ -364,7 +375,7 @@ public enum VmctlCLI {
         let bag = ArgumentBag(rest, flagNames: [])
         let name = try bag.require("name")
         let config = try store.loadConfig(name)
-        printJson(["ip": DHCPLeases.ipForMac(config.macAddress) as Any])
+        printJson(["ip": DHCPLeases.ipFor(mac: config.macAddress, hostname: config.name) as Any])
     }
 
     static func exportVm(_ store: VMStore, _ rest: [String]) throws {
@@ -558,7 +569,7 @@ public enum VmctlCLI {
     static func waitForIp(_ config: VMConfig, timeout: TimeInterval = 20) -> String? {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if let ip = DHCPLeases.ipForMac(config.macAddress) {
+            if let ip = DHCPLeases.ipFor(mac: config.macAddress, hostname: config.name) {
                 return ip
             }
             Thread.sleep(forTimeInterval: 1)
