@@ -753,5 +753,8 @@
   "templatesinfo-vm-text": "模板是保存的虚拟机磁盘镜像，可用来快速创建新虚拟机。在主页虚拟机行中点击归档按钮即可保存。",
   "vmisoplaceholder-text": "选择要下载的安装镜像，或输入本地 ISO 路径",
   "vmopenconsole-text": "在终端中打开串行控制台",
-  "vmshowdisplay-text": "显示屏幕"
+  "vmshowdisplay-text": "显示屏幕",
+  "vmdiskinuse-text": "虚拟机正在运行，无法挂载其磁盘 — 改为打开虚拟机文件夹。",
+  "vmdisknotmountable-text": "macOS 无法读取此磁盘的文件系统（Linux 磁盘通常为 ext4）— 改为打开虚拟机文件夹。",
+  "vmejectbeforestart-text": "此虚拟机的磁盘已在 Finder 中挂载。请先推出，再启动虚拟机。"
 }

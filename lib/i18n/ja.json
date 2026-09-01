@@ -752,5 +752,8 @@
   "templatesinfo-vm-text": "テンプレートは保存されたVMディスクイメージで、そこから新しいVMを作成できます。ホームのVM行にあるアーカイブボタンで保存できます。",
   "vmisoplaceholder-text": "ダウンロードするインストーラーを選ぶか、ローカルのISOパスを入力",
   "vmopenconsole-text": "ターミナルでシリアルコンソールを開く",
-  "vmshowdisplay-text": "画面を表示"
+  "vmshowdisplay-text": "画面を表示",
+  "vmdiskinuse-text": "VMが実行中のためディスクをマウントできません — 代わりにVMフォルダを開きます。",
+  "vmdisknotmountable-text": "macOSはこのディスクのファイルシステムを読めません（Linuxディスクは通常ext4）— 代わりにVMフォルダを開きます。",
+  "vmejectbeforestart-text": "このVMのディスクはFinderでマウントされています。先に取り出してからVMを起動してください。"
 }

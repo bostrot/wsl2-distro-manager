@@ -754,5 +754,8 @@
   "templatesinfo-vm-text": "Um modelo é uma imagem de disco de VM salva a partir da qual você pode criar novas VMs. Salve um com o botão de arquivo em uma linha de VM na tela inicial.",
   "vmisoplaceholder-text": "Escolha um instalador para baixar ou insira um caminho ISO local",
   "vmopenconsole-text": "Abrir console serial no Terminal",
-  "vmshowdisplay-text": "Mostrar tela"
+  "vmshowdisplay-text": "Mostrar tela",
+  "vmdiskinuse-text": "A VM está em execução, então seu disco não pode ser montado — abrindo a pasta da VM em vez disso.",
+  "vmdisknotmountable-text": "O macOS não consegue ler o sistema de arquivos deste disco (discos Linux geralmente são ext4) — abrindo a pasta da VM em vez disso.",
+  "vmejectbeforestart-text": "O disco desta VM está montado no Finder. Ejete-o primeiro e depois inicie a VM."
 }

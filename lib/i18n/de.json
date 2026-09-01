@@ -753,5 +753,8 @@
   "templatesinfo-vm-text": "Eine Vorlage ist ein gespeichertes VM-Festplattenabbild, aus dem du neue VMs erzeugen kannst. Speichere eine über den Archiv-Button in einer VM-Zeile auf der Startseite.",
   "vmisoplaceholder-text": "Installer zum Herunterladen wählen oder lokalen ISO-Pfad eingeben",
   "vmopenconsole-text": "Serielle Konsole im Terminal öffnen",
-  "vmshowdisplay-text": "Bildschirm anzeigen"
+  "vmshowdisplay-text": "Bildschirm anzeigen",
+  "vmdiskinuse-text": "Die VM läuft, ihre Festplatte kann daher nicht eingebunden werden — stattdessen wird der VM-Ordner geöffnet.",
+  "vmdisknotmountable-text": "macOS kann das Dateisystem dieser Festplatte nicht lesen (Linux-Festplatten sind meist ext4) — stattdessen wird der VM-Ordner geöffnet.",
+  "vmejectbeforestart-text": "Die Festplatte dieser VM ist im Finder eingebunden. Erst auswerfen, dann die VM starten."
 }

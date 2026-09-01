@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fluent_ui/fluent_ui.dart' show InfoBarSeverity;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 
 import 'mocks.dart' show MockProcess;
 
@@ -63,6 +65,17 @@ class FakeVmctlShell implements Shell {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    Notify();
+    Notify.message = (msg,
+        {duration,
+        severity = InfoBarSeverity.info,
+        loading = false,
+        useWidget = false,
+        leadingIcon = true,
+        dynamic widget}) {};
+  });
 
   late FakeVmctlShell shell;
   late AppleVmApi api;
@@ -295,6 +308,56 @@ void main() {
       expect(await api.guestIp('ubuntu'), isNull);
       shell.responses['ip'] = '{"ip":"192.168.64.5"}';
       expect(await api.guestIp('ubuntu'), '192.168.64.5');
+    });
+  });
+
+  group('startExplorer / disk mounting', () {
+    test('a stopped VM with a mountable partition opens the volume',
+        () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"stopped"}]}';
+      shell.responses['attach'] = '/dev/disk4              \n'
+          '/dev/disk4s1        EFI        /Volumes/EFI BOOT\n';
+      api.startExplorer('ubuntu');
+      await Future<void>.delayed(Duration.zero);
+      final opened =
+          shell.calls.where((c) => c.first == 'start:open').toList();
+      expect(opened, isNotEmpty);
+      expect(opened.first.last, '/Volumes/EFI BOOT');
+    });
+
+    test('an unmountable disk detaches again and opens the VM folder',
+        () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"stopped"}]}';
+      // Attached, but macOS mounted no volume (ext4-only disk).
+      shell.responses['attach'] = '/dev/disk4\n';
+      api.startExplorer('ubuntu');
+      await Future<void>.delayed(Duration.zero);
+      expect(shell.calls.any((c) => c.contains('detach')), isTrue,
+          reason: 'a device nothing mounted must not stay attached');
+      final opened = shell.calls.lastWhere((c) => c.first == 'start:open');
+      expect(opened.last, contains('ubuntu'));
+    });
+
+    test('a running VM never attaches its disk', () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"running"}]}';
+      api.startExplorer('ubuntu');
+      await Future<void>.delayed(Duration.zero);
+      expect(shell.calls.any((c) => c.contains('attach')), isFalse);
+      expect(shell.calls.any((c) => c.first == 'start:open'), isTrue);
+    });
+
+    test('start refuses while the disk is mounted in Finder', () async {
+      shell.responses['info'] =
+          'image-path : ${tempStore.path}/ubuntu/disk.img\n';
+      await expectLater(
+          api.start('ubuntu'),
+          throwsA(predicate(
+              (e) => e.toString().contains('vmejectbeforestart-text'))));
+      expect(shell.calls.any((c) => c.contains('start') && c.length > 2),
+          isFalse, reason: 'the guard must fire before vmctl start');
     });
   });
 

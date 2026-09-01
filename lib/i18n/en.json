@@ -752,5 +752,8 @@
   "templatesinfo-vm-text": "A template is a saved VM disk image you can stamp new VMs from. Save one with the archive button in a VM row on Home.",
   "vmisoplaceholder-text": "Choose an installer to download, or enter a local ISO path",
   "vmopenconsole-text": "Open serial console in Terminal",
-  "vmshowdisplay-text": "Show screen"
+  "vmshowdisplay-text": "Show screen",
+  "vmdiskinuse-text": "The VM is running, so its disk cannot be mounted — opening the VM folder instead.",
+  "vmdisknotmountable-text": "macOS cannot read this disk's filesystem (Linux disks are usually ext4) — opening the VM folder instead.",
+  "vmejectbeforestart-text": "This VM's disk is mounted in Finder. Eject it first, then start the VM."
 }

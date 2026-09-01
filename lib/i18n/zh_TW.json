@@ -753,5 +753,8 @@
   "templatesinfo-vm-text": "範本是保存的虛擬機磁碟映像，可用來快速建立新虛擬機。在主頁虛擬機列中點擊封存按鈕即可保存。",
   "vmisoplaceholder-text": "選擇要下載的安裝映像，或輸入本機 ISO 路徑",
   "vmopenconsole-text": "在終端機中開啟序列主控台",
-  "vmshowdisplay-text": "顯示螢幕"
+  "vmshowdisplay-text": "顯示螢幕",
+  "vmdiskinuse-text": "虛擬機正在執行，無法掛載其磁碟 — 改為開啟虛擬機資料夾。",
+  "vmdisknotmountable-text": "macOS 無法讀取此磁碟的檔案系統（Linux 磁碟通常為 ext4）— 改為開啟虛擬機資料夾。",
+  "vmejectbeforestart-text": "此虛擬機的磁碟已在 Finder 中掛載。請先退出，再啟動虛擬機。"
 }

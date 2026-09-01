@@ -9,6 +9,7 @@ import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 
 /// One VM as `vmctl list` reports it.
 class AppleVmInfo {
@@ -202,14 +203,24 @@ class AppleVmApi extends VmBackend {
       {String startPath = '',
       String startUser = '',
       String startCmd = ''}) async {
+    await _refuseIfDiskMounted(distribution);
     // Bring the VM up (idempotent for a VM that is already running) with its
     // display window, the Apple analogue of opening a distro's terminal.
     await _runChecked(['start', '--name', distribution, '--gui']);
     await _throwIfStoppedRightAway(distribution);
   }
 
+  /// A disk attached in Finder and a running guest writing to it is data
+  /// corruption; refuse the start with the remedy.
+  Future<void> _refuseIfDiskMounted(String distribution) async {
+    if (await diskIsAttached(distribution)) {
+      throw AppleVmException('vmejectbeforestart-text'.i18n());
+    }
+  }
+
   /// Start without presenting a window — what the MCP tools want.
   Future<void> startHeadless(String distribution) async {
+    await _refuseIfDiskMounted(distribution);
     await _runChecked(['start', '--name', distribution]);
     await _throwIfStoppedRightAway(distribution);
   }
@@ -353,10 +364,81 @@ class AppleVmApi extends VmBackend {
     }
   }
 
+  String _diskPath(String distribution) =>
+      p.join(storeDir, distribution, 'disk.img');
+
+  /// Whether [distribution]'s disk image is currently attached via hdiutil
+  /// (mounted in Finder).
+  Future<bool> diskIsAttached(String distribution) async {
+    try {
+      final result = await shell.run('hdiutil', ['info'],
+          runInShell: false, stdoutEncoding: utf8, stderrEncoding: utf8);
+      return result.exitCode == 0 &&
+          result.stdout.toString().contains(_diskPath(distribution));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Browse the VM's disk itself: attach the raw image and open what mounts
+  /// in Finder. macOS cannot mount ext4, so a pure-Linux disk falls back to
+  /// the VM folder with an explanation — as does a running VM, whose disk
+  /// must not be attached twice.
   @override
-  void startExplorer(String distribution) {
-    shell.start('open', [currentDistroPath(distribution)],
+  void startExplorer(String distribution) async {
+    void openStoreFolder() => shell.start(
+        'open', [currentDistroPath(distribution)],
         mode: ProcessStartMode.detached);
+
+    try {
+      final vm = await vmInfo(distribution);
+      if (vm != null && vm.running) {
+        Notify.message('vmdiskinuse-text'.i18n(),
+            severity: InfoBarSeverity.warning);
+        openStoreFolder();
+        return;
+      }
+
+      final result = await shell.run(
+          'hdiutil',
+          [
+            'attach',
+            '-imagekey',
+            'diskimage-class=CRawDiskImage',
+            _diskPath(distribution),
+          ],
+          runInShell: false,
+          stdoutEncoding: utf8,
+          stderrEncoding: utf8);
+      final output = result.stdout.toString();
+      if (result.exitCode == 0) {
+        final volumes = RegExp(r'(/Volumes/.+)$', multiLine: true)
+            .allMatches(output)
+            .map((match) => match.group(1)!.trim())
+            .toList();
+        if (volumes.isNotEmpty) {
+          for (final volume in volumes) {
+            await shell.start('open', [volume],
+                mode: ProcessStartMode.detached);
+          }
+          return;
+        }
+        // Attached, but macOS mounted nothing (ext4): detach again rather
+        // than leaving a dangling device that blocks the next start.
+        final device =
+            RegExp(r'^(/dev/disk\d+)', multiLine: true).firstMatch(output);
+        if (device != null) {
+          await shell.run('hdiutil', ['detach', device.group(1)!],
+              runInShell: false);
+        }
+      }
+      Notify.message('vmdisknotmountable-text'.i18n(),
+          severity: InfoBarSeverity.info);
+      openStoreFolder();
+    } catch (error, stack) {
+      logDebug(error, stack, null);
+      openStoreFolder();
+    }
   }
 
   @override
