@@ -166,34 +166,6 @@ class _ListItemState extends State<ListItem> {
             // is maintained invisibly, so the name does not jump ~30px
             // sideways every time a distro starts or stops (audit LN-02).
             // Hidden means disabled, so no invisible tab stop comes back.
-            Visibility(
-              visible: isRunning(widget.item, widget.running),
-              maintainSize: true,
-              maintainAnimation: true,
-              maintainState: true,
-              child: MergeSemantics(
-                child: Tooltip(
-                  message: 'stop-text'.i18n(),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: IconButton(
-                      key: const ValueKey('test-listitem-stop'),
-                      icon: busyAction == 'stop'
-                          ? const SizedBox.square(
-                              dimension: 16.0,
-                              child: ProgressRing(strokeWidth: 2.0))
-                          : const Icon(FluentIcons.stop, size: 16.0),
-                      onPressed:
-                          (isBusy || !isRunning(widget.item, widget.running))
-                              ? null
-                              : () {
-                                  stopInstance();
-                                },
-                    ),
-                  ),
-                ),
-              ),
-            ),
             // Third slot, one concept per state: a stopped VM boots straight
             // into a Terminal serial console (no display window at any
             // point); a running VM summons its screen — the first button is
@@ -233,6 +205,34 @@ class _ListItemState extends State<ListItem> {
                   ),
                 ),
               ),
+            Visibility(
+              visible: isRunning(widget.item, widget.running),
+              maintainSize: true,
+              maintainAnimation: true,
+              maintainState: true,
+              child: MergeSemantics(
+                child: Tooltip(
+                  message: 'stop-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      key: const ValueKey('test-listitem-stop'),
+                      icon: busyAction == 'stop'
+                          ? const SizedBox.square(
+                              dimension: 16.0,
+                              child: ProgressRing(strokeWidth: 2.0))
+                          : const Icon(FluentIcons.stop, size: 16.0),
+                      onPressed:
+                          (isBusy || !isRunning(widget.item, widget.running))
+                              ? null
+                              : () {
+                                  stopInstance();
+                                },
+                    ),
+                  ),
+                ),
+              ),
+            ),
                   ])),
               (focused) => leadingFocused = focused),
           header: Row(
