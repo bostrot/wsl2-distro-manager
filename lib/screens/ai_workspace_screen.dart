@@ -191,7 +191,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = _friendlyInitError(e);
           _preparingDistro = false;
           _checkingTools.clear();
         });
@@ -222,6 +222,18 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // above probes nothing — but one of them may still be mid-migration from a
     // start issued before the user navigated away.
     _syncStartingWatch();
+  }
+
+  /// The runtime raises a bare i18n key for the two VM-provisioning cases;
+  /// turn those into the localized sentence, and leave anything else as its
+  /// own text.
+  String _friendlyInitError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '');
+    const known = {
+      'ai-workspace-vm-missing-text',
+      'ai-workspace-vm-stopped-text',
+    };
+    return known.contains(raw) ? raw.i18n() : raw;
   }
 
   Future<void> _retryInit() async {

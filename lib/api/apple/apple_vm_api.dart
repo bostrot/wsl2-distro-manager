@@ -96,8 +96,11 @@ class AppleVmApi extends VmBackend {
   String get templateExtension => 'img';
 
   @override
-  VmFeatures get features =>
-      const VmFeatures(createVm: true, serialConsole: true);
+  VmFeatures get features => const VmFeatures(
+        createVm: true,
+        serialConsole: true,
+        aiWorkspace: true,
+      );
 
   /// The VM store: one directory per VM under the app's data path.
   String get storeDir =>

@@ -148,7 +148,12 @@ void main() async {
   // The workspace lives in a dedicated WSL distro, so hosts on another
   // backend (macOS) never probe it.
   final aiWorkspaceService = AiWorkspaceService(broker: executionBroker);
-  if (LicenseManager().isPro && vmBackend().features.aiWorkspace) {
+  // Only WSL auto-provisions its environment; a VM-backed workspace needs a
+  // running guest the user brings, so it is initialised lazily when the
+  // screen opens rather than probed at startup.
+  if (LicenseManager().isPro &&
+      vmBackend().features.aiWorkspace &&
+      !isAppleHost) {
     unawaited(aiWorkspaceService.ensureInitialized());
   }
 

@@ -12,7 +12,7 @@ import '../../components/notify.dart';
 import '../cancellation.dart';
 import '../execution/broker.dart';
 import '../execution/models.dart';
-import '../wsl_args.dart';
+import 'runtime.dart';
 
 /// The dedicated WSL distro name used for AI workspace tools.
 const String kAiWorkspaceDistro = 'ai-workspace';
@@ -29,7 +29,7 @@ const String _kDockerDownMarker = 'dockerdown';
 /// through the Windows command line into `wsl.exe`, surfacing as
 /// `bash: -c: line 2: syntax error near unexpected token '2'`. Root cause
 /// found 2026-08-28 — `wsl.exe` re-ran the flattened command through the
-/// distro's default shell; see the `--exec` note on [_wslArgs]. The explicit
+/// distro's default shell; see the `--exec` note in wsl_args.dart. The explicit
 /// list is kept because it costs nothing and works under either form.
 const String _kDockerWaitLoop = 'for _i in $_kWaitIterations; do '
     'docker info >/dev/null 2>&1 && break; sleep 1; done; ';
@@ -488,6 +488,7 @@ Future<bool> _defaultReachabilityCheck(String url) async {
 /// Service for managing AI workspace tools.
 class AiWorkspaceService {
   final ExecutionBroker _broker;
+  final WorkspaceRuntime _runtime;
   final Map<AiWorkspaceTool, ToolState> _toolStates = {};
   final DashboardReachabilityChecker _isReachable;
   bool _distroReady = false;
@@ -536,10 +537,12 @@ class AiWorkspaceService {
 
   AiWorkspaceService({
     required ExecutionBroker broker,
+    WorkspaceRuntime? runtime,
     DashboardReachabilityChecker? reachabilityChecker,
     Duration? installSilenceTimeout,
     Duration? installMaxDuration,
   })  : _broker = broker,
+        _runtime = runtime ?? workspaceRuntimeBuilder(),
         _isReachable = reachabilityChecker ?? _defaultReachabilityCheck,
         _installSilenceTimeout =
             installSilenceTimeout ?? _kInstallSilenceTimeout,
@@ -580,19 +583,12 @@ class AiWorkspaceService {
   /// one-shot calls that start, probe and use them. Safe to call repeatedly.
   Future<void> ensureKeepAlive() async {
     if (_keepAlive != null) return;
+    final request = _runtime.keepAlive();
+    // Some runtimes (a VM) keep services alive on their own.
+    if (request == null) return;
     try {
-      _keepAlive = await _broker.startPersistent(ExecutionRequest(
-        command: 'wsl',
-        arguments: [
-          '-d',
-          kAiWorkspaceDistro,
-          '-u',
-          'root',
-          'sleep',
-          'infinity'
-        ],
-      ));
-      // If WSL drops the session, forget the handle so the next call retries.
+      _keepAlive = await _broker.startPersistent(request);
+      // If the session drops, forget the handle so the next call retries.
       unawaited(_keepAlive!.exitCode.then((_) => _keepAlive = null));
     } catch (_) {
       // A keep-alive is an optimisation, never a reason to fail the action.
@@ -615,75 +611,25 @@ class AiWorkspaceService {
   Future<void> ensureDistro({bool forUninstall = false}) async {
     if (_distroReady) return;
 
-    if (await _distroExists()) {
+    if (await _runtime.exists(_broker)) {
       _distroReady = true;
       return;
     }
 
     if (forUninstall) {
       throw Exception(
-          'AI workspace distro is not installed. Cannot uninstall.');
+          'AI workspace environment is not installed. Cannot uninstall.');
     }
 
-    await _createUbuntuDistro();
+    await _runtime.provision(_broker,
+        notify: (key) => Notify.message(key.i18n(), loading: true));
+    _distroReady = true;
   }
 
-  /// Whether WSL has [kAiWorkspaceDistro] registered.
-  Future<bool> _distroExists() async {
-    final listResult = await _broker.run(ExecutionRequest(
-      command: 'wsl',
-      arguments: ['--list', '--quiet'],
-      timeout: const Duration(seconds: 10),
-    ));
-    if (!listResult.isSuccess) return false;
-    return listResult.stdout
-        .split('\n')
-        .map((s) => s.trim())
-        .contains(kAiWorkspaceDistro);
-  }
-
-  /// Deliberately separate from any pre-existing "Ubuntu" distro: tools
-  /// installed there are not visible here.
-  Future<void> _createUbuntuDistro() async {
-    Notify.message('ai-workspace-preparing-text'.i18n(), loading: true);
-    final installResult = await _broker.run(ExecutionRequest(
-      command: 'wsl',
-      arguments: ['--install', 'Ubuntu', '--name', kAiWorkspaceDistro],
-      timeout: const Duration(minutes: 10),
-    ));
-
-    if (installResult.isSuccess) {
-      _distroReady = true;
-      return;
-    }
-
-    // `wsl --install` exits non-zero even when it created the distro — it
-    // also tries to run the interactive first-boot setup, which has no
-    // console here. The registration is what matters, so ask WSL rather than
-    // trusting the exit code.
-    if (await _distroExists()) {
-      _distroReady = true;
-      return;
-    }
-
-    // stderr is often empty on this path; fall back to stdout so the message
-    // is not just a bare colon.
-    final detail = [installResult.stderr, installResult.stdout]
-        .map((s) => s.trim())
-        .firstWhere((s) => s.isNotEmpty, orElse: () => 'no output from wsl');
-    throw Exception('Failed to create the AI workspace distro: $detail');
-  }
-
-  /// Runs as root — this distro is automation-only.
-  ///
-  /// The `--exec` in [wslShellArgs] is load-bearing, not decoration: without
-  /// it `wsl.exe` re-parses the flattened command through the distro's
-  /// default shell and this service's probes silently stop working. The full
-  /// explanation lives on the builder in `lib/api/wsl_args.dart`; every
-  /// in-distro invocation in the app now goes through it.
-  List<String> _wslArgs(String shellCommand) {
-    return wslShellArgs(kAiWorkspaceDistro, shellCommand, user: 'root');
-  }
+  /// One-shot root command in the workspace environment, built by the active
+  /// [WorkspaceRuntime].
+  ExecutionRequest _req(String shellCommand, {Duration? timeout}) =>
+      _runtime.script(shellCommand, timeout: timeout);
 
   /// Installs docker.io on first use — the base Ubuntu image has no Docker.
   Future<void> _ensureDockerReady() async {
@@ -699,11 +645,8 @@ class AiWorkspaceService {
         '$_kDockerWaitLoop'
         'docker info >/dev/null 2>&1';
 
-    final result = await _broker.run(ExecutionRequest(
-      command: 'wsl',
-      arguments: _wslArgs(setupCommand),
-      timeout: const Duration(minutes: 5),
-    ));
+    final result = await _broker.run(
+        _req(setupCommand, timeout: const Duration(minutes: 5)));
 
     if (!result.isSuccess) {
       throw Exception(
@@ -950,7 +893,7 @@ class AiWorkspaceService {
   }) async {
     final stopwatch = Stopwatch()..start();
     final process = await _broker.startPersistent(
-      ExecutionRequest(command: 'wsl', arguments: _wslArgs(script)),
+      _req(script),
     );
 
     var stdoutTail = '';
@@ -1117,11 +1060,8 @@ class AiWorkspaceService {
     Notify.message('ai-workspace-starting-text'.i18n([config.name]),
         loading: true);
 
-    final request = ExecutionRequest(
-      command: 'wsl',
-      arguments: _wslArgs(config.startCommand),
-      timeout: const Duration(minutes: 2),
-    );
+    final request = _req(config.startCommand,
+        timeout: const Duration(minutes: 2));
 
     try {
       final result = await _broker.run(request);
@@ -1176,14 +1116,8 @@ class AiWorkspaceService {
     clearError(tool);
     await ensureDistro();
     final config = _toolConfigs[tool]!;
-    final request = ExecutionRequest(
-      command: 'wsl',
-      arguments: _wslArgs(config.stopCommand),
-      // Room for the tool's own shutdown plus the 20s port-closed wait that
-      // now decides the exit code — `docker stop` alone spends 10s on SIGTERM
-      // before it escalates.
-      timeout: const Duration(minutes: 2),
-    );
+    final request = _req(config.stopCommand,
+        timeout: const Duration(minutes: 2));
 
     try {
       final result = await _broker.run(request);
@@ -1267,11 +1201,8 @@ class AiWorkspaceService {
       uninstallCmd = 'rm -rf ${config.defaultInstallPath}';
     }
 
-    final request = ExecutionRequest(
-      command: 'wsl',
-      arguments: _wslArgs(uninstallCmd),
-      timeout: const Duration(minutes: 2),
-    );
+    final request = _req(uninstallCmd,
+        timeout: const Duration(minutes: 2));
 
     try {
       final result = await _broker.run(request);
@@ -1349,16 +1280,13 @@ class AiWorkspaceService {
         'if [ \$_s = running ]; then $healthGate; '
         'else ${_existsCheck(config.defaultInstallPath)}; fi';
 
-    final request = ExecutionRequest(
-      command: 'wsl',
-      // Covers the daemon wait above plus the checks themselves.
-      // A cold distro takes several seconds just to boot before it runs
-      // anything, so 10s was routinely too tight for the first probe.
-      timeout: isDockerBacked
-          ? const Duration(seconds: 40)
-          : const Duration(seconds: 20),
-      arguments: _wslArgs(combinedCommand),
-    );
+    // Covers the daemon wait above plus the checks themselves. A cold
+    // environment takes several seconds just to boot before it runs
+    // anything, so 10s was routinely too tight for the first probe.
+    final request = _req(combinedCommand,
+        timeout: isDockerBacked
+            ? const Duration(seconds: 40)
+            : const Duration(seconds: 20));
 
     try {
       final result = await _broker.run(request);
@@ -1488,11 +1416,8 @@ class AiWorkspaceService {
     // `$(...)` had to survive Dart's Windows argument escaping on the way into
     // wsl.exe; they did not, and the failure was silent. Keeping the shell
     // side to a bare command removes that whole class of bug.
-    final request = ExecutionRequest(
-      command: 'wsl',
-      arguments: _wslArgs(config.dashboardCommand!),
-      timeout: const Duration(seconds: 40),
-    );
+    final request = _req(config.dashboardCommand!,
+        timeout: const Duration(seconds: 40));
 
     try {
       final result = await _broker.run(request);

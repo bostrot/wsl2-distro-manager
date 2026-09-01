@@ -4,6 +4,7 @@ import 'dart:io' show Process, Socket;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:localization/localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/ai_workspace/runtime.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -71,6 +72,10 @@ void main() {
     late TestShell testShell;
     late ExecutionBroker broker;
     late AiWorkspaceService service;
+    // These tests exercise the WSL runtime specifically; pin it so they
+    // don't take the Apple path on a macOS dev host.
+    setUp(() => workspaceRuntimeBuilder = WslWorkspaceRuntime.new);
+    tearDown(() => workspaceRuntimeBuilder = defaultWorkspaceRuntime);
     // Recorded rather than swallowed: the toast is the loudest thing on the
     // screen, so which one a lifecycle call raises is behaviour worth testing.
     final notifications = <String>[];

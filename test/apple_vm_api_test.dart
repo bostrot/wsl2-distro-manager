@@ -112,10 +112,13 @@ void main() {
       expect(features.wslConfig, isFalse);
       expect(features.packaging, isFalse);
       expect(features.mountDisk, isFalse);
-      expect(features.aiWorkspace, isFalse);
       expect(features.quickActions, isFalse);
       expect(features.templatesDeprecated, isFalse);
       expect(features.createVm, isTrue);
+      // The AI Workspace runs in a dedicated Linux VM on this backend, so
+      // it is supported (unlike the WSL-only families above).
+      expect(features.aiWorkspace, isTrue);
+      expect(features.serialConsole, isTrue);
     });
   });
 
