@@ -110,8 +110,9 @@ void main() {
     expect(find.text('custompackage-text'.i18n()), findsNothing);
     expect(find.text('mountdisk-text'.i18n()), findsNothing);
     // The AI Workspace runs in a Linux VM on macOS, so its nav entry is
-    // present (its screen then asks for a running ai-workspace VM).
-    expect(find.text('ai-workspace-title'.i18n()), findsOneWidget);
+    // present (its screen then asks for a running ai-workspace VM). Asserted
+    // on the robot icon, which is findable regardless of pane display mode.
+    expect(find.byIcon(FluentIcons.robot), findsOneWidget);
 
     if (locateVmctl() != null) {
       // Empty store: the list shows the no-instances state whose CTA leads
@@ -136,6 +137,9 @@ void main() {
     await snap(tester, '03-create-vm');
 
     // Wrong: empty name must be refused inline.
+    await tester.ensureVisible(
+        find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')),
         warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -162,6 +166,20 @@ void main() {
     // Right: a named create builds a real (blank-disk) VM in the temp store.
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-name')), 'walkthrough');
+    // A Linux VM now requires a boot source; a dummy ISO satisfies both the
+    // form guard and vmctl's existence check (create records the path, it
+    // does not boot from it here).
+    // A valid but empty (non-bootable) image: it attaches cleanly, so the
+    // VM boots, finds nothing bootable, and stops — which is what the
+    // early-exit explanation below is about. A 1-byte file would fail to
+    // attach and produce a different error.
+    final dummyIso = File('${dataDir.path}/walkthrough.iso')
+      ..writeAsBytesSync(List.filled(1024 * 1024, 0));
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-iso')), dummyIso.path);
+    await tester.ensureVisible(
+        find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')),
         warnIfMissed: false);
     // vmctl create runs ssh-keygen + hdiutil; give it a moment.
