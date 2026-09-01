@@ -50,6 +50,11 @@ class _AiChatPanelState extends State<AiChatPanel> {
   /// immediately dispatching the next round of the queue.
   bool _stopTasksRequested = false;
 
+  /// The last send failed. The user message is already in the transcript,
+  /// so the banner this drives offers to re-run it — a failure used to
+  /// leave only an expiring toast and no way to try again.
+  bool _sendFailed = false;
+
   /// How many times a "work on tasks" run may auto-continue itself before it
   /// stops on its own — a queue that never drains must not loop forever.
   static const int _maxAutoContinue = 6;
@@ -147,10 +152,15 @@ class _AiChatPanelState extends State<AiChatPanel> {
     await _dispatch(text);
   }
 
+  /// Re-run the agent over the transcript as it stands.
+  Future<void> _retryLast() => _dispatch('', retry: true);
+
   /// The actual send: precondition checks, the request, and error handling.
-  /// Factored out of [_sendMessage] so the task runner can reuse it.
-  Future<void> _dispatch(String text) async {
-    if (text.isEmpty || _isLoading) return;
+  /// Factored out of [_sendMessage] so the task runner can reuse it; with
+  /// [retry] the failed exchange already sits in the history and only the
+  /// completion is re-run.
+  Future<void> _dispatch(String text, {bool retry = false}) async {
+    if ((text.isEmpty && !retry) || _isLoading) return;
 
     // Check license
     if (!_license.isPro) {
@@ -184,7 +194,11 @@ class _AiChatPanelState extends State<AiChatPanel> {
         }
       }
 
-      if (_sandbox != null) {
+      if (retry) {
+        await (_sandbox != null
+            ? _sandbox!.retryLast(onUpdate: onUpdate, cancel: cancel)
+            : _ai.retryLast(onUpdate: onUpdate, cancel: cancel));
+      } else if (_sandbox != null) {
         await _sandbox!.send(text, onUpdate: onUpdate, cancel: cancel);
       } else {
         await _ai.sendMessage(text, onUpdate: onUpdate, cancel: cancel);
@@ -192,6 +206,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _isLoading = false;
+        _sendFailed = false;
       });
     } on CancelledException {
       // The user pressed Cancel — the run is already unwound and reported.
@@ -213,7 +228,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
             ? _block('ai-chat-pro-required-text', 'license', 'upgrade-text')
             : _block(_ai.configRequiredKey, 'settings', 'opensettings-text');
       } else {
-        Notify.message('ai-error-text'.i18n(), severity: InfoBarSeverity.error);
+        setState(() => _sendFailed = true);
       }
     }
   }
@@ -449,6 +464,24 @@ class _AiChatPanelState extends State<AiChatPanel> {
                 key: const ValueKey('test-aichat-blocked-action'),
                 onPressed: () => navigateGuarded(_blockedRouteName!),
                 child: Text(_blockedActionKey!.i18n()),
+              ),
+            ),
+          ),
+
+        // A failed send stays actionable: the exchange is in the transcript
+        // and this re-runs it, instead of an expiring toast and a lost turn.
+        if (_sendFailed)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: InfoBar(
+              key: const ValueKey('test-aichat-failed'),
+              title: Text('ai-error-text'.i18n()),
+              severity: InfoBarSeverity.error,
+              onClose: () => setState(() => _sendFailed = false),
+              action: Button(
+                key: const ValueKey('test-aichat-retry'),
+                onPressed: _isLoading ? null : _retryLast,
+                child: Text('retry-text'.i18n()),
               ),
             ),
           ),

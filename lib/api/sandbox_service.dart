@@ -254,6 +254,23 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
         role: 'user', content: query, timestamp: DateTime.now()));
     _persist();
     onUpdate?.call();
+    return _completeFromHistory(onUpdate: onUpdate, cancel: cancel);
+  }
+
+  /// Retry after a failed send: the user message is already in the history.
+  Future<String> retryLast(
+      {void Function()? onUpdate, CancelSignal? cancel}) async {
+    if (!LicenseManager().isPro) throw Exception('pro-required');
+    if (!_ai.hasAiConfigured) {
+      throw Exception(_ai.usesClaudeAccount
+          ? 'claude-signin-required'
+          : 'byok-required');
+    }
+    return _completeFromHistory(onUpdate: onUpdate, cancel: cancel);
+  }
+
+  Future<String> _completeFromHistory(
+      {void Function()? onUpdate, CancelSignal? cancel}) async {
     try {
       final reply = await _ai.runAgentOn(_history, _tools,
           onUpdate: onUpdate,
@@ -270,11 +287,11 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       _persist();
       rethrow;
     } catch (e) {
-      // Roll back to the last user turn so a retry is clean.
+      // Roll back partial tool notes but keep the user's message, so the
+      // panel's retry (retryLast) re-runs it without a retype.
       while (_history.isNotEmpty && _history.last.role != 'user') {
         _history.removeLast();
       }
-      if (_history.isNotEmpty) _history.removeLast();
       _persist();
       rethrow;
     }

@@ -151,7 +151,7 @@ void main() {
       expect(body['model'], 'gpt-4o');
     });
 
-    test('a request failure removes the pending user message from history',
+    test('a request failure keeps the user message so retry can re-run it',
         () async {
       final ai = AiService();
       LicenseManager.storeInstallCheckOverride = () => true;
@@ -166,7 +166,26 @@ void main() {
       ai.dioForTesting.httpClientAdapter = adapter;
 
       await expectLater(ai.sendMessage('hello'), throwsException);
-      expect(ai.conversationHistory, isEmpty);
+      // The question stays — retryLast re-runs it without a retype.
+      expect(ai.conversationHistory, hasLength(1));
+      expect(ai.conversationHistory.single.role, 'user');
+      expect(ai.conversationHistory.single.content, 'hello');
+
+      // And a retry over the same history reaches the provider again.
+      final retryAdapter = _RecordingAdapter((options) => ResponseBody.fromString(
+          json.encode({
+            'choices': [
+              {'message': {'content': 'ok now'}}
+            ]
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          }));
+      ai.dioForTesting.httpClientAdapter = retryAdapter;
+      final reply = await ai.retryLast();
+      expect(reply, 'ok now');
+      expect(ai.conversationHistory, hasLength(2));
     });
   });
 

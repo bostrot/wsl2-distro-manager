@@ -266,6 +266,25 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     _conversationHistory.add(userMsg);
     _saveConversation();
 
+    return _completeFromHistory(onUpdate: onUpdate, cancel: cancel);
+  }
+
+  /// Re-run the agent over the transcript as it stands — the retry after a
+  /// failed send, whose user message is already in the history.
+  Future<String> retryLast(
+      {void Function()? onUpdate, CancelSignal? cancel}) async {
+    if (!_license.isPro) {
+      throw Exception('pro-required');
+    }
+    if (!hasAiConfigured) {
+      throw Exception(
+          usesClaudeAccount ? 'claude-signin-required' : 'byok-required');
+    }
+    return _completeFromHistory(onUpdate: onUpdate, cancel: cancel);
+  }
+
+  Future<String> _completeFromHistory(
+      {void Function()? onUpdate, CancelSignal? cancel}) async {
     try {
       final reply = await runAgent(tools, onUpdate: onUpdate, cancel: cancel);
 
@@ -287,13 +306,14 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       if (kDebugMode) {
         debugPrint('AI service error: $e');
       }
-      // Remove the failed user message (and any tool notes added mid-run)
-      // back to the last user turn, so a retry starts clean.
+      // Roll back any partial tool notes added mid-run, but KEEP the user's
+      // message: the panel shows a retry that re-runs it (retryLast). The
+      // history ends on the user turn, so a retry starts clean without
+      // making the user retype the question.
       while (_conversationHistory.isNotEmpty &&
           _conversationHistory.last.role != 'user') {
         _conversationHistory.removeLast();
       }
-      if (_conversationHistory.isNotEmpty) _conversationHistory.removeLast();
       _saveConversation();
       rethrow;
     }
