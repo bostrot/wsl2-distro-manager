@@ -43,7 +43,11 @@ class _ListItemState extends State<ListItem> {
 
   /// Start and stop are slow enough to be tapped twice. While one is in flight
   /// both controls report it instead of silently queueing a second `wsl.exe`.
-  bool isBusy = false;
+  /// Which row action is in flight, or null. Only that action's button
+  /// shows a spinner; the others merely disable — one press must not turn
+  /// the whole strip into progress rings.
+  String? busyAction;
+  bool get isBusy => busyAction != null;
 
   /// The Expander's header is one big HoverButton, and its focus ring is drawn
   /// around the chevron alone — 1,100px from the name it belongs to (IA-05) —
@@ -129,7 +133,9 @@ class _ListItemState extends State<ListItem> {
                   cursor: SystemMouseCursors.click,
                   child: IconButton(
                     key: const ValueKey('test-listitem-start'),
-                    icon: isBusy
+                    icon: busyAction == 'start' ||
+                            (busyAction == 'console' &&
+                                isRunning(widget.item, widget.running))
                         ? const SizedBox.square(
                             dimension: 16.0,
                             child: ProgressRing(strokeWidth: 2.0))
@@ -172,7 +178,7 @@ class _ListItemState extends State<ListItem> {
                     cursor: SystemMouseCursors.click,
                     child: IconButton(
                       key: const ValueKey('test-listitem-stop'),
-                      icon: isBusy
+                      icon: busyAction == 'stop'
                           ? const SizedBox.square(
                               dimension: 16.0,
                               child: ProgressRing(strokeWidth: 2.0))
@@ -204,7 +210,8 @@ class _ListItemState extends State<ListItem> {
                       key: ValueKey(isRunning(widget.item, widget.running)
                           ? 'test-listitem-screen'
                           : 'test-listitem-console'),
-                      icon: isBusy
+                      icon: busyAction == 'console' &&
+                              !isRunning(widget.item, widget.running)
                           ? const SizedBox.square(
                               dimension: 16.0,
                               child: ProgressRing(strokeWidth: 2.0))
@@ -279,14 +286,14 @@ class _ListItemState extends State<ListItem> {
               (focused) => contentFocused = focused));
   }
 
-  void _setBusy(bool value) {
-    if (mounted) setState(() => isBusy = value);
+  void _setBusy(String? action) {
+    if (mounted) setState(() => busyAction = action);
   }
 
   /// Attach Terminal.app to the VM's serial console, booting it headless
   /// first when needed — the fully windowless path.
   Future<void> openConsole() async {
-    _setBusy(true);
+    _setBusy('console');
     try {
       await (api as AppleVmApi).openConsole(widget.item);
     } catch (error) {
@@ -294,7 +301,7 @@ class _ListItemState extends State<ListItem> {
           '${'startfailed-text'.i18n([distroLabel(widget.item)])} $error',
           severity: InfoBarSeverity.error);
     } finally {
-      _setBusy(false);
+      _setBusy(null);
     }
   }
 
@@ -310,7 +317,7 @@ class _ListItemState extends State<ListItem> {
 
   Future<void> stopInstance() async {
     plausible.event(name: "wsl_stopped");
-    _setBusy(true);
+    _setBusy('stop');
     try {
       Notify.message('stoppinginstance-text'.i18n([distroLabel(widget.item)]),
           loading: true);
@@ -326,7 +333,7 @@ class _ListItemState extends State<ListItem> {
           severity: InfoBarSeverity.error);
       diagnoseWithAi(failure.details);
     } finally {
-      _setBusy(false);
+      _setBusy(null);
     }
   }
 
@@ -343,7 +350,7 @@ class _ListItemState extends State<ListItem> {
       // Replace faulty semicolons (e.g. "; ;" or ";;")
       startCmd = startCmd.replaceAll(RegExp(r';[ ]*;'), ';');
     }
-    _setBusy(true);
+    _setBusy('start');
     try {
       Notify.message('startinginstance-text'.i18n([distroLabel(widget.item)]),
           loading: true);
@@ -363,7 +370,7 @@ class _ListItemState extends State<ListItem> {
           severity: InfoBarSeverity.error);
       diagnoseWithAi(failure.details);
     } finally {
-      _setBusy(false);
+      _setBusy(null);
     }
   }
 }
