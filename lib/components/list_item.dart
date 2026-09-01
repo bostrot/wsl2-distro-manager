@@ -141,7 +141,16 @@ class _ListItemState extends State<ListItem> {
                     onPressed: isBusy
                         ? null
                         : () {
-                            startInstance();
+                            // On the Apple backend the promise this button
+                            // makes while running — "open terminal" — is the
+                            // serial console; start (with the VM's display)
+                            // is only for bringing a stopped VM up.
+                            if (api.features.serialConsole &&
+                                isRunning(widget.item, widget.running)) {
+                              openConsole();
+                            } else {
+                              startInstance();
+                            }
                           },
                   ),
                 ),
@@ -179,6 +188,39 @@ class _ListItemState extends State<ListItem> {
                 ),
               ),
             ),
+            // Boot a stopped VM straight into a Terminal serial console —
+            // no display window at any point. While running, the first
+            // button already is the terminal.
+            if (api.features.serialConsole)
+              Visibility(
+                visible: !isRunning(widget.item, widget.running),
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: MergeSemantics(
+                  child: Tooltip(
+                    message: 'vmopenconsole-text'.i18n(),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: IconButton(
+                        key: const ValueKey('test-listitem-console'),
+                        icon: isBusy
+                            ? const SizedBox.square(
+                                dimension: 16.0,
+                                child: ProgressRing(strokeWidth: 2.0))
+                            : const Icon(FluentIcons.command_prompt,
+                                size: 16.0),
+                        onPressed:
+                            (isBusy || isRunning(widget.item, widget.running))
+                                ? null
+                                : () {
+                                    openConsole();
+                                  },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
                   ])),
               (focused) => leadingFocused = focused),
           header: Row(
@@ -234,6 +276,21 @@ class _ListItemState extends State<ListItem> {
 
   void _setBusy(bool value) {
     if (mounted) setState(() => isBusy = value);
+  }
+
+  /// Attach Terminal.app to the VM's serial console, booting it headless
+  /// first when needed — the fully windowless path.
+  Future<void> openConsole() async {
+    _setBusy(true);
+    try {
+      await (api as AppleVmApi).openConsole(widget.item);
+    } catch (error) {
+      Notify.message(
+          '${'startfailed-text'.i18n([distroLabel(widget.item)])} $error',
+          severity: InfoBarSeverity.error);
+    } finally {
+      _setBusy(false);
+    }
   }
 
   Future<void> stopInstance() async {
@@ -394,34 +451,6 @@ class Bar extends StatelessWidget {
                               onSubmit: (inputText) async {
                                 await Templates().saveTemplate(widget.item);
                               }),
-                    ),
-                  ),
-                ),
-              ),
-              // A terminal on the VM's serial line — the way to use an
-              // instance without ever opening its display window.
-              if (features.serialConsole)
-              MergeSemantics(
-                child: Tooltip(
-                  message: 'vmopenconsole-text'.i18n(),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: IconButton(
-                      key: const ValueKey('test-listitem-console'),
-                      icon:
-                          const Icon(FluentIcons.command_prompt, size: 16.0),
-                      onPressed: () async {
-                        try {
-                          await (api as AppleVmApi)
-                              .openConsole(widget.item);
-                        } catch (error) {
-                          Notify.message(
-                              '${'startfailed-text'.i18n([
-                                distroLabel(widget.item)
-                              ])} $error',
-                              severity: InfoBarSeverity.error);
-                        }
-                      },
                     ),
                   ),
                 ),
