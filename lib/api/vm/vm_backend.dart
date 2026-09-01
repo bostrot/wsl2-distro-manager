@@ -44,6 +44,10 @@ class VmFeatures {
   /// restore image) rather than importing root filesystems.
   final bool createVm;
 
+  /// An attachable serial console, for driving an instance from a terminal
+  /// without any display window.
+  final bool serialConsole;
+
   const VmFeatures({
     this.wslConfig = false,
     this.quickActions = false,
@@ -54,6 +58,7 @@ class VmFeatures {
     this.hostIntegration = false,
     this.templatesDeprecated = false,
     this.createVm = false,
+    this.serialConsole = false,
   });
 }
 

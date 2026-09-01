@@ -181,6 +181,10 @@ void main() {
     expect(find.textContaining('walkthrough'), findsWidgets);
     await snap(tester, '05-home-with-vm');
 
+    // The serial-console action is offered on VM rows (not tapped here —
+    // it would open a real Terminal window).
+    expect(find.byKey(const ValueKey('test-listitem-console')), findsOneWidget);
+
     // Starting a VM with nothing bootable must fail loudly, not report
     // success over a window that closed itself.
     await tester.tap(find.byKey(const ValueKey('test-listitem-start')),

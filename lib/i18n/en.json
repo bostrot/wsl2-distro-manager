@@ -750,5 +750,6 @@
   "vmstoppedimmediately-text": "The VM stopped right after starting — most likely nothing bootable was found. Attach an installer ISO or create the VM from a base disk image.",
   "mcp-settings-vm-text": "MCP Server (VM API)",
   "templatesinfo-vm-text": "A template is a saved VM disk image you can stamp new VMs from. Save one with the archive button in a VM row on Home.",
-  "vmisoplaceholder-text": "Choose an installer to download, or enter a local ISO path"
+  "vmisoplaceholder-text": "Choose an installer to download, or enter a local ISO path",
+  "vmopenconsole-text": "Open serial console in Terminal"
 }

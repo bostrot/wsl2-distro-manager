@@ -36,6 +36,8 @@ public struct VMStore {
     public func runDir(_ name: String) -> URL { vmDir(name).appendingPathComponent("run") }
     public func pidPath(_ name: String) -> URL { runDir(name).appendingPathComponent("pid") }
     public func daemonLogPath(_ name: String) -> URL { runDir(name).appendingPathComponent("daemon.log") }
+    public func serialLogPath(_ name: String) -> URL { runDir(name).appendingPathComponent("serial.log") }
+    public func consoleSocketPath(_ name: String) -> URL { runDir(name).appendingPathComponent("console.sock") }
 
     // MARK: store-wide SSH key
 

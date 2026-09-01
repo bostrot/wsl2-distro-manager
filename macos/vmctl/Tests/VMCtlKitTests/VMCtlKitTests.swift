@@ -175,3 +175,81 @@ import Testing
         #expect(bag.int("disk-size", default: 32) == 32)
     }
 }
+
+// Serialized: the long-socket-path fallback chdirs the process, which is
+// safe in the daemon (one bind at startup) and the one-shot CLI, but races
+// when parallel tests each bind their own relay.
+@Suite(.serialized) final class ConsoleRelayTests {
+    let dir: URL
+    let relay: ConsoleRelay
+
+    init() throws {
+        dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("relay-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        relay = try ConsoleRelay(
+            socketPath: dir.appendingPathComponent("console.sock").path,
+            logPath: dir.appendingPathComponent("serial.log").path)
+        relay.start()
+    }
+
+    deinit {
+        relay.shutdown()
+        try? FileManager.default.removeItem(at: dir)
+    }
+
+    private func connectClient() throws -> Int32 {
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        try UnixSocketAddress.connect(fd, to: relay.socketPath)
+        return fd
+    }
+
+    private func readSome(_ fd: Int32, timeoutMs: Int32 = 2000) -> [UInt8] {
+        var p = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+        guard poll(&p, 1, timeoutMs) > 0 else { return [] }
+        var buffer = [UInt8](repeating: 0, count: 256)
+        let count = read(fd, &buffer, buffer.count)
+        return count > 0 ? Array(buffer[0..<count]) : []
+    }
+
+    @Test func guestOutputReachesClientAndLog() throws {
+        let client = try connectClient()
+        defer { close(client) }
+        Thread.sleep(forTimeInterval: 0.2) // let accept() land
+
+        let payload = Array("login: ".utf8)
+        _ = payload.withUnsafeBytes { write(relay.vmSideFd, $0.baseAddress, payload.count) }
+
+        #expect(readSome(client) == payload)
+        // The log tee keeps working for the early-exit diagnostics.
+        Thread.sleep(forTimeInterval: 0.2)
+        let log = try String(
+            contentsOf: dir.appendingPathComponent("serial.log"), encoding: .utf8)
+        #expect(log.contains("login: "))
+    }
+
+    @Test func clientInputReachesGuest() throws {
+        let client = try connectClient()
+        defer { close(client) }
+        Thread.sleep(forTimeInterval: 0.2)
+
+        let payload = Array("root\n".utf8)
+        _ = payload.withUnsafeBytes { write(client, $0.baseAddress, payload.count) }
+        #expect(readSome(relay.vmSideFd) == payload)
+    }
+
+    @Test func newClientReplacesOldOne() throws {
+        let first = try connectClient()
+        Thread.sleep(forTimeInterval: 0.2)
+        let second = try connectClient()
+        defer { close(second) }
+        Thread.sleep(forTimeInterval: 0.2)
+
+        let payload = Array("hello".utf8)
+        _ = payload.withUnsafeBytes { write(relay.vmSideFd, $0.baseAddress, payload.count) }
+        #expect(readSome(second) == payload)
+        // The first connection was closed by the relay.
+        #expect(readSome(first, timeoutMs: 500).isEmpty)
+        close(first)
+    }
+}

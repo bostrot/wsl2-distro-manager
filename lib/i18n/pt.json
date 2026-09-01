@@ -752,5 +752,6 @@
   "vmstoppedimmediately-text": "A VM parou logo após iniciar — provavelmente nada inicializável foi encontrado. Anexe uma ISO de instalação ou crie a VM a partir de uma imagem de disco base.",
   "mcp-settings-vm-text": "Servidor MCP (API de VM)",
   "templatesinfo-vm-text": "Um modelo é uma imagem de disco de VM salva a partir da qual você pode criar novas VMs. Salve um com o botão de arquivo em uma linha de VM na tela inicial.",
-  "vmisoplaceholder-text": "Escolha um instalador para baixar ou insira um caminho ISO local"
+  "vmisoplaceholder-text": "Escolha um instalador para baixar ou insira um caminho ISO local",
+  "vmopenconsole-text": "Abrir console serial no Terminal"
 }

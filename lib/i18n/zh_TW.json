@@ -751,5 +751,6 @@
   "vmstoppedimmediately-text": "虛擬機啟動後隨即停止 — 很可能沒有找到可開機的系統。請掛載安裝映像 ISO，或從基礎磁碟映像建立虛擬機。",
   "mcp-settings-vm-text": "MCP 伺服器（VM API）",
   "templatesinfo-vm-text": "範本是保存的虛擬機磁碟映像，可用來快速建立新虛擬機。在主頁虛擬機列中點擊封存按鈕即可保存。",
-  "vmisoplaceholder-text": "選擇要下載的安裝映像，或輸入本機 ISO 路徑"
+  "vmisoplaceholder-text": "選擇要下載的安裝映像，或輸入本機 ISO 路徑",
+  "vmopenconsole-text": "在終端機中開啟序列主控台"
 }

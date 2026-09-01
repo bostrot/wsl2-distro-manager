@@ -7,6 +7,8 @@ import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
+import 'mocks.dart' show MockProcess;
+
 /// Scripted vmctl: answers by subcommand and records every invocation.
 class FakeVmctlShell implements Shell {
   final List<List<String>> calls = [];
@@ -55,7 +57,7 @@ class FakeVmctlShell implements Shell {
     ProcessStartMode mode = ProcessStartMode.normal,
   }) async {
     calls.add(['start:$executable', ...arguments]);
-    throw UnsupportedError('start is not scripted in this fake');
+    return MockProcess();
   }
 }
 
@@ -293,6 +295,42 @@ void main() {
       expect(await api.guestIp('ubuntu'), isNull);
       shell.responses['ip'] = '{"ip":"192.168.64.5"}';
       expect(await api.guestIp('ubuntu'), '192.168.64.5');
+    });
+  });
+
+  group('openConsole', () {
+    test('a stopped VM is started headless first', () async {
+      shell.responses['start'] = '{"started":"ubuntu"}';
+      // The canned list keeps answering "stopped", so the early-exit probe
+      // throws after the start — which is fine here: the claim under test
+      // is that console mode starts the VM *without* a display window.
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"stopped"}]}';
+      await expectLater(api.openConsole('ubuntu'), throwsA(anything));
+      final startCall = shell.calls
+          .firstWhere((c) => c.contains('start') && c.first != 'start:open');
+      expect(startCall, isNot(contains('--gui')),
+          reason: 'console mode must not open a display window');
+    });
+
+    test('writes a runnable .command bridge and opens it in Terminal',
+        () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"running"}]}';
+      await api.openConsole('ubuntu');
+
+      // Running already: no start was issued.
+      expect(shell.calls.where((c) => c.contains('start') && c.length > 2),
+          isEmpty);
+      final openCall =
+          shell.calls.lastWhere((c) => c.first == 'start:open');
+      final scriptPath = openCall.last;
+      expect(scriptPath, endsWith('console.command'));
+      final script = File(scriptPath).readAsStringSync();
+      expect(script, contains('/fake/vmctl'));
+      expect(script, contains('console'));
+      expect(script, contains('--name "ubuntu"'));
+      expect(script, contains(tempStore.path));
     });
   });
 

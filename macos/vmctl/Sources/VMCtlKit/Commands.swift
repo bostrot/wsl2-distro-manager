@@ -104,6 +104,8 @@ public enum VmctlCLI {
                 try importVm(store, rest)
             case "exec":
                 return try exec(store, rest)
+            case "console":
+                return try console(store, rest)
             case "shell":
                 return try shell(store, rest)
             case "help", "--help", "-h":
@@ -136,6 +138,7 @@ public enum VmctlCLI {
       import --name N --input PATH          New VM from a raw disk image
       exec --name N [--user U] -- CMD...    Run a command in the guest (SSH)
       shell --name N [--user U]             Interactive guest shell (SSH)
+      console --name N                      Attach to the serial console
 
     """
 
@@ -453,6 +456,81 @@ public enum VmctlCLI {
         try ssh.run()
         ssh.waitUntilExit()
         return ssh.terminationStatus
+    }
+
+    /// Bridge this terminal to the VM's serial console socket, raw-mode, until
+    /// the socket closes or the user detaches with Ctrl-].
+    static func console(_ store: VMStore, _ rest: [String]) throws -> Int32 {
+        let bag = ArgumentBag(rest, flagNames: [])
+        let name = try bag.require("name")
+        let config = try store.loadConfig(name)
+        guard config.os == .linux else {
+            throw VmctlError("Serial console is only available for Linux guests.")
+        }
+        guard store.isRunning(name) else {
+            throw VmctlError("VM \(name) is not running.")
+        }
+
+        let path = store.consoleSocketPath(name).path
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else {
+            throw VmctlError("socket failed: \(String(cString: strerror(errno)))")
+        }
+        do {
+            try UnixSocketAddress.connect(fd, to: path)
+        } catch {
+            close(fd)
+            throw VmctlError("Could not attach to the console of \(name): \(error)")
+        }
+
+        FileHandle.standardError.write(Data((
+            "Connected to the serial console of \(name). Detach with Ctrl-].\n"
+            + "If nothing appears, the guest may not put a console on hvc0 "
+            + "(kernel arg console=hvc0, or a getty on /dev/hvc0).\n").utf8))
+
+        // Raw mode, so keystrokes (including Ctrl-C) go to the guest.
+        var savedTermios = termios()
+        let stdinIsTty = isatty(STDIN_FILENO) == 1
+        if stdinIsTty {
+            tcgetattr(STDIN_FILENO, &savedTermios)
+            var raw = savedTermios
+            cfmakeraw(&raw)
+            tcsetattr(STDIN_FILENO, TCSANOW, &raw)
+        }
+        defer {
+            if stdinIsTty {
+                tcsetattr(STDIN_FILENO, TCSANOW, &savedTermios)
+                FileHandle.standardError.write(Data("\nDetached.\n".utf8))
+            }
+            close(fd)
+        }
+
+        // One poll loop pumping both directions, so a VM that exits ends the
+        // session immediately instead of waiting for the next keypress.
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        var watched = [
+            pollfd(fd: STDIN_FILENO, events: Int16(POLLIN), revents: 0),
+            pollfd(fd: fd, events: Int16(POLLIN), revents: 0),
+        ]
+        while true {
+            watched[0].revents = 0
+            watched[1].revents = 0
+            guard poll(&watched, 2, -1) >= 0 else { break }
+            if watched[1].revents != 0 {
+                let count = read(fd, &buffer, buffer.count)
+                if count <= 0 { break }
+                _ = buffer.withUnsafeBytes {
+                    write(STDOUT_FILENO, $0.baseAddress, count)
+                }
+            }
+            if watched[0].revents != 0 {
+                let count = read(STDIN_FILENO, &buffer, buffer.count)
+                if count <= 0 { break }
+                if buffer[0..<count].contains(0x1D) { break } // Ctrl-]
+                _ = write(fd, &buffer, count)
+            }
+        }
+        return 0
     }
 
     /// The lease can lag a fresh boot; poll briefly instead of failing the

@@ -750,5 +750,6 @@
   "vmstoppedimmediately-text": "La VM se detuvo justo después de iniciarse — probablemente no se encontró nada arrancable. Adjunta una ISO de instalación o crea la VM desde una imagen de disco base.",
   "mcp-settings-vm-text": "Servidor MCP (API de VM)",
   "templatesinfo-vm-text": "Una plantilla es una imagen de disco de VM guardada desde la que puedes crear nuevas VM. Guarda una con el botón de archivo en una fila de VM en Inicio.",
-  "vmisoplaceholder-text": "Elige un instalador para descargar o introduce una ruta ISO local"
+  "vmisoplaceholder-text": "Elige un instalador para descargar o introduce una ruta ISO local",
+  "vmopenconsole-text": "Abrir consola serie en Terminal"
 }

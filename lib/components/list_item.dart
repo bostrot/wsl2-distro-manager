@@ -1,4 +1,5 @@
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
@@ -393,6 +394,34 @@ class Bar extends StatelessWidget {
                               onSubmit: (inputText) async {
                                 await Templates().saveTemplate(widget.item);
                               }),
+                    ),
+                  ),
+                ),
+              ),
+              // A terminal on the VM's serial line — the way to use an
+              // instance without ever opening its display window.
+              if (features.serialConsole)
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'vmopenconsole-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      key: const ValueKey('test-listitem-console'),
+                      icon:
+                          const Icon(FluentIcons.command_prompt, size: 16.0),
+                      onPressed: () async {
+                        try {
+                          await (api as AppleVmApi)
+                              .openConsole(widget.item);
+                        } catch (error) {
+                          Notify.message(
+                              '${'startfailed-text'.i18n([
+                                distroLabel(widget.item)
+                              ])} $error',
+                              severity: InfoBarSeverity.error);
+                        }
+                      },
                     ),
                   ),
                 ),

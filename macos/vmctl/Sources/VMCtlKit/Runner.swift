@@ -14,6 +14,7 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
     private let gui: Bool
     private var virtualMachine: VZVirtualMachine?
     private var signalSource: DispatchSourceSignal?
+    private var consoleRelay: ConsoleRelay?
 
     public init(store: VMStore, config: VMConfig, gui: Bool) {
         self.store = store
@@ -22,7 +23,23 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
     }
 
     public func run() throws -> Never {
-        let vzConfig = try VMFactory.configuration(config, store: store, headless: !gui)
+        // Linux guests get an attachable serial console; the relay also owns
+        // the serial.log tee the diagnostics read.
+        if config.os == .linux {
+            try? FileManager.default.createDirectory(
+                at: store.runDir(config.name), withIntermediateDirectories: true)
+            let relay = try ConsoleRelay(
+                socketPath: store.consoleSocketPath(config.name).path,
+                logPath: store.serialLogPath(config.name).path)
+            relay.start()
+            consoleRelay = relay
+        }
+        let vmHandle = consoleRelay.map {
+            FileHandle(fileDescriptor: $0.vmSideFd, closeOnDealloc: false)
+        }
+        let vzConfig = try VMFactory.configuration(
+            config, store: store, headless: !gui,
+            consoleInput: vmHandle, consoleOutput: vmHandle)
         let vm = VZVirtualMachine(configuration: vzConfig)
         vm.delegate = self
         virtualMachine = vm
@@ -108,27 +125,27 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
 
     private func forceStop() {
         guard let vm = virtualMachine, vm.state == .running else {
-            store.clearPid(config.name)
-            exit(0)
+            cleanUpAndExit(0)
         }
         vm.stop { [weak self] _ in
-            if let self {
-                self.store.clearPid(self.config.name)
-            }
-            exit(0)
+            self?.cleanUpAndExit(0)
         }
+    }
+
+    private func cleanUpAndExit(_ code: Int32) -> Never {
+        consoleRelay?.shutdown()
+        store.clearPid(config.name)
+        exit(code)
     }
 
     // MARK: VZVirtualMachineDelegate
 
     public func guestDidStop(_ virtualMachine: VZVirtualMachine) {
-        store.clearPid(config.name)
-        exit(0)
+        cleanUpAndExit(0)
     }
 
     public func virtualMachine(_ virtualMachine: VZVirtualMachine, didStopWithError error: Error) {
         FileHandle.standardError.write(Data("VM stopped with error: \(error)\n".utf8))
-        store.clearPid(config.name)
-        exit(1)
+        cleanUpAndExit(1)
     }
 }

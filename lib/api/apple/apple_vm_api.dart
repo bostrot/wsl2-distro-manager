@@ -95,7 +95,8 @@ class AppleVmApi extends VmBackend {
   String get templateExtension => 'img';
 
   @override
-  VmFeatures get features => const VmFeatures(createVm: true);
+  VmFeatures get features =>
+      const VmFeatures(createVm: true, serialConsole: true);
 
   /// The VM store: one directory per VM under the app's data path.
   String get storeDir =>
@@ -443,6 +444,31 @@ class AppleVmApi extends VmBackend {
       if (restoreImagePath != null && restoreImagePath.isNotEmpty)
         ...['--restore-image', restoreImagePath],
     ]);
+  }
+
+  /// Open Terminal.app attached to the VM's serial console, starting the VM
+  /// headless first when it is not running — a VM driven entirely from a
+  /// terminal, no display window involved.
+  ///
+  /// Terminal is launched through a `.command` file rather than
+  /// AppleScript: `open` needs no automation permission prompt.
+  Future<void> openConsole(String distribution) async {
+    final vm = await vmInfo(distribution);
+    if (vm == null || !vm.running) {
+      await startHeadless(distribution);
+    }
+
+    final script = '#!/bin/bash\n'
+        'exec "${helperPath()}" --store "$storeDir" console '
+        '--name "$distribution"\n';
+    final scriptPath =
+        p.join(storeDir, distribution, 'run', 'console.command');
+    File(scriptPath)
+      ..createSync(recursive: true)
+      ..writeAsStringSync(script);
+    await shell.run('chmod', ['+x', scriptPath], runInShell: false);
+    await shell.start('open', [scriptPath],
+        mode: ProcessStartMode.detached, runInShell: false);
   }
 
   /// The guest's current IP, or null while it has none (booting, no DHCP

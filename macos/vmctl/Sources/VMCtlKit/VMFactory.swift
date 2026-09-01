@@ -10,7 +10,9 @@ public enum VMFactory {
     public static func linuxConfiguration(
         _ config: VMConfig,
         store: VMStore,
-        headless: Bool
+        headless: Bool,
+        consoleInput: FileHandle? = nil,
+        consoleOutput: FileHandle? = nil
     ) throws -> VZVirtualMachineConfiguration {
         let vzConfig = VZVirtualMachineConfiguration()
         vzConfig.cpuCount = clampCpus(config.cpus)
@@ -54,17 +56,26 @@ public enum VMFactory {
         vzConfig.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
         vzConfig.memoryBalloonDevices = [VZVirtioTraditionalMemoryBalloonDeviceConfiguration()]
 
-        // Serial console into a log file: the only window into a headless
-        // boot that goes wrong.
-        let serialLog = store.runDir(config.name).appendingPathComponent("serial.log")
+        // Serial console. With relay handles (the daemon's ConsoleRelay) the
+        // port is interactive and attachable via `vmctl console`; without
+        // them (the installer path) it degrades to an output-only log — the
+        // only window into a headless boot that goes wrong either way.
         try? FileManager.default.createDirectory(
             at: store.runDir(config.name), withIntermediateDirectories: true)
-        FileManager.default.createFile(atPath: serialLog.path, contents: nil)
-        if let fh = FileHandle(forWritingAtPath: serialLog.path) {
-            let serial = VZVirtioConsoleDeviceSerialPortConfiguration()
+        let serial = VZVirtioConsoleDeviceSerialPortConfiguration()
+        if let consoleInput, let consoleOutput {
             serial.attachment = VZFileHandleSerialPortAttachment(
-                fileHandleForReading: nil, fileHandleForWriting: fh)
+                fileHandleForReading: consoleInput,
+                fileHandleForWriting: consoleOutput)
             vzConfig.serialPorts = [serial]
+        } else {
+            let serialLog = store.serialLogPath(config.name)
+            FileManager.default.createFile(atPath: serialLog.path, contents: nil)
+            if let fh = FileHandle(forWritingAtPath: serialLog.path) {
+                serial.attachment = VZFileHandleSerialPortAttachment(
+                    fileHandleForReading: nil, fileHandleForWriting: fh)
+                vzConfig.serialPorts = [serial]
+            }
         }
 
         if !headless {
@@ -134,11 +145,15 @@ public enum VMFactory {
     public static func configuration(
         _ config: VMConfig,
         store: VMStore,
-        headless: Bool
+        headless: Bool,
+        consoleInput: FileHandle? = nil,
+        consoleOutput: FileHandle? = nil
     ) throws -> VZVirtualMachineConfiguration {
         switch config.os {
         case .linux:
-            return try linuxConfiguration(config, store: store, headless: headless)
+            return try linuxConfiguration(config, store: store, headless: headless,
+                                          consoleInput: consoleInput,
+                                          consoleOutput: consoleOutput)
         case .macos:
             #if arch(arm64)
             return try macosConfiguration(config, store: store, headless: headless)

@@ -750,5 +750,6 @@
   "vmstoppedimmediately-text": "VMは起動直後に停止しました — ブート可能なものが見つからなかった可能性があります。インストーラーISOを接続するか、ベースディスクイメージからVMを作成してください。",
   "mcp-settings-vm-text": "MCPサーバー（VM API）",
   "templatesinfo-vm-text": "テンプレートは保存されたVMディスクイメージで、そこから新しいVMを作成できます。ホームのVM行にあるアーカイブボタンで保存できます。",
-  "vmisoplaceholder-text": "ダウンロードするインストーラーを選ぶか、ローカルのISOパスを入力"
+  "vmisoplaceholder-text": "ダウンロードするインストーラーを選ぶか、ローカルのISOパスを入力",
+  "vmopenconsole-text": "ターミナルでシリアルコンソールを開く"
 }
