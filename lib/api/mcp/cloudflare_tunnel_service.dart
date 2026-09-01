@@ -24,8 +24,15 @@ Future<Process> _defaultProcessSpawner(String executable, List<String> args) {
 }
 
 class CloudflareTunnelService {
-  static const String _downloadUrl =
-      'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe';
+  /// Official release asset for this host. macOS ships as a tgz holding the
+  /// binary; Windows and Linux are bare executables.
+  static String get _downloadUrl {
+    const base =
+        'https://github.com/cloudflare/cloudflared/releases/latest/download/';
+    if (Platform.isMacOS) return '${base}cloudflared-darwin-arm64.tgz';
+    if (Platform.isLinux) return '${base}cloudflared-linux-amd64';
+    return '${base}cloudflared-windows-amd64.exe';
+  }
   static final RegExp _urlPattern =
       RegExp(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com');
   static const Duration defaultUrlWaitTimeout = Duration(seconds: 25);
@@ -72,7 +79,28 @@ class CloudflareTunnelService {
 
     Notify.message('cloudflare-tunnel-downloading-text'.i18n(),
         loading: true);
-    await dio.download(_downloadUrl, cachedPath);
+    if (_downloadUrl.endsWith('.tgz')) {
+      // The macOS asset is an archive; unpack the one binary it contains.
+      final archivePath = '$cachedPath.tgz';
+      await dio.download(_downloadUrl, archivePath);
+      final extract = await Process.run('tar', [
+        '-xzf', archivePath,
+        '-C', File(cachedPath).parent.path,
+        'cloudflared',
+      ]);
+      try {
+        File(archivePath).deleteSync();
+      } catch (_) {}
+      if (extract.exitCode != 0) {
+        throw Exception(
+            'Could not unpack cloudflared: ${extract.stderr}');
+      }
+    } else {
+      await dio.download(_downloadUrl, cachedPath);
+    }
+    if (!Platform.isWindows) {
+      await Process.run('chmod', ['+x', cachedPath]);
+    }
     if (!await _binaryWorks(cachedPath)) {
       throw Exception(
           'Downloaded cloudflared but it did not run successfully.');
@@ -82,7 +110,7 @@ class CloudflareTunnelService {
 
   String _cachedBinaryPath() {
     final dir = getDataPath()..cd('bin');
-    return dir.file('cloudflared.exe');
+    return dir.file(Platform.isWindows ? 'cloudflared.exe' : 'cloudflared');
   }
 
   Future<bool> _binaryWorks(String executable) async {
