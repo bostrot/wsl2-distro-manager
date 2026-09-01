@@ -147,6 +147,8 @@ void main() {
       'wsl_delete_snippet',
       'wsl_list_physical_disks',
       'wsl_list_mounted_disks',
+      'wsl_list_recipes',
+      'wsl_install_service',
       'wsl_terminal_start',
       'wsl_terminal_send',
       'wsl_terminal_read',
