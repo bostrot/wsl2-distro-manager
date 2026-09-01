@@ -755,5 +755,7 @@
   "vmshowdisplay-text": "Mostrar pantalla",
   "vmdiskinuse-text": "La VM está en ejecución, así que su disco no se puede montar — se abre la carpeta de la VM en su lugar.",
   "vmdisknotmountable-text": "macOS no puede leer el sistema de archivos de este disco (los discos Linux suelen ser ext4) — se abre la carpeta de la VM en su lugar.",
-  "vmejectbeforestart-text": "El disco de esta VM está montado en Finder. Expúlsalo primero y luego inicia la VM."
+  "vmejectbeforestart-text": "El disco de esta VM está montado en Finder. Expúlsalo primero y luego inicia la VM.",
+  "listfailed-vm-text": "No se pudo leer la lista de máquinas virtuales.",
+  "listfailedhint-vm-text": "No se pudo acceder al ayudante vmctl. En una build de release va dentro de la app; en desarrollo, ejecuta scripts/build_macos.sh una vez para instalarlo y vuelve a intentarlo."
 }

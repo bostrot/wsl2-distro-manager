@@ -755,5 +755,7 @@
   "vmshowdisplay-text": "Képernyő megjelenítése",
   "vmdiskinuse-text": "A VM fut, ezért a lemeze nem csatolható — helyette a VM mappája nyílik meg.",
   "vmdisknotmountable-text": "A macOS nem tudja olvasni a lemez fájlrendszerét (a Linux-lemezek általában ext4) — helyette a VM mappája nyílik meg.",
-  "vmejectbeforestart-text": "A VM lemeze csatolva van a Finderben. Előbb add ki, majd indítsd a VM-et."
+  "vmejectbeforestart-text": "A VM lemeze csatolva van a Finderben. Előbb add ki, majd indítsd a VM-et.",
+  "listfailed-vm-text": "A virtuális gépek listáját nem sikerült beolvasni.",
+  "listfailedhint-vm-text": "A vmctl segéd nem volt elérhető. Release buildben az alkalmazásban van; fejlesztői futtatásnál futtasd egyszer a scripts/build_macos.sh-t, majd próbáld újra."
 }

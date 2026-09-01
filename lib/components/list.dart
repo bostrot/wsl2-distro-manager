@@ -163,10 +163,16 @@ class DistroListState extends State<DistroList> {
                                   ? 'remotenotset-text'.i18n()
                                   : remoteTarget
                             ])
-                          : 'listfailed-text'.i18n(),
+                          : (widget.api.backendId == 'wsl'
+                                  ? 'listfailed-text'
+                                  : 'listfailed-vm-text')
+                              .i18n(),
                       hint: remoteEnabled
                           ? 'listfailedremotehint-text'.i18n()
-                          : 'listfailedhint-text'.i18n(),
+                          : (widget.api.backendId == 'wsl'
+                                  ? 'listfailedhint-text'
+                                  : 'listfailedhint-vm-text')
+                              .i18n(),
                     ),
                     const SizedBox(height: 12),
                     Row(

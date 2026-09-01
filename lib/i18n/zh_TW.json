@@ -756,5 +756,7 @@
   "vmshowdisplay-text": "顯示螢幕",
   "vmdiskinuse-text": "虛擬機正在執行，無法掛載其磁碟 — 改為開啟虛擬機資料夾。",
   "vmdisknotmountable-text": "macOS 無法讀取此磁碟的檔案系統（Linux 磁碟通常為 ext4）— 改為開啟虛擬機資料夾。",
-  "vmejectbeforestart-text": "此虛擬機的磁碟已在 Finder 中掛載。請先退出，再啟動虛擬機。"
+  "vmejectbeforestart-text": "此虛擬機的磁碟已在 Finder 中掛載。請先退出，再啟動虛擬機。",
+  "listfailed-vm-text": "無法讀取虛擬機列表。",
+  "listfailedhint-vm-text": "無法存取 vmctl 輔助程式。發佈版內建於應用中；開發執行時請先執行一次 scripts/build_macos.sh 安裝它，然後重試。"
 }

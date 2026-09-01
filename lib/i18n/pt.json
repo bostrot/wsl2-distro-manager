@@ -757,5 +757,7 @@
   "vmshowdisplay-text": "Mostrar tela",
   "vmdiskinuse-text": "A VM está em execução, então seu disco não pode ser montado — abrindo a pasta da VM em vez disso.",
   "vmdisknotmountable-text": "O macOS não consegue ler o sistema de arquivos deste disco (discos Linux geralmente são ext4) — abrindo a pasta da VM em vez disso.",
-  "vmejectbeforestart-text": "O disco desta VM está montado no Finder. Ejete-o primeiro e depois inicie a VM."
+  "vmejectbeforestart-text": "O disco desta VM está montado no Finder. Ejete-o primeiro e depois inicie a VM.",
+  "listfailed-vm-text": "A lista de máquinas virtuais não pôde ser lida.",
+  "listfailedhint-vm-text": "O auxiliar vmctl não pôde ser acessado. Em uma build de release ele vem dentro do app; em desenvolvimento, execute scripts/build_macos.sh uma vez para instalá-lo e tente novamente."
 }

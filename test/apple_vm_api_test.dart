@@ -311,6 +311,19 @@ void main() {
     });
   });
 
+  group('helper discovery', () {
+    test('a dev environment resolves a real vmctl, never the bare name',
+        () {
+      // No override: exercise the real candidate chain. In a checkout (this
+      // test run) the repo build output or the installed dev copy must win
+      // over falling through to PATH.
+      final discovered = AppleVmApi(shell: shell).helperPath();
+      expect(discovered, isNot('vmctl'),
+          reason: 'debug runs must find a concrete helper binary');
+      expect(File(discovered).existsSync(), isTrue);
+    });
+  });
+
   group('startExplorer / disk mounting', () {
     test('a stopped VM with a mountable partition opens the volume',
         () async {

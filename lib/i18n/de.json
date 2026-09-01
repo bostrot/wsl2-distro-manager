@@ -756,5 +756,7 @@
   "vmshowdisplay-text": "Bildschirm anzeigen",
   "vmdiskinuse-text": "Die VM läuft, ihre Festplatte kann daher nicht eingebunden werden — stattdessen wird der VM-Ordner geöffnet.",
   "vmdisknotmountable-text": "macOS kann das Dateisystem dieser Festplatte nicht lesen (Linux-Festplatten sind meist ext4) — stattdessen wird der VM-Ordner geöffnet.",
-  "vmejectbeforestart-text": "Die Festplatte dieser VM ist im Finder eingebunden. Erst auswerfen, dann die VM starten."
+  "vmejectbeforestart-text": "Die Festplatte dieser VM ist im Finder eingebunden. Erst auswerfen, dann die VM starten.",
+  "listfailed-vm-text": "Die Liste der virtuellen Maschinen konnte nicht gelesen werden.",
+  "listfailedhint-vm-text": "Der vmctl-Helfer war nicht erreichbar. Im Release-Build steckt er in der App; bei einem Entwicklungslauf einmal scripts/build_macos.sh ausführen, dann erneut versuchen."
 }

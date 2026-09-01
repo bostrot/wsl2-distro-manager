@@ -755,5 +755,7 @@
   "vmshowdisplay-text": "画面を表示",
   "vmdiskinuse-text": "VMが実行中のためディスクをマウントできません — 代わりにVMフォルダを開きます。",
   "vmdisknotmountable-text": "macOSはこのディスクのファイルシステムを読めません（Linuxディスクは通常ext4）— 代わりにVMフォルダを開きます。",
-  "vmejectbeforestart-text": "このVMのディスクはFinderでマウントされています。先に取り出してからVMを起動してください。"
+  "vmejectbeforestart-text": "このVMのディスクはFinderでマウントされています。先に取り出してからVMを起動してください。",
+  "listfailed-vm-text": "仮想マシンの一覧を読み取れませんでした。",
+  "listfailedhint-vm-text": "vmctlヘルパーにアクセスできませんでした。リリースビルドではアプリに同梱されています。開発実行では scripts/build_macos.sh を一度実行してから再試行してください。"
 }

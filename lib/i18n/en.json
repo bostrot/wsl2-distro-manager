@@ -755,5 +755,7 @@
   "vmshowdisplay-text": "Show screen",
   "vmdiskinuse-text": "The VM is running, so its disk cannot be mounted — opening the VM folder instead.",
   "vmdisknotmountable-text": "macOS cannot read this disk's filesystem (Linux disks are usually ext4) — opening the VM folder instead.",
-  "vmejectbeforestart-text": "This VM's disk is mounted in Finder. Eject it first, then start the VM."
+  "vmejectbeforestart-text": "This VM's disk is mounted in Finder. Eject it first, then start the VM.",
+  "listfailed-vm-text": "The list of virtual machines could not be read.",
+  "listfailedhint-vm-text": "The vmctl helper could not be reached. In a release build it ships inside the app; in a development run, execute scripts/build_macos.sh once to install it, then try again."
 }

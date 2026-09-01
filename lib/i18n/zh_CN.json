@@ -756,5 +756,7 @@
   "vmshowdisplay-text": "显示屏幕",
   "vmdiskinuse-text": "虚拟机正在运行，无法挂载其磁盘 — 改为打开虚拟机文件夹。",
   "vmdisknotmountable-text": "macOS 无法读取此磁盘的文件系统（Linux 磁盘通常为 ext4）— 改为打开虚拟机文件夹。",
-  "vmejectbeforestart-text": "此虚拟机的磁盘已在 Finder 中挂载。请先推出，再启动虚拟机。"
+  "vmejectbeforestart-text": "此虚拟机的磁盘已在 Finder 中挂载。请先推出，再启动虚拟机。",
+  "listfailed-vm-text": "无法读取虚拟机列表。",
+  "listfailedhint-vm-text": "无法访问 vmctl 辅助程序。发布版内置于应用中；开发运行时请先执行一次 scripts/build_macos.sh 安装它，然后重试。"
 }

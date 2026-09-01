@@ -755,5 +755,7 @@
   "vmshowdisplay-text": "Ekranı göster",
   "vmdiskinuse-text": "Sanal makine çalışıyor, bu yüzden diski bağlanamaz — bunun yerine VM klasörü açılıyor.",
   "vmdisknotmountable-text": "macOS bu diskin dosya sistemini okuyamıyor (Linux diskleri genellikle ext4) — bunun yerine VM klasörü açılıyor.",
-  "vmejectbeforestart-text": "Bu sanal makinenin diski Finder'da bağlı. Önce çıkarın, sonra VM'yi başlatın."
+  "vmejectbeforestart-text": "Bu sanal makinenin diski Finder'da bağlı. Önce çıkarın, sonra VM'yi başlatın.",
+  "listfailed-vm-text": "Sanal makine listesi okunamadı.",
+  "listfailedhint-vm-text": "vmctl yardımcısına erişilemedi. Release derlemede uygulamanın içindedir; geliştirme çalıştırmasında bir kez scripts/build_macos.sh çalıştırıp yeniden deneyin."
 }

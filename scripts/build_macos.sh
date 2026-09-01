@@ -20,6 +20,13 @@ codesign --force --sign "$IDENTITY" \
   --entitlements macos/vmctl/vmctl.entitlements \
   "$VMCTL_BIN"
 
+# A stable copy for `flutter run` debug sessions, which have no bundle to
+# carry the helper.
+DEV_BIN="$HOME/Library/Application Support/WSLManager/bin"
+mkdir -p "$DEV_BIN"
+cp "$VMCTL_BIN" "$DEV_BIN/vmctl"
+echo "==> vmctl installed for dev runs at $DEV_BIN/vmctl"
+
 if [[ "${VMCTL_ONLY:-0}" == "1" ]]; then
   echo "==> vmctl built at $VMCTL_BIN"
   exit 0
