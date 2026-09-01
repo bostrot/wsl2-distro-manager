@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -48,7 +50,7 @@ void main() {
       router.pushNamed('settings');
       await tester.pump(const Duration(seconds: 1));
 
-      final expander = find.text('mcp-settings-text'.i18n());
+      final expander = find.text((Platform.isMacOS ? 'mcp-settings-vm-text' : 'mcp-settings-text').i18n());
       expect(expander, findsOneWidget);
       await tester.tap(expander, warnIfMissed: false);
       await tester.pumpAndSettle();
@@ -69,7 +71,7 @@ void main() {
       router.pushNamed('settings');
       await tester.pump(const Duration(seconds: 1));
 
-      final expander = find.text('mcp-settings-text'.i18n());
+      final expander = find.text((Platform.isMacOS ? 'mcp-settings-vm-text' : 'mcp-settings-text').i18n());
       await tester.tap(expander, warnIfMissed: false);
       await tester.pumpAndSettle();
 

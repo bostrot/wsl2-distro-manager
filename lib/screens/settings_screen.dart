@@ -636,13 +636,16 @@ class SettingsPageState extends State<SettingsPage> {
     ClaudeAuth().setClientId(_claudeClientIdController.text);
     _aiService.setClaudeModel(_claudeModelController.text);
 
-    // Distro location setting
-    if (_settings['Default Distro Location']!.text.isNotEmpty) {
-      prefs.setString("DistroPath", _settings['Default Distro Location']!.text);
+    // Location settings. Null-safe: a field hidden on this backend (the
+    // distro location does not exist on macOS) never registered a
+    // controller, and Save must not crash over it.
+    final distroLocation = _settings['Default Distro Location'];
+    if (distroLocation != null && distroLocation.text.isNotEmpty) {
+      prefs.setString("DistroPath", distroLocation.text);
     }
-    // Data location setting
-    if (_settings['General Data Location']!.text.isNotEmpty) {
-      prefs.setString("DataPath", _settings['General Data Location']!.text);
+    final dataLocation = _settings['General Data Location'];
+    if (dataLocation != null && dataLocation.text.isNotEmpty) {
+      prefs.setString("DataPath", dataLocation.text);
     }
 
     await _saveWslConfig();
