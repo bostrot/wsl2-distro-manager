@@ -583,10 +583,15 @@ class _AiChatPanelState extends State<AiChatPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _tasksExpanded = !_tasksExpanded),
-          child: header,
+        // HoverButton, not GestureDetector: the header is the only way to
+        // fold the queue, and a GestureDetector cannot be reached or
+        // activated by keyboard (IA-04 — enforced by keyboard_focus_test).
+        HoverButton(
+          onPressed: () => setState(() => _tasksExpanded = !_tasksExpanded),
+          builder: (context, states) => FocusBorder(
+            focused: states.isFocused,
+            child: header,
+          ),
         ),
         if (_tasksExpanded) ...[
           // Capped: a long queue scrolls inside its own box instead of
