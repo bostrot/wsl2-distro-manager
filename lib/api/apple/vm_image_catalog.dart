@@ -5,6 +5,16 @@ import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/downloader.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
+/// Test seam: replaces the catalog (and its network) wherever installers or
+/// cloud images are downloaded — the create page and the MCP tools.
+VmImageCatalog Function() vmImageCatalogBuilder = () => VmImageCatalog();
+
+/// How a catalog file boots a VM: an installer the user clicks through in
+/// the VM window, or a cloud image that comes up ready to use — cloud-init
+/// picks up the seed vmctl attaches (user, SSH key, hostname) and grows the
+/// root partition, so the guest is reachable over SSH on first boot.
+enum VmImageKind { installerIso, cloudImage }
+
 /// One downloadable installer in the macOS VM catalog.
 ///
 /// The exact file name drifts with every point release, so an entry names a
@@ -15,16 +25,24 @@ class VmIsoCatalogEntry {
   final String name;
   final String indexUrl;
   final RegExp pattern;
+  final VmImageKind kind;
+
+  /// Explicit slug when the derived one would be unwieldy.
+  final String? idOverride;
 
   const VmIsoCatalogEntry({
     required this.name,
     required this.indexUrl,
     required this.pattern,
+    this.kind = VmImageKind.installerIso,
+    this.idOverride,
   });
 
+  bool get isCloudImage => kind == VmImageKind.cloudImage;
+
   /// Stable slug the AI/MCP use to name an image, derived from [name]
-  /// (e.g. "Alpine Linux (virt)" → "alpine-virt").
-  String get id => name
+  /// (e.g. "Alpine Linux (virt)" → "alpine-linux-virt").
+  String get id => idOverride ?? name
       .toLowerCase()
       .replaceAll(RegExp(r'[()]'), '')
       .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
@@ -49,6 +67,18 @@ class VmImageCatalog {
   /// no such alias — the entry keeps working, it just stops being the newest
   /// when the next Fedora ships.
   static final List<VmIsoCatalogEntry> entries = [
+    // First because it is the entry to recommend: a raw cloud image needs no
+    // manual install — Debian is the one major distro publishing arm64
+    // cloud images as .raw, which Virtualization.framework boots directly
+    // (the qcow2 everyone else ships would need a conversion tool we don't
+    // bundle).
+    VmIsoCatalogEntry(
+      name: 'Debian 13 (cloud image)',
+      indexUrl: 'https://cloud.debian.org/images/cloud/trixie/latest/',
+      pattern: RegExp(r'debian-13-genericcloud-arm64\.raw'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'debian-13-cloud',
+    ),
     VmIsoCatalogEntry(
       name: 'Alpine Linux (virt)',
       indexUrl:

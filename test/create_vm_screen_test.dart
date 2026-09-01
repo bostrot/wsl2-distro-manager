@@ -136,6 +136,28 @@ void main() {
         reason: 'the backend must get the cached file, not the catalog name');
   });
 
+  testWidgets('a cloud-image pick seeds the disk instead of attaching an ISO',
+      (tester) async {
+    shell.exitCodes['create'] = 1;
+    shell.errors['create'] = 'refused by test';
+
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await tester.enterText(find.byKey(const ValueKey('test-vm-iso')),
+        'Debian 13 (cloud image)');
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+
+    final createCall = shell.calls.lastWhere((c) => c.contains('create'));
+    expect(createCall, contains('--image'));
+    expect(createCall[createCall.indexOf('--image') + 1],
+        endsWith('Debian 13 (cloud image).iso'),
+        reason: 'the downloaded file must seed the disk');
+    expect(createCall.contains('--iso'), isFalse,
+        reason: 'a cloud image is not an installer to attach');
+  });
+
   testWidgets('a plain path skips the catalog entirely', (tester) async {
     shell.exitCodes['create'] = 1;
     shell.errors['create'] = 'refused by test';

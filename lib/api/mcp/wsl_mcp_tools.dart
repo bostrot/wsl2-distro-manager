@@ -1176,7 +1176,11 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
         return VmImageCatalog.entries.isEmpty
             ? 'No catalog images.'
             : VmImageCatalog.entries
-                .map((e) => '${e.id}: ${e.name}')
+                .map((e) => e.isCloudImage
+                    ? '${e.id}: ${e.name} — boots ready-to-use, SSH '
+                        'reachable (PREFERRED for automated setup)'
+                    : '${e.id}: ${e.name} — installer ISO, needs a manual '
+                        'install in the VM window')
                 .join('\n');
       },
     ),
@@ -1224,16 +1228,27 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
       handler: (args) async {
         final name = _requireString(args, 'name');
         var isoPath = (args['iso_path'] as String?)?.trim() ?? '';
-        final imagePath = (args['image_path'] as String?)?.trim() ?? '';
+        var imagePath = (args['image_path'] as String?)?.trim() ?? '';
         final catalog = (args['catalog'] as String?)?.trim() ?? '';
 
+        String downloadNote = '';
         if (catalog.isNotEmpty) {
           final entry = VmImageCatalog.entryById(catalog);
           if (entry == null) {
             throw ArgumentError('No catalog image "$catalog". Ids: '
                 '${VmImageCatalog.entries.map(VmImageCatalog.idOf).join(", ")}');
           }
-          isoPath = await VmImageCatalog().download(entry);
+          final downloaded = await vmImageCatalogBuilder().download(entry);
+          if (entry.isCloudImage) {
+            imagePath = downloaded;
+            isoPath = '';
+            downloadNote = ' Seeded from ${entry.name}: the guest boots '
+                'ready to use and reachable over SSH after vm_start.';
+          } else {
+            isoPath = downloaded;
+            downloadNote = ' ${entry.name} is an installer ISO: start the VM '
+                'with gui=true so the user can run the installer.';
+          }
         }
 
         if (isoPath.isEmpty && imagePath.isEmpty) {
@@ -1254,7 +1269,7 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
               ? (args['user'] as String).trim()
               : 'user',
         );
-        return 'Created VM $name.';
+        return 'Created VM $name.$downloadNote';
       },
     ),
     McpTool(

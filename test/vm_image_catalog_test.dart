@@ -98,6 +98,21 @@ void main() {
       Dio()..httpClientAdapter = _FakeListingAdapter(pages);
 
   group('catalog shape', () {
+    test('the ready-to-use cloud image is curated and marked as such', () {
+      final entry = VmImageCatalog.entryById('debian-13-cloud');
+      expect(entry, isNotNull);
+      expect(entry!.isCloudImage, isTrue);
+      expect(entry.pattern.pattern, contains('genericcloud-arm64'));
+      expect(entry.pattern.pattern, contains('raw'),
+          reason: 'only raw images boot without a conversion tool');
+      // Everything else stays an installer.
+      expect(
+          VmImageCatalog.entries
+              .where((e) => e.isCloudImage)
+              .map((e) => e.id),
+          ['debian-13-cloud']);
+    });
+
     test('names cover the curated distros and resolve back to entries', () {
       expect(VmImageCatalog.names.length, greaterThanOrEqualTo(4));
       for (final name in VmImageCatalog.names) {

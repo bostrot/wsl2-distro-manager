@@ -19,9 +19,6 @@ AppleVmApi Function() appleVmApiBuilder = () {
   return backend is AppleVmApi ? backend : AppleVmApi();
 };
 
-/// Test seam: replaces the installer catalog (and its network) in tests.
-VmImageCatalog Function() vmImageCatalogBuilder = () => VmImageCatalog();
-
 /// Create-page for native VMs on macOS (Apple Virtualization framework).
 ///
 /// The counterpart of [CreatePage]: instead of downloading a WSL rootfs it
@@ -127,16 +124,18 @@ class _CreateVmPageState extends State<CreateVmPage> {
       _creating = true;
     });
 
-    // A catalog pick downloads (or reuses) the installer first; a plain
-    // path goes straight through.
+    // A catalog pick downloads (or reuses) the file first; a plain path
+    // goes straight through. A cloud image seeds the disk (ready to use)
+    // instead of being attached as an installer.
     var isoPath = _iso.text.trim();
+    var imagePath = _image.text.trim();
     final catalogEntry =
         _guestOs == 'linux' ? VmImageCatalog.entryFor(isoPath) : null;
     if (catalogEntry != null) {
       final token = CancelSignal();
       _cancelSignal = token;
       try {
-        isoPath = await vmImageCatalogBuilder().download(
+        final downloadedPath = await vmImageCatalogBuilder().download(
           catalogEntry,
           cancelSignal: token,
           onProgress: (received, total) {
@@ -154,6 +153,12 @@ class _CreateVmPageState extends State<CreateVmPage> {
             });
           },
         );
+        if (catalogEntry.isCloudImage) {
+          imagePath = downloadedPath;
+          isoPath = '';
+        } else {
+          isoPath = downloadedPath;
+        }
       } on CancelledException {
         Notify.message('');
         if (mounted) setState(() => _creating = false);
@@ -189,7 +194,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
         await api.createLinuxVm(
           name,
           isoPath: isoPath,
-          imagePath: _image.text.trim(),
+          imagePath: imagePath,
           diskSizeGb: _intOf(_diskSize, 32),
           cpus: _intOf(_cpus, 2),
           memoryGb: _intOf(_memory, 4),

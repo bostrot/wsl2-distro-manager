@@ -1,4 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' show InfoBarSeverity;
+import 'dart:io';
+import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
@@ -11,6 +14,21 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'apple_vm_api_test.dart' show FakeVmctlShell;
 import 'mocks.dart';
 import 'vm_backend_test.dart' show FakeBackend;
+
+/// A catalog whose download is a fixed local file — no network.
+class _FixedDownloadCatalog implements VmImageCatalog {
+  _FixedDownloadCatalog(this.path);
+  final String path;
+
+  @override
+  Future<String> download(VmIsoCatalogEntry entry,
+      {void Function(int, int)? onProgress,
+      CancelSignal? cancelSignal}) async => path;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -172,6 +190,31 @@ void main() {
           tools.firstWhere((t) => t.name == 'vm_create_linux').handler;
       await expectLater(create({'name': 'blank'}), throwsArgumentError);
       expect(shell.calls.any((c) => c.contains('create')), isFalse);
+    });
+
+    test('a cloud catalog id seeds the disk, not the ISO slot', () async {
+      final shell = FakeVmctlShell();
+      final api = AppleVmApi(
+          shell: shell,
+          helperPathOverride: '/fake/vmctl',
+          storeDirOverride: '/tmp/vm-mcp-test');
+      final dir = Directory.systemTemp.createTempSync('mcp-cloud-test');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final image = File('${dir.path}/debian.raw')..writeAsBytesSync([1]);
+      vmImageCatalogBuilder = () => _FixedDownloadCatalog(image.path);
+      addTearDown(() => vmImageCatalogBuilder = () => VmImageCatalog());
+
+      final tools =
+          buildWslMcpTools(api, WslTerminalManager(wslApi: api));
+      final out = await tools
+          .firstWhere((t) => t.name == 'vm_create_linux')
+          .handler({'name': 'cloudy', 'catalog': 'debian-13-cloud'});
+
+      final createCall = shell.calls.lastWhere((c) => c.contains('create'));
+      expect(createCall, contains('--image'));
+      expect(createCall[createCall.indexOf('--image') + 1], image.path);
+      expect(createCall.contains('--iso'), isFalse);
+      expect(out, contains('ready to use'));
     });
 
     test('vm_list_images lists catalog ids', () async {
