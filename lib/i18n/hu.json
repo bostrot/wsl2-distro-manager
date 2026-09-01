@@ -757,5 +757,15 @@
   "vmdisknotmountable-text": "A macOS nem tudja olvasni a lemez fájlrendszerét (a Linux-lemezek általában ext4) — helyette a VM mappája nyílik meg.",
   "vmejectbeforestart-text": "A VM lemeze csatolva van a Finderben. Előbb add ki, majd indítsd a VM-et.",
   "listfailed-vm-text": "A virtuális gépek listáját nem sikerült beolvasni.",
-  "listfailedhint-vm-text": "A vmctl segéd nem volt elérhető. Release buildben az alkalmazásban van; fejlesztői futtatásnál futtasd egyszer a scripts/build_macos.sh-t, majd próbáld újra."
+  "listfailedhint-vm-text": "A vmctl segéd nem volt elérhető. Release buildben az alkalmazásban van; fejlesztői futtatásnál futtasd egyszer a scripts/build_macos.sh-t, majd próbáld újra.",
+  "ai-workspace-vm-missing-text": "Az AI Workspace egy 'ai-workspace' nevű Linux VM-et igényel. Hozz létre egyet (cloud image vagy telepített Linux VM) a kezdőképernyőn, majd nyisd meg újra ezt az oldalt.",
+  "ai-workspace-vm-stopped-text": "Az 'ai-workspace' VM létezik, de nem fut. Indítsd el a kezdőképernyőről, majd próbáld újra.",
+  "vmbootsourceinfo-text": "Egy Linux VM-nek szüksége van valamire, amiről elindulhat: válassz telepítő ISO-t a listából, vagy egy bootolható alap lemezképet. A cloud image azonnal egy használatra kész rendszerbe indul; a telepítő ISO végigvezet egy normál telepítésen.",
+  "vmbootsourcerequired-text": "Válassz telepítő ISO-t vagy alap lemezképet — az egyik nélküli VM-nek nincs mit elindítania, és azonnal leáll.",
+  "vmservice-text": "Szolgáltatás előtelepítése (opcionális)",
+  "vmservicenone-text": "Nincs",
+  "vmcreatedwithservice-text": "A(z) %s VM létrejött. A(z) %s az első futáskor települ.",
+  "installingservice-text": "Szolgáltatás telepítése itt: %s…",
+  "installedservice-text": "A szolgáltatás készen áll itt: %s, cím: %s.",
+  "installservicefailed-text": "Nem sikerült telepíteni a szolgáltatást itt: %s: %s"
 }

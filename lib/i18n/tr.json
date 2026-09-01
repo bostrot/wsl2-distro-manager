@@ -757,5 +757,15 @@
   "vmdisknotmountable-text": "macOS bu diskin dosya sistemini okuyamıyor (Linux diskleri genellikle ext4) — bunun yerine VM klasörü açılıyor.",
   "vmejectbeforestart-text": "Bu sanal makinenin diski Finder'da bağlı. Önce çıkarın, sonra VM'yi başlatın.",
   "listfailed-vm-text": "Sanal makine listesi okunamadı.",
-  "listfailedhint-vm-text": "vmctl yardımcısına erişilemedi. Release derlemede uygulamanın içindedir; geliştirme çalıştırmasında bir kez scripts/build_macos.sh çalıştırıp yeniden deneyin."
+  "listfailedhint-vm-text": "vmctl yardımcısına erişilemedi. Release derlemede uygulamanın içindedir; geliştirme çalıştırmasında bir kez scripts/build_macos.sh çalıştırıp yeniden deneyin.",
+  "ai-workspace-vm-missing-text": "AI Workspace, 'ai-workspace' adında bir Linux VM'ye ihtiyaç duyar. Ana ekranda bir tane oluşturun (bulut kalıbı veya kurulu bir Linux VM) ve bu sayfayı yeniden açın.",
+  "ai-workspace-vm-stopped-text": "'ai-workspace' VM'si var ancak çalışmıyor. Ana ekrandan başlatın ve yeniden deneyin.",
+  "vmbootsourceinfo-text": "Bir Linux VM'nin önyükleyecek bir şeye ihtiyacı vardır: listeden bir kurulum ISO'su seçin ya da önyüklenebilir bir temel disk kalıbı seçin. Bir bulut kalıbı doğrudan kullanıma hazır bir sisteme açılır; bir kurulum ISO'su sizi normal bir kurulumda yönlendirir.",
+  "vmbootsourcerequired-text": "Bir kurulum ISO'su veya temel disk kalıbı seçin — ikisi de olmayan bir VM'nin önyükleyecek bir şeyi yoktur ve hemen durur.",
+  "vmservice-text": "Bir hizmeti önceden kur (isteğe bağlı)",
+  "vmservicenone-text": "Yok",
+  "vmcreatedwithservice-text": "%s sanal makinesi oluşturuldu. %s ilk çalıştığında kurulur.",
+  "installingservice-text": "%s içine hizmet kuruluyor…",
+  "installedservice-text": "%s içindeki hizmet %s adresinde hazır.",
+  "installservicefailed-text": "%s içine hizmet kurulamadı: %s"
 }

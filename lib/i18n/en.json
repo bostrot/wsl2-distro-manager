@@ -757,5 +757,15 @@
   "vmdisknotmountable-text": "macOS cannot read this disk's filesystem (Linux disks are usually ext4) — opening the VM folder instead.",
   "vmejectbeforestart-text": "This VM's disk is mounted in Finder. Eject it first, then start the VM.",
   "listfailed-vm-text": "The list of virtual machines could not be read.",
-  "listfailedhint-vm-text": "The vmctl helper could not be reached. In a release build it ships inside the app; in a development run, execute scripts/build_macos.sh once to install it, then try again."
+  "listfailedhint-vm-text": "The vmctl helper could not be reached. In a release build it ships inside the app; in a development run, execute scripts/build_macos.sh once to install it, then try again.",
+  "ai-workspace-vm-missing-text": "The AI Workspace needs a Linux VM named 'ai-workspace'. Create one (a cloud image or an installed Linux VM) on the Home screen, then reopen this page.",
+  "ai-workspace-vm-stopped-text": "The 'ai-workspace' VM exists but is not running. Start it from the Home screen, then try again.",
+  "vmbootsourceinfo-text": "A Linux VM needs something to boot from: pick an installer ISO from the list, or choose a bootable base disk image. A cloud image boots straight into a ready-to-use system; an installer ISO walks you through a normal install.",
+  "vmbootsourcerequired-text": "Choose an installer ISO or a base disk image — a VM with neither has nothing to boot and stops immediately.",
+  "vmservice-text": "Preinstall a service (optional)",
+  "vmservicenone-text": "None",
+  "vmcreatedwithservice-text": "VM %s created. %s installs the first time it runs.",
+  "installingservice-text": "Installing the service in %s…",
+  "installedservice-text": "Service ready in %s at %s.",
+  "installservicefailed-text": "Could not install the service in %s: %s"
 }

@@ -54,6 +54,8 @@ void main() {
             'wsl_terminal_start',
             'wsl_terminal_close',
             'wsl_list_snippets',
+            'wsl_list_recipes',
+            'wsl_install_service',
           ]));
       // Nothing WSL- or Apple-specific.
       expect(names, isNot(contains('wsl_set_wslconfig')));
@@ -176,6 +178,29 @@ void main() {
       expect(startCall(), isNot(contains('--gui')));
       await start({'name': 'dev', 'gui': true});
       expect(startCall(), contains('--gui'));
+    });
+  });
+
+  group('recipe tools on any backend', () {
+    test('wsl_list_recipes enumerates the catalog', () async {
+      final backend = FakeBackend();
+      final tools =
+          buildWslMcpTools(backend, WslTerminalManager(wslApi: backend));
+      final list = tools.firstWhere((t) => t.name == 'wsl_list_recipes');
+      final out = await list.handler({});
+      expect(out, contains('minio'));
+      expect(out, contains('postgres'));
+    });
+
+    test('wsl_install_service refuses an unknown recipe id', () async {
+      final backend = FakeBackend();
+      final tools =
+          buildWslMcpTools(backend, WslTerminalManager(wslApi: backend));
+      final install =
+          tools.firstWhere((t) => t.name == 'wsl_install_service');
+      expect(
+          () => install.handler({'distro': 'box', 'recipe': 'ghost'}),
+          throwsArgumentError);
     });
   });
 }

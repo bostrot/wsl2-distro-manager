@@ -758,5 +758,15 @@
   "vmdisknotmountable-text": "macOS 无法读取此磁盘的文件系统（Linux 磁盘通常为 ext4）— 改为打开虚拟机文件夹。",
   "vmejectbeforestart-text": "此虚拟机的磁盘已在 Finder 中挂载。请先推出，再启动虚拟机。",
   "listfailed-vm-text": "无法读取虚拟机列表。",
-  "listfailedhint-vm-text": "无法访问 vmctl 辅助程序。发布版内置于应用中；开发运行时请先执行一次 scripts/build_macos.sh 安装它，然后重试。"
+  "listfailedhint-vm-text": "无法访问 vmctl 辅助程序。发布版内置于应用中；开发运行时请先执行一次 scripts/build_macos.sh 安装它，然后重试。",
+  "ai-workspace-vm-missing-text": "AI 工作区需要一个名为 'ai-workspace' 的 Linux 虚拟机。请在主页创建一个（云镜像或已安装的 Linux 虚拟机），然后重新打开此页面。",
+  "ai-workspace-vm-stopped-text": "'ai-workspace' 虚拟机存在但未运行。请在主页启动它，然后重试。",
+  "vmbootsourceinfo-text": "Linux 虚拟机需要可启动的来源：从列表中选择安装镜像 ISO，或选择可启动的基础磁盘镜像。云镜像会直接启动进入即用系统；安装镜像 ISO 则引导你完成常规安装。",
+  "vmbootsourcerequired-text": "请选择安装镜像 ISO 或基础磁盘镜像 — 两者都没有的虚拟机无从启动，会立即停止。",
+  "vmservice-text": "预装服务（可选）",
+  "vmservicenone-text": "无",
+  "vmcreatedwithservice-text": "已创建虚拟机 %s。%s 将在首次运行时安装。",
+  "installingservice-text": "正在 %s 中安装服务…",
+  "installedservice-text": "%s 中的服务已就绪，地址 %s。",
+  "installservicefailed-text": "无法在 %s 中安装服务：%s"
 }

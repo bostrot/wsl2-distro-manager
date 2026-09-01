@@ -759,5 +759,15 @@
   "vmdisknotmountable-text": "O macOS não consegue ler o sistema de arquivos deste disco (discos Linux geralmente são ext4) — abrindo a pasta da VM em vez disso.",
   "vmejectbeforestart-text": "O disco desta VM está montado no Finder. Ejete-o primeiro e depois inicie a VM.",
   "listfailed-vm-text": "A lista de máquinas virtuais não pôde ser lida.",
-  "listfailedhint-vm-text": "O auxiliar vmctl não pôde ser acessado. Em uma build de release ele vem dentro do app; em desenvolvimento, execute scripts/build_macos.sh uma vez para instalá-lo e tente novamente."
+  "listfailedhint-vm-text": "O auxiliar vmctl não pôde ser acessado. Em uma build de release ele vem dentro do app; em desenvolvimento, execute scripts/build_macos.sh uma vez para instalá-lo e tente novamente.",
+  "ai-workspace-vm-missing-text": "O AI Workspace precisa de uma VM Linux chamada 'ai-workspace'. Crie uma (uma imagem cloud ou uma VM Linux instalada) na tela inicial e reabra esta página.",
+  "ai-workspace-vm-stopped-text": "A VM 'ai-workspace' existe mas não está em execução. Inicie-a na tela inicial e tente novamente.",
+  "vmbootsourceinfo-text": "Uma VM Linux precisa de algo para inicializar: escolha uma ISO de instalação da lista ou uma imagem de disco base inicializável. Uma imagem cloud inicializa direto num sistema pronto para uso; uma ISO de instalação guia você por uma instalação normal.",
+  "vmbootsourcerequired-text": "Escolha uma ISO de instalação ou uma imagem de disco base — uma VM sem nenhuma não tem de onde inicializar e para imediatamente.",
+  "vmservice-text": "Pré-instalar um serviço (opcional)",
+  "vmservicenone-text": "Nenhum",
+  "vmcreatedwithservice-text": "VM %s criada. %s é instalado na primeira execução.",
+  "installingservice-text": "Instalando o serviço em %s…",
+  "installedservice-text": "Serviço pronto em %s em %s.",
+  "installservicefailed-text": "Não foi possível instalar o serviço em %s: %s"
 }

@@ -108,8 +108,10 @@ void main() {
     // WSL-only destinations are gone; the shared ones are present.
     expect(find.text('managequickactions-text'.i18n()), findsNothing);
     expect(find.text('custompackage-text'.i18n()), findsNothing);
-    expect(find.text('ai-workspace-title'.i18n()), findsNothing);
     expect(find.text('mountdisk-text'.i18n()), findsNothing);
+    // The AI Workspace runs in a Linux VM on macOS, so its nav entry is
+    // present (its screen then asks for a running ai-workspace VM).
+    expect(find.text('ai-workspace-title'.i18n()), findsOneWidget);
 
     if (locateVmctl() != null) {
       // Empty store: the list shows the no-instances state whose CTA leads

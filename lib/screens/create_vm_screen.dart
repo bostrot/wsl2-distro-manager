@@ -3,6 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
+import 'package:wsl2distromanager/api/recipes/recipe_catalog.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart' show formatTransferSize;
@@ -45,8 +46,10 @@ class _CreateVmPageState extends State<CreateVmPage> {
   final _memory = TextEditingController(text: '4');
 
   String _guestOs = 'linux';
+  String _recipeId = '';
   bool _creating = false;
   String? _nameError;
+  String? _bootSourceError;
 
   /// Live while a catalog ISO is being fetched; the Cancel button stops it.
   CancelSignal? _cancelSignal;
@@ -104,8 +107,23 @@ class _CreateVmPageState extends State<CreateVmPage> {
       // The helper may be unavailable; creation below reports that properly.
     }
 
+    // A Linux VM with no installer and no base image boots into nothing:
+    // EFI finds no boot option and the guest powers off within seconds.
+    // Require a boot source rather than let the user create a VM that can
+    // only fail (macOS guests always install from a restore image).
+    if (_guestOs == 'linux' &&
+        _iso.text.trim().isEmpty &&
+        _image.text.trim().isEmpty) {
+      setState(() {
+        _nameError = null;
+        _bootSourceError = 'vmbootsourcerequired-text'.i18n();
+      });
+      return;
+    }
+
     setState(() {
       _nameError = null;
+      _bootSourceError = null;
       _creating = true;
     });
 
@@ -178,7 +196,16 @@ class _CreateVmPageState extends State<CreateVmPage> {
           user: _user.text.trim().isEmpty ? 'user' : _user.text.trim(),
         );
       }
-      Notify.message('vmcreated-text'.i18n([name]),
+      if (_recipeId.isNotEmpty) {
+        // A fresh VM is not reachable yet; the recipe installs on the first
+        // run once the guest answers (home list applies pending recipes).
+        await prefs.setString('PendingRecipe_$name', _recipeId);
+      }
+      Notify.message(
+          _recipeId.isEmpty
+              ? 'vmcreated-text'.i18n([name])
+              : 'vmcreatedwithservice-text'.i18n(
+                  [name, RecipeCatalog.byId(_recipeId)?.name ?? _recipeId]),
           severity: InfoBarSeverity.success);
       if (mounted) {
         if (router.canPop()) {
@@ -348,6 +375,17 @@ class _CreateVmPageState extends State<CreateVmPage> {
               ),
               const SizedBox(height: 12),
               if (isLinux) ...[
+                // A Linux VM needs something to boot: an installer ISO from
+                // the catalog, or a bootable base image. Said up front so a
+                // blank-disk VM is not created by accident.
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10.0),
+                  child: InfoBar(
+                    title: Text('vmbootsourceinfo-text'.i18n()),
+                    severity: InfoBarSeverity.info,
+                    isLong: true,
+                  ),
+                ),
                 _isoField(),
                 const SizedBox(height: 12),
                 _fileField(
@@ -357,6 +395,13 @@ class _CreateVmPageState extends State<CreateVmPage> {
                   hint: 'vmbaseimagehint-text'.i18n(),
                   key: const ValueKey('test-vm-image'),
                 ),
+                if (_bootSourceError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(_bootSourceError!,
+                        key: const ValueKey('test-vm-boot-error'),
+                        style: TextStyle(color: destructiveColor(context))),
+                  ),
                 const SizedBox(height: 12),
                 InfoLabel(
                   label: 'optionalusername-text'.i18n(),
@@ -387,6 +432,31 @@ class _CreateVmPageState extends State<CreateVmPage> {
                   _numberField('vmmemorygb-text'.i18n(), _memory,
                       key: const ValueKey('test-vm-memory')),
                 ],
+              ),
+              const SizedBox(height: 12),
+              // Optional: a curated service (MinIO, Postgres, …) installed
+              // into the VM the first time it is running.
+              InfoLabel(
+                label: 'vmservice-text'.i18n(),
+                child: ComboBox<String>(
+                  key: const ValueKey('test-vm-recipe'),
+                  value: _recipeId,
+                  isExpanded: true,
+                  placeholder: Text('vmservicenone-text'.i18n()),
+                  items: [
+                    ComboBoxItem(
+                        value: '', child: Text('vmservicenone-text'.i18n())),
+                    for (final recipe in RecipeCatalog.recipes)
+                      ComboBoxItem(
+                        value: recipe.id,
+                        child: Text('${recipe.name} — ${recipe.description}',
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
+                  onChanged: _creating
+                      ? null
+                      : (value) => setState(() => _recipeId = value ?? ''),
+                ),
               ),
               const SizedBox(height: 24),
               Row(

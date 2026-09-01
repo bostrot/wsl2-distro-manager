@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
 
@@ -99,6 +100,20 @@ void main() {
     expect(labels, containsAll(VmImageCatalog.names));
   });
 
+  testWidgets('a Linux VM with no ISO and no image is refused', (tester) async {
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'demo');
+    // No installer, no base image.
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('test-vm-boot-error')), findsOneWidget);
+    expect(shell.calls.any((c) => c.contains('create')), isFalse,
+        reason: 'a VM that could only fail must never reach vmctl');
+    expect(catalog.downloaded, isEmpty);
+  });
+
   testWidgets('a catalog pick is downloaded and its local path used',
       (tester) async {
     // Creation itself fails, keeping the test off the router; the wiring
@@ -136,6 +151,28 @@ void main() {
     expect(catalog.downloaded, isEmpty);
     final createCall = shell.calls.lastWhere((c) => c.contains('create'));
     expect(createCall[createCall.indexOf('--iso') + 1], '/tmp/local.iso');
+  });
+
+  testWidgets('a chosen service is queued as pending for first run',
+      (tester) async {
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'dbvm');
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-iso')), '/tmp/local.iso');
+
+    // Pick Postgres from the service dropdown.
+    await tester.tap(find.byKey(const ValueKey('test-vm-recipe')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PostgreSQL — PostgreSQL 16 database server.').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+
+    // The VM was created and the recipe queued to install on first run.
+    expect(shell.calls.any((c) => c.contains('create')), isTrue);
+    expect(prefs.getString(RecipeService.pendingKey('dbvm')), 'postgres');
   });
 
   testWidgets('a failed download stops the create and re-enables the form',

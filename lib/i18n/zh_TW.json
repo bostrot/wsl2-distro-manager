@@ -758,5 +758,15 @@
   "vmdisknotmountable-text": "macOS 無法讀取此磁碟的檔案系統（Linux 磁碟通常為 ext4）— 改為開啟虛擬機資料夾。",
   "vmejectbeforestart-text": "此虛擬機的磁碟已在 Finder 中掛載。請先退出，再啟動虛擬機。",
   "listfailed-vm-text": "無法讀取虛擬機列表。",
-  "listfailedhint-vm-text": "無法存取 vmctl 輔助程式。發佈版內建於應用中；開發執行時請先執行一次 scripts/build_macos.sh 安裝它，然後重試。"
+  "listfailedhint-vm-text": "無法存取 vmctl 輔助程式。發佈版內建於應用中；開發執行時請先執行一次 scripts/build_macos.sh 安裝它，然後重試。",
+  "ai-workspace-vm-missing-text": "AI 工作區需要一個名為 'ai-workspace' 的 Linux 虛擬機。請在主頁建立一個（雲端映像或已安裝的 Linux 虛擬機），然後重新開啟此頁面。",
+  "ai-workspace-vm-stopped-text": "'ai-workspace' 虛擬機存在但未執行。請在主頁啟動它，然後重試。",
+  "vmbootsourceinfo-text": "Linux 虛擬機需要可開機的來源：從清單中選擇安裝映像 ISO，或選擇可開機的基礎磁碟映像。雲端映像會直接開機進入即用系統；安裝映像 ISO 則引導你完成一般安裝。",
+  "vmbootsourcerequired-text": "請選擇安裝映像 ISO 或基礎磁碟映像 — 兩者皆無的虛擬機無從開機，會立即停止。",
+  "vmservice-text": "預裝服務（選填）",
+  "vmservicenone-text": "無",
+  "vmcreatedwithservice-text": "已建立虛擬機 %s。%s 將在首次執行時安裝。",
+  "installingservice-text": "正在 %s 中安裝服務…",
+  "installedservice-text": "%s 中的服務已就緒，位址 %s。",
+  "installservicefailed-text": "無法在 %s 中安裝服務：%s"
 }

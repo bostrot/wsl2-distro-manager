@@ -757,5 +757,15 @@
   "vmdisknotmountable-text": "macOSはこのディスクのファイルシステムを読めません（Linuxディスクは通常ext4）— 代わりにVMフォルダを開きます。",
   "vmejectbeforestart-text": "このVMのディスクはFinderでマウントされています。先に取り出してからVMを起動してください。",
   "listfailed-vm-text": "仮想マシンの一覧を読み取れませんでした。",
-  "listfailedhint-vm-text": "vmctlヘルパーにアクセスできませんでした。リリースビルドではアプリに同梱されています。開発実行では scripts/build_macos.sh を一度実行してから再試行してください。"
+  "listfailedhint-vm-text": "vmctlヘルパーにアクセスできませんでした。リリースビルドではアプリに同梱されています。開発実行では scripts/build_macos.sh を一度実行してから再試行してください。",
+  "ai-workspace-vm-missing-text": "AIワークスペースには 'ai-workspace' という名前のLinux VMが必要です。ホーム画面で作成し（クラウドイメージまたはインストール済みLinux VM）、このページを開き直してください。",
+  "ai-workspace-vm-stopped-text": "'ai-workspace' VMは存在しますが実行されていません。ホーム画面で起動してから再試行してください。",
+  "vmbootsourceinfo-text": "Linux VMには起動元が必要です。一覧からインストーラーISOを選ぶか、起動可能なベースディスクイメージを選択してください。クラウドイメージはすぐ使える状態で起動し、インストーラーISOは通常のインストールを案内します。",
+  "vmbootsourcerequired-text": "インストーラーISOかベースディスクイメージを選んでください。どちらもないVMは起動元がなく、すぐに停止します。",
+  "vmservice-text": "サービスを事前インストール（任意）",
+  "vmservicenone-text": "なし",
+  "vmcreatedwithservice-text": "VM %s を作成しました。%s は初回起動時にインストールされます。",
+  "installingservice-text": "%s にサービスをインストール中…",
+  "installedservice-text": "%s のサービスが %s で利用可能になりました。",
+  "installservicefailed-text": "%s へのサービスのインストールに失敗しました: %s"
 }
