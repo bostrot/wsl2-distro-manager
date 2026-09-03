@@ -743,8 +743,8 @@
   "vmmemorygb-text": "Memória (GB)",
   "vmcreated-text": "VM %s criada.",
   "vmcreatefailed-text": "Falha ao criar a VM %s:",
-  "web-buy-detail-text": "Compre uma vez em wslmanager.com e desbloqueie todos os recursos Pro — chat de IA (com sua própria chave de API), servidor MCP e mais. Sem assinatura, atualizações gratuitas.",
-  "web-price-text": "US$ 9,99, pagamento único.",
+  "web-buy-detail-text": "Compre uma vez no wslmanager.com e desbloqueie todos os recursos Pro — agentes do AI Workspace, AI Chat (com sua própria chave de API), diagnóstico de erros e o servidor MCP. Sem assinatura, atualizações gratuitas.",
+  "web-price-text": "US$ 19,99, pagamento único.",
   "web-buy-btn": "Comprar em wslmanager.com",
   "core-vm-management-feature": "Gerenciar máquinas virtuais localmente",
   "plan-free-detail-vm": "Tudo para gerenciar máquinas virtuais localmente. Os recursos de IA não estão incluídos.",
@@ -809,5 +809,14 @@
   "openpullrequest-text": "Abrir pull request",
   "githubsignintimeout-text": "O código de login expirou antes de ser usado. Tente novamente.",
   "githubnotconfigured-text": "Compartilhar precisa de um client id OAuth do GitHub, ausente nesta build. Veja a documentação de contribuição.",
-  "snippetmetaauthor-text": "Autor"
+  "snippetmetaauthor-text": "Autor",
+  "activate-title": "Já tem uma chave de licença?",
+  "activate-detail-text": "Cole a chave da sua compra para desbloquear o Pro neste Mac. Ao comprar no site, isso acontece automaticamente.",
+  "activate-btn": "Ativar",
+  "activate-success-text": "Licença ativada — bem-vindo ao Pro!",
+  "activate-invalid-text": "Essa chave de licença não foi aceita. Verifique se há erros de digitação ou fale conosco.",
+  "activate-network-text": "Não foi possível contatar o serviço de licenças. Verifique sua conexão e tente novamente.",
+  "plan-key-detail": "Ativado com uma chave de licença do wslmanager.com. Todos os recursos Pro estão desbloqueados, atualizações incluídas.",
+  "plan-commercial": "Licença comercial",
+  "mcp-server-feature": "Servidor MCP para agentes de IA"
 }

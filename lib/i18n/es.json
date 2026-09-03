@@ -741,8 +741,8 @@
   "vmmemorygb-text": "Memoria (GB)",
   "vmcreated-text": "VM %s creada.",
   "vmcreatefailed-text": "Error al crear la VM %s:",
-  "web-buy-detail-text": "Compra una vez en wslmanager.com y desbloquea todas las funciones Pro — chat de IA (con tu propia clave de API), servidor MCP y más. Sin suscripción, actualizaciones gratuitas.",
-  "web-price-text": "9,99 US$, pago único.",
+  "web-buy-detail-text": "Compra una vez en wslmanager.com y desbloquea todas las funciones Pro: agentes de AI Workspace, AI Chat (con tu propia clave de API), diagnóstico de errores y el servidor MCP. Sin suscripción, actualizaciones gratuitas.",
+  "web-price-text": "19,99 US$, pago único.",
   "web-buy-btn": "Comprar en wslmanager.com",
   "core-vm-management-feature": "Gestionar máquinas virtuales localmente",
   "plan-free-detail-vm": "Todo para gestionar máquinas virtuales localmente. Las funciones de IA no están incluidas.",
@@ -807,5 +807,14 @@
   "openpullrequest-text": "Abrir pull request",
   "githubsignintimeout-text": "El código de inicio de sesión caducó antes de usarse. Inténtalo de nuevo.",
   "githubnotconfigured-text": "Compartir necesita un client id de OAuth de GitHub, que falta en esta compilación. Consulta la documentación de contribución.",
-  "snippetmetaauthor-text": "Autor"
+  "snippetmetaauthor-text": "Autor",
+  "activate-title": "¿Ya tienes una clave de licencia?",
+  "activate-detail-text": "Pega la clave de tu compra para desbloquear Pro en este Mac. Si compras en la web, se hace automáticamente.",
+  "activate-btn": "Activar",
+  "activate-success-text": "Licencia activada: ¡bienvenido a Pro!",
+  "activate-invalid-text": "No se aceptó esa clave de licencia. Revisa si hay erratas o contáctanos.",
+  "activate-network-text": "No se pudo contactar con el servicio de licencias. Comprueba tu conexión e inténtalo de nuevo.",
+  "plan-key-detail": "Activado con una clave de licencia de wslmanager.com. Todas las funciones Pro están desbloqueadas, actualizaciones incluidas.",
+  "plan-commercial": "Licencia comercial",
+  "mcp-server-feature": "Servidor MCP para agentes de IA"
 }

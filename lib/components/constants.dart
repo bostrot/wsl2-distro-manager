@@ -2,7 +2,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 const String title = 'WSL Distro Manager by Bostrot';
 
-const String macBuyUrl = "https://wslmanager.com";
+/// Where macOS users buy Pro. No Microsoft Store on the Mac, so the licence
+/// is sold on the website and comes back as a key.
+const String macBuyUrl = "https://wslmanager.com/buy";
+
+/// Turns a licence key into an entitlement. Answers
+/// `{"valid": true, "plan": "pro", ...}` or `{"valid": false, ...}`.
+const String licenseValidateUrl =
+    'https://n8n.aachen.dev/webhook/wsl-manager/validate';
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 

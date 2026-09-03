@@ -742,8 +742,8 @@
   "vmmemorygb-text": "内存（GB）",
   "vmcreated-text": "已创建虚拟机 %s。",
   "vmcreatefailed-text": "创建虚拟机 %s 失败：",
-  "web-buy-detail-text": "在 wslmanager.com 一次购买，解锁全部 Pro 功能 — AI 聊天（使用自己的 API 密钥）、MCP 服务器等。无订阅，免费更新。",
-  "web-price-text": "9.99 美元，一次性付费。",
+  "web-buy-detail-text": "在 wslmanager.com 一次性购买，即可解锁全部 Pro 功能 — AI 工作区代理、AI 聊天（使用你自己的 API 密钥）、错误诊断和 MCP 服务器。无订阅，免费更新。",
+  "web-price-text": "19.99 美元，一次性付费。",
   "web-buy-btn": "在 wslmanager.com 购买",
   "core-vm-management-feature": "本地管理虚拟机",
   "plan-free-detail-vm": "本地管理虚拟机所需的一切。不包含 AI 功能。",
@@ -808,5 +808,14 @@
   "openpullrequest-text": "打开拉取请求",
   "githubsignintimeout-text": "登录代码在使用前已过期。请重试。",
   "githubnotconfigured-text": "分享功能需要 GitHub OAuth 客户端 ID，此版本未包含。请参阅贡献文档。",
-  "snippetmetaauthor-text": "作者"
+  "snippetmetaauthor-text": "作者",
+  "activate-title": "已经有许可证密钥了吗？",
+  "activate-detail-text": "粘贴购买时获得的密钥，即可在这台 Mac 上解锁 Pro。在网站购买时会自动完成。",
+  "activate-btn": "激活",
+  "activate-success-text": "许可证已激活 — 欢迎使用 Pro！",
+  "activate-invalid-text": "该许可证密钥未被接受。请检查是否有拼写错误，或与我们联系。",
+  "activate-network-text": "无法连接许可证服务。请检查网络连接后重试。",
+  "plan-key-detail": "已使用 wslmanager.com 的许可证密钥激活。所有 Pro 功能均已解锁，包含更新。",
+  "plan-commercial": "商业许可证",
+  "mcp-server-feature": "面向 AI 代理的 MCP 服务器"
 }

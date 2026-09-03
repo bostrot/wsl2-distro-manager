@@ -741,8 +741,8 @@
   "vmmemorygb-text": "メモリ（GB）",
   "vmcreated-text": "VM %s を作成しました。",
   "vmcreatefailed-text": "VM %s の作成に失敗しました:",
-  "web-buy-detail-text": "wslmanager.com で一度購入すれば、すべてのPro機能が使えます — AIチャット（自分のAPIキー使用）、MCPサーバーなど。サブスクリプションなし、アップデート無料。",
-  "web-price-text": "US$9.99（買い切り）",
+  "web-buy-detail-text": "wslmanager.com で一度購入すれば、すべての Pro 機能が使えます — AI ワークスペースのエージェント、AI チャット（自分の API キー）、エラー診断、MCP サーバー。サブスクリプションなし、アップデート無料。",
+  "web-price-text": "US$19.99（買い切り）",
   "web-buy-btn": "wslmanager.com で購入",
   "core-vm-management-feature": "仮想マシンをローカルで管理",
   "plan-free-detail-vm": "仮想マシンのローカル管理に必要なすべて。AI機能は含まれません。",
@@ -807,5 +807,14 @@
   "openpullrequest-text": "プルリクエストを開く",
   "githubsignintimeout-text": "サインインコードが使用される前に期限切れになりました。もう一度お試しください。",
   "githubnotconfigured-text": "共有には GitHub の OAuth クライアントIDが必要ですが、このビルドには含まれていません。コントリビューションのドキュメントを参照してください。",
-  "snippetmetaauthor-text": "作者"
+  "snippetmetaauthor-text": "作者",
+  "activate-title": "ライセンスキーをお持ちですか？",
+  "activate-detail-text": "購入時のキーを貼り付けると、この Mac で Pro が有効になります。ウェブサイトで購入した場合は自動で渡されます。",
+  "activate-btn": "有効化",
+  "activate-success-text": "ライセンスを有効化しました — Pro へようこそ！",
+  "activate-invalid-text": "このライセンスキーは受け付けられませんでした。入力ミスをご確認いただくか、お問い合わせください。",
+  "activate-network-text": "ライセンスサービスに接続できませんでした。接続を確認して、もう一度お試しください。",
+  "plan-key-detail": "wslmanager.com のライセンスキーで有効化されています。すべての Pro 機能が利用でき、アップデートも含まれます。",
+  "plan-commercial": "商用ライセンス",
+  "mcp-server-feature": "AI エージェント向け MCP サーバー"
 }

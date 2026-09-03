@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/api/deep_link.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -19,6 +20,9 @@ class LicenseScreen extends StatefulWidget {
 
 class _LicenseScreenState extends State<LicenseScreen> {
   bool _isLoading = false;
+  bool _isActivating = false;
+  final TextEditingController _keyController = TextEditingController();
+  final DeepLinkService _deepLinks = DeepLinkService();
 
   @override
   void initState() {
@@ -26,6 +30,57 @@ class _LicenseScreenState extends State<LicenseScreen> {
     // Defer init to avoid setState during build (LicenseManager ChangeNotifier
     // triggers Provider rebuilds that cascade into this widget's build phase)
     SchedulerBinding.instance.addPostFrameCallback((_) => _loadStatus());
+
+    // Only macOS registers the scheme; elsewhere both calls are inert.
+    if (isAppleHost) {
+      _deepLinks.listen(_handleLink);
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        final pending = await _deepLinks.takePendingLink();
+        if (pending != null) _handleLink(pending);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _keyController.dispose();
+    super.dispose();
+  }
+
+  /// A `wslmanager://license?key=...` link from the browser after checkout.
+  /// Fills the field as well as activating, so a failure leaves the user
+  /// with something to retry rather than an empty box.
+  void _handleLink(Uri link) {
+    final key = DeepLinkService.licenseKeyOf(link);
+    if (key == null || !mounted) return;
+    _keyController.text = key;
+    _activate();
+  }
+
+  Future<void> _activate() async {
+    final key = _keyController.text.trim();
+    if (key.isEmpty || _isActivating) return;
+
+    setState(() => _isActivating = true);
+    final result = await LicenseManager().activate(key);
+    if (!mounted) return;
+    setState(() => _isActivating = false);
+
+    switch (result) {
+      case LicenseActivation.success:
+        _keyController.clear();
+        Notify.message('activate-success-text'.i18n(),
+            severity: InfoBarSeverity.success);
+        break;
+      case LicenseActivation.invalid:
+        Notify.message('activate-invalid-text'.i18n(),
+            severity: InfoBarSeverity.error);
+        break;
+      case LicenseActivation.network:
+        Notify.message('activate-network-text'.i18n(),
+            severity: InfoBarSeverity.warning);
+        break;
+    }
   }
 
   Future<void> _loadStatus() async {
@@ -91,6 +146,10 @@ class _LicenseScreenState extends State<LicenseScreen> {
                           ] else ...[
                             // Not Pro: lead with the pitch, status after.
                             _buildStoreSection(),
+                            if (isAppleHost) ...[
+                              const SizedBox(height: 20),
+                              _buildActivationSection(),
+                            ],
                             const SizedBox(height: 20),
                             _buildStatusCard(manager),
                             const SizedBox(height: 12),
@@ -247,13 +306,27 @@ class _LicenseScreenState extends State<LicenseScreen> {
                 const SizedBox(height: 6),
                 Text(
                   isPro
-                      ? 'plan-store-detail'.i18n()
+                      ? (manager.isKeyLicensed
+                          ? 'plan-key-detail'.i18n()
+                          : 'plan-store-detail'.i18n())
                       : (isAppleHost
                               ? 'plan-free-detail-vm'
                               : 'plan-free-detail')
                           .i18n(),
                   style: const TextStyle(fontSize: 14, height: 1.4),
                 ),
+                if (manager.isKeyLicensed && manager.licenseKey != null) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    manager.licenseKey!,
+                    key: const ValueKey('test-license-key-display'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                      color: secondaryTextColor(context),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -316,6 +389,52 @@ class _LicenseScreenState extends State<LicenseScreen> {
     );
   }
 
+  /// Key entry. Two ways in: the browser hands the key over through
+  /// `wslmanager://` right after checkout, or the user pastes it here — which
+  /// is also the path for a second machine, where no purchase just happened.
+  Widget _buildActivationSection() {
+    return Card(
+      padding: const EdgeInsets.all(20),
+      borderRadius: BorderRadius.circular(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'activate-title'.i18n(),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'activate-detail-text'.i18n(),
+            style: TextStyle(fontSize: 13, color: secondaryTextColor(context)),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextBox(
+                  key: const ValueKey('test-license-key-field'),
+                  controller: _keyController,
+                  placeholder: 'WSLM-XXXXX-XXXXX-XXXXX-XXXXX',
+                  onSubmitted: (_) => _activate(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                key: const ValueKey('test-license-activate'),
+                onPressed: _isActivating ? null : _activate,
+                child: _isActivating
+                    ? const SizedBox(
+                        width: 16, height: 16, child: ProgressRing(strokeWidth: 2))
+                    : Text('activate-btn'.i18n()),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildComparisonTable() {
     final accent = FluentTheme.of(context).accentColor;
     // Each row: [i18n key, included in Free, included in Pro].
@@ -335,7 +454,11 @@ class _LicenseScreenState extends State<LicenseScreen> {
       // app, so both rows were selling something other than what Pro is
       // (audit PS-01).
       ['error-diagnosis-feature', false, true],
-      if (!isAppleHost) ['ai-workspace-feature', false, true],
+      // Listed on every host: AppleVmApi sets `aiWorkspace: true`, so the Mac
+      // build does ship it. Hiding the row here sold macOS buyers a Pro tier
+      // with a feature missing that they were in fact paying for.
+      ['ai-workspace-feature', false, true],
+      ['mcp-server-feature', false, true],
     ];
 
     const columnWidth = 64.0;

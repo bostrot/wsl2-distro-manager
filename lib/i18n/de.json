@@ -742,8 +742,8 @@
   "vmmemorygb-text": "Arbeitsspeicher (GB)",
   "vmcreated-text": "VM %s erstellt.",
   "vmcreatefailed-text": "Erstellen der VM %s fehlgeschlagen:",
-  "web-buy-detail-text": "Einmal auf wslmanager.com kaufen und alle Pro-Funktionen freischalten — KI-Chat (mit eigenem API-Schlüssel), MCP-Server und mehr. Kein Abo, kostenlose Updates.",
-  "web-price-text": "9,99 US-Dollar, einmalig.",
+  "web-buy-detail-text": "Einmal auf wslmanager.com kaufen und alle Pro-Funktionen freischalten — KI-Workspace-Agenten, KI-Chat (mit eigenem API-Schlüssel), Fehlerdiagnose und den MCP-Server. Kein Abo, kostenlose Updates.",
+  "web-price-text": "19,99 US-Dollar, einmalig.",
   "web-buy-btn": "Auf wslmanager.com kaufen",
   "core-vm-management-feature": "Virtuelle Maschinen lokal verwalten",
   "plan-free-detail-vm": "Alles zum lokalen Verwalten virtueller Maschinen. KI-Funktionen sind nicht enthalten.",
@@ -808,5 +808,14 @@
   "openpullrequest-text": "Pull Request öffnen",
   "githubsignintimeout-text": "Der Anmeldecode ist abgelaufen. Bitte erneut versuchen.",
   "githubnotconfigured-text": "Zum Teilen wird eine GitHub-OAuth-Client-ID benötigt, die in diesem Build fehlt. Siehe die Contributing-Doku.",
-  "snippetmetaauthor-text": "Autor"
+  "snippetmetaauthor-text": "Autor",
+  "activate-title": "Schon einen Lizenzschlüssel?",
+  "activate-detail-text": "Füge den Schlüssel aus deinem Kauf ein, um Pro auf diesem Mac freizuschalten. Beim Kauf über die Website geschieht das automatisch.",
+  "activate-btn": "Aktivieren",
+  "activate-success-text": "Lizenz aktiviert — willkommen bei Pro!",
+  "activate-invalid-text": "Dieser Lizenzschlüssel wurde nicht akzeptiert. Prüfe ihn auf Tippfehler oder melde dich bei uns.",
+  "activate-network-text": "Der Lizenzdienst ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
+  "plan-key-detail": "Mit einem Lizenzschlüssel von wslmanager.com aktiviert. Alle Pro-Funktionen sind freigeschaltet, Updates inklusive.",
+  "plan-commercial": "Kommerzielle Lizenz",
+  "mcp-server-feature": "MCP-Server für KI-Agenten"
 }

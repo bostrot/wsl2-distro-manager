@@ -741,8 +741,8 @@
   "vmmemorygb-text": "Memória (GB)",
   "vmcreated-text": "A(z) %s VM létrejött.",
   "vmcreatefailed-text": "A(z) %s VM létrehozása sikertelen:",
-  "web-buy-detail-text": "Vásárold meg egyszer a wslmanager.com oldalon, és minden Pro funkció elérhetővé válik — AI-chat (saját API-kulccsal), MCP-szerver és több. Nincs előfizetés, ingyenes frissítések.",
-  "web-price-text": "9,99 USD, egyszeri.",
+  "web-buy-detail-text": "Vásárold meg egyszer a wslmanager.com oldalon, és oldd fel az összes Pro funkciót — AI Workspace ügynökök, AI Chat (saját API-kulccsal), hibadiagnosztika és az MCP-kiszolgáló. Nincs előfizetés, a frissítések ingyenesek.",
+  "web-price-text": "19,99 USD, egyszeri.",
   "web-buy-btn": "Vásárlás a wslmanager.com oldalon",
   "core-vm-management-feature": "Virtuális gépek helyi kezelése",
   "plan-free-detail-vm": "Minden a virtuális gépek helyi kezeléséhez. Az AI-funkciók nem tartoznak bele.",
@@ -807,5 +807,14 @@
   "openpullrequest-text": "Pull request megnyitása",
   "githubsignintimeout-text": "A bejelentkezési kód lejárt, mielőtt felhasználtad volna. Próbáld újra.",
   "githubnotconfigured-text": "A megosztáshoz GitHub OAuth client id kell, ami ebből a buildből hiányzik. Lásd a közreműködési dokumentációt.",
-  "snippetmetaauthor-text": "Szerző"
+  "snippetmetaauthor-text": "Szerző",
+  "activate-title": "Már van licenckulcsod?",
+  "activate-detail-text": "Illeszd be a vásárláskor kapott kulcsot a Pro feloldásához ezen a Mac gépen. A weboldalon vásárolva ez automatikusan megtörténik.",
+  "activate-btn": "Aktiválás",
+  "activate-success-text": "Licenc aktiválva — üdv a Próban!",
+  "activate-invalid-text": "Ezt a licenckulcsot nem fogadtuk el. Ellenőrizd az elgépeléseket, vagy vedd fel velünk a kapcsolatot.",
+  "activate-network-text": "A licencszolgáltatás nem érhető el. Ellenőrizd a kapcsolatot, és próbáld újra.",
+  "plan-key-detail": "A wslmanager.com licenckulcsával aktiválva. Minden Pro funkció fel van oldva, a frissítésekkel együtt.",
+  "plan-commercial": "Kereskedelmi licenc",
+  "mcp-server-feature": "MCP-kiszolgáló AI-ügynökökhöz"
 }

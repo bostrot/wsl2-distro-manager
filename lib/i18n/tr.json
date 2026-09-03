@@ -741,8 +741,8 @@
   "vmmemorygb-text": "Bellek (GB)",
   "vmcreated-text": "%s sanal makinesi oluşturuldu.",
   "vmcreatefailed-text": "%s sanal makinesi oluşturulamadı:",
-  "web-buy-detail-text": "wslmanager.com üzerinden bir kez satın alın ve tüm Pro özelliklerin kilidini açın — yapay zekâ sohbeti (kendi API anahtarınızla), MCP sunucusu ve daha fazlası. Abonelik yok, güncellemeler ücretsiz.",
-  "web-price-text": "9,99 ABD doları, tek seferlik.",
+  "web-buy-detail-text": "wslmanager.com’dan bir kez satın alın ve tüm Pro özelliklerini açın — AI Workspace ajanları, AI Chat (kendi API anahtarınızla), hata teşhisi ve MCP sunucusu. Abonelik yok, güncellemeler ücretsiz.",
+  "web-price-text": "19,99 ABD doları, tek seferlik.",
   "web-buy-btn": "wslmanager.com'dan satın al",
   "core-vm-management-feature": "Sanal makineleri yerel olarak yönetin",
   "plan-free-detail-vm": "Sanal makineleri yerel olarak yönetmek için gereken her şey. Yapay zekâ özellikleri dahil değildir.",
@@ -807,5 +807,14 @@
   "openpullrequest-text": "Pull request'i aç",
   "githubsignintimeout-text": "Giriş kodu kullanılmadan önce süresi doldu. Yeniden deneyin.",
   "githubnotconfigured-text": "Paylaşım için bu derlemede bulunmayan bir GitHub OAuth client id gerekir. Katkı belgelerine bakın.",
-  "snippetmetaauthor-text": "Yazar"
+  "snippetmetaauthor-text": "Yazar",
+  "activate-title": "Lisans anahtarınız var mı?",
+  "activate-detail-text": "Bu Mac’te Pro’yu açmak için satın alma anahtarınızı yapıştırın. Web sitesinden alırsanız bu otomatik yapılır.",
+  "activate-btn": "Etkinleştir",
+  "activate-success-text": "Lisans etkinleştirildi — Pro’ya hoş geldiniz!",
+  "activate-invalid-text": "Bu lisans anahtarı kabul edilmedi. Yazım hatası olup olmadığını kontrol edin veya bize ulaşın.",
+  "activate-network-text": "Lisans hizmetine ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.",
+  "plan-key-detail": "wslmanager.com lisans anahtarıyla etkinleştirildi. Tüm Pro özellikleri açık, güncellemeler dahil.",
+  "plan-commercial": "Ticari lisans",
+  "mcp-server-feature": "Yapay zeka ajanları için MCP sunucusu"
 }
