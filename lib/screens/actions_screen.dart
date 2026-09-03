@@ -258,12 +258,11 @@ class QuickPageState extends State<QuickPage> {
                 style: ButtonStyle(
                     padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
                         top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
-                onPressed: () {
+                onPressed: () async {
                   if (!showInput) {
-                    setState(() {
-                      showInput = true;
-                      saveError = null;
-                    });
+                    await router.pushNamed('snippet');
+                    if (mounted) setState(() {});
+                    return;
                   } else if (nameController.text.trim().isEmpty ||
                       contentController.text.trim().isEmpty) {
                     // Say which of the two is missing rather than leaving the
@@ -389,13 +388,10 @@ class QuickPageState extends State<QuickPage> {
                             message: 'edit-text'.i18n(),
                             child: IconButton(
                               icon: const Icon(FluentIcons.edit),
-                              onPressed: () {
-                                setState(() {
-                                  showInput = true;
-                                  nameController.text = quickActions[i].name;
-                                  contentController.text =
-                                      quickActions[i].content;
-                                });
+                              onPressed: () async {
+                                await router.pushNamed('snippet',
+                                    extra: quickActions[i]);
+                                if (mounted) setState(() {});
                               },
                             ),
                           ),

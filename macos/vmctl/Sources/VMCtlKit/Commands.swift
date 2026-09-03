@@ -102,6 +102,8 @@ public enum VmctlCLI {
                 try status(store, rest)
             case "ip":
                 try ip(store, rest)
+            case "reseed":
+                try reseed(store, rest)
             case "export":
                 try exportVm(store, rest)
             case "import":
@@ -136,6 +138,7 @@ public enum VmctlCLI {
       create --name N --os macos [--restore-image PATH.ipsw]
              [--disk-size GB] [--cpus N] [--memory GB]
       start --name N [--gui]                Start a VM (detached daemon)
+      reseed --name N                       Rewrite the cloud-init seed
       stop --name N [--force]               Stop a VM
       status --name N                       One VM's state as JSON
       ip --name N                           Guest IP as JSON
@@ -369,6 +372,27 @@ public enum VmctlCLI {
             out["ip"] = ip
         }
         printJson(out)
+    }
+
+    /// Rewrites a VM's cloud-init seed with the current template and a fresh
+    /// instance id, so the guest reapplies it on the next boot.
+    ///
+    /// VMs created by older builds carry a seed with no network config at
+    /// all: their DHCP client sends a DUID that macOS never answers, so they
+    /// boot without an address and nothing can reach them. Recreating the VM
+    /// would work but throws the disk away; this repairs it in place.
+    static func reseed(_ store: VMStore, _ rest: [String]) throws {
+        let bag = ArgumentBag(rest, flagNames: [])
+        let name = try bag.require("name")
+        let config = try store.loadConfig(name)
+        let publicKey = try store.sshPublicKey()
+        try CloudInit.writeSeedIso(
+            to: store.seedIsoPath(config.name),
+            user: config.user,
+            publicKey: publicKey,
+            hostname: config.name,
+            instanceId: "iid-\(config.name)-\(Int(Date().timeIntervalSince1970))")
+        printJson(["reseeded": name])
     }
 
     static func ip(_ store: VMStore, _ rest: [String]) throws {

@@ -59,6 +59,7 @@ void main() {
   tearDown(() {
     vmBackendBuilder = defaultVmBackendBuilder;
     workspaceRuntimeBuilder = defaultWorkspaceRuntime;
+    AppleWorkspaceRuntime.resetProbeCache();
   });
 
   group('runtime selection', () {
@@ -117,9 +118,35 @@ void main() {
       expect(buildRuntime(FakeVmctlShell()).keepAlive(), isNull);
     });
 
+    test('a running VM that never answers is repaired, not abandoned',
+        () async {
+      final shell = FakeVmctlShell();
+      final broker = ExecutionBroker(shell: shell);
+      final runtime = buildRuntime(shell)..setUpRetryDelay = Duration.zero;
+      shell.responses['list'] =
+          '{"vms":[{"name":"ai-workspace","state":"running"}]}';
+      // Unreachable until the seed is rewritten, then fine.
+      shell.exitCodes['exec'] = 255;
+      var reseeded = false;
+      shell.onCommand = (command) {
+        if (command == 'reseed') {
+          reseeded = true;
+          shell.exitCodes['exec'] = 0;
+        }
+      };
+
+      await runtime.setUp(broker, notify: (_) {});
+
+      expect(reseeded, isTrue, reason: 'the stale seed must be rewritten');
+      expect(shell.calls.any((c) => c.contains('reseed')), isTrue);
+      expect(shell.calls.any((c) => c.contains('start')), isTrue,
+          reason: 'the guest has to reboot to pick the new seed up');
+    });
+
     test('exists is true only for a running workspace VM', () async {
       final shell = FakeVmctlShell();
-      final broker = ExecutionBroker(shell: MockShell());
+      // The same fake the runtime drives: exists() probes through the broker.
+      final broker = ExecutionBroker(shell: shell);
       shell.responses['list'] = '{"vms":[]}';
       expect(await buildRuntime(shell).exists(broker), isFalse);
 
@@ -129,7 +156,14 @@ void main() {
 
       shell.responses['list'] =
           '{"vms":[{"name":"ai-workspace","state":"running"}]}';
+      shell.responses['exec'] = 'ok';
       expect(await buildRuntime(shell).exists(broker), isTrue);
+
+      // Running but unreachable is not "exists": the page must not sail on
+      // and fail inside a tool install.
+      AppleWorkspaceRuntime.resetProbeCache();
+      shell.exitCodes['exec'] = 255;
+      expect(await buildRuntime(shell).exists(broker), isFalse);
     });
 
     test('guided setUp on a missing VM downloads, creates, boots and waits',

@@ -247,7 +247,8 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
   /// a missing VM (download + create + boot) or a stopped one (boot).
   bool get _setupCanFix =>
       _errorKey == 'ai-workspace-vm-missing-text' ||
-      _errorKey == 'ai-workspace-vm-stopped-text';
+      _errorKey == 'ai-workspace-vm-stopped-text' ||
+      _errorKey == 'ai-workspace-vm-unreachable-text';
 
   Future<void> _runGuidedSetup() async {
     setState(() => _settingUp = true);

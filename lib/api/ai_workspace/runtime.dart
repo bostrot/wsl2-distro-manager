@@ -152,11 +152,39 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
   @override
   ExecutionRequest? keepAlive() => null;
 
+  /// Remembers the last reachability answer. [exists] is consulted on every
+  /// visit to the page, and an unreachable guest costs the probe's full
+  /// timeout each time, so the answer is reused briefly rather than paid for
+  /// again on the next rebuild.
+  static DateTime? _probedAt;
+  static bool _probeResult = false;
+  static const Duration _probeTtl = Duration(seconds: 30);
+
+  static void resetProbeCache() {
+    _probedAt = null;
+    _probeResult = false;
+  }
+
+  /// A running VM whose guest never answers is not a usable workspace, so
+  /// reachability is part of existing here. Without that the page sailed
+  /// past provisioning and failed several steps later inside a tool install,
+  /// reporting "no DHCP lease" from the bottom of a Docker script.
   @override
   Future<bool> exists(ExecutionBroker broker) async {
     try {
       final vm = await _api.vmInfo(vmName);
-      return vm != null && vm.running;
+      if (vm == null || !vm.running) return false;
+
+      final probedAt = _probedAt;
+      if (probedAt != null &&
+          DateTime.now().difference(probedAt) < _probeTtl) {
+        return _probeResult;
+      }
+      final probe = await broker
+          .run(script('true', timeout: const Duration(seconds: 3)));
+      _probedAt = DateTime.now();
+      _probeResult = probe.isSuccess;
+      return _probeResult;
     } catch (_) {
       return false;
     }
@@ -172,6 +200,8 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
     if (!vm.running) {
       throw Exception('ai-workspace-vm-stopped-text');
     }
+    // Running but unreachable: the guided setup can repair it.
+    throw Exception('ai-workspace-vm-unreachable-text');
   }
 
   /// Delay between SSH reachability probes after starting the VM.
@@ -211,12 +241,31 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
       notify('ai-workspace-starting-vm-text');
       await _api.startHeadless(vmName);
     }
-    for (var attempt = 0; attempt < 40; attempt++) {
+    if (await _waitForGuest(broker, attempts: 40)) return;
+
+    // Still nothing. VMs created by older builds carry a seed with no
+    // network config, so their DHCP client asks in a way macOS never
+    // answers and they can never be reached. Rewrite the seed and reboot —
+    // repairing in place rather than throwing the disk away.
+    notify('ai-workspace-repairing-text');
+    resetProbeCache();
+    await _api.reseed(vmName);
+    await _api.stop(vmName);
+    await Future<void>.delayed(setUpRetryDelay);
+    await _api.startHeadless(vmName);
+    if (await _waitForGuest(broker, attempts: 40)) return;
+
+    throw Exception('ai-workspace-vm-unreachable-text');
+  }
+
+  Future<bool> _waitForGuest(ExecutionBroker broker,
+      {required int attempts}) async {
+    for (var attempt = 0; attempt < attempts; attempt++) {
       final probe = await broker
           .run(script('true', timeout: const Duration(seconds: 15)));
-      if (probe.isSuccess) return;
+      if (probe.isSuccess) return true;
       await Future<void>.delayed(setUpRetryDelay);
     }
-    throw Exception('ai-workspace-vm-unreachable-text');
+    return false;
   }
 }

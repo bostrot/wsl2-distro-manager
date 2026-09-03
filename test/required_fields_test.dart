@@ -18,7 +18,7 @@ import 'package:wsl2distromanager/api/mount_service.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/mount_dialog.dart';
-import 'package:wsl2distromanager/screens/actions_screen.dart';
+import 'package:wsl2distromanager/screens/snippet_editor_screen.dart';
 
 import 'mocks.dart';
 
@@ -117,23 +117,17 @@ void main() {
     Future<void> pumpEditor(WidgetTester tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(const FluentApp(
-        home: ScaffoldPage(content: QuickPage()),
-      ));
-      await tester.pumpAndSettle();
-      // The first press of the same button opens the editor.
-      await tester.tap(find.text('addquickaction-text'));
+      await tester.pumpWidget(const FluentApp(home: SnippetEditorPage()));
       await tester.pumpAndSettle();
     }
 
     testWidgets('Save with an empty name asks for one', (tester) async {
       await pumpEditor(tester);
 
-      await tester.tap(find.text('save-text').last);
+      await tester.tap(find.byKey(const ValueKey('test-snippet-save')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('test-action-save-error')),
-          findsOneWidget);
+      expect(find.byKey(const ValueKey('test-snippet-error')), findsOneWidget);
       expect(find.text('snippetnamerequired-text'), findsOneWidget);
       // Still on the editor, with nothing written.
       expect(prefs.getStringList('quickSettingsTitles'), null);
@@ -143,9 +137,10 @@ void main() {
         (tester) async {
       await pumpEditor(tester);
 
-      await tester.enterText(find.byType(TextBox).first, 'audit-demo');
+      await tester.enterText(
+          find.byKey(const ValueKey('test-snippet-name')), 'audit-demo');
       await tester.pumpAndSettle();
-      await tester.tap(find.text('save-text').last);
+      await tester.tap(find.byKey(const ValueKey('test-snippet-save')));
       await tester.pumpAndSettle();
 
       expect(find.text('snippetcontentrequired-text'), findsOneWidget);
@@ -155,16 +150,31 @@ void main() {
     testWidgets('typing a name clears the message', (tester) async {
       await pumpEditor(tester);
 
-      await tester.tap(find.text('save-text').last);
+      await tester.tap(find.byKey(const ValueKey('test-snippet-save')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('test-action-save-error')),
-          findsOneWidget);
+      expect(find.byKey(const ValueKey('test-snippet-error')), findsOneWidget);
 
-      await tester.enterText(find.byType(TextBox).first, 'audit-demo');
+      await tester.enterText(
+          find.byKey(const ValueKey('test-snippet-name')), 'audit-demo');
       await tester.pumpAndSettle();
 
-      expect(
-          find.byKey(const ValueKey('test-action-save-error')), findsNothing);
+      expect(find.byKey(const ValueKey('test-snippet-error')), findsNothing);
+    });
+
+    testWidgets('a name that cannot be a folder is refused', (tester) async {
+      // The name becomes a directory in the community repo, so the editor
+      // rejects anything that would not survive as a path segment.
+      await pumpEditor(tester);
+      await tester.enterText(
+          find.byKey(const ValueKey('test-snippet-name')), 'not a folder!');
+      await tester.enterText(
+          find.byKey(const ValueKey('test-snippet-description')), 'x');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('test-snippet-save')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('snippetnameinvalid-text'), findsOneWidget);
+      expect(prefs.getStringList('quickSettingsTitles'), null);
     });
   });
 }

@@ -23,6 +23,10 @@ class FakeVmctlShell implements Shell {
   /// changes between calls (a VM that is stopped, then running).
   final Map<String, List<String>> responseQueue = {};
 
+  /// Called with each subcommand, so a test can change what the fake will
+  /// answer next — modelling a repair that makes the guest reachable.
+  void Function(String command)? onCommand;
+
   String _responseFor(String command) {
     final queue = responseQueue[command];
     if (queue != null && queue.isNotEmpty) return queue.removeAt(0);
@@ -51,6 +55,7 @@ class FakeVmctlShell implements Shell {
   }) async {
     calls.add([executable, ...arguments]);
     final command = _commandOf(arguments);
+    onCommand?.call(command);
     return ProcessResult(
       0,
       exitCodes[command] ?? 0,
@@ -71,6 +76,7 @@ class FakeVmctlShell implements Shell {
   }) async {
     calls.add(['start:$executable', ...arguments]);
     final command = _commandOf(arguments);
+    onCommand?.call(command);
     return MockProcess(
       exitCode: exitCodes[command] ?? 0,
       stdout: _responseFor(command),

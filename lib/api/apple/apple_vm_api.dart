@@ -378,6 +378,12 @@ class AppleVmApi extends VmBackend {
     );
   }
 
+  /// Rewrites a VM's cloud-init seed with the current template and a fresh
+  /// instance id. The guest reapplies it on the next boot.
+  Future<void> reseed(String name) async {
+    await _runChecked(['reseed', '--name', name]);
+  }
+
   @override
   Future<void> runCommands(String instance, List<String> commands,
       {String? user}) async {

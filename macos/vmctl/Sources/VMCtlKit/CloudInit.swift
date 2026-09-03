@@ -65,9 +65,9 @@ public enum CloudInit {
         """
     }
 
-    public static func metaData(hostname: String) -> String {
+    public static func metaData(hostname: String, instanceId: String? = nil) -> String {
         """
-        instance-id: iid-\(hostname)
+        instance-id: \(instanceId ?? "iid-\(hostname)")
         local-hostname: \(hostname)
         """
     }
@@ -78,7 +78,8 @@ public enum CloudInit {
         to isoURL: URL,
         user: String,
         publicKey: String,
-        hostname: String
+        hostname: String,
+        instanceId: String? = nil
     ) throws {
         let fm = FileManager.default
         let seedDir = isoURL.deletingLastPathComponent().appendingPathComponent("seed.tmp")
@@ -88,7 +89,7 @@ public enum CloudInit {
 
         try userData(user: user, publicKey: publicKey, hostname: hostname)
             .write(to: seedDir.appendingPathComponent("user-data"), atomically: true, encoding: .utf8)
-        try metaData(hostname: hostname)
+        try metaData(hostname: hostname, instanceId: instanceId)
             .write(to: seedDir.appendingPathComponent("meta-data"), atomically: true, encoding: .utf8)
         try networkConfig()
             .write(to: seedDir.appendingPathComponent("network-config"), atomically: true, encoding: .utf8)
