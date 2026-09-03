@@ -273,4 +273,34 @@ void main() {
     expect(find.text('redis'), findsOneWidget);
     expect(find.text('v1.0.0'), findsWidgets);
   });
+
+  testWidgets('the update date sits flush with the card edge', (tester) async {
+    // A short and an overlong author: the date must land in the same place
+    // either way, instead of wandering off with the author's leftover space.
+    adapter = _CatalogueAdapter({
+      'apt-upgrade': ['Update every package', 'Ubuntu', 'bo'],
+      'redis': [
+        'Redis key/value store',
+        'Debian',
+        'an-author-name-that-is-far-too-long-to-fit-on-one-line-of-a-card',
+      ],
+    });
+    await pumpPage(tester);
+
+    for (final name in ['apt-upgrade', 'redis']) {
+      final card = find
+          .ancestor(of: find.text(name), matching: find.byType(HoverButton))
+          .first;
+      final date = find.descendant(
+          of: card,
+          matching: find.byWidgetPredicate(
+              (w) => w is Text && (w.data ?? '').startsWith('updated')));
+      expect(date, findsOneWidget, reason: name);
+      // The title spans the card's full content width, so the date belongs
+      // exactly where the title ends — no padding or border arithmetic.
+      expect(tester.getTopRight(date).dx,
+          moreOrLessEquals(tester.getTopRight(find.text(name)).dx),
+          reason: '$name: the date drifted away from the card edge');
+    }
+  });
 }

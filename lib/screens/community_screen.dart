@@ -363,7 +363,10 @@ class _CommunityPageState extends State<CommunityPage> {
               children: [
                 Icon(FluentIcons.contact, size: 10, color: secondaryTextColor(context)),
                 const SizedBox(width: 4),
-                Flexible(
+                // Expanded, not Flexible + Spacer: two flex-1 siblings split
+                // the free space evenly, so a short author name left its
+                // unused half pushing the date away from the card edge.
+                Expanded(
                   child: Text(
                     script.author,
                     maxLines: 1,
@@ -372,7 +375,7 @@ class _CommunityPageState extends State<CommunityPage> {
                         fontSize: 11, color: secondaryTextColor(context)),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 if (script.updatedAt != null)
                   Text(
                     _relativeDate(script.updatedAt!),
