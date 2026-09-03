@@ -28,6 +28,9 @@ String gitApiScriptsLink =
 String repoScripts =
     'https://rawcdn.githack.com/bostrot/wsl-scripts/main/scripts/';
 
+String gitApiCommitsLink =
+    'https://api.github.com/repos/bostrot/wsl-scripts/commits';
+
 const String githubIssues =
     'https://github.com/bostrot/wsl2-distro-manager/issues/new/choose';
 

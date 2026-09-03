@@ -774,5 +774,16 @@
   "ai-workspace-setup-done-text": "ワークスペースVMの準備ができました。",
   "ai-workspace-downloading-text": "ワークスペースのシステムをダウンロード中…",
   "ai-workspace-starting-vm-text": "ワークスペースVMを起動中…",
-  "ai-workspace-vm-unreachable-text": "ワークスペースVMにSSHで接続できませんでした。ホーム画面からコンソールを確認して、もう一度お試しください。"
+  "ai-workspace-vm-unreachable-text": "ワークスペースVMにSSHで接続できませんでした。ホーム画面からコンソールを確認して、もう一度お試しください。",
+  "communitysnippetssubtitle-text": "コミュニティが共有している既製のスクリプトです。選んだものがスニペットに追加されます。",
+  "alldistros-text": "すべてのディストロ",
+  "sortbyname-text": "名前順",
+  "sortbyupdated-text": "最近更新された順",
+  "hideinstalled-text": "インストール済みを隠す",
+  "nselected-text": "%s 件選択中",
+  "updatedtoday-text": "今日",
+  "updatedyesterday-text": "昨日",
+  "updateddaysago-text": "%s 日前",
+  "updatedmonthsago-text": "%s か月前",
+  "updatedyearsago-text": "%s 年前"
 }

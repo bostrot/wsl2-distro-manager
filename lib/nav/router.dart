@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/nav/root_screen.dart';
 import 'package:wsl2distromanager/screens/ai_workspace_screen.dart';
 import 'package:wsl2distromanager/screens/actions_screen.dart';
+import 'package:wsl2distromanager/screens/community_screen.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
@@ -66,6 +67,13 @@ final router = GoRouter(
           path: '/quickactions',
           name: 'quickactions',
           builder: (context, state) => const QuickPage(),
+        ),
+
+        /// Community scripts browser
+        GoRoute(
+          path: '/community',
+          name: 'community',
+          builder: (context, state) => const CommunityPage(),
         ),
 
         /// Templates

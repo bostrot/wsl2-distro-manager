@@ -774,5 +774,16 @@
   "ai-workspace-setup-done-text": "The workspace VM is ready.",
   "ai-workspace-downloading-text": "Downloading the workspace system…",
   "ai-workspace-starting-vm-text": "Starting the workspace VM…",
-  "ai-workspace-vm-unreachable-text": "The workspace VM did not become reachable over SSH. Check its console from the Home screen, then try again."
+  "ai-workspace-vm-unreachable-text": "The workspace VM did not become reachable over SSH. Check its console from the Home screen, then try again.",
+  "communitysnippetssubtitle-text": "Ready-made scripts shared by the community. Pick the ones you want and they are added to your snippets.",
+  "alldistros-text": "All distros",
+  "sortbyname-text": "Sort by name",
+  "sortbyupdated-text": "Recently updated",
+  "hideinstalled-text": "Hide installed",
+  "nselected-text": "%s selected",
+  "updatedtoday-text": "today",
+  "updatedyesterday-text": "yesterday",
+  "updateddaysago-text": "%s days ago",
+  "updatedmonthsago-text": "%s months ago",
+  "updatedyearsago-text": "%s years ago"
 }

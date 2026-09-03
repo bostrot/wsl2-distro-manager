@@ -774,5 +774,16 @@
   "ai-workspace-setup-done-text": "Workspace VM hazır.",
   "ai-workspace-downloading-text": "Workspace sistemi indiriliyor…",
   "ai-workspace-starting-vm-text": "Workspace VM başlatılıyor…",
-  "ai-workspace-vm-unreachable-text": "Workspace VM'ye SSH ile erişilemedi. Ana ekrandan konsolunu kontrol edip yeniden deneyin."
+  "ai-workspace-vm-unreachable-text": "Workspace VM'ye SSH ile erişilemedi. Ana ekrandan konsolunu kontrol edip yeniden deneyin.",
+  "communitysnippetssubtitle-text": "Topluluğun paylaştığı hazır betikler. İstediklerini seç, parçacıklarına eklensin.",
+  "alldistros-text": "Tüm dağıtımlar",
+  "sortbyname-text": "Ada göre sırala",
+  "sortbyupdated-text": "Son güncellenen",
+  "hideinstalled-text": "Kurulu olanları gizle",
+  "nselected-text": "%s seçildi",
+  "updatedtoday-text": "bugün",
+  "updatedyesterday-text": "dün",
+  "updateddaysago-text": "%s gün önce",
+  "updatedmonthsago-text": "%s ay önce",
+  "updatedyearsago-text": "%s yıl önce"
 }

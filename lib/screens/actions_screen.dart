@@ -5,7 +5,7 @@ import 'package:re_editor/re_editor.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
-import 'package:wsl2distromanager/dialogs/qa_dialog.dart';
+import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
@@ -203,8 +203,9 @@ class QuickPageState extends State<QuickPage> {
                 style: ButtonStyle(
                     padding: ButtonState.all<EdgeInsets>(const EdgeInsets.only(
                         top: 8.0, bottom: 8.0, left: 20.0, right: 20.0))),
-                onPressed: () {
-                  communityDialog(() => setState(() {}));
+                onPressed: () async {
+                  await router.pushNamed('community');
+                  if (mounted) setState(() {});
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

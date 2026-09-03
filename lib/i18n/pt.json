@@ -776,5 +776,16 @@
   "ai-workspace-setup-done-text": "A VM do workspace está pronta.",
   "ai-workspace-downloading-text": "Baixando o sistema do workspace…",
   "ai-workspace-starting-vm-text": "Iniciando a VM do workspace…",
-  "ai-workspace-vm-unreachable-text": "A VM do workspace não ficou acessível por SSH. Verifique o console dela na tela inicial e tente novamente."
+  "ai-workspace-vm-unreachable-text": "A VM do workspace não ficou acessível por SSH. Verifique o console dela na tela inicial e tente novamente.",
+  "communitysnippetssubtitle-text": "Scripts prontos compartilhados pela comunidade. Escolha os que quiser e eles vão para os seus trechos.",
+  "alldistros-text": "Todas as distros",
+  "sortbyname-text": "Ordenar por nome",
+  "sortbyupdated-text": "Atualizado recentemente",
+  "hideinstalled-text": "Ocultar instalados",
+  "nselected-text": "%s selecionados",
+  "updatedtoday-text": "hoje",
+  "updatedyesterday-text": "ontem",
+  "updateddaysago-text": "há %s dias",
+  "updatedmonthsago-text": "há %s meses",
+  "updatedyearsago-text": "há %s anos"
 }

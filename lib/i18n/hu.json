@@ -774,5 +774,16 @@
   "ai-workspace-setup-done-text": "A workspace VM készen áll.",
   "ai-workspace-downloading-text": "Workspace-rendszer letöltése…",
   "ai-workspace-starting-vm-text": "Workspace VM indítása…",
-  "ai-workspace-vm-unreachable-text": "A workspace VM nem vált elérhetővé SSH-n. Ellenőrizd a konzolját a kezdőoldalon, majd próbáld újra."
+  "ai-workspace-vm-unreachable-text": "A workspace VM nem vált elérhetővé SSH-n. Ellenőrizd a konzolját a kezdőoldalon, majd próbáld újra.",
+  "communitysnippetssubtitle-text": "A közösség által megosztott kész szkriptek. Válaszd ki, amire szükséged van, és bekerülnek a kódrészleteid közé.",
+  "alldistros-text": "Minden disztró",
+  "sortbyname-text": "Rendezés név szerint",
+  "sortbyupdated-text": "Nemrég frissítve",
+  "hideinstalled-text": "Telepítettek elrejtése",
+  "nselected-text": "%s kiválasztva",
+  "updatedtoday-text": "ma",
+  "updatedyesterday-text": "tegnap",
+  "updateddaysago-text": "%s napja",
+  "updatedmonthsago-text": "%s hónapja",
+  "updatedyearsago-text": "%s éve"
 }

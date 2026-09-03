@@ -775,5 +775,16 @@
   "ai-workspace-setup-done-text": "工作區虛擬機已就緒。",
   "ai-workspace-downloading-text": "正在下載工作區系統…",
   "ai-workspace-starting-vm-text": "正在啟動工作區虛擬機…",
-  "ai-workspace-vm-unreachable-text": "無法透過 SSH 連線到工作區虛擬機。請在首頁查看其主控台，然後重試。"
+  "ai-workspace-vm-unreachable-text": "無法透過 SSH 連線到工作區虛擬機。請在首頁查看其主控台，然後重試。",
+  "communitysnippetssubtitle-text": "社群分享的現成腳本。選擇需要的腳本，它們會加入你的程式碼片段。",
+  "alldistros-text": "所有發行版",
+  "sortbyname-text": "依名稱排序",
+  "sortbyupdated-text": "最近更新",
+  "hideinstalled-text": "隱藏已安裝",
+  "nselected-text": "已選擇 %s 個",
+  "updatedtoday-text": "今天",
+  "updatedyesterday-text": "昨天",
+  "updateddaysago-text": "%s 天前",
+  "updatedmonthsago-text": "%s 個月前",
+  "updatedyearsago-text": "%s 年前"
 }

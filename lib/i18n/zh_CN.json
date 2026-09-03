@@ -775,5 +775,16 @@
   "ai-workspace-setup-done-text": "工作区虚拟机已就绪。",
   "ai-workspace-downloading-text": "正在下载工作区系统…",
   "ai-workspace-starting-vm-text": "正在启动工作区虚拟机…",
-  "ai-workspace-vm-unreachable-text": "无法通过 SSH 连接到工作区虚拟机。请在主页查看其控制台，然后重试。"
+  "ai-workspace-vm-unreachable-text": "无法通过 SSH 连接到工作区虚拟机。请在主页查看其控制台，然后重试。",
+  "communitysnippetssubtitle-text": "社区分享的现成脚本。选择需要的脚本，它们会添加到你的代码片段中。",
+  "alldistros-text": "所有发行版",
+  "sortbyname-text": "按名称排序",
+  "sortbyupdated-text": "最近更新",
+  "hideinstalled-text": "隐藏已安装",
+  "nselected-text": "已选择 %s 个",
+  "updatedtoday-text": "今天",
+  "updatedyesterday-text": "昨天",
+  "updateddaysago-text": "%s 天前",
+  "updatedmonthsago-text": "%s 个月前",
+  "updatedyearsago-text": "%s 年前"
 }

@@ -775,5 +775,16 @@
   "ai-workspace-setup-done-text": "Die Workspace-VM ist bereit.",
   "ai-workspace-downloading-text": "Workspace-System wird heruntergeladen…",
   "ai-workspace-starting-vm-text": "Workspace-VM wird gestartet…",
-  "ai-workspace-vm-unreachable-text": "Die Workspace-VM wurde über SSH nicht erreichbar. Prüfe ihre Konsole auf der Startseite und versuche es erneut."
+  "ai-workspace-vm-unreachable-text": "Die Workspace-VM wurde über SSH nicht erreichbar. Prüfe ihre Konsole auf der Startseite und versuche es erneut.",
+  "communitysnippetssubtitle-text": "Fertige Skripte aus der Community. Wähle aus, was du brauchst — es landet in deinen Codeausschnitten.",
+  "alldistros-text": "Alle Distros",
+  "sortbyname-text": "Nach Name sortieren",
+  "sortbyupdated-text": "Zuletzt aktualisiert",
+  "hideinstalled-text": "Installierte ausblenden",
+  "nselected-text": "%s ausgewählt",
+  "updatedtoday-text": "heute",
+  "updatedyesterday-text": "gestern",
+  "updateddaysago-text": "vor %s Tagen",
+  "updatedmonthsago-text": "vor %s Monaten",
+  "updatedyearsago-text": "vor %s Jahren"
 }
