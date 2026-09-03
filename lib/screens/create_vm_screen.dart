@@ -11,6 +11,7 @@ import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/components/suggest_on_focus.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
 /// Test seam: replaces the backend used by the page.
@@ -227,10 +228,11 @@ class _CreateVmPageState extends State<CreateVmPage> {
     }
   }
 
-  /// The installer picker: an autocomplete over the curated arm64 ISO
-  /// catalog (picked entries are downloaded and cached, the way the Windows
-  /// create screen offers its rootfs catalogue), while a local path or the
-  /// file picker keeps working unchanged.
+  /// The installer picker: an autocomplete over the curated arm64 ISO and
+  /// cloud-image catalog (picked entries are downloaded and cached, the way
+  /// the Windows create screen offers its rootfs catalogue), while a local
+  /// path or the file picker keeps working unchanged. The list opens on
+  /// click, so the catalog is visible before anything is typed.
   Widget _isoField() {
     return InfoLabel(
       label: 'vminstalleriso-text'.i18n(),
@@ -240,15 +242,20 @@ class _CreateVmPageState extends State<CreateVmPage> {
           Row(
             children: [
               Expanded(
-                child: AutoSuggestBox<String>(
+                child: SuggestOnFocus<String>(
                   key: const ValueKey('test-vm-iso'),
-                  controller: _iso,
-                  enabled: !_creating,
-                  placeholder: 'vmisoplaceholder-text'.i18n(),
-                  items: [
-                    for (final name in VmImageCatalog.names)
-                      AutoSuggestBoxItem<String>(value: name, label: name),
-                  ],
+                  builder: (context, boxKey, focusNode) =>
+                      AutoSuggestBox<String>(
+                    key: boxKey,
+                    focusNode: focusNode,
+                    controller: _iso,
+                    enabled: !_creating,
+                    placeholder: 'vmisoplaceholder-text'.i18n(),
+                    items: [
+                      for (final name in VmImageCatalog.names)
+                        suggestionItem(name),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

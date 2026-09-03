@@ -16,6 +16,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/error_view.dart';
+import 'package:wsl2distromanager/components/suggest_on_focus.dart';
 
 enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
 
@@ -436,8 +437,6 @@ class CreateWidget extends StatefulWidget {
 class _CreateWidgetState extends State<CreateWidget> {
   bool turnkey = false;
   CreateSourceType sourceType = CreateSourceType.repo;
-  FocusNode node = FocusNode();
-  final GlobalKey<AutoSuggestBoxState<String>> _autoSuggestBoxKey = GlobalKey();
   List<String> existingDistros = [];
   bool nameExists = false;
   bool customLocation = false;
@@ -449,21 +448,13 @@ class _CreateWidgetState extends State<CreateWidget> {
     _fetchDistros();
     widget.nameController.addListener(_checkName);
     widget.sourceType.addListener(_onSourceTypeChanged);
-    node.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
     widget.nameController.removeListener(_checkName);
     widget.sourceType.removeListener(_onSourceTypeChanged);
-    node.removeListener(_onFocusChange);
     super.dispose();
-  }
-
-  void _onFocusChange() {
-    if (node.hasFocus) {
-      _autoSuggestBoxKey.currentState?.showOverlay();
-    }
   }
 
   void _onSourceTypeChanged() {
@@ -753,10 +744,7 @@ class _CreateWidgetState extends State<CreateWidget> {
               List<AutoSuggestBoxItem<String>> list = [];
               if (snapshot.hasData) {
                 for (var i = 0; i < snapshot.data!.length; i++) {
-                  list.add(AutoSuggestBoxItem<String>(
-                    value: snapshot.data![i],
-                    label: snapshot.data![i],
-                  ));
+                  list.add(suggestionItem(snapshot.data![i]));
                 }
               }
               if (loading) {
@@ -771,92 +759,96 @@ class _CreateWidgetState extends State<CreateWidget> {
                   ],
                 );
               }
-              return AutoSuggestBox(
-                key: _autoSuggestBoxKey,
-                focusNode: node,
-                placeholder: sourceType == CreateSourceType.docker
-                    ? 'dockerimageplaceholder-text'.i18n()
-                    : sourceType == CreateSourceType.dockerLocalImage
-                        ? 'localdockerimageplaceholder-text'.i18n()
-                        : sourceType == CreateSourceType.local
-                        ? 'pathtorootfsarchive-text'.i18n()
-                        : sourceType == CreateSourceType.vhdx
-                            ? 'pathtovhdxfile-text'.i18n()
-                            : 'distroname-text'.i18n(),
-                controller: widget.autoSuggestBox,
-                items: list,
-                noResultsFoundBuilder: (context) => Builder(builder: (context) {
-                  String text = 'noresultsfound-text'.i18n();
-                  if (sourceType == CreateSourceType.docker) {
-                    text = widget.autoSuggestBox.text;
-                    if (text.startsWith('dockerhub:')) {
-                      text = text.split('dockerhub:')[1];
-                    } else if (text.startsWith('docker:')) {
-                      text = text.split('docker:')[1];
-                    }
-                    String image = text;
-                    String tag = 'latest';
-                    bool error = false;
-                    try {
-                      if (text.contains(':')) {
-                        image = text.split(':')[0];
-                        tag = text.split(':')[1];
+              // The list opens on click, not on the first keystroke
+              // (bostrot/ai-tasks#4).
+              return SuggestOnFocus<String>(
+                builder: (context, boxKey, node) => AutoSuggestBox(
+                  key: boxKey,
+                  focusNode: node,
+                  placeholder: sourceType == CreateSourceType.docker
+                      ? 'dockerimageplaceholder-text'.i18n()
+                      : sourceType == CreateSourceType.dockerLocalImage
+                          ? 'localdockerimageplaceholder-text'.i18n()
+                          : sourceType == CreateSourceType.local
+                          ? 'pathtorootfsarchive-text'.i18n()
+                          : sourceType == CreateSourceType.vhdx
+                              ? 'pathtovhdxfile-text'.i18n()
+                              : 'distroname-text'.i18n(),
+                  controller: widget.autoSuggestBox,
+                  items: list,
+                  noResultsFoundBuilder: (context) => Builder(builder: (context) {
+                    String text = 'noresultsfound-text'.i18n();
+                    if (sourceType == CreateSourceType.docker) {
+                      text = widget.autoSuggestBox.text;
+                      if (text.startsWith('dockerhub:')) {
+                        text = text.split('dockerhub:')[1];
+                      } else if (text.startsWith('docker:')) {
+                        text = text.split('docker:')[1];
                       }
-                    } catch (e) {
-                      // Keyed: these three were the only hardcoded English
-                      // strings in the panel (audit CI-10).
-                      text = 'dockerimagecheck-text'.i18n();
-                      error = true;
+                      String image = text;
+                      String tag = 'latest';
+                      bool error = false;
+                      try {
+                        if (text.contains(':')) {
+                          image = text.split(':')[0];
+                          tag = text.split(':')[1];
+                        }
+                      } catch (e) {
+                        // Keyed: these three were the only hardcoded English
+                        // strings in the panel (audit CI-10).
+                        text = 'dockerimagecheck-text'.i18n();
+                        error = true;
+                      }
+                      if (!error) {
+                        text = 'dockerimagepreview-text'.i18n(['$image:$tag']);
+                      }
+                    } else if (sourceType == CreateSourceType.dockerLocalImage) {
+                      text = widget.autoSuggestBox.text.isEmpty
+                          ? 'localdockerimagenotfound-text'.i18n()
+                          : 'localdockerpreview-text'
+                              .i18n([widget.autoSuggestBox.text]);
+                    } else if (sourceType == CreateSourceType.local) {
+                      text = 'selectlocalfile-text'.i18n();
+                    } else if (sourceType == CreateSourceType.vhdx) {
+                      text = 'selectvhdxfile-text'.i18n();
+                    } else {
+                      text = 'noresultsfound-text'.i18n();
                     }
-                    if (!error) {
-                      text = 'dockerimagepreview-text'.i18n(['$image:$tag']);
+                    return Container(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Text(text),
+                    );
+                  }),
+                  onChanged: (String value, TextChangedReason reason) {
+                    if (value.startsWith('dockerhub:') ||
+                        value.startsWith('docker:')) {
+                      widget.sourceType.value = CreateSourceType.docker;
                     }
-                  } else if (sourceType == CreateSourceType.dockerLocalImage) {
-                    text = widget.autoSuggestBox.text.isEmpty
-                        ? 'localdockerimagenotfound-text'.i18n()
-                        : 'localdockerpreview-text'
-                            .i18n([widget.autoSuggestBox.text]);
-                  } else if (sourceType == CreateSourceType.local) {
-                    text = 'selectlocalfile-text'.i18n();
-                  } else if (sourceType == CreateSourceType.vhdx) {
-                    text = 'selectvhdxfile-text'.i18n();
-                  } else {
-                    text = 'noresultsfound-text'.i18n();
-                  }
-                  return Container(
-                    padding: const EdgeInsets.all(10.0),
-                    child: Text(text),
-                  );
-                }),
-                onChanged: (String value, TextChangedReason reason) {
-                  if (value.startsWith('dockerhub:') ||
-                      value.startsWith('docker:')) {
-                    widget.sourceType.value = CreateSourceType.docker;
-                  }
-                },
-                trailingIcon: sourceType == CreateSourceType.local ||
-                        sourceType == CreateSourceType.vhdx
-                    ? NamedIconButton(
-                        label: 'choosefile-text'.i18n(),
-                        icon: FluentIcons.open_folder_horizontal,
-                        onPressed: () async {
-                          FilePickerResult? result =
-                              await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: sourceType == CreateSourceType.vhdx
-                                ? ['vhdx']
-                                : ['*'],
-                          );
+                  },
+                  trailingIcon: sourceType == CreateSourceType.local ||
+                          sourceType == CreateSourceType.vhdx
+                      ? NamedIconButton(
+                          label: 'choosefile-text'.i18n(),
+                          icon: FluentIcons.open_folder_horizontal,
+                          onPressed: () async {
+                            FilePickerResult? result =
+                                await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: sourceType == CreateSourceType.vhdx
+                                  ? ['vhdx']
+                                  : ['*'],
+                            );
   
-                          if (result != null) {
-                            widget.autoSuggestBox.text =
-                                result.files.single.path!;
-                          } else {
-                            // User canceled the picker
-                          }
-                        },
-                      )
-                    : null,
+                            if (result != null) {
+                              widget.autoSuggestBox.text =
+                                  result.files.single.path!;
+                            } else {
+                              // User canceled the picker
+                            }
+                          },
+                        )
+                      : null,
+                ),
               );
             }),
           ),

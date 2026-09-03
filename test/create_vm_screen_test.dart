@@ -94,10 +94,36 @@ void main() {
   testWidgets('the installer box suggests the curated ISO catalog',
       (tester) async {
     await pump(tester);
-    final box = tester.widget<AutoSuggestBox<String>>(
-        find.byKey(const ValueKey('test-vm-iso')));
+    final box = tester.widget<AutoSuggestBox<String>>(find.descendant(
+        of: find.byKey(const ValueKey('test-vm-iso')),
+        matching: find.byType(AutoSuggestBox<String>)));
     final labels = box.items.map((item) => item.label).toList();
     expect(labels, containsAll(VmImageCatalog.names));
+  });
+
+  testWidgets('clicking the installer box lists the catalog before typing',
+      (tester) async {
+    await pump(tester);
+    // Settle past fluent_ui's first-frame overlay reset.
+    await tester.pumpAndSettle();
+    final iso = find.byKey(const ValueKey('test-vm-iso'));
+    final box = find.descendant(
+        of: iso, matching: find.byType(AutoSuggestBox<String>));
+    expect(tester.state<AutoSuggestBoxState<String>>(box).isOverlayVisible,
+        isFalse);
+
+    await tester.tap(iso);
+    await tester.pumpAndSettle();
+
+    // bostrot/ai-tasks#4: the list used to stay hidden until a keystroke.
+    expect(tester.state<AutoSuggestBoxState<String>>(box).isOverlayVisible,
+        isTrue);
+    for (final name in VmImageCatalog.names) {
+      // The popup lives in the root overlay behind a transform follower,
+      // which the default on-stage walk skips.
+      expect(find.text(name, skipOffstage: false), findsOneWidget,
+          reason: '$name should be listed');
+    }
   });
 
   testWidgets('a Linux VM with no ISO and no image is refused', (tester) async {
@@ -182,6 +208,9 @@ void main() {
         find.byKey(const ValueKey('test-vm-name')), 'dbvm');
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-iso')), '/tmp/local.iso');
+    // Focusing the box opens its catalog popup over the fields below; a
+    // frame lets it shrink to the typed path (no match) before the click.
+    await tester.pumpAndSettle();
 
     // Pick Postgres from the service dropdown.
     await tester.tap(find.byKey(const ValueKey('test-vm-recipe')));
