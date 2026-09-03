@@ -60,6 +60,18 @@ class _ListItemState extends State<ListItem> {
 
   bool get headerFocused => rowFocused && !leadingFocused && !contentFocused;
 
+  /// Focus for the selectable size/IP label. Selecting text needs focus so
+  /// Ctrl/Cmd+C can find it, but the label must not become a Tab stop of its
+  /// own — the row and its buttons are the keyboard surface.
+  final FocusNode _metaFocus =
+      FocusNode(skipTraversal: true, debugLabel: 'row-meta');
+
+  @override
+  void dispose() {
+    _metaFocus.dispose();
+    super.dispose();
+  }
+
   void syncing(var item) {
     setState(() {
       isSyncing = item;
@@ -255,13 +267,19 @@ class _ListItemState extends State<ListItem> {
               // name at half width beside ~480px of nothing (audit LN-01).
               // The tooltip says what the bare "1.65 GB" actually is
               // (LN-25), and a failed size read shows a dash instead of
-              // silently blanking.
+              // silently blanking. On macOS this label also carries the
+              // guest's IP, which is only useful if it can be copied — so it
+              // is selectable text, not a plain label. A click inside it
+              // places the caret instead of toggling the row; the rest of
+              // the header still expands it.
               Tooltip(
                 message: widget.trailing.isEmpty
                     ? 'diskusageunavailable-text'.i18n()
                     : 'sizeondiskhint-text'.i18n(),
-                child: Text(
+                child: SelectableText(
                   widget.trailing.isEmpty ? '—' : widget.trailing,
+                  key: ValueKey('test-listitem-meta-${widget.item}'),
+                  focusNode: _metaFocus,
                   maxLines: 1,
                   textAlign: TextAlign.right,
                 ),

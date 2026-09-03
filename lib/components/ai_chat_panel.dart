@@ -1,4 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/rendering.dart'
+    show
+        DirectionallyExtendSelectionEvent,
+        GranularlyExtendSelectionEvent,
+        SelectedContent,
+        SelectionEvent,
+        SelectionEventType,
+        SelectionResult;
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -39,6 +47,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
   final TextEditingController _todoInputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FlyoutController _sessionsFlyout = FlyoutController();
+  final _TranscriptSelectionDelegate _selectionDelegate =
+      _TranscriptSelectionDelegate();
   bool _isLoading = false;
   bool _tasksExpanded = false;
 
@@ -392,27 +402,42 @@ class _AiChatPanelState extends State<AiChatPanel> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(12),
-                  // One extra slot: the reply currently streaming in, drawn
-                  // live under the history (plan item 6, streaming).
-                  itemCount: history.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == history.length) {
-                      final live = _ai.streamingText.value;
-                      if (!_isLoading || live.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return _buildMessageBubble(AiMessage(
-                        role: 'assistant',
-                        content: live,
-                        timestamp: DateTime.now(),
-                      ));
-                    }
-                    final msg = history[index];
-                    return _buildMessageBubble(msg);
-                  },
+              // The assistant hands out addresses, URLs and commands, and
+              // none of the transcript could be selected — the only way out
+              // was the copy button on a fenced code block. One selection
+              // region over the whole list makes every bubble, tool note and
+              // code block drag-selectable and Ctrl/Cmd+C-copyable; the
+              // buttons inside keep working because the region only claims
+              // drags and text taps. Each entry is a `_TranscriptEntry` so
+              // the copied text keeps its line structure.
+              : SelectionArea(
+                  key: const ValueKey('test-chat-transcript'),
+                  child: SelectionContainer(
+                    delegate: _selectionDelegate,
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(12),
+                      // One extra slot: the reply currently streaming in, drawn
+                      // live under the history (plan item 6, streaming).
+                      itemCount: history.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == history.length) {
+                          final live = _ai.streamingText.value;
+                          if (!_isLoading || live.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return _TranscriptEntry(
+                              child: _buildMessageBubble(AiMessage(
+                            role: 'assistant',
+                            content: live,
+                            timestamp: DateTime.now(),
+                          )));
+                        }
+                        return _TranscriptEntry(
+                            child: _buildMessageBubble(history[index]));
+                      },
+                    ),
+                  ),
                 ),
         ),
 
@@ -828,10 +853,115 @@ class _AiChatPanelState extends State<AiChatPanel> {
   void dispose() {
     _todos.removeListener(_onTodosChanged);
     _sessionsFlyout.dispose();
+    _selectionDelegate.dispose();
     _inputController.dispose();
     _todoInputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+}
+
+/// Trims the line break the last entry adds after a select-all.
+///
+/// Flutter concatenates the selected text of neighbouring widgets with no
+/// separator, so a selection across bubbles — or across the paragraphs of one
+/// reply — copied as a single run of words. The line breaks are put in by
+/// each [_TranscriptEntry]; this outer container only takes back the one an
+/// entry adds when it cannot know it is the last.
+class _TranscriptSelectionDelegate extends StaticSelectionContainerDelegate {
+  @override
+  SelectedContent? getSelectedContent() {
+    final content = super.getSelectedContent();
+    final text = content?.plainText;
+    if (text == null || !text.endsWith('\n')) return content;
+    return SelectedContent(plainText: text.substring(0, text.length - 1));
+  }
+}
+
+/// One transcript entry as a unit of selection: its paragraphs, tool note or
+/// code block copy as separate lines, and it ends with a line break whenever
+/// the selection continues into the entry below it.
+class _TranscriptEntry extends StatefulWidget {
+  const _TranscriptEntry({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_TranscriptEntry> createState() => _TranscriptEntryState();
+}
+
+class _TranscriptEntryState extends State<_TranscriptEntry> {
+  final _EntrySelectionDelegate _delegate = _EntrySelectionDelegate();
+
+  @override
+  void dispose() {
+    _delegate.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      SelectionContainer(delegate: _delegate, child: widget.child);
+}
+
+/// Joins an entry's selected paragraphs with line breaks, and remembers on
+/// each selection event whether either edge of the selection went past the
+/// entry's end — that is what says a line break belongs after it.
+class _EntrySelectionDelegate extends StaticSelectionContainerDelegate {
+  bool _startBelow = false;
+  bool _endBelow = false;
+
+  @override
+  SelectionResult dispatchSelectionEvent(SelectionEvent event) {
+    final result = super.dispatchSelectionEvent(event);
+    final below = result == SelectionResult.next;
+    switch (event.type) {
+      case SelectionEventType.startEdgeUpdate:
+        _startBelow = below;
+        break;
+      case SelectionEventType.endEdgeUpdate:
+        _endBelow = below;
+        break;
+      case SelectionEventType.granularlyExtendSelection:
+        _setEdge((event as GranularlyExtendSelectionEvent).isEnd, below);
+        break;
+      case SelectionEventType.directionallyExtendSelection:
+        _setEdge((event as DirectionallyExtendSelectionEvent).isEnd, below);
+        break;
+      case SelectionEventType.selectAll:
+        // Every entry says "more follows"; the transcript trims the last.
+        _startBelow = false;
+        _endBelow = true;
+        break;
+      case SelectionEventType.clear:
+      case SelectionEventType.selectWord:
+      case SelectionEventType.selectParagraph:
+        _startBelow = false;
+        _endBelow = false;
+        break;
+    }
+    return result;
+  }
+
+  void _setEdge(bool isEnd, bool below) {
+    if (isEnd) {
+      _endBelow = below;
+    } else {
+      _startBelow = below;
+    }
+  }
+
+  @override
+  SelectedContent? getSelectedContent() {
+    final parts = <String>[];
+    for (final selectable in selectables) {
+      final text = selectable.getSelectedContent()?.plainText;
+      if (text != null && text.isNotEmpty) parts.add(text);
+    }
+    if (parts.isEmpty) return null;
+    final continues = _startBelow || _endBelow;
+    return SelectedContent(
+        plainText: parts.join('\n') + (continues ? '\n' : ''));
   }
 }
 
@@ -844,6 +974,17 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
   _CodeBlockBuilder(this.context);
 
   final BuildContext context;
+
+  /// flutter_markdown opens an inline run for the text inside the block and
+  /// only closes it once that run holds a child. The default `visitText`
+  /// returns none, so the run leaked past the block and the paragraph after
+  /// it was appended to the block's run instead of its own; a debug build
+  /// fails the builder's `_inlines.isEmpty` assertion on every reply with a
+  /// fenced block. The placeholder is discarded with the default rendering
+  /// below.
+  @override
+  Widget? visitText(md.Text text, TextStyle? preferredStyle) =>
+      const SizedBox.shrink();
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
