@@ -6,11 +6,97 @@ reports under `doc/audit/` and the playbook under
 
 ---
 
+## Release readiness review (2026-09-04)
+
+Verified on this machine against `beta` (`b2b957a`), Flutter 3.41.6 — the
+same pin CI uses. Tracked as `bostrot/ai-tasks#9`.
+
+**Measured**
+- `flutter test`: 1016 passed, ~10 skipped. `check_translations`: exit 0.
+- `flutter analyze`: **exit 1, 111 issues** (1 warning in `lib/`
+  `wsl.dart:2084` dead null-aware, 4 warnings in `test/`, 106 infos —
+  mostly `deprecated_member_use`, `strict_top_level_inference`,
+  `use_super_parameters`). `macos.yml` runs `flutter analyze` as a gate, so
+  the macOS CI build fails as things stand; `releaser.yml` does not run it.
+- `pubspec.yaml` is still `1.11.0`, which is the last tag. `releaser.yml`
+  checks whether that release exists and skips release creation when it does
+  — nothing ships until the version is bumped.
+- `beta` has **53 commits not on `origin/beta`**. PR #318 (`beta` → `main`)
+  is `CONFLICTING`: GitHub `main` gained PR #316 (Korean translation:
+  `lib/i18n/ko.json`, `constants.dart`, `navbar.dart`) that the local `main`
+  does not have, and `beta` deleted `navbar.dart`. Expect to drop the
+  `navbar.dart` side, keep `ko.json`, and make `check_translations` pass with
+  a tenth locale.
+- `releaser.yml` still runs `gh workflow run publish-scoop.yml`; that
+  workflow was deleted (`6aa2271`). The failure is masked because
+  `publish-store` runs last in the same step — remove the line.
+- Live endpoints: licence validate answers correctly; the checkout lookup
+  answers `pending`; **`https://wslmanager.com/buy` is 404** while
+  `macBuyUrl` in `constants.dart` points at it; the CDN `images.json` still
+  answers 200 with an empty body; `motd.json` fine.
+- macOS build: ad-hoc signed, **not notarized** (`macos.yml` says so) —
+  Gatekeeper will refuse the DMG on first open for every buyer.
+  `MACOSX_DEPLOYMENT_TARGET` is 10.15 although Virtualization.framework
+  needs macOS 11+ (12+ for macOS guests) and `vmctl` is built arm64-only;
+  set the target so Finder refuses cleanly on an unsupported Mac.
+- Windows does **not** register the `wslmanager://` scheme (no
+  `protocol_activation` in `msix_config`, nothing in `installer/setup.iss`),
+  so the "Activate in WSL Manager" button on `/buy/success` is a no-op on a
+  Windows GitHub build; the key can still be pasted.
+- The in-app "What's new" dialog shows the GitHub release body, and the
+  releaser creates releases with `--notes "This is an automated release."`
+  plus generated notes — write real notes before tagging.
+- Website (`wslmanager-page`, GitLab Pages): the pricing/buy work is
+  **uncommitted**; `npm run lint` and `npm run build` pass with it in place;
+  `IS_TEST_MODE = true` and both plan links are `buy.stripe.com/test_…`.
+- `wslmanager-scripts`: one unpushed local commit (`7fe6017`) and the remote
+  `main` has moved on (`535ff1b`, plus a 2025 PR merge) — pull/rebase before
+  pushing.
+
+**Ship blockers, in order**
+1. Get `flutter analyze` to exit 0 (fix or explicitly allow the infos) so
+   `macos.yml` passes.
+2. Bump the version (1.12.0) and write release notes: the audit's 214
+   fixes, MCP server, AI workspace/sandbox/task queue, snippets sharing,
+   macOS VMs (beta), licence keys.
+3. Push `beta`, resolve the #316 conflict, merge PR #318; that is what makes
+   `releaser.yml` tag and publish.
+4. Drop the `publish-scoop.yml` trigger from `releaser.yml`.
+5. macOS distribution: Developer ID certificate as `CODESIGN_IDENTITY`,
+   `notarytool submit … --wait` + `stapler` in `macos.yml`, raise the
+   deployment target, add a macOS section under "Install" in the README.
+6. Website: commit the buy page, flip `IS_TEST_MODE`/links to the live Stripe
+   payment links, deploy so `/buy` exists before any macOS binary is public.
+   That also unblocks `bostrot/ai-tasks#7` and `#8`.
+7. Set the `WSLMANAGER_GITHUB_CLIENT_ID` repository variable
+   (`bostrot/ai-tasks#6`) — without it every release ships with sharing off.
+8. Push `images.json` to the CDN (empty since 2026-08-31, see "Now").
+9. Store: Submission 71 draft, keywords, "What's new" (upstream #307 reports
+   1.11.0 never reached the Store).
+
+**Should do before or right after, not blocking**
+- Register `wslmanager://` on Windows (MSIX `protocol_activation` + Inno
+  registry keys) or word `/buy/success` per platform.
+- README "Pro" line still says Microsoft Store only; mention the macOS key.
+- `AGENTS.md` still says "no license keys, no validation backend".
+- "Sign in with Claude" ships without a client ID — confirm the provider
+  option degrades gracefully when it is empty.
+- Upstream issues worth a look before tagging: #317 (window size / dark
+  mode not remembered), #309 (default user overwrites `systemd=true`), #311
+  / #312 (create dialog), #303 (compact does not check drive space — likely
+  closed by `freeSpaceBytes` in `wsl.dart:2107`, verify and close).
+- Decide Templates removal vs merge (see "Decisions open").
+
+---
+
 ## Next — hardening the AI features before release (planned 2026-09-01)
 
 Ordered by risk-to-users, not effort. Verified against the code, not guessed.
 
-### 1. Make Cancel actually cancel the agent run (highest value)
+### 1. Make Cancel actually cancel the agent run (highest value) — done
+`CancelSignal` is threaded through `runAgentOn` and both provider loops
+(`ai_service.dart`). Kept for the record.
+
 Cancel today only bumps `_requestGeneration`, so the UI drops the reply — but
 the agent loop in `ai_service.dart` keeps running: tools keep executing on the
 real machine and requests keep billing the user's key, now for up to 100
@@ -19,7 +105,9 @@ steps. Thread a `CancelSignal` (exists in `api/cancellation.dart`) through
 iteration and each tool call. The task runner's auto-continue must honour it
 too.
 
-### 2. Cap the context the agent sends per turn
+### 2. Cap the context the agent sends per turn — done
+`_maxHistoryMessages = 30` / `_maxHistoryChars = 30000` in `ai_service.dart`.
+
 `_historyMessages()` serialises the **whole** transcript into every request —
 the old `take(10)` cap was lost when tool-use landed. A long-lived chat (they
 persist now) grows every request without bound. Keep the last ~30 user/
@@ -31,7 +119,9 @@ With 100 steps × 6 auto-continue rounds possible, the panel should show
 "step 12 — 34k tokens" style progress during a run and offer one button that
 stops run *and* auto-continue. Falls out of #1 almost for free.
 
-### 4. Sandbox creation: progress, disk check, cancel
+### 4. Sandbox creation: progress, disk check, cancel — done
+`sandbox_service.dart` uses `onReceiveProgress` and `freeSpaceBytes()`.
+
 - `dio.download` has `onReceiveProgress`; the "downloading" stage should show
   a percentage (the image is ~700 MB).
 - Check `freeSpaceBytes()` (exists in wsl.dart, unused here) before starting
@@ -58,8 +148,8 @@ network lockdown (wsl.conf / firewall) is a research item, not a quick fix.
 - Bump version, write real "What's new" (the audit closed 214 findings; then
   MCP/AI/sandbox landed) — the Store text still describes an old release.
 - Submit the draft (Submission 71) after the keywords question.
-- **Remove the local `return true;` Pro grant in `license_manager.dart`
-  before any build leaves this machine.**
+- The old local `return true;` Pro grant is gone; debug builds run as Pro
+  via `_debugPro`, which is `kDebugMode`-gated and off under tests.
 - The two standing manual items below (CDN push, Sign in with Claude client
   ID) gate the catalogue freshness and the Claude provider respectively.
 
@@ -154,8 +244,9 @@ files are not orphaned — and drop the Home-row archive button along with it.
 ### Mac version with Apple Virtualization
 Microsoft Store and Mac App Store share no entitlements, so a cross-platform
 user pays twice. Recommendation: accept that rather than build a licence
-server, which would undo the no-account, no-key design. Note: no `macos/`
-scaffolding exists — this would be a from-scratch, multi-week effort.
+server, which would undo the no-account, no-key design. Update 2026-09:
+the macOS port exists (`macos/`, `vmctl`, `AppleVmApi`) and Pro on the Mac is
+sold as a licence key from wslmanager.com — see the review above.
 
 ---
 
