@@ -5,6 +5,7 @@ import 'package:re_editor/re_editor.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
+import 'package:wsl2distromanager/dialogs/guest_access_dialog.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
@@ -51,11 +52,18 @@ class QuickPageState extends State<QuickPage> {
         for (final instance in _instances)
           MenuFlyoutItem(
             text: Text(distroLabel(instance)),
-            onPressed: () {
+            onPressed: () async {
               plausible.event(name: "wsl_quickaction_run");
-              (widget.api ?? vmBackend()).runCommands(
-                  instance, action.content.split('\n'),
-                  user: prefs.getString('StartUser_$instance'));
+              final api = widget.api ?? vmBackend();
+              final user = prefs.getString('StartUser_$instance');
+              // Apple VMs installed from an ISO get the app's SSH key
+              // installed here, once, before the snippet runs.
+              if (!await ensureGuestAccess(context, api, instance,
+                  user: user)) {
+                return;
+              }
+              api.runCommands(instance, action.content.split('\n'),
+                  user: user);
             },
           ),
       ],

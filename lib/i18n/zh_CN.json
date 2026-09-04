@@ -841,5 +841,15 @@
   "web-dashboard-tunnel-warning-text": "仪表盘（包括运行命令和删除实例）现已可从公共互联网访问。只有链接中的访问令牌在保护它。请仅与您信任的人分享链接。",
   "web-dashboard-tunnel-url-text": "公共链接",
   "copydashboardurl-text": "复制仪表盘链接",
-  "web-dashboard-feature": "面向手机和其他设备的网页仪表盘"
+  "web-dashboard-feature": "面向手机和其他设备的网页仪表盘",
+  "guestaccess-text": "为 %s 设置 SSH 访问",
+  "guestaccessbody-text": "代码片段通过 SSH 在虚拟机内运行，但此虚拟机尚未接受应用的密钥：从 ISO 手动安装的虚拟机不会自动配置。请使用客户机账户登录一次：应用的公钥会添加到该账户和 root；密码仅用于本次登录，不会被保存。",
+  "guestaccessuser-text": "客户机用户名",
+  "guestaccesssubmit-text": "设置访问",
+  "guestaccessinstalling-text": "正在将应用的 SSH 密钥安装到虚拟机…",
+  "guestaccessempty-text": "请输入用户名和密码。",
+  "guestaccessdone-text": "已设置对 %s 的 SSH 访问。",
+  "guestaccessunreachable-text": "无法通过 SSH 连接 %s0：%s1",
+  "guestaccessstilldenied-text": "密钥已安装，但以 %s0 身份通过 SSH 连接 %s1 仍被拒绝。请在实例设置中将 %s2 设为启动用户，或在客户机的 sshd 配置中允许 root 通过密钥登录。",
+  "password-text": "密码"
 }

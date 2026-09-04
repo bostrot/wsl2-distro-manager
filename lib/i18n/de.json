@@ -841,5 +841,15 @@
   "web-dashboard-tunnel-warning-text": "Das Dashboard — einschließlich Befehlsausführung und Löschen von Instanzen — ist jetzt aus dem öffentlichen Internet erreichbar. Nur das Zugriffstoken im Link schützt es. Teile den Link nur mit Personen, denen du vertraust.",
   "web-dashboard-tunnel-url-text": "Öffentlicher Link",
   "copydashboardurl-text": "Dashboard-Link kopieren",
-  "web-dashboard-feature": "Web-Dashboard für Handy und andere Geräte"
+  "web-dashboard-feature": "Web-Dashboard für Handy und andere Geräte",
+  "guestaccess-text": "SSH-Zugriff auf %s einrichten",
+  "guestaccessbody-text": "Snippets laufen per SSH in der VM, aber diese VM akzeptiert den Schlüssel der App noch nicht — von Hand aus einer ISO installierte VMs werden nicht automatisch eingerichtet. Melde dich einmal mit einem Gastkonto an: Der öffentliche Schlüssel der App wird für dieses Konto und für root hinterlegt; das Passwort wird nur für diese Anmeldung verwendet und nicht gespeichert.",
+  "guestaccessuser-text": "Benutzername im Gast",
+  "guestaccesssubmit-text": "Zugriff einrichten",
+  "guestaccessinstalling-text": "SSH-Schlüssel der App wird in der VM installiert…",
+  "guestaccessempty-text": "Gib Benutzername und Passwort ein.",
+  "guestaccessdone-text": "SSH-Zugriff auf %s ist eingerichtet.",
+  "guestaccessunreachable-text": "%s0 ist per SSH nicht erreichbar: %s1",
+  "guestaccessstilldenied-text": "Der Schlüssel ist installiert, aber SSH als %s0 in %s1 wird weiterhin abgelehnt. Trage %s2 in den Einstellungen der Instanz als Startbenutzer ein oder erlaube in der sshd-Konfiguration des Gasts die root-Anmeldung per Schlüssel.",
+  "password-text": "Passwort"
 }

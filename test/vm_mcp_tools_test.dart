@@ -11,7 +11,7 @@ import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
-import 'apple_vm_api_test.dart' show FakeVmctlShell;
+import 'fake_vmctl_shell.dart';
 import 'mocks.dart';
 import 'vm_backend_test.dart' show FakeBackend;
 

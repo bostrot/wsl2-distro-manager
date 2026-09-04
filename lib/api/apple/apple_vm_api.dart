@@ -50,6 +50,44 @@ class AppleVmInfo {
   bool get running => state == 'running';
 }
 
+/// Whether the app can get into a guest over SSH as a given user.
+enum GuestAccessState {
+  /// Key auth works; `exec` and snippets will run.
+  ok,
+
+  /// The guest is up and sshd answered, but the store key is not authorized
+  /// for that user — a VM installed from an ISO, or an imported disk without
+  /// cloud-init. `vmctl authorize` with the guest password fixes it.
+  denied,
+
+  /// Something other than auth is wrong: the VM is stopped, has no IP, sshd
+  /// is not running, the helper is missing. [GuestAccessProbe.message]
+  /// carries the reason.
+  unreachable,
+}
+
+/// Result of [AppleVmApi.probeGuestAccess].
+class GuestAccessProbe {
+  final GuestAccessState state;
+  final String message;
+
+  const GuestAccessProbe(this.state, [this.message = '']);
+
+  bool get ok => state == GuestAccessState.ok;
+  bool get denied => state == GuestAccessState.denied;
+}
+
+/// What `vmctl authorize` managed to do.
+class GuestAuthorization {
+  /// The account whose password was used; it always gets the key.
+  final String user;
+
+  /// Whether root got the key too (through sudo/doas/su in the guest).
+  final bool rootInstalled;
+
+  const GuestAuthorization({required this.user, required this.rootInstalled});
+}
+
 /// Raised when a `vmctl` invocation fails, carrying whatever the helper said.
 class AppleVmException implements Exception {
   final String message;
@@ -66,9 +104,10 @@ class AppleVmException implements Exception {
 /// key) and keeps each running VM alive in a detached daemon process; this
 /// class stays a thin, mockable shell around its JSON protocol. Command
 /// execution inside a guest goes over SSH with the key `vmctl create` seeds
-/// via cloud-init, so it only works for guests provisioned that way (or where
-/// the user set up SSH themselves) — mirroring how remote WSL depends on
-/// key-based SSH.
+/// via cloud-init — mirroring how remote WSL depends on key-based SSH. A
+/// guest that never got the seed (installed by hand from an ISO) gets the
+/// key through [authorizeSshKey] with a one-time password sign-in; see
+/// [probeGuestAccess] for telling that case apart.
 class AppleVmApi extends VmBackend {
   final Shell shell;
 
@@ -360,6 +399,77 @@ class AppleVmApi extends VmBackend {
     } on ProcessException catch (e) {
       throw AppleVmException(
           'Could not run the vmctl helper (${helperPath()}): ${e.message}');
+    }
+  }
+
+  /// The environment variable `vmctl authorize` reads the guest password
+  /// from. An env var rather than an argument so the password never shows
+  /// up in `ps`, a crash log, or a Terminal `.command` file.
+  static const String guestPasswordEnv = 'VMCTL_GUEST_PASSWORD';
+
+  /// Can the app get into [distribution] over SSH as [user] right now?
+  ///
+  /// Runs `true` in the guest by key. ssh answers 255 for anything that is
+  /// not the command's own exit status; only a "Permission denied" among
+  /// those is the missing-key case an [authorizeSshKey] can repair. Cheap
+  /// (one round trip) when the VM is up, so callers can afford it before
+  /// every snippet run instead of letting a Terminal window show the error.
+  Future<GuestAccessProbe> probeGuestAccess(String distribution,
+      {String user = 'root'}) async {
+    ProcessResult result;
+    try {
+      result = await execCommand(distribution, 'true',
+          user: user, timeout: const Duration(seconds: 45));
+    } on AppleVmException catch (e) {
+      return GuestAccessProbe(GuestAccessState.unreachable, e.message);
+    }
+    if (result.exitCode == 0) return const GuestAccessProbe(GuestAccessState.ok);
+    final stderr = result.stderr.toString().trim();
+    if (result.exitCode == 255 && stderr.contains('Permission denied')) {
+      return GuestAccessProbe(GuestAccessState.denied, stderr);
+    }
+    return GuestAccessProbe(GuestAccessState.unreachable,
+        stderr.isEmpty ? 'exit code ${result.exitCode}' : stderr);
+  }
+
+  /// Installs the store's SSH key in [distribution] for [user] and root,
+  /// signing in once with [password]. The password is handed to the helper
+  /// through [guestPasswordEnv] and is not kept anywhere afterwards.
+  ///
+  /// Throws [AppleVmException] with ssh's words when the sign-in fails
+  /// (wrong password, password login disabled, no sshd).
+  Future<GuestAuthorization> authorizeSshKey(
+    String distribution, {
+    required String user,
+    required String password,
+  }) async {
+    ProcessResult result;
+    try {
+      result = await shell.run(
+        helperPath(),
+        [..._baseArgs(), 'authorize', '--name', distribution, '--user', user],
+        environment: {guestPasswordEnv: password},
+        runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
+      );
+    } on ProcessException catch (e) {
+      throw AppleVmException(
+          'Could not run the vmctl helper (${helperPath()}): ${e.message}');
+    }
+    if (result.exitCode != 0) {
+      final stderr = result.stderr.toString().trim();
+      throw AppleVmException(stderr.isNotEmpty
+          ? stderr
+          : 'vmctl authorize failed with exit code ${result.exitCode}');
+    }
+    try {
+      final decoded = json.decode(result.stdout.toString());
+      final root = decoded is Map && decoded['root'] == true;
+      return GuestAuthorization(user: user, rootInstalled: root);
+    } on FormatException {
+      throw AppleVmException(
+          'vmctl returned unreadable output: ${result.stdout}');
     }
   }
 

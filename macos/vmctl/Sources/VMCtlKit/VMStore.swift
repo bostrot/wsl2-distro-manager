@@ -43,6 +43,8 @@ public struct VMStore {
 
     public func sshKeyPath() -> URL { root.appendingPathComponent("id_ed25519") }
     public func sshPublicKeyPath() -> URL { root.appendingPathComponent("id_ed25519.pub") }
+    /// The askpass helper `authorize` hands to ssh; holds no secret itself.
+    public func askpassPath() -> URL { root.appendingPathComponent("askpass.sh") }
 
     /// Generate the store keypair on first use (via ssh-keygen, which every
     /// macOS ships).

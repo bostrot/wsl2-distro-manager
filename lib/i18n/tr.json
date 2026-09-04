@@ -840,5 +840,15 @@
   "web-dashboard-tunnel-warning-text": "Pano — komut çalıştırma ve örnek silme dahil — artık internetten erişilebilir durumda. Onu yalnızca bağlantıdaki erişim belirteci korur. Bağlantıyı yalnızca güvendiğiniz kişilerle paylaşın.",
   "web-dashboard-tunnel-url-text": "Herkese açık bağlantı",
   "copydashboardurl-text": "Pano bağlantısını kopyala",
-  "web-dashboard-feature": "Telefonlar ve diğer cihazlar için web panosu"
+  "web-dashboard-feature": "Telefonlar ve diğer cihazlar için web panosu",
+  "guestaccess-text": "%s için SSH erişimini ayarla",
+  "guestaccessbody-text": "Parçacıklar VM içinde SSH üzerinden çalışır, ancak bu VM henüz uygulamanın anahtarını kabul etmiyor: bir ISO'dan elle kurulan VM'ler otomatik olarak hazırlanmaz. Bir konuk hesabıyla bir kez oturum açın: uygulamanın açık anahtarı bu hesaba ve root'a eklenir; parola yalnızca bu oturum açma için kullanılır ve saklanmaz.",
+  "guestaccessuser-text": "Konuk kullanıcı adı",
+  "guestaccesssubmit-text": "Erişimi ayarla",
+  "guestaccessinstalling-text": "Uygulamanın SSH anahtarı VM'ye yükleniyor…",
+  "guestaccessempty-text": "Bir kullanıcı adı ve parola girin.",
+  "guestaccessdone-text": "%s için SSH erişimi ayarlandı.",
+  "guestaccessunreachable-text": "%s0 SSH ile erişilemiyor: %s1",
+  "guestaccessstilldenied-text": "Anahtar yüklendi, ancak %s1 içinde %s0 olarak SSH hâlâ reddediliyor. Örneğin ayarlarında %s2 kullanıcısını başlangıç kullanıcısı olarak ayarlayın veya konuğun sshd yapılandırmasında root için anahtarla oturum açmaya izin verin.",
+  "password-text": "Parola"
 }

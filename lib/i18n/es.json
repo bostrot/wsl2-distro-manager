@@ -840,5 +840,15 @@
   "web-dashboard-tunnel-warning-text": "El panel — incluida la ejecución de comandos y la eliminación de instancias — ahora es accesible desde Internet. Solo lo protege el token de acceso del enlace. Comparte el enlace únicamente con personas de confianza.",
   "web-dashboard-tunnel-url-text": "Enlace público",
   "copydashboardurl-text": "Copiar el enlace del panel",
-  "web-dashboard-feature": "Panel web para móviles y otros dispositivos"
+  "web-dashboard-feature": "Panel web para móviles y otros dispositivos",
+  "guestaccess-text": "Configurar acceso SSH a %s",
+  "guestaccessbody-text": "Los snippets se ejecutan dentro de la VM por SSH, pero esta VM aún no acepta la clave de la app: las VM instaladas a mano desde una ISO no se aprovisionan automáticamente. Inicia sesión una vez con una cuenta del invitado: la clave pública de la app se añade a esa cuenta y a root; la contraseña solo se usa para este inicio de sesión y no se guarda.",
+  "guestaccessuser-text": "Usuario del invitado",
+  "guestaccesssubmit-text": "Configurar acceso",
+  "guestaccessinstalling-text": "Instalando la clave SSH de la app en la VM…",
+  "guestaccessempty-text": "Introduce un usuario y una contraseña.",
+  "guestaccessdone-text": "El acceso SSH a %s está configurado.",
+  "guestaccessunreachable-text": "No se puede acceder a %s0 por SSH: %s1",
+  "guestaccessstilldenied-text": "La clave está instalada, pero el SSH como %s0 en %s1 sigue rechazado. Establece %s2 como usuario de inicio de la instancia en sus ajustes, o permite el inicio de sesión de root por clave en la configuración de sshd del invitado.",
+  "password-text": "Contraseña"
 }

@@ -5,85 +5,10 @@ import 'package:fluent_ui/fluent_ui.dart' show InfoBarSeverity;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
-import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
-import 'mocks.dart' show MockProcess;
-
-/// Scripted vmctl: answers by subcommand and records every invocation.
-class FakeVmctlShell implements Shell {
-  final List<List<String>> calls = [];
-  final Map<String, String> responses = {};
-  final Map<String, int> exitCodes = {};
-  final Map<String, String> errors = {};
-
-  /// Sequenced answers, consulted before [responses]: each call for the
-  /// subcommand pops the next entry, letting a test model state that
-  /// changes between calls (a VM that is stopped, then running).
-  final Map<String, List<String>> responseQueue = {};
-
-  /// Called with each subcommand, so a test can change what the fake will
-  /// answer next — modelling a repair that makes the guest reachable.
-  void Function(String command)? onCommand;
-
-  String _responseFor(String command) {
-    final queue = responseQueue[command];
-    if (queue != null && queue.isNotEmpty) return queue.removeAt(0);
-    return responses[command] ?? '';
-  }
-
-  String _commandOf(List<String> arguments) {
-    // Skip the leading `--store <dir>`.
-    var index = 0;
-    while (index < arguments.length && arguments[index].startsWith('--')) {
-      index += 2;
-    }
-    return index < arguments.length ? arguments[index] : '';
-  }
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    bool includeParentEnvironment = true,
-    bool runInShell = false,
-    Encoding? stdoutEncoding = systemEncoding,
-    Encoding? stderrEncoding = systemEncoding,
-  }) async {
-    calls.add([executable, ...arguments]);
-    final command = _commandOf(arguments);
-    onCommand?.call(command);
-    return ProcessResult(
-      0,
-      exitCodes[command] ?? 0,
-      _responseFor(command),
-      errors[command] ?? '',
-    );
-  }
-
-  @override
-  Future<Process> start(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    bool includeParentEnvironment = true,
-    bool runInShell = false,
-    ProcessStartMode mode = ProcessStartMode.normal,
-  }) async {
-    calls.add(['start:$executable', ...arguments]);
-    final command = _commandOf(arguments);
-    onCommand?.call(command);
-    return MockProcess(
-      exitCode: exitCodes[command] ?? 0,
-      stdout: _responseFor(command),
-      stderr: errors[command] ?? '',
-    );
-  }
-}
+import 'fake_vmctl_shell.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -305,6 +230,74 @@ void main() {
       final out = await api.execCmdAsRoot('ubuntu', 'id');
       expect(out, 'root-output');
       expect(lastCall(), containsAll(['--user', 'root']));
+    });
+  });
+
+  // A VM installed by hand from an ISO never got the store key from
+  // cloud-init, so `exec` — and every snippet — failed with ssh's
+  // "Permission denied" in a Terminal window (bostrot/ai-tasks#16).
+  group('guest access', () {
+    test('probe is ok when `true` runs by key', () async {
+      final probe = await api.probeGuestAccess('alpine_2');
+      expect(probe.ok, isTrue);
+      expect(lastCall(), containsAll(['exec', '--user', 'root', 'true']));
+    });
+
+    test('probe tells a missing key apart from any other failure', () async {
+      shell.exitCodes['exec'] = 255;
+      shell.errors['exec'] =
+          'root@192.168.64.2: Permission denied (publickey,password,keyboard-interactive).';
+      final denied = await api.probeGuestAccess('alpine_2', user: 'root');
+      expect(denied.state, GuestAccessState.denied);
+      expect(denied.message, contains('Permission denied'));
+
+      // ssh's 255 for anything else (no route, no sshd) is not repairable
+      // with a password, and must not open the credentials dialog.
+      shell.errors['exec'] = 'ssh: connect to host 192.168.64.2 port 22: Connection refused';
+      final refused = await api.probeGuestAccess('alpine_2');
+      expect(refused.state, GuestAccessState.unreachable);
+      expect(refused.message, contains('Connection refused'));
+
+      // A stopped VM: vmctl itself says so with exit 1.
+      shell.exitCodes['exec'] = 1;
+      shell.errors['exec'] = 'VM alpine_2 is not running.';
+      final stopped = await api.probeGuestAccess('alpine_2');
+      expect(stopped.state, GuestAccessState.unreachable);
+      expect(stopped.message, 'VM alpine_2 is not running.');
+    });
+
+    test('authorizeSshKey passes the password by environment, never argv',
+        () async {
+      shell.responses['authorize'] =
+          '{"authorized":"alpine_2","root":true,"user":"eric"}';
+      final result = await api.authorizeSshKey('alpine_2',
+          user: 'eric', password: 'p4ss w0rd');
+      expect(result.user, 'eric');
+      expect(result.rootInstalled, isTrue);
+      final call = lastCall();
+      expect(call, containsAll(['authorize', '--name', 'alpine_2', '--user', 'eric']));
+      expect(call.join(' '), isNot(contains('p4ss')));
+      expect(shell.environments.last, {AppleVmApi.guestPasswordEnv: 'p4ss w0rd'});
+    });
+
+    test('authorizeSshKey reports when only the login user got the key',
+        () async {
+      shell.responses['authorize'] =
+          '{"authorized":"alpine_2","root":false,"user":"eric"}';
+      final result = await api.authorizeSshKey('alpine_2',
+          user: 'eric', password: 'x');
+      expect(result.rootInstalled, isFalse);
+    });
+
+    test('authorizeSshKey surfaces ssh\'s reason on a failed sign-in',
+        () async {
+      shell.exitCodes['authorize'] = 1;
+      shell.errors['authorize'] =
+          'Could not sign in as eric@192.168.64.2: Permission denied (publickey,password).';
+      expect(
+          () => api.authorizeSshKey('alpine_2', user: 'eric', password: 'x'),
+          throwsA(isA<AppleVmException>().having((e) => e.message, 'message',
+              contains('Could not sign in as eric'))));
     });
   });
 

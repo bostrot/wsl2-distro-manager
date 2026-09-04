@@ -11,7 +11,7 @@ import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
 
-import 'apple_vm_api_test.dart' show FakeVmctlShell;
+import 'fake_vmctl_shell.dart';
 
 /// A catalog whose network is a canned resolution and an instant "download".
 class _FakeCatalog implements VmImageCatalog {

@@ -841,5 +841,15 @@
   "web-dashboard-tunnel-warning-text": "儀表板（包括執行命令和刪除執行個體）現在可從公開網際網路存取。只有連結中的存取權杖在保護它。請只與您信任的人分享連結。",
   "web-dashboard-tunnel-url-text": "公開連結",
   "copydashboardurl-text": "複製儀表板連結",
-  "web-dashboard-feature": "適用於手機和其他裝置的網頁儀表板"
+  "web-dashboard-feature": "適用於手機和其他裝置的網頁儀表板",
+  "guestaccess-text": "為 %s 設定 SSH 存取",
+  "guestaccessbody-text": "程式片段透過 SSH 在虛擬機內執行，但此虛擬機尚未接受應用程式的金鑰：從 ISO 手動安裝的虛擬機不會自動設定。請使用客體帳戶登入一次：應用程式的公鑰會加入該帳戶與 root；密碼僅用於本次登入，不會被儲存。",
+  "guestaccessuser-text": "客體使用者名稱",
+  "guestaccesssubmit-text": "設定存取",
+  "guestaccessinstalling-text": "正在將應用程式的 SSH 金鑰安裝到虛擬機…",
+  "guestaccessempty-text": "請輸入使用者名稱與密碼。",
+  "guestaccessdone-text": "已設定對 %s 的 SSH 存取。",
+  "guestaccessunreachable-text": "無法透過 SSH 連線 %s0：%s1",
+  "guestaccessstilldenied-text": "金鑰已安裝，但以 %s0 身分透過 SSH 連線 %s1 仍被拒絕。請在執行個體設定中將 %s2 設為啟動使用者，或在客體的 sshd 設定中允許 root 以金鑰登入。",
+  "password-text": "密碼"
 }

@@ -840,5 +840,15 @@
   "web-dashboard-tunnel-warning-text": "ダッシュボード（コマンド実行やインスタンスの削除を含む）がインターネットから到達可能になりました。保護しているのはリンク内のアクセストークンだけです。リンクは信頼できる相手にのみ共有してください。",
   "web-dashboard-tunnel-url-text": "公開リンク",
   "copydashboardurl-text": "ダッシュボードのリンクをコピー",
-  "web-dashboard-feature": "スマートフォンや他のデバイス向け Web ダッシュボード"
+  "web-dashboard-feature": "スマートフォンや他のデバイス向け Web ダッシュボード",
+  "guestaccess-text": "%s への SSH アクセスを設定",
+  "guestaccessbody-text": "スニペットは VM 内で SSH 経由で実行されますが、この VM はまだアプリの鍵を受け付けていません。ISO から手動でインストールした VM は自動ではプロビジョニングされません。ゲストのアカウントで一度サインインすると、アプリの公開鍵がそのアカウントと root に追加されます。パスワードはこのサインインにのみ使用され、保存されません。",
+  "guestaccessuser-text": "ゲストのユーザー名",
+  "guestaccesssubmit-text": "アクセスを設定",
+  "guestaccessinstalling-text": "アプリの SSH 鍵を VM にインストールしています…",
+  "guestaccessempty-text": "ユーザー名とパスワードを入力してください。",
+  "guestaccessdone-text": "%s への SSH アクセスを設定しました。",
+  "guestaccessunreachable-text": "%s0 に SSH で接続できません: %s1",
+  "guestaccessstilldenied-text": "鍵はインストールされましたが、%s1 への %s0 としての SSH はまだ拒否されています。インスタンスの設定で %s2 を起動ユーザーにするか、ゲストの sshd 設定で root の鍵によるログインを許可してください。",
+  "password-text": "パスワード"
 }

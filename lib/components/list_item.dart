@@ -11,6 +11,7 @@ import 'analytics.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
+import 'package:wsl2distromanager/dialogs/guest_access_dialog.dart';
 
 /// Builder for the WSL Distro List Items. Each item is an expander with [item]
 /// as the title and [trailing] as the trailing text. [running] is a list of
@@ -438,6 +439,13 @@ class Bar extends StatelessWidget {
                   ),
                   onPressed: () async {
                     plausible.event(name: "wsl_quickaction_run");
+                    // An Apple VM installed from an ISO has no key for the
+                    // app yet; this installs it once instead of letting the
+                    // Terminal window show "Permission denied".
+                    if (!await ensureGuestAccess(childcontext, api, widget.item,
+                        user: user)) {
+                      return;
+                    }
                     api.runCommands(
                         widget.item, quickSettingsContents[i].split('\n'),
                         user: user);

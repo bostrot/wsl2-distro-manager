@@ -840,5 +840,15 @@
   "web-dashboard-tunnel-warning-text": "Az irányítópult — a parancsfuttatással és a példányok törlésével együtt — mostantól a nyilvános internetről is elérhető. Csak a hivatkozásban lévő hozzáférési token védi. A hivatkozást csak megbízható személyekkel oszd meg.",
   "web-dashboard-tunnel-url-text": "Nyilvános hivatkozás",
   "copydashboardurl-text": "Irányítópult hivatkozásának másolása",
-  "web-dashboard-feature": "Webes irányítópult telefonra és más eszközökre"
+  "web-dashboard-feature": "Webes irányítópult telefonra és más eszközökre",
+  "guestaccess-text": "SSH-hozzáférés beállítása: %s",
+  "guestaccessbody-text": "A kódrészletek SSH-n keresztül futnak a VM-ben, de ez a VM még nem fogadja el az alkalmazás kulcsát: az ISO-ról kézzel telepített VM-ek nem kapják meg automatikusan. Jelentkezz be egyszer egy vendégfiókkal: az alkalmazás nyilvános kulcsa ehhez a fiókhoz és a roothoz kerül; a jelszó csak ehhez a bejelentkezéshez használatos, és nem tároljuk.",
+  "guestaccessuser-text": "Vendég felhasználónév",
+  "guestaccesssubmit-text": "Hozzáférés beállítása",
+  "guestaccessinstalling-text": "Az alkalmazás SSH-kulcsának telepítése a VM-be…",
+  "guestaccessempty-text": "Adj meg felhasználónevet és jelszót.",
+  "guestaccessdone-text": "Az SSH-hozzáférés beállítva: %s.",
+  "guestaccessunreachable-text": "%s0 nem érhető el SSH-n: %s1",
+  "guestaccessstilldenied-text": "A kulcs telepítve van, de az SSH %s0 néven a(z) %s1 gépre továbbra is el van utasítva. Állítsd be a(z) %s2 felhasználót indítási felhasználónak a példány beállításaiban, vagy engedélyezd a root kulcsos bejelentkezését a vendég sshd-beállításaiban.",
+  "password-text": "Jelszó"
 }

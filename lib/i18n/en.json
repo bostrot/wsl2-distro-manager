@@ -840,5 +840,15 @@
   "web-dashboard-tunnel-warning-text": "The dashboard — including running commands and deleting instances — is now reachable from the public internet. Only the access token in the link protects it. Share the link only with people you trust.",
   "web-dashboard-tunnel-url-text": "Public link",
   "copydashboardurl-text": "Copy the dashboard link",
-  "web-dashboard-feature": "Web dashboard for phones and other devices"
+  "web-dashboard-feature": "Web dashboard for phones and other devices",
+  "guestaccess-text": "Set up SSH access to %s",
+  "guestaccessbody-text": "Snippets run inside the VM over SSH, but this VM does not accept the app's key yet — VMs installed by hand from an ISO are not provisioned automatically. Sign in once with a guest account: the app's public key is added to that account and to root, and the password is used for this sign-in only and not stored.",
+  "guestaccessuser-text": "Guest user name",
+  "guestaccesssubmit-text": "Set up access",
+  "guestaccessinstalling-text": "Installing the app's SSH key in the VM…",
+  "guestaccessempty-text": "Enter a user name and password.",
+  "guestaccessdone-text": "SSH access to %s is set up.",
+  "guestaccessunreachable-text": "Cannot reach %s0 over SSH: %s1",
+  "guestaccessstilldenied-text": "The key is installed, but SSH as %s0 into %s1 is still refused. Set %s2 as the instance's start user in its settings, or allow root login by key in the guest's sshd config.",
+  "password-text": "Password"
 }

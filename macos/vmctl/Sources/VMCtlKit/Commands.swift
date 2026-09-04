@@ -110,6 +110,8 @@ public enum VmctlCLI {
                 try importVm(store, rest)
             case "exec":
                 return try exec(store, rest)
+            case "authorize":
+                try authorize(store, rest)
             case "console":
                 return try console(store, rest)
             case "show":
@@ -146,6 +148,10 @@ public enum VmctlCLI {
       export --name N --output PATH         Copy the raw disk image out
       import --name N --input PATH          New VM from a raw disk image
       exec --name N [--user U] -- CMD...    Run a command in the guest (SSH)
+      authorize --name N [--user U]         Install the store's SSH key in a
+                                            guest via password login; reads
+                                            the password from
+                                            $VMCTL_GUEST_PASSWORD
       shell --name N [--user U]             Interactive guest shell (SSH)
       console --name N                      Attach to the serial console
       show --name N                         Open/front the VM's screen window
@@ -480,6 +486,37 @@ public enum VmctlCLI {
         try ssh.run()
         ssh.waitUntilExit()
         return ssh.terminationStatus
+    }
+
+    /// Installs the store's public key in a guest that never got it from
+    /// cloud-init (installer-ISO installs, imported disks), so `exec` and
+    /// `shell` work by key afterwards. Signs in once with the password from
+    /// `$VMCTL_GUEST_PASSWORD` — an env var, not an argument, so it is never
+    /// visible in `ps` — and reports which accounts (login user, root) took
+    /// the key.
+    static func authorize(_ store: VMStore, _ rest: [String]) throws {
+        let bag = ArgumentBag(rest, flagNames: [])
+        let name = try bag.require("name")
+        let config = try store.loadConfig(name)
+        guard store.isRunning(name) else {
+            throw VmctlError("VM \(name) is not running.")
+        }
+        let user = bag.options["user"] ?? config.user
+        guard let password = ProcessInfo.processInfo.environment[GuestAccess.passwordEnvVar],
+              !password.isEmpty else {
+            throw VmctlError(
+                "Set \(GuestAccess.passwordEnvVar) to the password of \(user) in the guest.")
+        }
+        guard let ip = waitForIp(config) else {
+            throw VmctlError("VM \(name) has no IP address yet (no DHCP lease).")
+        }
+        let report = try GuestAccess.install(
+            publicKey: store.sshPublicKey(),
+            user: user,
+            ip: ip,
+            password: password,
+            askpassPath: store.askpassPath())
+        printJson(["authorized": name, "user": user, "root": report.rootInstalled])
     }
 
     static func shell(_ store: VMStore, _ rest: [String]) throws -> Int32 {
