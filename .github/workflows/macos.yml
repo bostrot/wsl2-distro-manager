@@ -49,7 +49,13 @@ jobs:
       # secrets: the app runs locally and via right-click → Open elsewhere,
       # but is not notarized. Set CODESIGN_IDENTITY from a secret to change
       # that without touching the script.
+      # WSLMANAGER_GITHUB_CLIENT_ID is a repository *variable* (Settings →
+      # Secrets and variables → Actions → Variables), not a secret: the OAuth
+      # client id is public. Unset, the build ships with snippet sharing
+      # disabled. See doc/github-oauth-setup.md.
       - name: Build app with vmctl
+        env:
+          GITHUB_CLIENT_ID: ${{ vars.WSLMANAGER_GITHUB_CLIENT_ID }}
         run: ./scripts/build_macos.sh
 
       - name: Get version

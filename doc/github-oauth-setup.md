@@ -54,3 +54,20 @@ dialog says so instead of failing at the API call
 
 The requested scope is `public_repo` — enough to fork, push a branch and open
 a pull request, and nothing more.
+
+### Release builds
+
+CI reads the id from the repository **variable** `WSLMANAGER_GITHUB_CLIENT_ID`
+(GitHub → Settings → Secrets and variables → Actions → *Variables* tab — not
+*Secrets*, the id is public, and variable names may not start with
+`GITHUB_`). Both release paths forward it:
+
+- `.github/workflows/macos.yml` exports it as `GITHUB_CLIENT_ID` for
+  `scripts/build_macos.sh`, which passes it on as the `--dart-define` above.
+  The same env var works for local builds:
+  `GITHUB_CLIENT_ID=Ov23li... ./scripts/build_macos.sh`.
+- `.github/workflows/releaser.yml` passes it straight to
+  `flutter build windows`.
+
+While the variable is unset, both builds still succeed and ship with sharing
+disabled, so setting it is the only step left once the OAuth app exists.

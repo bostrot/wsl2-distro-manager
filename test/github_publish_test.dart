@@ -6,6 +6,7 @@
 // ignore_for_file: dangling_library_doc_comments
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -202,6 +203,52 @@ void main() {
 
     test('publishing without a token is refused', () async {
       expect(() => build(_GithubAdapter()).publish(item()), throwsException);
+    });
+  });
+
+  // The id reaches the binary only through --dart-define=GITHUB_CLIENT_ID, so
+  // these run in both states: plain `flutter test` (empty → sharing off) and
+  // `flutter test --dart-define=GITHUB_CLIENT_ID=x` (set → sharing on).
+  group('configuration', () {
+    test('isConfigured mirrors the compile-time id the publisher uses', () {
+      expect(GithubPublisher.isConfigured, kGithubClientId.isNotEmpty);
+      expect(GithubPublisher().clientId, kGithubClientId);
+    });
+
+    test('both release builds forward the id from a repository variable', () {
+      final script = File('scripts/build_macos.sh').readAsStringSync();
+      expect(script, contains('--dart-define=GITHUB_CLIENT_ID='));
+      // The script has to tolerate an unset id: a release without the OAuth
+      // app must still build, just with sharing disabled.
+      expect(script, contains(r'${GITHUB_CLIENT_ID:-}'));
+
+      final mac = File('.github/workflows/macos.yml').readAsStringSync();
+      expect(
+          mac,
+          contains(
+              r'GITHUB_CLIENT_ID: ${{ vars.WSLMANAGER_GITHUB_CLIENT_ID }}'));
+
+      final win = File('.github/workflows/releaser.yml').readAsStringSync();
+      expect(
+          win,
+          contains('flutter build windows '
+              r'--dart-define=GITHUB_CLIENT_ID=${{ vars.WSLMANAGER_GITHUB_CLIENT_ID }}'));
+    });
+
+    test('the id is never read from a secret', () {
+      // The client id is public and belongs in a variable; a secret would
+      // invite the client *secret* in next to it, which must never ship.
+      for (final path in [
+        '.github/workflows/macos.yml',
+        '.github/workflows/releaser.yml',
+        'scripts/build_macos.sh',
+      ]) {
+        final text = File(path).readAsStringSync();
+        expect(text, isNot(matches(RegExp(r'secrets\.\w*CLIENT_ID'))),
+            reason: '$path reads the client id from a secret');
+        expect(text, isNot(contains('CLIENT_SECRET')),
+            reason: '$path references a client secret');
+      }
     });
   });
 }
