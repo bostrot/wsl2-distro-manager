@@ -12,20 +12,35 @@
     English | <a href='./readme/README_zh.md'>简体中文</a> | <a href='./readme/README_zh_tw.md'>繁體中文</a> | <a href='./readme/README_de.md'>Deutsch</a> | <a href='./readme/README_es.md'>Español</a> | <a href='./readme/README_ja.md'>日本語</a> | <a href='./readme/README_hu.md'>Magyar</a> | <a href='./readme/README_pt.md'>Português</a> | <a href='./readme/README_tr.md'>Türkçe</a>
 </p>
 
-![WSL Distro Manager, dark theme](./readme/images/home-dark.png)
+![WSL Distro Manager on Windows, dark theme](./readme/images/home-dark.png)
+
+<p align='center'>
+    <sub>Shown on <b>Windows</b> &middot; the same app runs native VMs on <b>macOS</b> &mdash; expand <b>See it on macOS</b> below</sub>
+</p>
 
 <details>
-<summary>Preview with light theme</summary>
+<summary>Preview with light theme (Windows)</summary>
 
-![WSL Distro Manager, light theme](./readme/images/home-light.png)
+![WSL Distro Manager on Windows, light theme](./readme/images/home-light.png)
+
+</details>
+
+<details>
+<summary><b>🍎 See it on macOS</b> &mdash; native Linux and macOS virtual machines through Apple's Virtualization framework <i>(beta)</i></summary>
+
+![WSL Manager on macOS, dark theme](./readme/images/home-macos-dark.png)
+
+![WSL Manager on macOS, light theme, with the AI assistant open](./readme/images/home-macos-light.png)
 
 </details>
 
 > **WSL Distro Manager** is a free, open source GUI for the Windows Subsystem
-> for Linux. Install, copy, rename, move, back up and delete WSL distros
-> without memorising a single `wsl.exe` flag — plus templates, saved command
-> snippets, disk mounting, `.wslconfig` editing, remote WSL over SSH, and an
-> MCP server that lets AI agents drive your WSL environment.
+> for Linux — and, on macOS, for native Linux VMs. Install, copy, rename,
+> move, back up and delete WSL distros without memorising a single `wsl.exe`
+> flag — plus templates, saved command snippets, disk mounting, `.wslconfig`
+> editing, remote WSL over SSH, and an MCP server that lets AI agents drive
+> your WSL environment. On a Mac the very same app manages virtual machines
+> through Apple's Virtualization framework instead.
 
 ## 🚀 Features
 
