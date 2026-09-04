@@ -91,38 +91,112 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('the installer box suggests the curated ISO catalog',
+  /// The page opens on the cloud-image choice; this flips it to the ISO one.
+  Future<void> chooseInstallerIso(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('test-vm-boot-installer-iso')));
+    await tester.pumpAndSettle();
+  }
+
+  List<String> suggestionsOf(WidgetTester tester, String key) {
+    final box = tester.widget<AutoSuggestBox<String>>(find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byType(AutoSuggestBox<String>)));
+    return box.items.map((item) => item.label).toList();
+  }
+
+  final cloudImageNames = VmImageCatalog.entries
+      .where((e) => e.isCloudImage)
+      .map((e) => e.name)
+      .toList();
+  final isoNames = VmImageCatalog.entries
+      .where((e) => !e.isCloudImage)
+      .map((e) => e.name)
+      .toList();
+
+  testWidgets('the page opens on the cloud-image choice, listing only those',
       (tester) async {
     await pump(tester);
-    final box = tester.widget<AutoSuggestBox<String>>(find.descendant(
-        of: find.byKey(const ValueKey('test-vm-iso')),
-        matching: find.byType(AutoSuggestBox<String>)));
-    final labels = box.items.map((item) => item.label).toList();
-    expect(labels, containsAll(VmImageCatalog.names));
+    expect(find.byKey(const ValueKey('test-vm-image')), findsOneWidget);
+    expect(find.byKey(const ValueKey('test-vm-iso')), findsNothing);
+
+    // bostrot/ai-tasks#5: cloud images and ISOs used to share one list.
+    final labels = suggestionsOf(tester, 'test-vm-image');
+    expect(labels, unorderedEquals(cloudImageNames));
+    expect(cloudImageNames, isNotEmpty);
   });
 
-  testWidgets('clicking the installer box lists the catalog before typing',
+  testWidgets('the installer-ISO choice swaps in a field listing only ISOs',
+      (tester) async {
+    await pump(tester);
+    await chooseInstallerIso(tester);
+    expect(find.byKey(const ValueKey('test-vm-iso')), findsOneWidget);
+    expect(find.byKey(const ValueKey('test-vm-image')), findsNothing);
+
+    final labels = suggestionsOf(tester, 'test-vm-iso');
+    expect(labels, unorderedEquals(isoNames));
+    for (final name in cloudImageNames) {
+      expect(labels, isNot(contains(name)),
+          reason: 'a cloud image is not an installer');
+    }
+  });
+
+  testWidgets('switching the choice keeps what was typed under each',
+      (tester) async {
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-image')), '/tmp/local.raw');
+    await chooseInstallerIso(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-iso')), '/tmp/local.iso');
+
+    await tester.tap(find.byKey(const ValueKey('test-vm-boot-cloud-image')));
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widget<AutoSuggestBox<String>>(find.descendant(
+                of: find.byKey(const ValueKey('test-vm-image')),
+                matching: find.byType(AutoSuggestBox<String>)))
+            .controller
+            ?.text,
+        '/tmp/local.raw');
+
+    await chooseInstallerIso(tester);
+    expect(
+        tester
+            .widget<AutoSuggestBox<String>>(find.descendant(
+                of: find.byKey(const ValueKey('test-vm-iso')),
+                matching: find.byType(AutoSuggestBox<String>)))
+            .controller
+            ?.text,
+        '/tmp/local.iso');
+  });
+
+  testWidgets('clicking the boot-source box lists the catalog before typing',
       (tester) async {
     await pump(tester);
     // Settle past fluent_ui's first-frame overlay reset.
     await tester.pumpAndSettle();
-    final iso = find.byKey(const ValueKey('test-vm-iso'));
+    final field = find.byKey(const ValueKey('test-vm-image'));
     final box = find.descendant(
-        of: iso, matching: find.byType(AutoSuggestBox<String>));
+        of: field, matching: find.byType(AutoSuggestBox<String>));
     expect(tester.state<AutoSuggestBoxState<String>>(box).isOverlayVisible,
         isFalse);
 
-    await tester.tap(iso);
+    await tester.tap(field);
     await tester.pumpAndSettle();
 
     // bostrot/ai-tasks#4: the list used to stay hidden until a keystroke.
     expect(tester.state<AutoSuggestBoxState<String>>(box).isOverlayVisible,
         isTrue);
-    for (final name in VmImageCatalog.names) {
+    for (final name in cloudImageNames) {
       // The popup lives in the root overlay behind a transform follower,
       // which the default on-stage walk skips.
       expect(find.text(name, skipOffstage: false), findsOneWidget,
           reason: '$name should be listed');
+    }
+    for (final name in isoNames) {
+      expect(find.text(name, skipOffstage: false), findsNothing,
+          reason: '$name is an installer, not a cloud image');
     }
   });
 
@@ -130,7 +204,7 @@ void main() {
     await pump(tester);
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-name')), 'demo');
-    // No installer, no base image.
+    // No cloud image chosen.
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
     await tester.pumpAndSettle();
 
@@ -138,6 +212,39 @@ void main() {
     expect(shell.calls.any((c) => c.contains('create')), isFalse,
         reason: 'a VM that could only fail must never reach vmctl');
     expect(catalog.downloaded, isEmpty);
+  });
+
+  testWidgets('switching the choice clears a stale boot-source error',
+      (tester) async {
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('test-vm-boot-error')), findsOneWidget);
+
+    await chooseInstallerIso(tester);
+    expect(find.byKey(const ValueKey('test-vm-boot-error')), findsNothing,
+        reason: 'the complaint was about the cloud-image field');
+  });
+
+  testWidgets('only the chosen boot source counts', (tester) async {
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'demo');
+    // An ISO typed under the installer choice, then back to the (empty)
+    // cloud-image choice: the ISO must not be silently used.
+    await chooseInstallerIso(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-iso')), '/tmp/local.iso');
+    await tester.tap(find.byKey(const ValueKey('test-vm-boot-cloud-image')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('test-vm-boot-error')), findsOneWidget);
+    expect(shell.calls.any((c) => c.contains('create')), isFalse);
   });
 
   testWidgets('a catalog pick is downloaded and its local path used',
@@ -150,6 +257,7 @@ void main() {
     await pump(tester);
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await chooseInstallerIso(tester);
     await tester.enterText(find.byKey(const ValueKey('test-vm-iso')),
         'Alpine Linux (virt)');
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
@@ -170,7 +278,7 @@ void main() {
     await pump(tester);
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-name')), 'demo');
-    await tester.enterText(find.byKey(const ValueKey('test-vm-iso')),
+    await tester.enterText(find.byKey(const ValueKey('test-vm-image')),
         'Debian 13 (cloud image)');
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
     await tester.pumpAndSettle();
@@ -184,13 +292,14 @@ void main() {
         reason: 'a cloud image is not an installer to attach');
   });
 
-  testWidgets('a plain path skips the catalog entirely', (tester) async {
+  testWidgets('a plain ISO path skips the catalog entirely', (tester) async {
     shell.exitCodes['create'] = 1;
     shell.errors['create'] = 'refused by test';
 
     await pump(tester);
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await chooseInstallerIso(tester);
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-iso')), '/tmp/local.iso');
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
@@ -199,6 +308,25 @@ void main() {
     expect(catalog.downloaded, isEmpty);
     final createCall = shell.calls.lastWhere((c) => c.contains('create'));
     expect(createCall[createCall.indexOf('--iso') + 1], '/tmp/local.iso');
+    expect(createCall.contains('--image'), isFalse);
+  });
+
+  testWidgets('a local disk image path seeds the disk', (tester) async {
+    shell.exitCodes['create'] = 1;
+    shell.errors['create'] = 'refused by test';
+
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-image')), '/tmp/template.raw');
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(catalog.downloaded, isEmpty);
+    final createCall = shell.calls.lastWhere((c) => c.contains('create'));
+    expect(createCall[createCall.indexOf('--image') + 1], '/tmp/template.raw');
+    expect(createCall.contains('--iso'), isFalse);
   });
 
   testWidgets('a chosen service is queued as pending for first run',
@@ -207,7 +335,7 @@ void main() {
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-name')), 'dbvm');
     await tester.enterText(
-        find.byKey(const ValueKey('test-vm-iso')), '/tmp/local.iso');
+        find.byKey(const ValueKey('test-vm-image')), '/tmp/local.raw');
     // Focusing the box opens its catalog popup over the fields below; a
     // frame lets it shrink to the typed path (no match) before the click.
     await tester.pumpAndSettle();
@@ -234,6 +362,7 @@ void main() {
     await pump(tester);
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await chooseInstallerIso(tester);
     await tester.enterText(find.byKey(const ValueKey('test-vm-iso')),
         'Alpine Linux (virt)');
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));

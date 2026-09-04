@@ -156,7 +156,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(
         find.byKey(const ValueKey('test-vm-restore-image')), findsOneWidget);
-    expect(find.byKey(const ValueKey('test-vm-iso')), findsNothing);
+    expect(find.byKey(const ValueKey('test-vm-boot-cloud-image')),
+        findsNothing);
     await snap(tester, '04-create-vm-macos-guest');
     await tester.tap(find.byKey(const ValueKey('test-vm-guest-os')),
         warnIfMissed: false);
@@ -178,6 +179,11 @@ void main() {
     // attach and produce a different error.
     final dummyIso = File('${dataDir.path}/walkthrough.iso')
       ..writeAsBytesSync(List.filled(1024 * 1024, 0));
+    // The page opens on the cloud-image choice; the ISO field only exists
+    // under the installer one.
+    await tester.tap(find.byKey(const ValueKey('test-vm-boot-installer-iso')),
+        warnIfMissed: false);
+    await tester.pumpAndSettle();
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-iso')), dummyIso.path);
     await tester.ensureVisible(

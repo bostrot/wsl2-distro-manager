@@ -20,12 +20,20 @@ AppleVmApi Function() appleVmApiBuilder = () {
   return backend is AppleVmApi ? backend : AppleVmApi();
 };
 
+/// What a new Linux VM boots from. The two are one exclusive choice on the
+/// page: a cloud image (or any raw disk image, e.g. an exported template)
+/// seeds the disk and comes up ready to use, an installer ISO is attached
+/// and the user clicks through a normal install. They used to be two
+/// free-form fields, with the catalog's cloud images listed under the
+/// installer box (bostrot/ai-tasks#5).
+enum VmBootKind { cloudImage, installerIso }
+
 /// Create-page for native VMs on macOS (Apple Virtualization framework).
 ///
 /// The counterpart of [CreatePage]: instead of downloading a WSL rootfs it
-/// provisions a VM — a Linux guest from an installer ISO or an existing raw
-/// disk image (cloud image, exported template), or a macOS guest from a
-/// restore image on Apple Silicon.
+/// provisions a VM — a Linux guest from a cloud image / raw disk image or
+/// from an installer ISO, or a macOS guest from a restore image on Apple
+/// Silicon.
 class CreateVmPage extends StatefulWidget {
   const CreateVmPage({super.key});
 
@@ -44,6 +52,8 @@ class _CreateVmPageState extends State<CreateVmPage> {
   final _memory = TextEditingController(text: '4');
 
   String _guestOs = 'linux';
+  // Cloud image first: it is the recommended path (no manual install).
+  VmBootKind _bootKind = VmBootKind.cloudImage;
   String _recipeId = '';
   bool _creating = false;
   String? _nameError;
@@ -105,13 +115,14 @@ class _CreateVmPageState extends State<CreateVmPage> {
       // The helper may be unavailable; creation below reports that properly.
     }
 
-    // A Linux VM with no installer and no base image boots into nothing:
-    // EFI finds no boot option and the guest powers off within seconds.
-    // Require a boot source rather than let the user create a VM that can
-    // only fail (macOS guests always install from a restore image).
-    if (_guestOs == 'linux' &&
-        _iso.text.trim().isEmpty &&
-        _image.text.trim().isEmpty) {
+    // A Linux VM with nothing to boot from boots into nothing: EFI finds no
+    // boot option and the guest powers off within seconds. Require a boot
+    // source rather than let the user create a VM that can only fail (macOS
+    // guests always install from a restore image). Only the chosen kind
+    // counts — whatever was typed under the other choice is ignored.
+    final isIso = _bootKind == VmBootKind.installerIso;
+    final bootSource = (isIso ? _iso : _image).text.trim();
+    if (_guestOs == 'linux' && bootSource.isEmpty) {
       setState(() {
         _nameError = null;
         _bootSourceError = 'vmbootsourcerequired-text'.i18n();
@@ -126,12 +137,13 @@ class _CreateVmPageState extends State<CreateVmPage> {
     });
 
     // A catalog pick downloads (or reuses) the file first; a plain path
-    // goes straight through. A cloud image seeds the disk (ready to use)
-    // instead of being attached as an installer.
-    var isoPath = _iso.text.trim();
-    var imagePath = _image.text.trim();
+    // goes straight through. The catalog entry's own kind decides how the
+    // file is used (a cloud image seeds the disk, an ISO is attached), so a
+    // catalog name pasted under the wrong choice still boots correctly.
+    var isoPath = isIso ? bootSource : '';
+    var imagePath = isIso ? '' : bootSource;
     final catalogEntry =
-        _guestOs == 'linux' ? VmImageCatalog.entryFor(isoPath) : null;
+        _guestOs == 'linux' ? VmImageCatalog.entryFor(bootSource) : null;
     if (catalogEntry != null) {
       final token = CancelSignal();
       _cancelSignal = token;
@@ -159,6 +171,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
           isoPath = '';
         } else {
           isoPath = downloadedPath;
+          imagePath = '';
         }
       } on CancelledException {
         Notify.message('');
@@ -228,68 +241,143 @@ class _CreateVmPageState extends State<CreateVmPage> {
     }
   }
 
-  /// The installer picker: an autocomplete over the curated arm64 ISO and
-  /// cloud-image catalog (picked entries are downloaded and cached, the way
-  /// the Windows create screen offers its rootfs catalogue), while a local
-  /// path or the file picker keeps working unchanged. The list opens on
-  /// click, so the catalog is visible before anything is typed.
-  Widget _isoField() {
-    return InfoLabel(
-      label: 'vminstalleriso-text'.i18n(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  /// The boot-source choice for a Linux guest: two radio buttons and one
+  /// field that follows them. The field is an autocomplete over the curated
+  /// arm64 catalog filtered to the chosen kind — cloud images under "Cloud
+  /// image", ISOs under "Installer ISO" — (picked entries are downloaded
+  /// and cached, the way the Windows create screen offers its rootfs
+  /// catalogue), while a local path or the file picker keeps working
+  /// unchanged. The list opens on click, so the catalog is visible before
+  /// anything is typed. Each kind keeps its own controller, so switching
+  /// back and forth does not lose what was entered.
+  /// A "nothing to boot from" complaint was about the other choice's
+  /// field; it must not linger under the one just switched to.
+  void _chooseBootKind(VmBootKind kind) {
+    setState(() {
+      _bootKind = kind;
+      _bootSourceError = null;
+    });
+  }
+
+  Widget _bootSourceSection() {
+    final isIso = _bootKind == VmBootKind.installerIso;
+    final controller = isIso ? _iso : _image;
+    final suggestions = [
+      for (final entry in VmImageCatalog.entries)
+        if (entry.isCloudImage != isIso) suggestionItem(entry.name),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InfoLabel(
+          label: 'vmbootsource-text'.i18n(),
+          // A Wrap, not a Row: the two labels do not fit side by side in
+          // every locale (or at a narrow window), and must not overflow.
+          child: Wrap(
+            spacing: 24,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: SuggestOnFocus<String>(
-                  key: const ValueKey('test-vm-iso'),
-                  builder: (context, boxKey, focusNode) =>
-                      AutoSuggestBox<String>(
-                    key: boxKey,
-                    focusNode: focusNode,
-                    controller: _iso,
-                    enabled: !_creating,
-                    placeholder: 'vmisoplaceholder-text'.i18n(),
-                    items: [
-                      for (final name in VmImageCatalog.names)
-                        suggestionItem(name),
-                    ],
-                  ),
-                ),
+              RadioButton(
+                key: const ValueKey('test-vm-boot-cloud-image'),
+                checked: !isIso,
+                onChanged: _creating
+                    ? null
+                    : (_) => _chooseBootKind(VmBootKind.cloudImage),
+                content: Text('vmbootcloudimage-text'.i18n()),
               ),
-              const SizedBox(width: 8),
-              Button(
-                onPressed:
-                    _creating ? null : () => _pickFile(_iso, const ['iso']),
-                child: Text('selectfile-text'.i18n()),
+              RadioButton(
+                key: const ValueKey('test-vm-boot-installer-iso'),
+                checked: isIso,
+                onChanged: _creating
+                    ? null
+                    : (_) => _chooseBootKind(VmBootKind.installerIso),
+                content: Text('vmbootinstalleriso-text'.i18n()),
               ),
             ],
           ),
-          if (_downloadLabel != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        const SizedBox(height: 12),
+        InfoLabel(
+          label: isIso
+              ? 'vminstalleriso-text'.i18n()
+              : 'vmcloudimage-text'.i18n(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ProgressBar(
-                      value: _downloadFraction == null
-                          ? null
-                          : (_downloadFraction! * 100).clamp(0.0, 100.0),
+                  Expanded(
+                    child: SuggestOnFocus<String>(
+                      key: ValueKey(isIso ? 'test-vm-iso' : 'test-vm-image'),
+                      builder: (context, boxKey, focusNode) =>
+                          AutoSuggestBox<String>(
+                        key: boxKey,
+                        focusNode: focusNode,
+                        controller: controller,
+                        enabled: !_creating,
+                        placeholder: isIso
+                            ? 'vmisoplaceholder-text'.i18n()
+                            : 'vmcloudimageplaceholder-text'.i18n(),
+                        items: suggestions,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(_downloadLabel!,
-                      key: const ValueKey('test-vm-iso-progress'),
-                      style: TextStyle(
-                          fontSize: 12, color: secondaryTextColor(context))),
+                  const SizedBox(width: 8),
+                  Button(
+                    onPressed: _creating
+                        ? null
+                        : () => _pickFile(
+                            controller,
+                            isIso
+                                ? const ['iso']
+                                : const ['img', 'raw', 'qcow2']),
+                    child: Text('selectfile-text'.i18n()),
+                  ),
                 ],
               ),
-            ),
-        ],
-      ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                    isIso
+                        ? 'vminstallerisohint-text'.i18n()
+                        : 'vmcloudimagehint-text'.i18n(),
+                    style: TextStyle(
+                        fontSize: 12, color: secondaryTextColor(context))),
+              ),
+              if (_bootSourceError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(_bootSourceError!,
+                      key: const ValueKey('test-vm-boot-error'),
+                      style: TextStyle(color: destructiveColor(context))),
+                ),
+              if (_downloadLabel != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: ProgressBar(
+                          value: _downloadFraction == null
+                              ? null
+                              : (_downloadFraction! * 100).clamp(0.0, 100.0),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(_downloadLabel!,
+                          key: const ValueKey('test-vm-iso-progress'),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: secondaryTextColor(context))),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -387,33 +475,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
               ),
               const SizedBox(height: 12),
               if (isLinux) ...[
-                // A Linux VM needs something to boot: an installer ISO from
-                // the catalog, or a bootable base image. Said up front so a
-                // blank-disk VM is not created by accident.
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
-                  child: InfoBar(
-                    title: Text('vmbootsourceinfo-text'.i18n()),
-                    severity: InfoBarSeverity.info,
-                    isLong: true,
-                  ),
-                ),
-                _isoField(),
-                const SizedBox(height: 12),
-                _fileField(
-                  'vmbaseimage-text'.i18n(),
-                  _image,
-                  const ['img', 'raw'],
-                  hint: 'vmbaseimagehint-text'.i18n(),
-                  key: const ValueKey('test-vm-image'),
-                ),
-                if (_bootSourceError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(_bootSourceError!,
-                        key: const ValueKey('test-vm-boot-error'),
-                        style: TextStyle(color: destructiveColor(context))),
-                  ),
+                _bootSourceSection(),
                 const SizedBox(height: 12),
                 InfoLabel(
                   label: 'optionalusername-text'.i18n(),
