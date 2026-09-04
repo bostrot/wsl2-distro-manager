@@ -12,6 +12,7 @@ import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/main.dart';
+import 'package:wsl2distromanager/nav/root_screen.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
 /// Walks every screen of the macOS app the way a user would — real taps on
@@ -289,6 +290,17 @@ void main() {
     await boot(tester);
     final toggle = find.widgetWithText(ToggleSwitch, 'darkmode-text'.i18n());
     expect(toggle, findsOneWidget);
+
+    // With no caption buttons after it on macOS, the switch used to sit
+    // flush with the top edge and 8px from the window corner (ai-tasks#15):
+    // it belongs on the title's line, with a margin to the edge.
+    final toggleRect = tester.getRect(toggle);
+    final shell = tester.getRect(find.byType(NavigationView));
+    expect(toggleRect.center.dy - shell.top,
+        closeTo(shellAppBarHeight / 2, 1.0));
+    expect(shell.right - toggleRect.right,
+        closeTo(ShellAppBarActions.windowEdgeInset, 0.5));
+
     final before =
         FluentTheme.of(tester.element(find.byType(NavigationView))).brightness;
     await tester.tap(toggle, warnIfMissed: false);

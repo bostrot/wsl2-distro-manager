@@ -360,6 +360,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
               key: const ValueKey('test-aichat-needs-key'),
               title: Text(_ai.configRequiredKey.i18n()),
               severity: InfoBarSeverity.info,
+              // The dock is at most 360px wide, so the sentence always wraps;
+              // the short layout's Wrap has no run spacing and put the button
+              // hard against the last line of text.
+              isLong: true,
               action: Button(
                 onPressed: () => navigateGuarded('settings'),
                 child: Text('opensettings-text'.i18n()),
@@ -484,6 +488,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
               key: const ValueKey('test-aichat-blocked'),
               title: Text(_blockedReasonKey!.i18n()),
               severity: InfoBarSeverity.warning,
+              isLong: true,
               onClose: _unblock,
               action: Button(
                 key: const ValueKey('test-aichat-blocked-action'),
@@ -502,6 +507,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
               key: const ValueKey('test-aichat-failed'),
               title: Text('ai-error-text'.i18n()),
               severity: InfoBarSeverity.error,
+              isLong: true,
               onClose: () => setState(() => _sendFailed = false),
               action: Button(
                 key: const ValueKey('test-aichat-retry'),

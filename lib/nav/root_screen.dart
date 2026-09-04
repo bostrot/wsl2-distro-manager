@@ -177,6 +177,7 @@ class RootPageState extends State<RootPage> with WindowListener {
     final navigationView = NavigationView(
       key: viewKey,
       appBar: NavigationAppBar(
+        height: shellAppBarHeight,
         automaticallyImplyLeading: false,
         // Every pane destination is a `go()` on the shell route, so on most
         // screens there is nothing to pop. A permanently disabled arrow was
@@ -239,34 +240,12 @@ class RootPageState extends State<RootPage> with WindowListener {
             ),
           );
         }(),
-        actions: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8.0),
-              child: MergeSemantics(
-                child: Tooltip(
-                  message: 'reportbug-text'.i18n(),
-                  child: IconButton(
-                    icon: const Icon(FluentIcons.bug),
-                    onPressed: () => bugDialog(),
-                  ),
-                ),
-              )),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 8.0),
-            child: ToggleSwitch(
-              // Was the one hardcoded-English label in the nav (audit LN-14).
-              content: Text('darkmode-text'.i18n()),
-              checked: FluentTheme.of(context).brightness.isDark,
-              onChanged: (v) {
-                appTheme.mode = v ? ThemeMode.dark : ThemeMode.light;
-              },
-            ),
-          ),
-          // Not on macOS: the native title bar already has its own window
-          // controls there, and WindowCaption queries the window plugin at
-          // build time, which asserts when nothing initialised it (tests).
-          if (!kIsWeb && !Platform.isMacOS) const WindowButtons(),
-        ]),
+        // Not on macOS: the native title bar already has its own window
+        // controls there, and WindowCaption queries the window plugin at
+        // build time, which asserts when nothing initialised it (tests).
+        actions: ShellAppBarActions(
+          windowButtons: !kIsWeb && !Platform.isMacOS,
+        ),
       ),
       paneBodyBuilder: (item, child) {
         final name =
@@ -414,6 +393,68 @@ class RootPageState extends State<RootPage> with WindowListener {
     await _saveWindowBounds();
     SystemNavigator.pop();
     exit(0);
+  }
+}
+
+/// fluent_ui's default app bar height, spelled out so the actions row can be
+/// sized to it (see [ShellAppBarActions]).
+const double shellAppBarHeight = 50.0;
+
+/// The bug report button and the dark mode switch at the app bar's end,
+/// followed by the caption buttons where the app draws its own.
+///
+/// fluent_ui aligns the actions widget to the *top* end corner of the bar,
+/// not the centre. On Windows the 50px [WindowButtons] stretched the row to
+/// the bar's full height and the row centred the switch in it; on macOS and
+/// the web nothing did, so the row was as tall as the switch and sat hard
+/// against the top edge, 8px from the window corner (ai-tasks#15). The row
+/// is sized to the bar explicitly, and the switch keeps a real margin to the
+/// window edge when no caption buttons follow it.
+class ShellAppBarActions extends StatelessWidget {
+  const ShellAppBarActions({super.key, required this.windowButtons});
+
+  /// Whether the app draws its own minimise/maximise/close buttons after the
+  /// switch. False on macOS (the native traffic lights sit at the *start* of
+  /// the bar) and on the web.
+  final bool windowButtons;
+
+  /// The margin between the switch and whatever ends the bar: the caption
+  /// buttons, or the window edge itself.
+  static const double innerEndInset = 8.0;
+  static const double windowEdgeInset = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final appTheme = context.watch<AppTheme>();
+    return SizedBox(
+      height: shellAppBarHeight,
+      child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+        Padding(
+            padding: const EdgeInsetsDirectional.only(end: innerEndInset),
+            child: MergeSemantics(
+              child: Tooltip(
+                message: 'reportbug-text'.i18n(),
+                child: IconButton(
+                  icon: const Icon(FluentIcons.bug),
+                  onPressed: () => bugDialog(),
+                ),
+              ),
+            )),
+        Padding(
+          padding: EdgeInsetsDirectional.only(
+              end: windowButtons ? innerEndInset : windowEdgeInset),
+          child: ToggleSwitch(
+            // Was the one hardcoded-English label in the nav (audit LN-14).
+            content: Text('darkmode-text'.i18n()),
+            checked: FluentTheme.of(context).brightness.isDark,
+            onChanged: (v) {
+              appTheme.mode = v ? ThemeMode.dark : ThemeMode.light;
+            },
+          ),
+        ),
+        if (windowButtons) const WindowButtons(),
+      ]),
+    );
   }
 }
 
