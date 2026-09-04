@@ -33,3 +33,9 @@ jobs:
         
       - name: Run tests
         run: flutter test
+
+      # Release builds pass --dart-define=GITHUB_CLIENT_ID= (empty) while the
+      # optional WSLMANAGER_GITHUB_CLIENT_ID variable is unset; make sure that
+      # state keeps resolving to the bundled id (doc/github-oauth-setup.md).
+      - name: Run sharing tests with an empty client-id define
+        run: flutter test --dart-define=GITHUB_CLIENT_ID= test/github_publish_test.dart

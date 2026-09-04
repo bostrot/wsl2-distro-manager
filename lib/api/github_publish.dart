@@ -9,19 +9,33 @@ const String kScriptsOwner = 'bostrot';
 const String kScriptsRepo = 'wsl-scripts';
 const String kScriptsBranch = 'main';
 
-/// The OAuth client id of the GitHub app used for the device flow.
+/// The client id of the "WSL Manager" OAuth app on GitHub, used for the
+/// device flow (bostrot/ai-tasks#6).
 ///
 /// Device flow, not the web flow, precisely because this is a desktop app: a
 /// client *secret* shipped in a binary is extractable by anyone who installs
 /// it, so GitHub treats desktop apps as public clients and the device flow
-/// needs no secret at all. Only the id below is public information.
-///
-/// Empty until an OAuth app exists; [GithubPublisher.isConfigured] gates the
-/// UI on it so the button explains itself instead of failing.
-const String kGithubClientId = String.fromEnvironment(
-  'GITHUB_CLIENT_ID',
-  defaultValue: '',
-);
+/// needs no secret at all. The id is public information — it travels in
+/// every device-flow request — which is why it can live here in source. The
+/// app's callback URL is irrelevant to the device flow, but **Enable Device
+/// Flow** must be ticked on the app's settings page or GitHub answers every
+/// sign-in with `device_flow_disabled`.
+const String kDefaultGithubClientId = '9c2cbef8ac5d26ec745b';
+
+/// A build can point at a different OAuth app with
+/// `--dart-define=GITHUB_CLIENT_ID=...`. The release scripts always pass the
+/// define, empty while their CI variable is unset, so an empty value has to
+/// mean "the bundled id" rather than "no id".
+const String _definedGithubClientId =
+    String.fromEnvironment('GITHUB_CLIENT_ID');
+
+/// The client id the app signs in with: the `--dart-define` override when one
+/// is set, otherwise [kDefaultGithubClientId]. Never empty, so
+/// [GithubPublisher.isConfigured] only turns false if the bundled id is
+/// removed from source.
+const String kGithubClientId = _definedGithubClientId == ''
+    ? kDefaultGithubClientId
+    : _definedGithubClientId;
 
 /// What the user has to do to finish signing in.
 class DeviceCodePrompt {
@@ -61,6 +75,9 @@ class GithubPublisher {
   final Dio _dio;
   final String clientId;
 
+  /// Always true while [kDefaultGithubClientId] is set; kept as the gate for
+  /// the share dialog so a fork that blanks the id gets the explanatory
+  /// InfoBar rather than a failed request.
   static bool get isConfigured => kGithubClientId.isNotEmpty;
 
   static String? get storedToken {
@@ -84,11 +101,20 @@ class GithubPublisher {
     final response = await _dio.post(
       'https://github.com/login/device/code',
       data: {'client_id': clientId, 'scope': 'public_repo'},
-      options: Options(headers: {'Accept': 'application/json'}),
+      options: Options(
+        headers: {'Accept': 'application/json'},
+        // GitHub explains a refusal (device flow not enabled on the app, an
+        // unknown client id) in a JSON body on a 4xx; that sentence is what
+        // the user should see, not a generic bad-status error.
+        validateStatus: (status) => status != null && status < 500,
+      ),
     );
-    final data = response.data as Map;
-    if (data['device_code'] == null) {
-      throw Exception(data['error_description'] ?? 'GitHub refused the request');
+    final data = response.data;
+    if (data is! Map || data['device_code'] == null) {
+      final reason = data is Map
+          ? (data['error_description'] ?? data['error'])
+          : null;
+      throw Exception(reason ?? 'GitHub refused the request');
     }
     return DeviceCodePrompt(
       userCode: data['user_code'].toString(),

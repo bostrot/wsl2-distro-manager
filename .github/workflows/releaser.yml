@@ -69,9 +69,10 @@ jobs:
         run: dart run scripts/check_translations.dart
 
       - run: flutter config --enable-windows-desktop
-      # WSLMANAGER_GITHUB_CLIENT_ID is a repository *variable*, not a secret:
-      # the OAuth client id for snippet sharing is public. Unset, the build
-      # ships with sharing disabled. See doc/github-oauth-setup.md.
+      # WSLMANAGER_GITHUB_CLIENT_ID is an optional repository *variable*, not
+      # a secret: the OAuth client id for snippet sharing is public. It
+      # overrides the id bundled in lib/api/github_publish.dart; unset, the
+      # bundled id ships. See doc/github-oauth-setup.md.
       - run: flutter build windows --dart-define=GITHUB_CLIENT_ID=${{ vars.WSLMANAGER_GITHUB_CLIENT_ID }}
       - run: dart run msix:create
 

@@ -37,10 +37,10 @@ if [[ "${VMCTL_ONLY:-0}" == "1" ]]; then
 fi
 
 echo "==> Building Flutter macOS app"
-# GITHUB_CLIENT_ID is the OAuth client id for snippet sharing
-# (doc/github-oauth-setup.md). It is public information, so a plain env var
-# and never a secret. Left unset, sharing is disabled in the built app
-# rather than the build failing.
+# GITHUB_CLIENT_ID overrides the OAuth client id for snippet sharing that
+# is bundled in lib/api/github_publish.dart (doc/github-oauth-setup.md). It
+# is public information, so a plain env var and never a secret. Left unset
+# the define is passed empty, which the app treats as "use the bundled id".
 flutter build macos --release \
   --dart-define=GITHUB_CLIENT_ID="${GITHUB_CLIENT_ID:-}"
 

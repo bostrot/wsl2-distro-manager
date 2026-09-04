@@ -68,8 +68,12 @@ same pin CI uses. Tracked as `bostrot/ai-tasks#9`.
 6. Website: commit the buy page, flip `IS_TEST_MODE`/links to the live Stripe
    payment links, deploy so `/buy` exists before any macOS binary is public.
    That also unblocks `bostrot/ai-tasks#7` and `#8`.
-7. Set the `WSLMANAGER_GITHUB_CLIENT_ID` repository variable
-   (`bostrot/ai-tasks#6`) — without it every release ships with sharing off.
+7. Tick **Enable Device Flow** on the "WSL Manager" OAuth app
+   (github.com/settings/developers, `bostrot/ai-tasks#6`). The client id
+   is bundled in the app now, but GitHub still answered
+   `device_flow_disabled` on 2026-09-04, so sharing fails at sign-in until
+   the box is ticked. The `WSLMANAGER_GITHUB_CLIENT_ID` variable is
+   optional (override only).
 8. Push `images.json` to the CDN (empty since 2026-08-31, see "Now").
 9. Store: Submission 71 draft, keywords, "What's new" (upstream #307 reports
    1.11.0 never reached the Store).

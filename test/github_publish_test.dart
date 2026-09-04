@@ -29,6 +29,16 @@ class _GithubAdapter implements HttpClientAdapter {
   int pendingPolls = 0;
   Map<String, dynamic>? prBody;
 
+  /// What the app sent to /login/device/code, if anything.
+  Map<String, dynamic>? deviceCodeBody;
+
+  /// "Enable Device Flow" is a checkbox on the OAuth app's settings page;
+  /// left unticked, GitHub refuses every device-code request.
+  bool deviceFlowEnabled = true;
+
+  /// When set, served verbatim for /login/device/code instead of JSON.
+  ResponseBody? deviceCodeRaw;
+
   @override
   Future<ResponseBody> fetch(RequestOptions options,
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
@@ -41,6 +51,16 @@ class _GithubAdapter implements HttpClientAdapter {
         });
 
     if (path.contains('login/device/code')) {
+      deviceCodeBody = Map<String, dynamic>.from(options.data as Map);
+      if (deviceCodeRaw != null) return deviceCodeRaw!;
+      if (!deviceFlowEnabled) {
+        // Verified against GitHub on 2026-09-04: a 400 with this body.
+        return json({
+          'error': 'device_flow_disabled',
+          'error_description':
+              'Device Flow must be explicitly enabled for this App',
+        }, 400);
+      }
       return json({
         'device_code': 'DEV-CODE',
         'user_code': 'ABCD-1234',
@@ -206,20 +226,72 @@ void main() {
     });
   });
 
-  // The id reaches the binary only through --dart-define=GITHUB_CLIENT_ID, so
-  // these run in both states: plain `flutter test` (empty → sharing off) and
-  // `flutter test --dart-define=GITHUB_CLIENT_ID=x` (set → sharing on).
+  // The bundled id can be overridden with --dart-define=GITHUB_CLIENT_ID, so
+  // these run in all three states: plain `flutter test` (no define → bundled
+  // id), `flutter test --dart-define=GITHUB_CLIENT_ID=x` (override) and
+  // `flutter test --dart-define=GITHUB_CLIENT_ID=` (empty define, what the
+  // release scripts pass while the CI variable is unset → bundled id).
   group('configuration', () {
-    test('isConfigured mirrors the compile-time id the publisher uses', () {
-      expect(GithubPublisher.isConfigured, kGithubClientId.isNotEmpty);
-      expect(GithubPublisher().clientId, kGithubClientId);
+    test('the bundled id is a GitHub OAuth app client id, not a secret', () {
+      // 20 hex chars (classic OAuth apps) or the newer Ov23li... form; a
+      // client *secret* is 40 hex chars and must never appear here.
+      expect(kDefaultGithubClientId,
+          matches(RegExp(r'^(?:[0-9a-f]{20}|Ov23li[A-Za-z0-9]{14})$')));
     });
 
-    test('both release builds forward the id from a repository variable', () {
+    test('a --dart-define overrides the bundled id, an empty one does not', () {
+      const defined = String.fromEnvironment('GITHUB_CLIENT_ID');
+      expect(
+          kGithubClientId, defined.isEmpty ? kDefaultGithubClientId : defined);
+      expect(kGithubClientId, isNotEmpty);
+    });
+
+    test('isConfigured mirrors the compile-time id the publisher uses', () {
+      expect(GithubPublisher.isConfigured, isTrue);
+      expect(GithubPublisher().clientId, kGithubClientId);
+      // An explicit id still wins over the compile-time one.
+      expect(GithubPublisher(clientId: 'other').clientId, 'other');
+    });
+
+    test('the device-code request carries the id and the narrow scope',
+        () async {
+      final adapter = _GithubAdapter();
+      // No explicit id: the compile-time one has to reach the wire.
+      await GithubPublisher(dio: Dio()..httpClientAdapter = adapter)
+          .requestDeviceCode();
+      expect(adapter.deviceCodeBody!['client_id'], kGithubClientId);
+      expect(adapter.deviceCodeBody!['scope'], 'public_repo');
+    });
+
+    test('an app without device flow enabled fails with GitHub\'s reason',
+        () async {
+      // GitHub sends the refusal on a 400, so a default Dio would surface a
+      // generic bad-status error instead of the sentence the user needs.
+      final adapter = _GithubAdapter()..deviceFlowEnabled = false;
+      await expectLater(
+          build(adapter).requestDeviceCode(),
+          throwsA(predicate((e) => e
+              .toString()
+              .contains('Device Flow must be explicitly enabled'))));
+    });
+
+    test('a non-JSON refusal still fails with a readable reason', () async {
+      final adapter = _GithubAdapter()..deviceFlowEnabled = false;
+      adapter.deviceCodeRaw = ResponseBody.fromString('<html>nope</html>', 404,
+          headers: {
+            Headers.contentTypeHeader: ['text/html']
+          });
+      await expectLater(
+          build(adapter).requestDeviceCode(),
+          throwsA(predicate(
+              (e) => e.toString().contains('GitHub refused the request'))));
+    });
+
+    test('both release builds forward the optional override variable', () {
       final script = File('scripts/build_macos.sh').readAsStringSync();
       expect(script, contains('--dart-define=GITHUB_CLIENT_ID='));
-      // The script has to tolerate an unset id: a release without the OAuth
-      // app must still build, just with sharing disabled.
+      // The script has to tolerate an unset variable: the define is then
+      // passed empty, which the app treats as "use the bundled id".
       expect(script, contains(r'${GITHUB_CLIENT_ID:-}'));
 
       final mac = File('.github/workflows/macos.yml').readAsStringSync();
@@ -242,12 +314,21 @@ void main() {
         '.github/workflows/macos.yml',
         '.github/workflows/releaser.yml',
         'scripts/build_macos.sh',
+        'lib/api/github_publish.dart',
       ]) {
         final text = File(path).readAsStringSync();
         expect(text, isNot(matches(RegExp(r'secrets\.\w*CLIENT_ID'))),
             reason: '$path reads the client id from a secret');
         expect(text, isNot(contains('CLIENT_SECRET')),
             reason: '$path references a client secret');
+      }
+      // A GitHub client secret is a 40-hex-char string. Checked on the
+      // compiled constants rather than the source text, so an override
+      // passed through --dart-define is covered too and a commit SHA in a
+      // comment cannot trip it.
+      for (final id in [kDefaultGithubClientId, kGithubClientId]) {
+        expect(id, isNot(matches(RegExp(r'^[0-9a-f]{40}$'))),
+            reason: 'the compiled client id is shaped like a client secret');
       }
     });
   });
