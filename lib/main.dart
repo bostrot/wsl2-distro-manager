@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
@@ -136,6 +137,10 @@ void main() async {
 
   // Init license manager
   await LicenseManager().init();
+
+  // The "Sign in with Claude" provider is gone (Anthropic's terms forbid it
+  // in third-party apps); scrub any OAuth tokens an older build stored.
+  AiService.purgeRetiredClaudePrefs();
 
   // Restart the MCP server if it was left enabled — external clients need
   // it actually listening.

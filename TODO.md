@@ -83,8 +83,6 @@ same pin CI uses. Tracked as `bostrot/ai-tasks#9`.
   registry keys) or word `/buy/success` per platform.
 - README "Pro" line still says Microsoft Store only; mention the macOS key.
 - `AGENTS.md` still says "no license keys, no validation backend".
-- "Sign in with Claude" ships without a client ID — confirm the provider
-  option degrades gracefully when it is empty.
 - Upstream issues worth a look before tagging: #317 (window size / dark
   mode not remembered), #309 (default user overwrites `systemd=true`), #311
   / #312 (create dialog), #303 (compact does not check drive space — likely
@@ -154,8 +152,7 @@ network lockdown (wsl.conf / firewall) is a research item, not a quick fix.
 - Submit the draft (Submission 71) after the keywords question.
 - The old local `return true;` Pro grant is gone; debug builds run as Pro
   via `_debugPro`, which is `kDebugMode`-gated and off under tests.
-- The two standing manual items below (CDN push, Sign in with Claude client
-  ID) gate the catalogue freshness and the Claude provider respectively.
+- The standing manual item below (CDN push) gates the catalogue freshness.
 
 ---
 
@@ -175,14 +172,6 @@ Debug builds now skip the CDN entirely and read the repo's own `images.json`
 `flutter test`), so a catalogue edit is testable in `flutter run` before the
 push — verified live 2026-08-31 in a `WSLM_FORCE_PRO` debug run: the create
 screen's suggestion list served the repo's 19 entries (Ubuntu 26.04 first).
-
-### Register the app for "Sign in with Claude"
-The AI chat can now run on a Claude subscription instead of an API key
-(Settings → AI, provider "Claude subscription"). The OAuth/PKCE flow is
-implemented and tested, but it needs a client ID from Anthropic's
-Sign in with Claude registration (Anthropic Console) before the button works
-for users — bake it in with `--dart-define=WSLM_CLAUDE_CLIENT_ID=...` or set
-it in the settings field. Do not ship another product's client ID.
 
 ### Wire remote WSL onto `RemoteShell` (optional cleanup)
 The `RemoteShell` class exists but is not instantiated in production —

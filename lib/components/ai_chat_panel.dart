@@ -228,9 +228,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
       });
 
       final msg = e.toString();
-      if (msg.contains('pro-required') ||
-          msg.contains('byok-required') ||
-          msg.contains('claude-signin-required')) {
+      if (msg.contains('pro-required') || msg.contains('byok-required')) {
         // The question never reached a provider, so give it back rather than
         // making the user retype it (PS-33).
         if (_inputController.text.isEmpty) _inputController.text = text;

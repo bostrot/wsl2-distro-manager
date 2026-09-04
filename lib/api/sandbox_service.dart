@@ -245,11 +245,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   Future<String> send(String query,
       {void Function()? onUpdate, CancelSignal? cancel}) async {
     if (!LicenseManager().isPro) throw Exception('pro-required');
-    if (!_ai.hasAiConfigured) {
-      throw Exception(_ai.usesClaudeAccount
-          ? 'claude-signin-required'
-          : 'byok-required');
-    }
+    if (!_ai.hasAiConfigured) throw Exception('byok-required');
     _history.add(AiMessage(
         role: 'user', content: query, timestamp: DateTime.now()));
     _persist();
@@ -261,11 +257,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   Future<String> retryLast(
       {void Function()? onUpdate, CancelSignal? cancel}) async {
     if (!LicenseManager().isPro) throw Exception('pro-required');
-    if (!_ai.hasAiConfigured) {
-      throw Exception(_ai.usesClaudeAccount
-          ? 'claude-signin-required'
-          : 'byok-required');
-    }
+    if (!_ai.hasAiConfigured) throw Exception('byok-required');
     return _completeFromHistory(onUpdate: onUpdate, cancel: cancel);
   }
 

@@ -1,14 +1,18 @@
 // AI chat for Pro users, running entirely on credentials the user brings:
-// either their own OpenAI-compatible API key, or their Claude subscription
-// via Sign in with Claude. No app-operated backend, no quota — requests go
-// straight from this machine to the configured provider.
+// their own OpenAI-compatible API key. No app-operated backend, no quota —
+// requests go straight from this machine to the configured provider.
+//
+// There is deliberately no "Sign in with Claude" path. Anthropic's terms do
+// not let third-party apps offer Claude.ai login or route requests through a
+// Free/Pro/Max subscription (code.claude.com/docs/en/legal-and-compliance);
+// the sanctioned route for an app like this one is an API key from the Claude
+// Console, which is what the key field is for.
 
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
-import 'package:wsl2distromanager/api/claude_auth.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/todo_tools.dart';
@@ -58,39 +62,6 @@ class AiService {
   static const String defaultByokBaseUrl = 'https://api.openai.com/v1';
   static const String defaultByokModel = 'gpt-4o-mini';
 
-  static const String claudeMessagesEndpoint =
-      'https://api.anthropic.com/v1/messages';
-  static const String defaultClaudeModel = 'claude-sonnet-5';
-
-  /// 'openai' (the BYOK path, default) or 'claude' (Sign in with Claude).
-  String get aiProvider => prefs.getString('AiProvider') ?? 'openai';
-
-  void setAiProvider(String provider) {
-    if (provider == 'openai') {
-      prefs.remove('AiProvider');
-    } else {
-      prefs.setString('AiProvider', provider);
-    }
-  }
-
-  bool get usesClaudeAccount => aiProvider == 'claude';
-
-  String get claudeModel {
-    final stored = prefs.getString('ClaudeModel')?.trim();
-    return (stored != null && stored.isNotEmpty)
-        ? stored
-        : defaultClaudeModel;
-  }
-
-  void setClaudeModel(String model) {
-    final trimmed = model.trim();
-    if (trimmed.isEmpty) {
-      prefs.remove('ClaudeModel');
-    } else {
-      prefs.setString('ClaudeModel', trimmed);
-    }
-  }
-
   String get byokBaseUrl {
     final stored = prefs.getString('ByokBaseUrl')?.trim();
     return (stored != null && stored.isNotEmpty) ? stored : defaultByokBaseUrl;
@@ -107,15 +78,11 @@ class AiService {
   /// manage the key regardless; [sendMessage] does the entitlement check.
   bool get hasByokConfigured => byokApiKey.isNotEmpty;
 
-  /// Whether the active provider has what it needs to take a request.
-  bool get hasAiConfigured =>
-      usesClaudeAccount ? ClaudeAuth().isSignedIn : hasByokConfigured;
+  /// Whether the provider has what it needs to take a request.
+  bool get hasAiConfigured => hasByokConfigured;
 
-  /// The message to show when [hasAiConfigured] is false, matched to the
-  /// provider the user actually picked.
-  String get configRequiredKey => usesClaudeAccount
-      ? 'claude-signin-required-text'
-      : 'byok-required-text';
+  /// The message to show when [hasAiConfigured] is false.
+  String get configRequiredKey => 'byok-required-text';
 
   void setByokBaseUrl(String url) {
     final trimmed = url.trim();
@@ -148,8 +115,32 @@ class AiService {
   List<AiMessage> get conversationHistory =>
       List.unmodifiable(_conversationHistory);
 
+  /// Preference keys of the removed "Sign in with Claude" provider. The
+  /// OAuth tokens among them are credentials, so they must not linger in
+  /// prefs once the code that used them is gone.
+  @visibleForTesting
+  static const List<String> retiredClaudePrefKeys = [
+    'AiProvider',
+    'ClaudeOAuthClientId',
+    'ClaudeModel',
+    'ClaudeAccessToken',
+    'ClaudeRefreshToken',
+    'ClaudeTokenExpiry',
+  ];
+
+  /// One-time cleanup of [retiredClaudePrefKeys]; harmless when none are set.
+  /// Runs at startup and again from [init], so a profile written by a build
+  /// that still had the provider is scrubbed on the first launch after the
+  /// update, not the first chat.
+  static void purgeRetiredClaudePrefs() {
+    for (final key in retiredClaudePrefKeys) {
+      prefs.remove(key);
+    }
+  }
+
   /// Load conversation history from prefs on init
   Future<void> init() async {
+    purgeRetiredClaudePrefs();
     final stored = prefs.getString('AiConversation');
     if (stored != null && stored.isNotEmpty) {
       try {
@@ -217,7 +208,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   static const int _maxHistoryChars = 30000;
 
   /// In-run message-list budget: past this many entries, the *oldest* tool
-  /// results are elided (structure kept — both protocols require the
+  /// results are elided (structure kept — the protocol requires the
   /// call/result pairing to stay intact).
   static const int _maxRunMessages = 40;
 
@@ -237,16 +228,8 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   void _addUsage(Map<String, dynamic> data) {
     final usage = data['usage'];
     if (usage is! Map) return;
-    // OpenAI: total_tokens. Claude: input_tokens + output_tokens.
     final total = usage['total_tokens'];
-    if (total is num) {
-      _runTokens += total.toInt();
-      return;
-    }
-    final input = usage['input_tokens'];
-    final output = usage['output_tokens'];
-    if (input is num) _runTokens += input.toInt();
-    if (output is num) _runTokens += output.toInt();
+    if (total is num) _runTokens += total.toInt();
   }
 
   Future<String> sendMessage(String query,
@@ -256,8 +239,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     }
 
     if (!hasAiConfigured) {
-      throw Exception(
-          usesClaudeAccount ? 'claude-signin-required' : 'byok-required');
+      throw Exception('byok-required');
     }
 
     final userMsg = AiMessage(
@@ -279,8 +261,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       throw Exception('pro-required');
     }
     if (!hasAiConfigured) {
-      throw Exception(
-          usesClaudeAccount ? 'claude-signin-required' : 'byok-required');
+      throw Exception('byok-required');
     }
     return _completeFromHistory(onUpdate: onUpdate, cancel: cancel);
   }
@@ -405,17 +386,11 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     _runTokens = 0;
     runStatus.value = null;
     try {
-      return usesClaudeAccount
-          ? await _runClaudeAgent(transcript, toolList,
-              onUpdate: onUpdate,
-              persist: persist,
-              cancel: cancel,
-              systemPrompt: systemPrompt ?? _systemPrompt)
-          : await _runByokAgent(transcript, toolList,
-              onUpdate: onUpdate,
-              persist: persist,
-              cancel: cancel,
-              systemPrompt: systemPrompt ?? _systemPrompt);
+      return await _runByokAgent(transcript, toolList,
+          onUpdate: onUpdate,
+          persist: persist,
+          cancel: cancel,
+          systemPrompt: systemPrompt ?? _systemPrompt);
     } finally {
       runStatus.value = null;
       streamingText.value = '';
@@ -555,80 +530,6 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     };
   }
 
-  /// Assembles one Claude message out of [response] — streamed events or a
-  /// complete body alike: {'content': blocks, 'stop_reason': ...}.
-  Future<Map<String, dynamic>> _claudeMessage(
-      Response response, void Function()? onUpdate) async {
-    final payloads = await _ssePayloads(response);
-    if (payloads.length == 1 && payloads.single.containsKey('content')) {
-      _addUsage(payloads.single);
-      return payloads.single;
-    }
-    final blocks = <int, Map<String, dynamic>>{};
-    final jsonBuffers = <int, StringBuffer>{};
-    String? stopReason;
-    for (final event in payloads) {
-      switch (event['type']) {
-        case 'message_start':
-          final message = event['message'];
-          if (message is Map<String, dynamic>) _addUsage(message);
-          break;
-        case 'content_block_start':
-          final index = (event['index'] as num?)?.toInt() ?? 0;
-          final block = event['content_block'];
-          if (block is Map) {
-            blocks[index] = Map<String, dynamic>.from(block);
-            if (block['type'] == 'tool_use') {
-              jsonBuffers[index] = StringBuffer();
-            }
-          }
-          break;
-        case 'content_block_delta':
-          final index = (event['index'] as num?)?.toInt() ?? 0;
-          final delta = event['delta'];
-          if (delta is! Map) break;
-          if (delta['type'] == 'text_delta' && delta['text'] is String) {
-            final block = blocks.putIfAbsent(
-                index, () => {'type': 'text', 'text': ''});
-            block['text'] = '${block['text'] ?? ''}${delta['text']}';
-            _emitStreamDelta(block['text'] as String, onUpdate);
-          } else if (delta['type'] == 'input_json_delta' &&
-              delta['partial_json'] is String) {
-            jsonBuffers
-                .putIfAbsent(index, () => StringBuffer())
-                .write(delta['partial_json']);
-          }
-          break;
-        case 'content_block_stop':
-          final index = (event['index'] as num?)?.toInt() ?? 0;
-          final buffer = jsonBuffers[index];
-          final block = blocks[index];
-          if (buffer != null && block != null) {
-            try {
-              block['input'] = buffer.isEmpty
-                  ? <String, dynamic>{}
-                  : json.decode(buffer.toString());
-            } catch (_) {
-              block['input'] = <String, dynamic>{};
-            }
-          }
-          break;
-        case 'message_delta':
-          final delta = event['delta'];
-          if (delta is Map && delta['stop_reason'] is String) {
-            stopReason = delta['stop_reason'] as String;
-          }
-          _addUsage(event);
-          break;
-      }
-    }
-    final ordered = blocks.keys.toList()..sort();
-    return {
-      'content': [for (final i in ordered) blocks[i]],
-      'stop_reason': stopReason,
-    };
-  }
-
   /// True when [e] is dio reporting our own cancellation, which the loops
   /// convert to [CancelledException] rather than a request failure.
   static bool _isDioCancel(DioException e) =>
@@ -663,7 +564,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   }
 
   /// Elides the content of tool results that have scrolled far enough back in
-  /// this run's message list, keeping every entry (both protocols require the
+  /// this run's message list, keeping every entry (the protocol requires the
   /// call/result pairing to stay) but not its bulk.
   static void _elideOldToolResults(List<Map<String, dynamic>> messages) {
     if (messages.length <= _maxRunMessages) return;
@@ -671,24 +572,11 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     final cutoff = messages.length - _maxRunMessages;
     for (var i = 0; i < cutoff; i++) {
       final m = messages[i];
-      // OpenAI shape: {role: tool, content: <big string>}.
-      if (m['role'] == 'tool' && m['content'] is String) {
-        if ((m['content'] as String).length > marker.length) {
-          m['content'] = marker;
-        }
-        continue;
-      }
-      // Claude shape: {role: user, content: [{type: tool_result, ...}]}.
-      final content = m['content'];
-      if (m['role'] == 'user' && content is List) {
-        for (final block in content) {
-          if (block is Map &&
-              block['type'] == 'tool_result' &&
-              block['content'] is String &&
-              (block['content'] as String).length > marker.length) {
-            block['content'] = marker;
-          }
-        }
+      // {role: tool, content: <big string>}
+      if (m['role'] == 'tool' &&
+          m['content'] is String &&
+          (m['content'] as String).length > marker.length) {
+        m['content'] = marker;
       }
     }
   }
@@ -802,55 +690,26 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       'I ran several tools but could not finish within the step limit. '
       'Please narrow the request or ask me to continue.';
 
-  /// The Messages API headers: an OAuth bearer token instead of an API key.
-  Future<Map<String, String>> _claudeHeaders() async {
-    final String token;
-    try {
-      token = await ClaudeAuth().validAccessToken();
-    } catch (_) {
-      throw Exception('claude-signin-required');
-    }
-    return {
-      'Authorization': 'Bearer $token',
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'oauth-2025-04-20',
-      'Content-Type': 'application/json',
-    };
-  }
-
-  /// Model ids the active provider offers, for the settings autocomplete.
+  /// Model ids the provider offers, for the settings autocomplete.
   ///
   /// [baseUrl]/[apiKey] let Settings probe the values as typed, before Save;
-  /// stored values fill anything omitted. Both provider APIs answer
-  /// `GET /models` with `{data: [{id: ...}]}`.
+  /// stored values fill anything omitted. The API answers `GET /models` with
+  /// `{data: [{id: ...}]}`.
   Future<List<String>> listModels({
-    String? provider,
     String? baseUrl,
     String? apiKey,
   }) async {
-    final which = provider ?? aiProvider;
     final Response response;
     try {
-      if (which == 'claude') {
-        response = await _dio.get(
-          'https://api.anthropic.com/v1/models',
-          options: Options(
-            headers: await _claudeHeaders(),
-            sendTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-          ),
-        );
-      } else {
-        final url = _orStored(baseUrl, byokBaseUrl);
-        response = await _dio.get(
-          '$url/models',
-          options: Options(
-            headers: {'Authorization': 'Bearer ${_orStored(apiKey, byokApiKey)}'},
-            sendTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-          ),
-        );
-      }
+      final url = _orStored(baseUrl, byokBaseUrl);
+      response = await _dio.get(
+        '$url/models',
+        options: Options(
+          headers: {'Authorization': 'Bearer ${_orStored(apiKey, byokApiKey)}'},
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
     } on DioException catch (e) {
       if (kDebugMode) {
         debugPrint('Model list failed: $e');
@@ -871,52 +730,34 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     return ids;
   }
 
-  /// One tiny round trip through the active provider, so Settings can prove
-  /// the credentials and model name actually work before anyone opens chat.
+  /// One tiny round trip through the provider, so Settings can prove the
+  /// credentials and model name actually work before anyone opens chat.
   Future<void> testConnection({
-    String? provider,
     String? baseUrl,
     String? apiKey,
     String? model,
   }) async {
-    final which = provider ?? aiProvider;
     const probe = [
       {'role': 'user', 'content': 'Reply with the single word: ok'}
     ];
     final Response response;
     try {
-      if (which == 'claude') {
-        response = await _dio.post(
-          claudeMessagesEndpoint,
-          options: Options(
-            headers: await _claudeHeaders(),
-            sendTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 30),
-          ),
-          data: json.encode({
-            'model': _orStored(model, claudeModel),
-            'max_tokens': 16,
-            'messages': probe,
-          }),
-        );
-      } else {
-        response = await _dio.post(
-          '${_orStored(baseUrl, byokBaseUrl)}/chat/completions',
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer ${_orStored(apiKey, byokApiKey)}',
-              'Content-Type': 'application/json',
-            },
-            sendTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 30),
-          ),
-          data: json.encode({
-            'model': _orStored(model, byokModel),
-            'max_tokens': 16,
-            'messages': probe,
-          }),
-        );
-      }
+      response = await _dio.post(
+        '${_orStored(baseUrl, byokBaseUrl)}/chat/completions',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${_orStored(apiKey, byokApiKey)}',
+            'Content-Type': 'application/json',
+          },
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+        data: json.encode({
+          'model': _orStored(model, byokModel),
+          'max_tokens': 16,
+          'messages': probe,
+        }),
+      );
     } on DioException catch (e) {
       if (kDebugMode) {
         debugPrint('AI test failed: $e');
@@ -931,100 +772,6 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   static String _orStored(String? typed, String stored) {
     final trimmed = typed?.trim() ?? '';
     return trimmed.isNotEmpty ? trimmed : stored;
-  }
-
-  /// Sends the conversation to the Messages API on the user's Claude
-  /// subscription — an OAuth bearer token instead of an API key.
-  /// Claude tool specs for [toolList] (Messages API shape).
-  List<Map<String, dynamic>> _claudeToolSpecs(List<McpTool> toolList) =>
-      toolList
-          .map((t) => {
-                'name': t.name,
-                'description': t.description,
-                'input_schema': t.inputSchema,
-              })
-          .toList();
-
-  /// The Claude Messages API agent loop, using tool_use / tool_result blocks.
-  Future<String> _runClaudeAgent(
-      List<AiMessage> transcript, List<McpTool> toolList,
-      {void Function()? onUpdate,
-      void Function()? persist,
-      CancelSignal? cancel,
-      required String systemPrompt}) async {
-    final messages = <Map<String, dynamic>>[..._historyMessages(transcript)];
-    final toolSpecs = _claudeToolSpecs(toolList);
-
-    for (var i = 0; i < _maxToolIterations; i++) {
-      cancel?.throwIfCancelled();
-      _reportStep(i);
-      _elideOldToolResults(messages);
-      final Map<String, dynamic> map;
-      try {
-        final response = await _dio.post(
-          claudeMessagesEndpoint,
-          cancelToken: _dioTokenFor(cancel),
-          options: Options(
-            responseType: ResponseType.stream,
-            headers: await _claudeHeaders(),
-            sendTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 120),
-          ),
-          data: json.encode({
-            'model': claudeModel,
-            'max_tokens': 4096,
-            'stream': true,
-            'system': systemPrompt,
-            'messages': messages,
-            if (toolSpecs.isNotEmpty) 'tools': toolSpecs,
-          }),
-        );
-        map = await _claudeMessage(response, onUpdate);
-      } on DioException catch (e) {
-        if (_isDioCancel(e)) throw const CancelledException();
-        if (kDebugMode) debugPrint('Claude request failed: $e');
-        throw Exception('claude-request-failed');
-      }
-      final blocks = (map['content'] as List?) ?? const [];
-      final stopReason = map['stop_reason'] as String?;
-
-      final textOut = blocks
-          .where((b) => b is Map && b['type'] == 'text')
-          .map((b) => (b as Map)['text'] as String? ?? '')
-          .join('\n')
-          .trim();
-      final toolUses =
-          blocks.where((b) => b is Map && b['type'] == 'tool_use').toList();
-
-      streamingText.value = '';
-      if (stopReason != 'tool_use' || toolUses.isEmpty) {
-        if (textOut.isEmpty) throw Exception('claude-empty-response');
-        return textOut;
-      }
-
-      // Narration alongside the tool call.
-      if (textOut.isNotEmpty) _noteAssistant(transcript, persist, textOut, onUpdate);
-      messages.add({'role': 'assistant', 'content': blocks});
-
-      final toolResults = <Map<String, dynamic>>[];
-      for (final use in toolUses) {
-        final u = use as Map;
-        final name = u['name'] as String? ?? '';
-        final input = u['input'] is Map
-            ? Map<String, dynamic>.from(u['input'] as Map)
-            : <String, dynamic>{};
-        cancel?.throwIfCancelled();
-        _noteTool(transcript, persist, name, onUpdate);
-        final result = await _executeTool(toolList, name, input);
-        toolResults.add({
-          'type': 'tool_result',
-          'tool_use_id': u['id'],
-          'content': result,
-        });
-      }
-      messages.add({'role': 'user', 'content': toolResults});
-    }
-    return _toolLimitMessage;
   }
 
   /// Generate a bash script from natural language description

@@ -85,10 +85,9 @@
 - [x] **Web dashboard** — manage everything from your phone or another computer: scan a QR code, get the whole app in a browser, optionally published beyond your network through a Cloudflare tunnel
 
 > The AI features run on credentials **you** bring — your own OpenAI-compatible
-> API key, or your **Claude subscription** (Sign in with Claude). No AI service
-> is hosted or included, there is no quota, and no requests pass through anyone
-> else's servers. Pro unlocks the features in the app; it does not buy AI
-> credits. See [Free vs Pro](https://github.com/bostrot/wsl2-distro-manager/wiki/Pro-Version).
+> API key. No AI service is hosted or included, there is no quota, and no
+> requests pass through anyone else's servers. Pro unlocks the features in the
+> app; it does not buy AI credits. See [Free vs Pro](https://github.com/bostrot/wsl2-distro-manager/wiki/Pro-Version).
 
 ## 🤖 AI assistant & MCP
 
@@ -97,14 +96,15 @@ set the MCP server exposes, so when you ask "what distros do I have?" or "instal
 Ubuntu and set my default user" it calls real tools against your WSL rather than
 guessing. Tool calls are shown inline as it works.
 
-**Pick a provider** in **Settings → Bring Your Own AI Key**:
+**Set up the provider** in **Settings → Bring Your Own AI Key**: any
+OpenAI-compatible endpoint works (OpenAI, Azure, a LiteLLM proxy, Ollama, LM
+Studio, …). Enter the base URL, key and model. The **Load model list** button
+fills an autocomplete from the provider's `/models`, and **Test connection**
+proves the credentials work before you open the chat.
 
-- **Own API key** — any OpenAI-compatible endpoint (OpenAI, Azure, a LiteLLM
-  proxy, Ollama, LM Studio, …). Enter the base URL, key and model. The **Load
-  model list** button fills an autocomplete from the provider's `/models`, and
-  **Test connection** proves the credentials work before you open the chat.
-- **Claude subscription** — *Sign in with Claude* (OAuth): the chat then runs on
-  your Claude plan through the Messages API. No API key to paste.
+There is no *Sign in with Claude*: Anthropic's terms do not allow third-party
+apps to offer Claude.ai login or to run on a Claude Pro/Max subscription, so
+Claude access needs an API key from the Claude Console like any other provider.
 
 **Sandboxes** (AI Workspace → *Add sandbox distro*) create a throwaway distro
 from any catalog image (newest Ubuntu by default). Its chat is handed only the

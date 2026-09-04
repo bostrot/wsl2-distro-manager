@@ -189,79 +189,51 @@ void main() {
     });
   });
 
-  group('AiService Claude provider', () {
-    test('defaults to the BYOK path and switches per preference', () {
+  group('AiService without the retired Claude provider', () {
+    test('configured state and its message follow the API key alone', () {
       final ai = AiService();
-      expect(ai.aiProvider, 'openai');
-      expect(ai.usesClaudeAccount, false);
-
-      ai.setAiProvider('claude');
-      expect(ai.usesClaudeAccount, true);
-      // Not signed in, so the provider is unconfigured — and the message the
-      // UI would show talks about signing in, not about API keys.
       expect(ai.hasAiConfigured, false);
-      expect(ai.configRequiredKey, 'claude-signin-required-text');
-
-      ai.setAiProvider('openai');
       expect(ai.configRequiredKey, 'byok-required-text');
+
+      ai.setByokApiKey('sk-test');
+      expect(ai.hasAiConfigured, true);
     });
 
-    test('throws claude-signin-required when Pro but not signed in', () async {
+    test('init purges the Sign in with Claude leftovers, keeps the key',
+        () async {
+      // A profile written by a build that still had the provider: the
+      // selection, the client ID and — the part that matters — OAuth tokens.
+      prefs.setString('AiProvider', 'claude');
+      prefs.setString('ClaudeOAuthClientId', 'cid');
+      prefs.setString('ClaudeModel', 'claude-x');
+      prefs.setString('ClaudeAccessToken', 'at-1');
+      prefs.setString('ClaudeRefreshToken', 'rt-1');
+      prefs.setInt('ClaudeTokenExpiry', 1);
+      prefs.setString('ByokApiKey', 'sk-kept');
+
+      final ai = AiService();
+      await ai.init();
+
+      for (final key in AiService.retiredClaudePrefKeys) {
+        expect(prefs.containsKey(key), false, reason: key);
+      }
+      expect(ai.byokApiKey, 'sk-kept');
+      // The stale provider choice no longer blocks the key path.
+      expect(ai.hasAiConfigured, true);
+    });
+
+    test('a stale Claude selection without a key asks for the key, not a sign-in',
+        () async {
       final ai = AiService();
       LicenseManager.storeInstallCheckOverride = () => true;
       await LicenseManager().init();
-      ai.setAiProvider('claude');
+      prefs.setString('AiProvider', 'claude');
       await ai.init();
 
       await expectLater(
         ai.sendMessage('hello'),
-        throwsA(predicate(
-            (e) => e.toString().contains('claude-signin-required'))),
+        throwsA(predicate((e) => e.toString().contains('byok-required'))),
       );
-    });
-
-    test('sends to the Messages API with the OAuth bearer', () async {
-      final ai = AiService();
-      LicenseManager.storeInstallCheckOverride = () => true;
-      await LicenseManager().init();
-      ai.setAiProvider('claude');
-      prefs.setString('ClaudeRefreshToken', 'rt-1');
-      prefs.setString('ClaudeAccessToken', 'at-1');
-      prefs.setInt(
-          'ClaudeTokenExpiry',
-          DateTime.now()
-              .add(const Duration(hours: 1))
-              .millisecondsSinceEpoch);
-      await ai.init();
-      ai.clearHistory();
-
-      final adapter = _RecordingAdapter((options) {
-        expect(options.headers['Authorization'], 'Bearer at-1');
-        expect(options.headers['anthropic-beta'], 'oauth-2025-04-20');
-        expect(options.headers['anthropic-version'], isNotNull);
-        return ResponseBody.fromString(
-          json.encode({
-            'content': [
-              {'type': 'text', 'text': 'claude reply'}
-            ]
-          }),
-          200,
-          headers: {
-            Headers.contentTypeHeader: [Headers.jsonContentType],
-          },
-        );
-      });
-      ai.dioForTesting.httpClientAdapter = adapter;
-
-      final reply = await ai.sendMessage('hello');
-
-      expect(reply, 'claude reply');
-      expect(adapter.requests, hasLength(1));
-      expect(adapter.requests.single.path, AiService.claudeMessagesEndpoint);
-      final body = json.decode(adapter.requests.single.data as String)
-          as Map<String, dynamic>;
-      expect(body['model'], AiService.defaultClaudeModel);
-      expect(body['max_tokens'], isA<int>());
     });
   });
 
@@ -290,35 +262,6 @@ void main() {
           baseUrl: 'https://typed.example.com/v1', apiKey: 'typed-key');
 
       expect(models, ['a-model', 'b-model']);
-    });
-
-    test('lists Claude models with the OAuth bearer', () async {
-      final ai = AiService();
-      prefs.setString('ClaudeRefreshToken', 'rt-1');
-      prefs.setString('ClaudeAccessToken', 'at-1');
-      prefs.setInt(
-          'ClaudeTokenExpiry',
-          DateTime.now()
-              .add(const Duration(hours: 1))
-              .millisecondsSinceEpoch);
-      final adapter = _RecordingAdapter((options) {
-        expect(options.path, 'https://api.anthropic.com/v1/models');
-        expect(options.headers['Authorization'], 'Bearer at-1');
-        return ResponseBody.fromString(
-          json.encode({
-            'data': [
-              {'id': 'claude-x'}
-            ]
-          }),
-          200,
-          headers: {
-            Headers.contentTypeHeader: [Headers.jsonContentType],
-          },
-        );
-      });
-      ai.dioForTesting.httpClientAdapter = adapter;
-
-      expect(await ai.listModels(provider: 'claude'), ['claude-x']);
     });
 
     test('the test probe posts one tiny chat request as typed', () async {
@@ -451,63 +394,6 @@ void main() {
       expect(ai.conversationHistory.any((m) => m.role == 'tool'), true);
     });
 
-    test('Claude: tool_use loop feeds tool_result back and answers', () async {
-      final ai = AiService();
-      LicenseManager.storeInstallCheckOverride = () => true;
-      await LicenseManager().init();
-      ai.setAiProvider('claude');
-      prefs.setString('ClaudeRefreshToken', 'rt-1');
-      prefs.setString('ClaudeAccessToken', 'at-1');
-      prefs.setInt(
-          'ClaudeTokenExpiry',
-          DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch);
-      ai.toolsForTesting = [echoTool];
-      await ai.init();
-      ai.clearHistory();
-
-      var call = 0;
-      final adapter = _RecordingAdapter((options) {
-        call++;
-        // Tools must be advertised.
-        final body = json.decode(options.data as String) as Map<String, dynamic>;
-        expect(body['tools'], isNotNull);
-        if (call == 1) {
-          return _json({
-            'stop_reason': 'tool_use',
-            'content': [
-              {'type': 'text', 'text': 'checking'},
-              {
-                'type': 'tool_use',
-                'id': 't1',
-                'name': 'echo',
-                'input': {'text': 'hi'},
-              }
-            ]
-          });
-        }
-        // The tool_result block must be in the follow-up.
-        final msgs = body['messages'] as List;
-        final hasResult = msgs.any((m) =>
-            m['content'] is List &&
-            (m['content'] as List)
-                .any((b) => b is Map && b['type'] == 'tool_result'));
-        expect(hasResult, true);
-        return _json({
-          'stop_reason': 'end_turn',
-          'content': [
-            {'type': 'text', 'text': 'all done'}
-          ]
-        });
-      });
-      ai.dioForTesting.httpClientAdapter = adapter;
-
-      final reply = await ai.sendMessage('echo hi');
-
-      expect(reply, 'all done');
-      expect(echoArgs.single['text'], 'hi');
-      expect(adapter.requests, hasLength(2));
-    });
-
     test('BYOK: an SSE stream assembles text deltas into the reply', () async {
       final ai = AiService();
       LicenseManager.storeInstallCheckOverride = () => true;
@@ -574,49 +460,6 @@ void main() {
       });
 
       expect(await ai.sendMessage('echo hi'), 'done');
-      expect(echoArgs.single['text'], 'hi');
-    });
-
-    test('Claude: SSE events assemble text and tool_use input', () async {
-      final ai = AiService();
-      LicenseManager.storeInstallCheckOverride = () => true;
-      await LicenseManager().init();
-      ai.setAiProvider('claude');
-      prefs.setString('ClaudeRefreshToken', 'rt-1');
-      prefs.setString('ClaudeAccessToken', 'at-1');
-      prefs.setInt(
-          'ClaudeTokenExpiry',
-          DateTime.now()
-              .add(const Duration(hours: 1))
-              .millisecondsSinceEpoch);
-      ai.toolsForTesting = [echoTool];
-      await ai.init();
-      ai.clearHistory();
-
-      var call = 0;
-      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
-        call++;
-        if (call == 1) {
-          const sse =
-              'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"t1","name":"echo"}}\n\n'
-              'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"text\\":"}}\n\n'
-              'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"\\"hi\\"}"}}\n\n'
-              'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}\n\n'
-              'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":7}}\n\n';
-          return ResponseBody.fromString(sse, 200, headers: {
-            Headers.contentTypeHeader: ['text/event-stream'],
-          });
-        }
-        const sse =
-            'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}\n\n'
-            'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"all done"}}\n\n'
-            'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}\n\n';
-        return ResponseBody.fromString(sse, 200, headers: {
-          Headers.contentTypeHeader: ['text/event-stream'],
-        });
-      });
-
-      expect(await ai.sendMessage('echo hi'), 'all done');
       expect(echoArgs.single['text'], 'hi');
     });
 

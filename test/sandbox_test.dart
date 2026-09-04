@@ -181,7 +181,6 @@ void main() {
       await LicenseManager().init();
       final ai = AiService();
       ai.setByokApiKey('sk-test');
-      ai.setAiProvider('openai');
 
       final chat = SandboxChat.forTesting('wslm-sandbox-box', service: ai);
       // A trivial tool so the loop has something scoped to offer, though the
