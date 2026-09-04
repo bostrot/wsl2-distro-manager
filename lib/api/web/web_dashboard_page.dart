@@ -49,7 +49,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--accent)}
 code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
-.wrap{max-width:1180px;margin:0 auto;padding:0 16px 40px}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 16px 40px}
 
 header{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;gap:14px;padding:12px 16px;max-width:1180px;margin:0 auto}
@@ -74,7 +74,6 @@ nav.tabs button{border:0;background:transparent;color:var(--muted);padding:8px 1
 nav.tabs button.active{background:var(--accent-soft);color:var(--accent)}
 nav.tabs button .n{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:999px;background:var(--bg-3);color:var(--muted)}
 
-main{padding-top:18px}
 section[hidden]{display:none}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 .toolbar h2{margin:0;font-size:20px}

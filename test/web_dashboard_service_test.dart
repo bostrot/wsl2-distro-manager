@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/web/web_dashboard_page.dart';
 import 'package:wsl2distromanager/api/web/web_dashboard_service.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -443,6 +444,17 @@ void main() {
 
       expect(unknown.statusCode, 404);
       expect(malformed.statusCode, 400);
+    });
+  });
+
+  group('page', () {
+    test('keeps a gap between the sticky header and the content', () {
+      // The body is `<main class="wrap">`; a bare `main{padding-top}` rule
+      // loses to the `.wrap` padding shorthand, so the gap must live there.
+      final wrap = RegExp(r'\.wrap\{([^}]*)\}').firstMatch(webDashboardHtml);
+      expect(wrap, isNotNull);
+      expect(wrap!.group(1), matches(RegExp(r'padding:(?!0[ ;])\d+px')));
+      expect(webDashboardHtml, isNot(matches(RegExp(r'\bmain\{[^}]*padding'))));
     });
   });
 
