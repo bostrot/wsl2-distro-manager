@@ -13,6 +13,9 @@ import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/api/remote_target.dart';
+import 'package:wsl2distromanager/api/web/web_dashboard_service.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
@@ -108,6 +111,18 @@ class SettingsPageState extends State<SettingsPage> {
   bool _mcpTokenVisible = false;
   bool _tunnelStarting = false;
   String? _tunnelError;
+  bool _webEnabled = false;
+  bool _webTokenVisible = false;
+  bool _webStarting = false;
+  String? _webError;
+  bool _webTunnelStarting = false;
+  String? _webTunnelError;
+
+  /// The host's LAN addresses, refreshed when the server starts. Links are
+  /// built from these at build time so they always carry the current token;
+  /// the QR code shows [_webSelectedUrl] out of them.
+  List<String> _webAddresses = <String>[];
+  String? _webSelectedUrl;
   bool showDocker = false;
   BuildContext? currentContext;
 
@@ -127,6 +142,7 @@ class SettingsPageState extends State<SettingsPage> {
   final LicenseManager _licenseManager = LicenseManager();
   final WslMcpService _mcpService = WslMcpService();
   final CloudflareTunnelService _tunnelService = CloudflareTunnelService();
+  final WebDashboardService _webService = WebDashboardService();
 
   bool _isRemoteWslTargetValid(String target) => isValidRemoteTarget(target);
 
@@ -353,6 +369,8 @@ class SettingsPageState extends State<SettingsPage> {
     _claudeModelController.text = prefs.getString('ClaudeModel') ?? '';
     _aiProvider = _aiService.aiProvider;
     _mcpEnabled = _mcpService.enabled;
+    _webEnabled = _webService.enabled;
+    if (_webService.isRunning) _refreshWebUrls();
     for (final controller in _draftControllers) {
       controller.removeListener(_onDraftChanged);
       controller.addListener(_onDraftChanged);
@@ -713,6 +731,11 @@ class SettingsPageState extends State<SettingsPage> {
               (isAppleHost ? 'mcp-settings-vm-text' : 'mcp-settings-text')
                   .i18n()),
           content: _buildMcpSettings(context),
+        ),
+        const SizedBox(height: 10),
+        Expander(
+          header: _betaHeader('web-dashboard-settings-text'.i18n()),
+          content: _buildWebDashboardSettings(context),
         ),
         if (!isAppleHost || _useRemoteWsl) ...[
         const SizedBox(height: 10),
@@ -1528,7 +1551,7 @@ class SettingsPageState extends State<SettingsPage> {
                             });
                             try {
                               if (value) {
-                                await _tunnelService.start(WslMcpService.port);
+                                await _tunnelService.start();
                               } else {
                                 await _tunnelService.stop();
                               }
@@ -1615,6 +1638,407 @@ class SettingsPageState extends State<SettingsPage> {
           'mcp-tunnel-connecting-text'.i18n(),
           style: TextStyle(fontSize: 12, color: secondaryTextColor(context)),
         ),
+      ],
+    );
+  }
+
+  /// Every link the QR code can show: the public one first while the tunnel
+  /// is up, then each LAN address, then loopback as the always-there fallback.
+  List<String> get _webUrlOptions => <String>[
+        if (_webService.tunnelUrl != null) _webService.tunnelUrl!,
+        for (final address in _webAddresses) _webService.urlFor(address),
+        _webService.localUrl,
+      ];
+
+  String _webUrlLabel(String url) {
+    if (url == _webService.tunnelUrl) return 'web-dashboard-public-text'.i18n();
+    if (url == _webService.localUrl) return 'web-dashboard-local-text'.i18n();
+    return Uri.tryParse(url)?.host ?? url;
+  }
+
+  /// Re-reads the LAN addresses so the picker offers every reachable link.
+  Future<void> _refreshWebUrls() async {
+    final addresses = await _webService.lanAddresses();
+    if (!mounted) return;
+    setState(() {
+      _webAddresses = addresses;
+      final options = _webUrlOptions;
+      if (!options.contains(_webSelectedUrl)) {
+        _webSelectedUrl = options.first;
+      }
+    });
+  }
+
+  Future<void> _setWebEnabled(bool value) async {
+    setState(() {
+      _webEnabled = value;
+      _webStarting = value;
+      _webError = null;
+      _webTunnelError = null;
+    });
+    try {
+      await _webService.setEnabled(value);
+      if (value) await _refreshWebUrls();
+    } catch (e) {
+      _webEnabled = false;
+      _webError = '${'web-dashboard-start-failed-text'.i18n()} '
+              '${WslFailure.from(e).shortReason}'
+          .trim();
+    } finally {
+      if (mounted) setState(() => _webStarting = false);
+    }
+  }
+
+  Future<void> _setWebTunnel(bool value) async {
+    setState(() {
+      _webTunnelStarting = true;
+      _webTunnelError = null;
+    });
+    try {
+      if (value) {
+        await _webService.startTunnel();
+      } else {
+        await _webService.stopTunnel();
+      }
+    } catch (e) {
+      _webTunnelError = '${'mcp-tunnel-failed-text'.i18n()} '
+              '${WslFailure.from(e).shortReason}'
+          .trim();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _webTunnelStarting = false;
+          // Prefer the public link while it exists; fall back when it is gone.
+          final options = _webUrlOptions;
+          _webSelectedUrl = value && _webService.tunnelUrl != null
+              ? _webService.tunnelUrl
+              : (options.contains(_webSelectedUrl)
+                  ? _webSelectedUrl
+                  : options.first);
+        });
+      }
+    }
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    Notify.message('copied-text'.i18n(),
+        severity: InfoBarSeverity.success,
+        duration: const Duration(seconds: 2));
+  }
+
+  Widget _buildWebDashboardSettings(BuildContext context) {
+    final isPro = _licenseManager.isPro;
+    final options = _webUrlOptions;
+    final selectedUrl =
+        options.contains(_webSelectedUrl) ? _webSelectedUrl! : options.first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            'web-dashboard-info-text'.i18n(),
+            style: const TextStyle(fontSize: 12.0, fontStyle: FontStyle.italic),
+          ),
+        ),
+        if (!isPro)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoBar(
+              title: Text('web-dashboard-pro-required-text'.i18n()),
+              severity: InfoBarSeverity.info,
+              action: Button(
+                key: const ValueKey('test-web-upgrade'),
+                onPressed: () => navigateGuarded('license'),
+                child: Text('upgrade-text'.i18n()),
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'web-dashboard-toggle-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                ToggleSwitch(
+                  key: const ValueKey('test-web-toggle'),
+                  checked: _webEnabled && isPro,
+                  onChanged:
+                      isPro && !_webStarting ? _setWebEnabled : null,
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(
+                  child: Text('web-dashboard-toggle-hint-text'.i18n(),
+                      style: isPro
+                          ? null
+                          : TextStyle(color: disabledTextColor(context))),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_webError != null)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              _webError!,
+              key: const ValueKey('test-web-error'),
+              style: TextStyle(color: Colors.errorPrimaryColor, fontSize: 12),
+            ),
+          ),
+        if (_webEnabled && isPro && _webService.isRunning) ...[
+          if (_webAddresses.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoBar(
+                key: const ValueKey('test-web-no-network'),
+                title: Text('web-dashboard-no-network-text'.i18n()),
+                severity: InfoBarSeverity.warning,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'web-dashboard-url-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ComboBox<String>(
+                          key: const ValueKey('test-web-url-combo'),
+                          isExpanded: true,
+                          value: selectedUrl,
+                          items: [
+                            for (final url in options)
+                              ComboBoxItem(
+                                  value: url, child: Text(_webUrlLabel(url))),
+                          ],
+                          onChanged: (url) {
+                            if (url == null) return;
+                            setState(() => _webSelectedUrl = url);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      NamedIconButton(
+                        key: const ValueKey('test-web-copy-url'),
+                        label: 'copydashboardurl-text'.i18n(),
+                        icon: FluentIcons.copy,
+                        onPressed: () => _copyToClipboard(selectedUrl),
+                      ),
+                      const SizedBox(width: 4),
+                      NamedIconButton(
+                        key: const ValueKey('test-web-open'),
+                        label: 'web-dashboard-open-text'.i18n(),
+                        icon: FluentIcons.open_in_new_window,
+                        onPressed: () => launchUrl(Uri.parse(selectedUrl),
+                            mode: LaunchMode.externalApplication),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextBox(
+                    key: const ValueKey('test-web-url'),
+                    readOnly: true,
+                    controller: TextEditingController(text: selectedUrl),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Always black-on-white regardless of theme: phone cameras
+                // decode that reliably, an inverted code much less so.
+                Container(
+                  key: const ValueKey('test-web-qr'),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: QrImageView(
+                    data: selectedUrl,
+                    version: QrVersions.auto,
+                    size: 176,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square, color: Colors.black),
+                    dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: Colors.black),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    'web-dashboard-url-hint-text'.i18n(),
+                    style: TextStyle(
+                        color: secondaryTextColor(context), fontSize: 12.0),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'web-dashboard-token-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextBox(
+                          key: const ValueKey('test-web-token'),
+                          readOnly: true,
+                          obscureText: !_webTokenVisible,
+                          controller:
+                              TextEditingController(text: _webService.token),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      NamedIconButton(
+                        label: _webTokenVisible
+                            ? 'hidetoken-text'.i18n()
+                            : 'showtoken-text'.i18n(),
+                        icon: _webTokenVisible
+                            ? FluentIcons.hide3
+                            : FluentIcons.view,
+                        onPressed: () => setState(
+                            () => _webTokenVisible = !_webTokenVisible),
+                      ),
+                      const SizedBox(width: 4),
+                      NamedIconButton(
+                        label: 'copytoken-text'.i18n(),
+                        icon: FluentIcons.copy,
+                        onPressed: () => _copyToClipboard(_webService.token),
+                      ),
+                      const SizedBox(width: 4),
+                      NamedIconButton(
+                        key: const ValueKey('test-web-regenerate-token'),
+                        label: 'regeneratetoken-text'.i18n(),
+                        icon: FluentIcons.refresh,
+                        onPressed: () => dialog(
+                          hostContext: context,
+                          item: '',
+                          title: 'regeneratetokenquestion-text'.i18n(),
+                          body: 'regeneratetokenbody-text'.i18n(),
+                          submitText: 'regeneratetoken-text'.i18n(),
+                          submitInput: false,
+                          submitStyle: ButtonStyle(
+                            backgroundColor:
+                                WidgetStateProperty.all(Colors.red),
+                            foregroundColor:
+                                WidgetStateProperty.all(Colors.white),
+                          ),
+                          onSubmit: (_) {
+                            // Links are rebuilt from the addresses with the
+                            // new token on the next build; only the picker's
+                            // (now stale) choice needs resetting.
+                            setState(() {
+                              _webService.regenerateToken();
+                              _webSelectedUrl = null;
+                            });
+                            Notify.message('tokenregenerated-text'.i18n(),
+                                severity: InfoBarSeverity.success);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'web-dashboard-token-hint-text'.i18n(),
+                    style: TextStyle(
+                        color: secondaryTextColor(context), fontSize: 12.0),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_webService.tunnel.isRunning)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoBar(
+                title: Text('web-dashboard-tunnel-warning-text'.i18n()),
+                severity: InfoBarSeverity.warning,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'web-dashboard-tunnel-toggle-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  ToggleSwitch(
+                    key: const ValueKey('test-web-tunnel-toggle'),
+                    checked: _webService.tunnel.isRunning,
+                    onChanged: _webTunnelStarting ? null : _setWebTunnel,
+                  ),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child:
+                        Text('web-dashboard-tunnel-toggle-hint-text'.i18n()),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_webTunnelStarting)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: _buildInlineTunnelStatus(),
+            ),
+          if (_webTunnelError != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                _webTunnelError!,
+                style:
+                    TextStyle(color: Colors.errorPrimaryColor, fontSize: 12),
+              ),
+            ),
+          if (_webService.tunnelUrl != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: InfoLabel(
+                label: 'web-dashboard-tunnel-url-text'.i18n(),
+                labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        key: const ValueKey('test-web-tunnel-url'),
+                        readOnly: true,
+                        controller: TextEditingController(
+                            text: _webService.tunnelUrl),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    NamedIconButton(
+                      label: 'copytunnelurl-text'.i18n(),
+                      icon: FluentIcons.copy,
+                      onPressed: () =>
+                          _copyToClipboard(_webService.tunnelUrl!),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ],
     );
   }

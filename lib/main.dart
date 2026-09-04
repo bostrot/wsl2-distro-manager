@@ -13,6 +13,7 @@ import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
+import 'package:wsl2distromanager/api/web/web_dashboard_service.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -141,6 +142,16 @@ void main() async {
   final mcpService = WslMcpService();
   if (mcpService.enabled && LicenseManager().isPro) {
     await mcpService.start();
+  }
+
+  // Same for the web dashboard: a phone that scanned the QR code yesterday
+  // should still get in today. A taken port is not fatal for the app;
+  // Settings reports it when the user looks.
+  final webDashboard = WebDashboardService();
+  if (webDashboard.enabled && LicenseManager().isPro) {
+    try {
+      await webDashboard.start();
+    } catch (_) {}
   }
 
   // Probe AI Workspace in the background so the screen has results by the

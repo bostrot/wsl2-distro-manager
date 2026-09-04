@@ -459,6 +459,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
       // with a feature missing that they were in fact paying for.
       ['ai-workspace-feature', false, true],
       ['mcp-server-feature', false, true],
+      ['web-dashboard-feature', false, true],
     ];
 
     const columnWidth = 64.0;

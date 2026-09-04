@@ -1,9 +1,10 @@
-// Optional public exposure for the MCP server via a Cloudflare quick
-// tunnel — outbound only, no account or port forwarding needed.
+// Optional public exposure for a local server (the MCP endpoint, the web
+// dashboard) via a Cloudflare quick tunnel — outbound only, no account or
+// port forwarding needed.
 //
-// Once on, the bearer token is the ONLY thing gating access, so the
-// Settings UI has to spell that out. cloudflared is downloaded on first
-// use and cached under the app data dir.
+// Once on, the token is the ONLY thing gating access, so the Settings UI
+// has to spell that out. cloudflared is downloaded on first use and cached
+// under the app data dir.
 
 import 'dart:async';
 import 'dart:convert';
@@ -37,19 +38,25 @@ class CloudflareTunnelService {
       RegExp(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com');
   static const Duration defaultUrlWaitTimeout = Duration(seconds: 25);
 
-  // Static for the same reason as WslMcpService._server: one real tunnel,
-  // however many wrappers.
-  static Process? _process;
-  static String? _publicUrl;
-  static StreamSubscription<String>? _stdoutSub;
-  static StreamSubscription<String>? _stderrSub;
+  /// The port the MCP server listens on — the tunnel this service pointed
+  /// at before the web dashboard needed one of its own.
+  static const int defaultLocalPort = 59133;
 
+  // Static for the same reason as WslMcpService._server: one real tunnel
+  // per local port, however many wrappers. Keyed by port so the MCP server
+  // and the web dashboard can each have their own without either wrapper
+  // tearing down the other's.
+  static final Map<int, _Tunnel> _tunnels = <int, _Tunnel>{};
+
+  /// The local port this wrapper's tunnel forwards to.
+  final int localPort;
   final TunnelProcessSpawner processSpawner;
   final BinaryLocator? binaryLocatorOverride;
   final Dio dio;
   final Duration urlWaitTimeout;
 
   CloudflareTunnelService({
+    this.localPort = defaultLocalPort,
     TunnelProcessSpawner? processSpawner,
     this.binaryLocatorOverride,
     Dio? dio,
@@ -57,9 +64,9 @@ class CloudflareTunnelService {
   })  : processSpawner = processSpawner ?? _defaultProcessSpawner,
         dio = dio ?? Dio();
 
-  bool get isRunning => _process != null;
+  bool get isRunning => _tunnels.containsKey(localPort);
 
-  String? get publicUrl => _publicUrl;
+  String? get publicUrl => _tunnels[localPort]?.publicUrl;
 
   /// Cached copy, then PATH, then a fresh download.
   Future<String> _locateBinary() async {
@@ -123,17 +130,21 @@ class CloudflareTunnelService {
     }
   }
 
-  /// Starts a tunnel to `127.0.0.1:<localPort>` and returns the public URL.
+  /// Starts a tunnel to `127.0.0.1:[localPort]` and returns the public URL.
   /// Throws if cloudflared cannot be run or reports no URL in time.
-  Future<String> start(int localPort) async {
-    if (isRunning && _publicUrl != null) return _publicUrl!;
+  Future<String> start() async {
+    final existing = _tunnels[localPort];
+    if (existing != null && existing.publicUrl != null) {
+      return existing.publicUrl!;
+    }
 
     final executable = await _locateBinary();
     final process = await processSpawner(
       executable,
       ['tunnel', '--url', 'http://127.0.0.1:$localPort'],
     );
-    _process = process;
+    final tunnel = _Tunnel(process);
+    _tunnels[localPort] = tunnel;
 
     final urlCompleter = Completer<String>();
     void scanForUrl(String line) {
@@ -144,12 +155,12 @@ class CloudflareTunnelService {
       }
     }
 
-    _stdoutSub = process.stdout
+    tunnel.stdoutSub = process.stdout
         .cast<List<int>>()
         .transform(const SystemEncoding().decoder)
         .transform(const LineSplitter())
         .listen(scanForUrl);
-    _stderrSub = process.stderr
+    tunnel.stderrSub = process.stderr
         .cast<List<int>>()
         .transform(const SystemEncoding().decoder)
         .transform(const LineSplitter())
@@ -157,7 +168,7 @@ class CloudflareTunnelService {
 
     try {
       final url = await urlCompleter.future.timeout(urlWaitTimeout);
-      _publicUrl = url;
+      tunnel.publicUrl = url;
       return url;
     } on TimeoutException {
       await stop();
@@ -166,13 +177,22 @@ class CloudflareTunnelService {
     }
   }
 
+  /// Tears down this wrapper's tunnel; other ports' tunnels keep running.
   Future<void> stop() async {
-    await _stdoutSub?.cancel();
-    await _stderrSub?.cancel();
-    _stdoutSub = null;
-    _stderrSub = null;
-    _process?.kill();
-    _process = null;
-    _publicUrl = null;
+    final tunnel = _tunnels.remove(localPort);
+    if (tunnel == null) return;
+    await tunnel.stdoutSub?.cancel();
+    await tunnel.stderrSub?.cancel();
+    tunnel.process.kill();
   }
+}
+
+/// One running cloudflared process and what it has reported so far.
+class _Tunnel {
+  final Process process;
+  String? publicUrl;
+  StreamSubscription<String>? stdoutSub;
+  StreamSubscription<String>? stderrSub;
+
+  _Tunnel(this.process);
 }

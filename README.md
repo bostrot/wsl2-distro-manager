@@ -82,6 +82,7 @@
 - [x] **Sandboxed AI** — spin up a throwaway Ubuntu distro and give an AI chat access to *only* the inside of that sandbox
 - [x] **Task queue** — hand the assistant a checklist and let it work through it, ticking items off as it goes
 - [x] **MCP server** — expose WSL to Claude Desktop, Claude Code, opencode and other MCP clients
+- [x] **Web dashboard** — manage everything from your phone or another computer: scan a QR code, get the whole app in a browser, optionally published beyond your network through a Cloudflare tunnel
 
 > The AI features run on credentials **you** bring — your own OpenAI-compatible
 > API key, or your **Claude subscription** (Sign in with Claude). No AI service
@@ -174,6 +175,25 @@ Any MCP client that speaks streamable HTTP can also point straight at the
 endpoint with an `Authorization: Bearer <TOKEN>` header, skipping `mcp-remote`.
 To reach it from another machine, enable the built-in **Cloudflare tunnel**
 toggle in the same panel and use the public URL it prints.
+
+## 📱 Web dashboard
+
+Turn on **Settings → Web Dashboard** (Pro) and the app serves a browser
+dashboard on port `59134` for every device on your network — Windows and macOS
+alike. Scan the QR code the panel shows with your phone (or copy the link) and
+you get the whole app in a browser: start, stop, duplicate and delete instances,
+run commands, open persistent terminal sessions, run your saved snippets, and
+drive every other tool (import, export, packaging, `.wslconfig`, disks, VM
+creation) through generated forms. It is the same tool set the AI assistant
+and the MCP server use.
+
+Access is guarded by a token that is part of the link (`?token=…`), so a
+scanned QR code is all a device needs — and regenerating the token in the
+panel revokes every link handed out so far. The dashboard binds to all
+interfaces on purpose; flip **Publish via Cloudflare Tunnel** in the same panel
+to get a temporary public HTTPS link (the QR code switches to it) when you need
+it away from home. Once published, the token is the only thing protecting a
+surface that can run commands, so share that link with care.
 
 ## 📦 Install
 
