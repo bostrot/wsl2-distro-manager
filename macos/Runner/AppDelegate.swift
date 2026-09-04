@@ -10,7 +10,7 @@ class AppDelegate: FlutterAppDelegate {
   /// "Activate in WSL Manager" in the browser cold-starts the app, and the
   /// engine attaches its channels a few frames later. Hold the link until the
   /// Dart side comes asking, rather than dropping the purchase on the floor.
-  private var pendingLink: String?
+  private(set) var pendingLink: String?
   private var channel: FlutterMethodChannel?
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -21,9 +21,15 @@ class AppDelegate: FlutterAppDelegate {
     return true
   }
 
-  /// Not an `override`: `FlutterAppDelegate` implements
-  /// `applicationWillFinishLaunching:` but leaves this one to the app.
-  func applicationDidFinishLaunching(_ notification: Notification) {
+  /// `override` is required even though `FlutterAppDelegate` does not
+  /// implement this selector: Swift imports every optional
+  /// `NSApplicationDelegate` method as an overridable member of an ObjC
+  /// superclass that adopts the protocol. For the same reason `super` is not
+  /// called here — the selector has no implementation up the chain, so the
+  /// call would raise "unrecognized selector". Flutter's lifecycle registrar
+  /// observes `NSApplication.didFinishLaunchingNotification` itself and does
+  /// not depend on this method being forwarded.
+  override func applicationDidFinishLaunching(_ notification: Notification) {
     guard
       let controller = mainFlutterWindow?.contentViewController as? FlutterViewController
     else {

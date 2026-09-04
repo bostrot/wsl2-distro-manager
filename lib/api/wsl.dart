@@ -2078,10 +2078,11 @@ try {
               ));
 
         if (compactResult.exitCode != 0) {
-          throw Exception(compactResult.stderr.trim().isNotEmpty == true
+          throw Exception(compactResult.stderr.trim().isNotEmpty
               ? compactResult.stderr
-              : compactResult.stdout ??
-                  'Remote diskpart compaction failed');
+              : compactResult.stdout.trim().isNotEmpty
+                  ? compactResult.stdout
+                  : 'Remote diskpart compaction failed');
         }
 
         return 'Cleanup completed successfully';

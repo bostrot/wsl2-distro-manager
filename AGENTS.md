@@ -17,6 +17,7 @@ Flutter desktop app for managing WSL distributions on Windows x64 (primary targe
 | Check translations | `dart run scripts/check_translations.dart` | Run before every build; CI gate |
 | Build macOS app | `scripts/build_macos.sh` | Builds + signs `vmctl`, then `flutter build macos`; needs full Xcode |
 | vmctl Swift tests | `scripts/test_vmctl.sh` | Works with Command Line Tools only |
+| Runner XCTests (macOS) | `flutter build macos --debug && xcodebuild test -workspace macos/Runner.xcworkspace -scheme Runner -configuration Debug -destination 'platform=macOS'` | `AppDelegate` deep-link tests in `macos/RunnerTests/`; needs full Xcode |
 
 **Required setup:** `flutter config --enable-windows-desktop` (Windows) / `flutter config --enable-macos-desktop` (macOS)
 

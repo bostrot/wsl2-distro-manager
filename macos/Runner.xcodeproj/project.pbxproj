@@ -482,7 +482,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bostrot.wsl2distromanager.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/wsl2distromanager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/wsl2distromanager";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WSL Manager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WSL Manager";
 			};
 			name = Debug;
 		};
@@ -497,7 +497,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bostrot.wsl2distromanager.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/wsl2distromanager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/wsl2distromanager";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WSL Manager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WSL Manager";
 			};
 			name = Release;
 		};
@@ -512,7 +512,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bostrot.wsl2distromanager.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/wsl2distromanager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/wsl2distromanager";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WSL Manager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WSL Manager";
 			};
 			name = Profile;
 		};

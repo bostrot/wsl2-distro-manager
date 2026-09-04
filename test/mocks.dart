@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:chunked_downloader/chunked_downloader.dart' as cd;
 import 'package:dio/dio.dart';
-import 'package:http/http.dart';
 import 'package:async/async.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/api/shell.dart';
@@ -606,8 +605,6 @@ class MockChunkedDownloader implements cd.ChunkedDownloader {
   void Function()? onPause;
   @override
   void Function()? onResume;
-  @override
-  StreamSubscription<StreamedResponse>? stream;
   @override
   ChunkedStreamReader<int>? reader;
   @override

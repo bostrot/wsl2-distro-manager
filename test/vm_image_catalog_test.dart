@@ -251,6 +251,24 @@ void main() {
           reason: 'a partial file must not poison the cache');
     });
 
+    test('a downloader error propagates and leaves nothing cached', () async {
+      final catalog = catalogWith(
+          ({required url, required saveFilePath, onProgress}) =>
+              _FakeDownloader(
+                  url: url,
+                  saveFilePath: saveFilePath,
+                  onProgress: onProgress,
+                  failWith: const SocketException('connection reset')));
+      await expectLater(
+          catalog.download(alpine()), throwsA(isA<SocketException>()));
+      final cache = Directory('${dataDir.path}/isos');
+      expect(
+          cache.existsSync() &&
+              cache.listSync().any((f) => f.path.endsWith('.iso')),
+          isFalse,
+          reason: 'a failed download must not leave a file behind');
+    });
+
     test('cancel stops the downloader and surfaces as CancelledException',
         () async {
       _FakeDownloader? made;

@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/recipes/recipe_catalog.dart';
 import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
 import 'package:wsl2distromanager/api/recipes/service_recipe.dart';
-import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 import 'vm_backend_test.dart' show FakeBackend;

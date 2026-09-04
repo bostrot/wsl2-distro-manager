@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:localization/localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
