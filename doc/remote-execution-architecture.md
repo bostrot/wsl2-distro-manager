@@ -10,8 +10,11 @@ The Execution Broker provides a unified abstraction layer for shell command exec
 > routed through the `RemoteShell` class the diagram below shows: `RemoteShell`
 > exists (`lib/api/execution/remote_shell.dart`) but is **not instantiated
 > anywhere in production**. Instead, `wsl.dart` decides local-vs-remote itself
-> and, for remote, builds a plain `ssh … wsl …` command (now POSIX-quoted per
-> token — see `_buildRemoteArgs(quoteCommand: true)`) that it hands to either
+> and, for remote, builds a plain `ssh … wsl …` command (with the remote
+> command made safe for the host's login shell by `remoteHostCommand()` in
+> `lib/api/remote_command.dart` — bare when every token is shell-neutral, an
+> encoded PowerShell wrapper otherwise; see that file's header for why no
+> quoting style works across cmd.exe, PowerShell and bash) that it hands to either
 > the broker (`_brokeredWsl`) or, for the older `_runWsl`/`_startWsl` paths,
 > straight to `shell.run`/`shell.start`. So the diagram is the *intended*
 > design; the "RemoteShell" box is aspirational until those call sites are

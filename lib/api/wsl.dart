@@ -11,6 +11,7 @@ import 'package:localization/localization.dart';
 import 'package:path/path.dart' as p;
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/remote_command.dart';
 import 'package:wsl2distromanager/api/remote_target.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
@@ -285,11 +286,11 @@ class WSLApi extends VmBackend {
     final result = (_broker != null)
         ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
             command: 'ssh',
-            arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            arguments: _buildRemotePowerShell(script),
           )))
         : _ShellResult.fromProcess(await shell.run(
             'ssh',
-            _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            _buildRemotePowerShell(script),
             runInShell: false,
             stdoutEncoding: utf8,
             stderrEncoding: utf8,
@@ -315,11 +316,11 @@ class WSLApi extends VmBackend {
     final result = (_broker != null)
         ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
             command: 'ssh',
-            arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            arguments: _buildRemotePowerShell(script),
           )))
         : _ShellResult.fromProcess(await shell.run(
             'ssh',
-            _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            _buildRemotePowerShell(script),
             runInShell: false,
             stdoutEncoding: utf8,
             stderrEncoding: utf8,
@@ -331,6 +332,9 @@ class WSLApi extends VmBackend {
     }
   }
 
+  /// `mkdir` [path] on the remote host unless it exists. The path is passed
+  /// as a plain token: quoting for the host is [_buildRemoteArgs]'s job, and
+  /// a pre-quoted `"path"` would reach cmd.exe with the quotes doubled.
   Future<void> _ensureRemoteDirectory(String path) async {
     if (_broker != null) {
       await _broker!.run(ExecutionRequest(
@@ -340,9 +344,9 @@ class WSLApi extends VmBackend {
           'if',
           'not',
           'exist',
-          '"$path"',
+          path,
           'mkdir',
-          '"$path"',
+          path,
         ]),
       ));
     } else {
@@ -353,9 +357,9 @@ class WSLApi extends VmBackend {
           'if',
           'not',
           'exist',
-          '"$path"',
+          path,
           'mkdir',
-          '"$path"',
+          path,
         ]),
         runInShell: false,
         stdoutEncoding: systemEncoding,
@@ -393,38 +397,29 @@ class WSLApi extends VmBackend {
     return remotePath;
   }
 
-  /// POSIX single-quote an argument so the *remote* shell keeps it as one
-  /// token. `ssh host a b c` hands `a b c` to the remote login shell, which
-  /// word-splits and re-interprets it — a third argv flatten on top of the
-  /// two wsl.exe already does. Quoting each token here is what stops a command
-  /// with spaces, `|`, `$`, `&` or quotes from being mangled over SSH.
-  static String _escapePosixSingleQuoted(String value) =>
-      "'${value.replaceAll("'", r"'\''")}'";
-
+  /// ssh arguments that run [executable] with [args] on the remote Windows
+  /// host.
+  ///
+  /// ssh's own options and the target stay raw — the local ssh consumes them.
+  /// The command itself goes through [remoteHostCommand]: `ssh host a b c`
+  /// joins the tokens with spaces and the host's *login shell* re-parses the
+  /// result, and that shell is cmd.exe, PowerShell or bash depending on how
+  /// OpenSSH was set up there. POSIX single quotes, the previous answer, made
+  /// every command a parse error on a PowerShell host (bostrot/ai-tasks#21);
+  /// see lib/api/remote_command.dart for what survives all three.
   List<String> _buildRemoteArgs(
     String executable,
     List<String> args, {
     bool allocateTty = false,
-    bool quoteCommand = false,
-  }) {
-    final remoteArgs = <String>[..._sshClientOptions];
-    if (allocateTty) {
-      remoteArgs.add('-tt');
-    }
-    remoteArgs.add('--');
-    remoteArgs.add(_remoteTarget);
-    // ssh's own options and the target stay raw (they are consumed by the
-    // local ssh); only the remote command is quoted, because only it reaches
-    // the remote shell.
-    if (quoteCommand) {
-      remoteArgs.add(_escapePosixSingleQuoted(executable));
-      remoteArgs.addAll(args.map(_escapePosixSingleQuoted));
-    } else {
-      remoteArgs.add(executable);
-      remoteArgs.addAll(args);
-    }
-    return remoteArgs;
-  }
+  }) =>
+      sshRemoteCommand(_remoteTarget, executable, args,
+          allocateTty: allocateTty);
+
+  /// ssh arguments that run the PowerShell [script] itself on the remote
+  /// host, with a failure reported as a non-zero exit code and a plain-text
+  /// message on stderr.
+  List<String> _buildRemotePowerShell(String script) =>
+      sshRemotePowerShell(_remoteTarget, script);
 
   Future<ProcessResult> _runWsl(
     List<String> args, {
@@ -444,7 +439,7 @@ class WSLApi extends VmBackend {
 
     return shell.run(
       'ssh',
-      _buildRemoteArgs('wsl', args, quoteCommand: true),
+      _buildRemoteArgs('wsl', args),
       runInShell: false,
       stdoutEncoding: stdoutEncoding,
       stderrEncoding: stderrEncoding,
@@ -471,7 +466,7 @@ class WSLApi extends VmBackend {
     final ExecutionRequest request = _useRemoteWsl
         ? ExecutionRequest(
             command: 'ssh',
-            arguments: _buildRemoteArgs('wsl', args, quoteCommand: true),
+            arguments: _buildRemoteArgs('wsl', args),
             timeout: timeout,
           )
         : ExecutionRequest(
@@ -504,7 +499,7 @@ class WSLApi extends VmBackend {
 
     return shell.start(
       'ssh',
-      _buildRemoteArgs('wsl', args, allocateTty: allocateTty, quoteCommand: true),
+      _buildRemoteArgs('wsl', args, allocateTty: allocateTty),
       runInShell: false,
       mode: mode,
     );
@@ -520,11 +515,11 @@ class WSLApi extends VmBackend {
     final result = (_broker != null)
         ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
             command: 'ssh',
-            arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            arguments: _buildRemotePowerShell(script),
           )))
         : _ShellResult.fromProcess(await shell.run(
             'ssh',
-            _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+            _buildRemotePowerShell(script),
             runInShell: false,
             stdoutEncoding: utf8,
             stderrEncoding: utf8,
@@ -773,13 +768,19 @@ class WSLApi extends VmBackend {
       target = await getDefaultUserHome(distribution);
     }
 
-    // See start() for why 'ssh' must be included explicitly here.
+    final wslArgs = <String>[
+      '-d',
+      distribution,
+      codeCmd,
+      if (target != '') target,
+    ];
+    // See start() for why 'ssh' must be included explicitly here. The path
+    // is part of the remote command, so it goes in before _buildRemoteArgs
+    // wraps that command for the host's shell — appended afterwards it would
+    // land behind the wrapper instead of inside it.
     List<String> args = _useRemoteWsl
-        ? ['ssh', ..._buildRemoteArgs('wsl', ['-d', distribution, codeCmd])]
-        : ['wsl', '-d', distribution, codeCmd];
-    if (target != '') {
-      args.add(target);
-    }
+        ? ['ssh', ..._buildRemoteArgs('wsl', wslArgs)]
+        : ['wsl', ...wslArgs];
 
     if (Platform.isLinux) {
       await _startLinuxTerminal(args);
@@ -1098,12 +1099,12 @@ class WSLApi extends VmBackend {
       if (_broker != null) {
         await _broker!.run(ExecutionRequest(
           command: 'ssh',
-          arguments: _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
+          arguments: _buildRemoteArgs('cmd', ['/c', 'del', '/q', exportPath]),
         ));
       } else {
         await shell.run(
           'ssh',
-          _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$exportPath"']),
+          _buildRemoteArgs('cmd', ['/c', 'del', '/q', exportPath]),
           runInShell: false,
         );
       }
@@ -1127,12 +1128,12 @@ class WSLApi extends VmBackend {
           ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
               command: 'ssh',
               arguments: _buildRemoteArgs('cmd',
-                  ['/c', 'copy', '/Y', '"$vhdPath"', '"$copyPath"']),
+                  ['/c', 'copy', '/Y', vhdPath, copyPath]),
             )))
           : _ShellResult.fromProcess(await shell.run(
               'ssh',
               _buildRemoteArgs('cmd',
-                  ['/c', 'copy', '/Y', '"$vhdPath"', '"$copyPath"']),
+                  ['/c', 'copy', '/Y', vhdPath, copyPath]),
               runInShell: false,
             ));
 
@@ -1145,12 +1146,12 @@ class WSLApi extends VmBackend {
       if (_broker != null) {
         await _broker!.run(ExecutionRequest(
           command: 'ssh',
-          arguments: _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$copyPath"']),
+          arguments: _buildRemoteArgs('cmd', ['/c', 'del', '/q', copyPath]),
         ));
       } else {
         await shell.run(
           'ssh',
-          _buildRemoteArgs('cmd', ['/c', 'del', '/q', '"$copyPath"']),
+          _buildRemoteArgs('cmd', ['/c', 'del', '/q', copyPath]),
           runInShell: false,
         );
       }
@@ -1441,16 +1442,12 @@ class WSLApi extends VmBackend {
     for (String cmd in cmds) {
       if (cmd.contains('passwd')) {
         // See start() for why 'ssh' must be included explicitly here.
+        // The command is part of what the host runs, so it joins the wsl
+        // argv before _buildRemoteArgs wraps it — see startVSCode.
+        final wslArgs = <String>['-d', distribution, ...splitShellArgs(cmd)];
         args = _useRemoteWsl
-            ? [
-                'ssh',
-                ..._buildRemoteArgs('wsl', ['-d', distribution],
-                    allocateTty: true)
-              ]
-            : ['wsl', '-d', distribution];
-        splitShellArgs(cmd).forEach((String arg) {
-          args.add(arg);
-        });
+            ? ['ssh', ..._buildRemoteArgs('wsl', wslArgs, allocateTty: true)]
+            : ['wsl', ...wslArgs];
         if (_useRemoteWsl && Platform.isLinux) {
           await _startLinuxTerminal(args);
           exitCode = 0;
@@ -2067,11 +2064,11 @@ try {
         final compactResult = (_broker != null)
             ? _ShellResult.fromExecution(await _broker!.run(ExecutionRequest(
                 command: 'ssh',
-                arguments: _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+                arguments: _buildRemotePowerShell(script),
               )))
             : _ShellResult.fromProcess(await shell.run(
                 'ssh',
-                _buildRemoteArgs('powershell', ['-NoProfile', '-Command', script]),
+                _buildRemotePowerShell(script),
                 runInShell: false,
                 stdoutEncoding: utf8,
                 stderrEncoding: utf8,
@@ -2368,13 +2365,13 @@ try {
           await _broker!.run(ExecutionRequest(
             command: 'ssh',
             arguments: _buildRemoteArgs(
-                'cmd', ['/c', 'del', '/q', '"$exportFilePath"']),
+                'cmd', ['/c', 'del', '/q', exportFilePath]),
           ));
         } else {
           await shell.run(
             'ssh',
             _buildRemoteArgs(
-                'cmd', ['/c', 'del', '/q', '"$exportFilePath"']),
+                'cmd', ['/c', 'del', '/q', exportFilePath]),
             runInShell: false,
           );
         }

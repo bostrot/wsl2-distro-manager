@@ -7,6 +7,7 @@ import 'package:chunked_downloader/chunked_downloader.dart' as cd;
 import 'package:dio/dio.dart';
 import 'package:async/async.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
+import 'package:wsl2distromanager/api/remote_command.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -218,6 +219,7 @@ class MockShell implements Shell {
       String executable, List<String> arguments, bool runInShell) {
     lastRunInShell = runInShell;
     runCalls.add(List<String>.from(arguments));
+    arguments = _unwrapRemote(arguments);
 
     String stdout = '';
     String stderr = '';
@@ -480,6 +482,33 @@ class MockShell implements Shell {
       stderr: outcome.stderr,
     );
   }
+}
+
+/// An `ssh <options> -- <target> <command>` argument list with the remote
+/// command put back into the shape the host will run it in.
+///
+/// `remoteHostCommand` (lib/api/remote_command.dart) sends anything with
+/// spaces or metacharacters as `powershell … -EncodedCommand <base64>`, so
+/// without this the `bash -c` matching in [MockShell._simulate] would never
+/// see a remote in-distro script. Bare remote commands and anything that is
+/// not ssh-shaped come back unchanged. `runCalls`/`lastRunArguments` keep the
+/// raw list — a test that wants to assert on what actually crossed the wire
+/// still can.
+List<String> _unwrapRemote(List<String> arguments) {
+  // Locate the encoded five-token run wherever it sits — behind a terminal
+  // launcher's own prefix, or with tokens a caller wrongly appended after it —
+  // so a mismatch shows up as a failing assertion, not a vacuous pass.
+  final marker = arguments.indexOf('-EncodedCommand');
+  if (marker < 3 || marker + 1 >= arguments.length) return arguments;
+  final start = marker - 3;
+  final encoded = arguments.sublist(start, marker + 2);
+  final decoded = decodeRemoteCommand(encoded);
+  if (identical(decoded, encoded)) return arguments;
+  return <String>[
+    ...arguments.sublist(0, start),
+    ...decoded,
+    ...arguments.sublist(marker + 2),
+  ];
 }
 
 /// What [MockShell._simulate] decided, before it is shaped into a

@@ -77,68 +77,28 @@ class MountService {
     return prefs.getString('RemoteWSLTarget')?.trim() ?? '';
   }
 
-  String get _sshControlPath {
-    final tmpDir = Directory.systemTemp.path;
-    return p.join(tmpDir, 'wsl2dm_ssh_mux.sock');
-  }
+  /// Same contract as `WSLApi._buildRemoteArgs`: the command goes through
+  /// [sshRemoteCommand] so the host's login shell — cmd.exe, PowerShell or
+  /// bash — cannot take it apart. See lib/api/remote_command.dart.
+  List<String> _buildRemoteArgs(String executable, List<String> args) =>
+      sshRemoteCommand(_remoteTarget, executable, args);
 
-  List<String> get _sshClientOptions {
-    return <String>[
-      '-o',
-      'BatchMode=yes',
-      '-o',
-      'PasswordAuthentication=no',
-      '-o',
-      'KbdInteractiveAuthentication=no',
-      '-o',
-      'ControlMaster=auto',
-      '-o',
-      'ControlPersist=10m',
-      '-o',
-      'ControlPath=$_sshControlPath',
-      '-o',
-      'ServerAliveInterval=30',
-      '-o',
-      'ServerAliveCountMax=3',
-    ];
-  }
-
-  List<String> _buildRemoteArgs(String executable, List<String> args) {
-    return <String>[
-      ..._sshClientOptions,
-      '--',
-      _remoteTarget,
-      executable,
-      ...args,
-    ];
-  }
-
-  String _toUtf16LeBase64(String input) {
-    final codeUnits = input.codeUnits;
-    final bytes = <int>[];
-    for (final unit in codeUnits) {
-      bytes.add(unit & 0xFF);
-      bytes.add((unit >> 8) & 0xFF);
-    }
-    return base64Encode(bytes);
-  }
+  List<String> _buildRemotePowerShell(String script) =>
+      sshRemotePowerShell(_remoteTarget, script);
 
   Future<_ShellResult> _runHostPowershell(String script) async {
     if (_useRemoteWsl) {
-      final encoded = _toUtf16LeBase64(script);
       if (_broker != null) {
         final result = await _broker!.run(ExecutionRequest(
           command: 'ssh',
-          arguments: _buildRemoteArgs(
-              'powershell', ['-NoProfile', '-EncodedCommand', encoded]),
+          arguments: _buildRemotePowerShell(script),
           runInShell: false,
         ));
         return _ShellResult.fromExecution(result);
       } else {
         final result = await shell.run(
           'ssh',
-          _buildRemoteArgs(
-              'powershell', ['-NoProfile', '-EncodedCommand', encoded]),
+          _buildRemotePowerShell(script),
           runInShell: false,
           stdoutEncoding: null,
           stderrEncoding: null,

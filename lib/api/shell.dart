@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:wsl2distromanager/api/process_reaper.dart';
+import 'package:wsl2distromanager/api/remote_command.dart';
 
 /// Shared SSH client options for remote WSL connections.
 List<String> getSshClientOptions() {
@@ -24,6 +25,39 @@ List<String> getSshClientOptions() {
     'ServerAliveInterval=30',
     '-o',
     'ServerAliveCountMax=3',
+  ];
+}
+
+/// The full `ssh` argument list that runs [executable] with [args] on the
+/// remote Windows host [target] — `ssh <options> [-tt] -- <target> <command>`.
+///
+/// ssh's own options and the target stay raw (the local ssh consumes them);
+/// the command goes through [remoteHostCommand], which is what keeps it whole
+/// across the host's login shell. `WSLApi` and `MountService` both build
+/// their remote calls here so an ssh-level change lands in one place.
+List<String> sshRemoteCommand(
+  String target,
+  String executable,
+  List<String> args, {
+  bool allocateTty = false,
+}) {
+  return <String>[
+    ...getSshClientOptions(),
+    if (allocateTty) '-tt',
+    '--',
+    target,
+    ...remoteHostCommand(executable, args),
+  ];
+}
+
+/// The full `ssh` argument list that runs the PowerShell [script] itself on
+/// [target]; see [remotePowerShellScript] for the failure contract.
+List<String> sshRemotePowerShell(String target, String script) {
+  return <String>[
+    ...getSshClientOptions(),
+    '--',
+    target,
+    ...remotePowerShellScript(script),
   ];
 }
 

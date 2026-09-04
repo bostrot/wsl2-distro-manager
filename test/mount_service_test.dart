@@ -44,13 +44,6 @@ void main() {
     });
   });
 
-  group('MountService._toUtf16LeBase64', () {
-    test('encodes ASCII string correctly', () {
-      // _toUtf16LeBase64 is tested indirectly through mount operations
-      expect(true, isTrue);
-    });
-  });
-
   group('PhysicalDisk', () {
     test('creates disk object correctly', () {
       final disk = PhysicalDisk(

@@ -9,6 +9,14 @@ import 'dart:io' as io;
 import '../shell.dart';
 
 /// Remote shell backed by SSH with mux connection support.
+///
+/// Not instantiated anywhere in production (see
+/// doc/remote-execution-architecture.md). Before wiring it in, replace
+/// [_escapeArgs] with `remoteHostCommand` from lib/api/remote_command.dart:
+/// double-quoting the remote command is exactly what a Windows host's
+/// PowerShell login shell strips, the failure that broke remote WSL from the
+/// Mac (bostrot/ai-tasks#21), and `runInShell: true` adds a `cmd.exe /c`
+/// layer on Windows on top of that.
 class RemoteShell implements Shell {
   final String _targetHost; // e.g., "user@192.168.1.100"
   final List<String> Function() _sshOptionsBuilder;

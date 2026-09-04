@@ -9,6 +9,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/app.dart';
+import 'package:wsl2distromanager/api/remote_command.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_conf.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
@@ -422,24 +423,49 @@ void main() {
       // the argument list instead).
       expect(mockShell.lastRunExecutable, 'ssh');
       expect(mockShell.lastRunArguments, contains('user@192.168.1.20'));
-      // The remote command is POSIX-quoted so the remote shell keeps each
-      // token whole; ssh's own options (the target) stay raw.
-      expect(mockShell.lastRunArguments, contains("'--terminate'"));
-      expect(mockShell.lastRunArguments, contains("'Ubuntu'"));
+      // Plain tokens cross the wire bare. The POSIX-quoted `'--terminate'`
+      // they used to be is a parse error on a host whose OpenSSH login shell
+      // is PowerShell — the default on most configured Windows machines —
+      // which is why no remote command worked from the Mac
+      // (bostrot/ai-tasks#21).
+      expect(mockShell.lastRunArguments, contains('--terminate'));
+      expect(mockShell.lastRunArguments, contains('Ubuntu'));
+      expect(mockShell.lastRunArguments, isNot(contains("'--terminate'")));
     });
 
-    test('a remote command with spaces and metacharacters is quoted whole',
+    test(
+        'a remote command with spaces and metacharacters crosses the wire whole',
         () async {
-      // The bug this closes: ssh joins the remote argv with spaces and the
-      // remote login shell re-splits it, so an unquoted `bash -c "a | b"`
-      // lost everything after the space. Each token is now single-quoted.
+      // ssh joins the remote argv with spaces and the host's login shell
+      // re-splits it by its own rules — cmd.exe, PowerShell and bash all
+      // differently. So a command like this travels as an encoded PowerShell
+      // wrapper: only shell-neutral tokens leave this machine, and the host
+      // runs exactly the argv it was given.
       await wslApi.runVerb(
           ['-d', 'Ubuntu', '--exec', 'bash', '-c', 'echo hi | tee /tmp/x']);
       final args = mockShell.runCalls.last;
-      expect(args, contains("'-d'"));
-      expect(args, contains("'echo hi | tee /tmp/x'"));
-      // The ssh target itself is not quoted.
-      expect(args, contains('user@192.168.1.20'));
+      final target = args.indexOf('user@192.168.1.20');
+      expect(target, greaterThan(0));
+      final remote = args.sublist(target + 1);
+      expect(remote.every(isShellNeutralToken), isTrue,
+          reason: remote.join(' '));
+      expect(remote, contains('-EncodedCommand'));
+      expect(decodeRemoteCommand(remote), [
+        'wsl',
+        '-d',
+        'Ubuntu',
+        '--exec',
+        'bash',
+        '-c',
+        'echo hi | tee /tmp/x',
+      ]);
+    });
+
+    test('a remote in-distro script still reaches the mock shell', () async {
+      // The test shell unwraps the encoded command, so the existing
+      // `bash -c` simulations keep answering for remote targets too.
+      mockShell.defaultUserHome = '/home/remote';
+      expect(await wslApi.getDefaultUserHome('Ubuntu'), '/home/remote');
     });
 
     test('remoteInstallPath builds a path under the shared remote root',
@@ -1317,8 +1343,10 @@ systemd = true
       expect(await wslApi.setConfig('kernelCommandLine', value), true);
 
       // Unescaped, the quote closes the string literal the file is being
-      // carried in and the remainder is parsed as PowerShell code.
-      expect(mockShell.runCalls.last.last, contains("init=''/bin/sh -c id''"));
+      // carried in and the remainder is parsed as PowerShell code. The script
+      // crosses the wire base64-encoded (remote_command.dart), so look inside.
+      expect(decodePowerShellScript(mockShell.runCalls.last.last),
+          contains("init=''/bin/sh -c id''"));
       expect((await wslApi.readConfig())['kernelCommandLine'], value);
     });
 
