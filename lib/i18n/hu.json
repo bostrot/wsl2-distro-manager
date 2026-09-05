@@ -836,5 +836,13 @@
   "guestaccessdone-text": "Az SSH-hozzáférés beállítva: %s.",
   "guestaccessunreachable-text": "%s0 nem érhető el SSH-n: %s1",
   "guestaccessstilldenied-text": "A kulcs telepítve van, de az SSH %s0 néven a(z) %s1 gépre továbbra is el van utasítva. Állítsd be a(z) %s2 felhasználót indítási felhasználónak a példány beállításaiban, vagy engedélyezd a root kulcsos bejelentkezését a vendég sshd-beállításaiban.",
-  "password-text": "Jelszó"
+  "password-text": "Jelszó",
+  "about-tagline": "WSL-disztribúciók és Linux VM-ek kezelése egy helyen.",
+  "about-github-desc": "Forráskód, hibajegyek és megbeszélések",
+  "about-changelog-desc": "Mi változott az egyes kiadásokban",
+  "about-documentation-desc": "Útmutatók, tippek és hibaelhárítás",
+  "about-donate-desc": "A fejlesztés támogatása",
+  "about-dependencies-desc": "Nyílt forráskódú könyvtárak, amelyekre az alkalmazás épül",
+  "about-license-desc": "Az alkalmazás terjesztésének feltételei",
+  "copyversioninfo-text": "Verzióinformáció másolása"
 }

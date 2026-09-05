@@ -836,5 +836,13 @@
   "guestaccessdone-text": "%s への SSH アクセスを設定しました。",
   "guestaccessunreachable-text": "%s0 に SSH で接続できません: %s1",
   "guestaccessstilldenied-text": "鍵はインストールされましたが、%s1 への %s0 としての SSH はまだ拒否されています。インスタンスの設定で %s2 を起動ユーザーにするか、ゲストの sshd 設定で root の鍵によるログインを許可してください。",
-  "password-text": "パスワード"
+  "password-text": "パスワード",
+  "about-tagline": "WSL ディストリビューションと Linux VM を一か所で管理します。",
+  "about-github-desc": "ソースコード、Issue、ディスカッション",
+  "about-changelog-desc": "各リリースの変更内容",
+  "about-documentation-desc": "ガイド、ヒント、トラブルシューティング",
+  "about-donate-desc": "開発を支援する",
+  "about-dependencies-desc": "このアプリが利用しているオープンソースライブラリ",
+  "about-license-desc": "このアプリの配布条件",
+  "copyversioninfo-text": "バージョン情報をコピー"
 }

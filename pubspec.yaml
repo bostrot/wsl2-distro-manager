@@ -63,6 +63,7 @@ flutter:
   assets:
     - lib/i18n/
     - images.json
+    - assets/logo_wsl_manager.png
 
 msix_config:
   display_name: WSL Manager

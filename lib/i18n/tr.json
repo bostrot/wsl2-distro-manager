@@ -836,5 +836,13 @@
   "guestaccessdone-text": "%s için SSH erişimi ayarlandı.",
   "guestaccessunreachable-text": "%s0 SSH ile erişilemiyor: %s1",
   "guestaccessstilldenied-text": "Anahtar yüklendi, ancak %s1 içinde %s0 olarak SSH hâlâ reddediliyor. Örneğin ayarlarında %s2 kullanıcısını başlangıç kullanıcısı olarak ayarlayın veya konuğun sshd yapılandırmasında root için anahtarla oturum açmaya izin verin.",
-  "password-text": "Parola"
+  "password-text": "Parola",
+  "about-tagline": "WSL dağıtımlarını ve Linux sanal makinelerini tek bir yerden yönetin.",
+  "about-github-desc": "Kaynak kodu, sorunlar ve tartışmalar",
+  "about-changelog-desc": "Her sürümde neler değişti",
+  "about-documentation-desc": "Kılavuzlar, ipuçları ve sorun giderme",
+  "about-donate-desc": "Geliştirmeyi destekleyin",
+  "about-dependencies-desc": "Bu uygulamanın üzerine kurulduğu açık kaynak kitaplıklar",
+  "about-license-desc": "Bu uygulamanın dağıtım koşulları",
+  "copyversioninfo-text": "Sürüm bilgisini kopyala"
 }

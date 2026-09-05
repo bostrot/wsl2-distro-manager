@@ -837,5 +837,13 @@
   "guestaccessdone-text": "已設定對 %s 的 SSH 存取。",
   "guestaccessunreachable-text": "無法透過 SSH 連線 %s0：%s1",
   "guestaccessstilldenied-text": "金鑰已安裝，但以 %s0 身分透過 SSH 連線 %s1 仍被拒絕。請在執行個體設定中將 %s2 設為啟動使用者，或在客體的 sshd 設定中允許 root 以金鑰登入。",
-  "password-text": "密碼"
+  "password-text": "密碼",
+  "about-tagline": "在同一個地方管理 WSL 發行版與 Linux 虛擬機。",
+  "about-github-desc": "原始碼、問題回報與討論",
+  "about-changelog-desc": "每個版本的變更內容",
+  "about-documentation-desc": "指南、技巧與疑難排解",
+  "about-donate-desc": "支持開發",
+  "about-dependencies-desc": "本應用程式所依賴的開源程式庫",
+  "about-license-desc": "本應用程式的散布條款",
+  "copyversioninfo-text": "複製版本資訊"
 }

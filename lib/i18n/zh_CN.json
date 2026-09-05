@@ -837,5 +837,13 @@
   "guestaccessdone-text": "已设置对 %s 的 SSH 访问。",
   "guestaccessunreachable-text": "无法通过 SSH 连接 %s0：%s1",
   "guestaccessstilldenied-text": "密钥已安装，但以 %s0 身份通过 SSH 连接 %s1 仍被拒绝。请在实例设置中将 %s2 设为启动用户，或在客户机的 sshd 配置中允许 root 通过密钥登录。",
-  "password-text": "密码"
+  "password-text": "密码",
+  "about-tagline": "在一个地方管理 WSL 发行版和 Linux 虚拟机。",
+  "about-github-desc": "源代码、问题反馈与讨论",
+  "about-changelog-desc": "每个版本的变更内容",
+  "about-documentation-desc": "指南、技巧与故障排除",
+  "about-donate-desc": "支持开发",
+  "about-dependencies-desc": "本应用所依赖的开源库",
+  "about-license-desc": "本应用的分发条款",
+  "copyversioninfo-text": "复制版本信息"
 }

@@ -836,5 +836,13 @@
   "guestaccessdone-text": "El acceso SSH a %s está configurado.",
   "guestaccessunreachable-text": "No se puede acceder a %s0 por SSH: %s1",
   "guestaccessstilldenied-text": "La clave está instalada, pero el SSH como %s0 en %s1 sigue rechazado. Establece %s2 como usuario de inicio de la instancia en sus ajustes, o permite el inicio de sesión de root por clave en la configuración de sshd del invitado.",
-  "password-text": "Contraseña"
+  "password-text": "Contraseña",
+  "about-tagline": "Gestiona distribuciones WSL y máquinas virtuales Linux desde un solo lugar.",
+  "about-github-desc": "Código fuente, incidencias y debates",
+  "about-changelog-desc": "Qué cambió en cada versión",
+  "about-documentation-desc": "Guías, consejos y solución de problemas",
+  "about-donate-desc": "Apoya el desarrollo",
+  "about-dependencies-desc": "Bibliotecas de código abierto en las que se basa esta aplicación",
+  "about-license-desc": "Condiciones bajo las que se distribuye esta aplicación",
+  "copyversioninfo-text": "Copiar información de versión"
 }

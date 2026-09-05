@@ -836,5 +836,13 @@
   "guestaccessdone-text": "SSH access to %s is set up.",
   "guestaccessunreachable-text": "Cannot reach %s0 over SSH: %s1",
   "guestaccessstilldenied-text": "The key is installed, but SSH as %s0 into %s1 is still refused. Set %s2 as the instance's start user in its settings, or allow root login by key in the guest's sshd config.",
-  "password-text": "Password"
+  "password-text": "Password",
+  "about-tagline": "Manage WSL distributions and Linux VMs from one place.",
+  "about-github-desc": "Source code, issues and discussions",
+  "about-changelog-desc": "What changed in each release",
+  "about-documentation-desc": "Guides, tips and troubleshooting",
+  "about-donate-desc": "Support the development",
+  "about-dependencies-desc": "Open-source libraries this app is built on",
+  "about-license-desc": "Terms this app is distributed under",
+  "copyversioninfo-text": "Copy version info"
 }

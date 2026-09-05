@@ -837,5 +837,13 @@
   "guestaccessdone-text": "SSH-Zugriff auf %s ist eingerichtet.",
   "guestaccessunreachable-text": "%s0 ist per SSH nicht erreichbar: %s1",
   "guestaccessstilldenied-text": "Der Schlüssel ist installiert, aber SSH als %s0 in %s1 wird weiterhin abgelehnt. Trage %s2 in den Einstellungen der Instanz als Startbenutzer ein oder erlaube in der sshd-Konfiguration des Gasts die root-Anmeldung per Schlüssel.",
-  "password-text": "Passwort"
+  "password-text": "Passwort",
+  "about-tagline": "WSL-Distributionen und Linux-VMs an einem Ort verwalten.",
+  "about-github-desc": "Quellcode, Issues und Diskussionen",
+  "about-changelog-desc": "Was sich in jeder Version geändert hat",
+  "about-documentation-desc": "Anleitungen, Tipps und Fehlerbehebung",
+  "about-donate-desc": "Die Entwicklung unterstützen",
+  "about-dependencies-desc": "Open-Source-Bibliotheken, auf denen diese App aufbaut",
+  "about-license-desc": "Bedingungen, unter denen diese App vertrieben wird",
+  "copyversioninfo-text": "Versionsinfo kopieren"
 }
