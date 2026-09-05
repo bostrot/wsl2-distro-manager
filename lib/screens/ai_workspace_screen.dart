@@ -488,9 +488,14 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'ai-workspace-title'.i18n(),
-                  style: FluentTheme.of(context).typography.titleLarge,
+                // Flexible: a long title (or a raw key under test) must wrap
+                // inside the 420px column rather than overflow it.
+                Flexible(
+                  child: Text(
+                    'ai-workspace-title'.i18n(),
+                    textAlign: TextAlign.center,
+                    style: FluentTheme.of(context).typography.titleLarge,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 const BetaBadge(),
@@ -535,84 +540,6 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       return _buildPaywall(context);
     }
 
-    // A missing or stopped workspace VM is not an error the user must fix
-    // by hand: the guided setup downloads the cloud image, creates the VM
-    // and boots it. Only genuinely unexpected failures render as errors.
-    if (_error != null && _setupCanFix) {
-      final accent = FluentTheme.of(context).accentColor;
-      // The same button drives all three cases, but a VM that is merely
-      // stopped, or up and silent over SSH, is not "not installed": the
-      // Home screen showed 'ai-workspace' running with an address while
-      // this page offered to download Debian and create it. Say which
-      // state it is in and what the button will do about it.
-      final String body;
-      final String label;
-      if (_errorKey == 'ai-workspace-vm-stopped-text') {
-        body = 'ai-workspace-start-vm-text'.i18n();
-        label = 'ai-workspace-start-vm-btn'.i18n();
-      } else if (_errorKey == 'ai-workspace-vm-unreachable-text') {
-        body = 'ai-workspace-repair-text'.i18n();
-        label = 'ai-workspace-repair-btn'.i18n();
-      } else {
-        body = 'ai-workspace-setup-text'.i18n();
-        label = 'ai-workspace-setup-btn'.i18n();
-      }
-      return Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(FluentIcons.robot, size: 42, color: accent),
-              const SizedBox(height: 16),
-              Text('ai-workspace-title'.i18n(),
-                  style: FluentTheme.of(context).typography.subtitle),
-              const SizedBox(height: 8),
-              Text(
-                body,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: secondaryTextColor(context)),
-              ),
-              const SizedBox(height: 16),
-              BusyButton(
-                key: const ValueKey('test-workspace-setup'),
-                filled: true,
-                label: label,
-                busyLabel: 'ai-workspace-setup-busy-text'.i18n(),
-                busy: _settingUp,
-                onPressed: _settingUp ? null : _runGuidedSetup,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(FluentIcons.error, size: 48),
-            const SizedBox(height: 16),
-            // Was 'Error loading AI Workspace: <Exception.toString()>' —
-            // hardcoded English wrapped around a class name (audit PS-31).
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520.0),
-              child: ErrorBody(
-                failure: WslFailure.from(_error),
-                leading: 'ai-workspace-load-failed-text'.i18n(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _retryInit,
-              child: Text('retry-text'.i18n()),
-            ),
-          ],
-        ),
-      );
-    }
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -636,13 +563,112 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
           const SizedBox(height: 12),
           const BetaBanner(),
           const SizedBox(height: 16),
-          if (_preparingDistro) ...[
-            _buildInlineStatus('ai-workspace-checking-env-text'.i18n()),
-            const SizedBox(height: 16),
+          // Only the tool cards live in the workspace environment (the
+          // 'ai-workspace' VM, or that distro on Windows). A sandbox is its
+          // own distro and needs none of it, so a missing, stopped,
+          // unreachable or broken environment swaps out the tool section
+          // alone — the page used to vanish behind a full-screen setup or
+          // error view and take the sandboxes with it.
+          if (_error != null && _setupCanFix)
+            _buildGuidedSetupCard(context)
+          else if (_error != null)
+            _buildInitErrorCard(context)
+          else ...[
+            if (_preparingDistro) ...[
+              _buildInlineStatus('ai-workspace-checking-env-text'.i18n()),
+              const SizedBox(height: 16),
+            ],
+            ...AiWorkspaceTool.values.map((tool) => _buildToolCard(tool)),
           ],
-          ...AiWorkspaceTool.values.map((tool) => _buildToolCard(tool)),
           const SizedBox(height: 8),
           _buildSandboxSection(context),
+        ],
+      ),
+    );
+  }
+
+  /// A missing or stopped workspace VM is not an error the user must fix
+  /// by hand: the guided setup downloads the cloud image, creates the VM
+  /// and boots it. Rendered in place of the tool cards, not the whole page.
+  Widget _buildGuidedSetupCard(BuildContext context) {
+    final accent = FluentTheme.of(context).accentColor;
+    // The same button drives all three cases, but a VM that is merely
+    // stopped, or up and silent over SSH, is not "not installed": the
+    // Home screen showed 'ai-workspace' running with an address while
+    // this page offered to download Debian and create it. Say which
+    // state it is in and what the button will do about it.
+    final String body;
+    final String label;
+    if (_errorKey == 'ai-workspace-vm-stopped-text') {
+      body = 'ai-workspace-start-vm-text'.i18n();
+      label = 'ai-workspace-start-vm-btn'.i18n();
+    } else if (_errorKey == 'ai-workspace-vm-unreachable-text') {
+      body = 'ai-workspace-repair-text'.i18n();
+      label = 'ai-workspace-repair-btn'.i18n();
+    } else {
+      body = 'ai-workspace-setup-text'.i18n();
+      label = 'ai-workspace-setup-btn'.i18n();
+    }
+    return _buildEnvironmentCard(
+      key: const ValueKey('test-workspace-setup-card'),
+      icon: Icon(FluentIcons.robot, size: 28, color: accent),
+      children: [
+        Text(body, style: TextStyle(color: secondaryTextColor(context))),
+        const SizedBox(height: 12),
+        BusyButton(
+          key: const ValueKey('test-workspace-setup'),
+          filled: true,
+          label: label,
+          busyLabel: 'ai-workspace-setup-busy-text'.i18n(),
+          busy: _settingUp,
+          onPressed: _settingUp ? null : _runGuidedSetup,
+        ),
+      ],
+    );
+  }
+
+  /// Only genuinely unexpected failures render as errors — and only the
+  /// tool section does, so the sandboxes underneath stay reachable.
+  Widget _buildInitErrorCard(BuildContext context) {
+    return _buildEnvironmentCard(
+      key: const ValueKey('test-workspace-error-card'),
+      icon: Icon(FluentIcons.error, size: 28, color: destructiveColor(context)),
+      children: [
+        // Was 'Error loading AI Workspace: <Exception.toString()>' —
+        // hardcoded English wrapped around a class name (audit PS-31).
+        ErrorBody(
+          failure: WslFailure.from(_error),
+          leading: 'ai-workspace-load-failed-text'.i18n(),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: _retryInit,
+          child: Text('retry-text'.i18n()),
+        ),
+      ],
+    );
+  }
+
+  /// The shell both environment cards share: a leading icon beside a
+  /// left-aligned body, sitting where the tool cards otherwise would.
+  Widget _buildEnvironmentCard({
+    required Key key,
+    required Widget icon,
+    required List<Widget> children,
+  }) {
+    return Card(
+      key: key,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          icon,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
         ],
       ),
     );

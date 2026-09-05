@@ -86,6 +86,8 @@ void main() {
   tearDown(() {
     workspaceRuntimeBuilder = defaultWorkspaceRuntime;
     GlobalVariable.testProEnabled = false;
+    GlobalVariable.sandboxChat.value = null;
+    GlobalVariable.aiPanel.value = false;
     testShell.reset();
   });
 
@@ -555,5 +557,90 @@ void main() {
     expect(find.text('ai-workspace-start-vm-btn'.i18n()), findsOneWidget);
     expect(find.text('ai-workspace-setup-text'.i18n()), findsNothing);
     expect(find.text('ai-workspace-repair-btn'.i18n()), findsNothing);
+  });
+
+  // A sandbox is its own distro; the workspace VM (or the 'ai-workspace'
+  // distro on Windows) is only where the tool cards run. The page used to
+  // swap itself for a full-screen setup view whenever that environment was
+  // missing, so the sandboxes disappeared with it (bostrot/ai-tasks#30).
+  testWidgets('sandboxes stay usable while the workspace VM is missing',
+      (tester) async {
+    tester.view.physicalSize = _kSurface;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await prefs.setStringList('SandboxDistros', ['wslm-sandbox-play']);
+    final guided = AiWorkspaceService(
+      broker: ExecutionBroker(shell: testShell),
+      reachabilityChecker: (_) async => true,
+      runtime: _GuidedFakeRuntime(),
+    );
+
+    await tester.pumpWidget(_page(guided));
+    await tester.pumpAndSettle();
+
+    // The setup offer is still there — as a card, not the whole page.
+    expect(find.byKey(const ValueKey('test-workspace-setup')), findsOneWidget);
+    expect(find.text('sandbox-title-text'.i18n()), findsOneWidget);
+    expect(find.byKey(const ValueKey('test-sandbox-add')), findsOneWidget);
+    final openChat =
+        find.byKey(const ValueKey('test-sandbox-chat-wslm-sandbox-play'));
+    expect(openChat, findsOneWidget);
+
+    // Opening the sandbox chat docks it without touching the environment.
+    await tester.ensureVisible(openChat);
+    await tester.tap(openChat);
+    // Past the HoverButton's 100 ms tap timer, or it is still pending when
+    // the tree is torn down.
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(GlobalVariable.sandboxChat.value, 'wslm-sandbox-play');
+    expect(GlobalVariable.aiPanel.value, isTrue);
+  });
+
+  // The Windows shape of the same problem: the 'ai-workspace' distro could
+  // not be created, which is a plain error rather than a guided-setup case.
+  testWidgets('sandboxes stay usable when the environment check fails',
+      (tester) async {
+    tester.view.physicalSize = _kSurface;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final broken = AiWorkspaceService(
+      broker: ExecutionBroker(shell: testShell),
+      reachabilityChecker: (_) async => true,
+      runtime: _GuidedFakeRuntime(
+          errorKey: 'Failed to create the AI workspace distro: no space'),
+    );
+
+    await tester.pumpWidget(_page(broken));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('test-workspace-error-card')),
+        findsOneWidget);
+    expect(find.text('retry-text'.i18n()), findsOneWidget);
+    expect(find.byKey(const ValueKey('test-workspace-setup')), findsNothing);
+    // No tool card renders without an environment to run it in...
+    expect(find.byKey(const ValueKey('test-ai-install-hermesAgent')),
+        findsNothing);
+    // ...but the sandbox section does.
+    expect(find.byKey(const ValueKey('test-sandbox-add')), findsOneWidget);
+    expect(find.text('sandbox-none-text'.i18n()), findsOneWidget);
+  });
+
+  // The Pro gate is the one that still covers sandboxes: SandboxChat refuses
+  // to send without a licence, so the page must not offer to create one.
+  testWidgets('the paywall still hides the sandbox section', (tester) async {
+    tester.view.physicalSize = _kSurface;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    GlobalVariable.testProEnabled = false;
+    await prefs.setStringList('SandboxDistros', ['wslm-sandbox-play']);
+
+    await tester.pumpWidget(_page(service));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('test-ai-workspace-upgrade')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('test-sandbox-add')), findsNothing);
+    expect(find.byKey(const ValueKey('test-sandbox-chat-wslm-sandbox-play')),
+        findsNothing);
   });
 }
