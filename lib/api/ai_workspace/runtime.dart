@@ -165,29 +165,41 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
     _probeResult = false;
   }
 
+  /// How long one SSH probe may take before the guest counts as silent.
+  ///
+  /// `vmctl exec` itself waits up to 20s for a DHCP lease and ssh another
+  /// 10s to connect, so the old 3s budget killed the helper before it could
+  /// even fail properly: a guest that was merely slow to answer, and one
+  /// whose lease had lapsed, both surfaced as "set the workspace up" while
+  /// the Home screen showed the VM running. Fifteen seconds is what the
+  /// guided setup already waits per probe.
+  static const Duration probeTimeout = Duration(seconds: 15);
+
   /// A running VM whose guest never answers is not a usable workspace, so
   /// reachability is part of existing here. Without that the page sailed
   /// past provisioning and failed several steps later inside a tool install,
   /// reporting "no DHCP lease" from the bottom of a Docker script.
   @override
   Future<bool> exists(ExecutionBroker broker) async {
+    final AppleVmInfo? vm;
     try {
-      final vm = await _api.vmInfo(vmName);
-      if (vm == null || !vm.running) return false;
-
-      final probedAt = _probedAt;
-      if (probedAt != null &&
-          DateTime.now().difference(probedAt) < _probeTtl) {
-        return _probeResult;
-      }
-      final probe = await broker
-          .run(script('true', timeout: const Duration(seconds: 3)));
-      _probedAt = DateTime.now();
-      _probeResult = probe.isSuccess;
-      return _probeResult;
+      vm = await _api.vmInfo(vmName);
     } catch (_) {
       return false;
     }
+    if (vm == null || !vm.running) return false;
+
+    final probedAt = _probedAt;
+    if (probedAt != null && DateTime.now().difference(probedAt) < _probeTtl) {
+      return _probeResult;
+    }
+    // A probe the broker had to kill comes back as a failed result like any
+    // other, and is cached the same way; otherwise a silent guest is
+    // re-dialled on every rebuild for the full timeout each time.
+    final probe = await broker.run(script('true', timeout: probeTimeout));
+    _probedAt = DateTime.now();
+    _probeResult = probe.isSuccess;
+    return _probeResult;
   }
 
   @override
@@ -208,6 +220,17 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
   /// Injectable so tests do not sit through a boot's worth of sleeps.
   Duration setUpRetryDelay = const Duration(seconds: 3);
 
+  /// Probes a guest gets after this code booted it: a first boot runs
+  /// cloud-init end to end before sshd is up, so this is generous.
+  static const int bootProbeAttempts = 40;
+
+  /// Probes a guest gets when it was already running before setup began.
+  /// Such a guest has had its boot; if it still does not answer after a few
+  /// tries it is not going to (a lapsed lease, a frozen guest, a seed with
+  /// no network config), and the user who pressed the button is better
+  /// served by the repair than by ten minutes of silence first.
+  static const int runningProbeAttempts = 4;
+
   /// The one-click path the AI Workspace page offers when the VM is absent:
   /// download the Debian cloud image (reused from the ISO cache when
   /// present), create the VM seeded from it, start it headless, and wait
@@ -217,6 +240,9 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
   Future<void> setUp(ExecutionBroker broker,
       {required void Function(String key) notify}) async {
     var vm = await _api.vmInfo(vmName);
+    // Whether this call is the one bringing the guest up, which decides how
+    // long to wait for it before treating silence as a fault.
+    var booted = false;
     if (vm == null) {
       final entry = VmImageCatalog.entryById('debian-13-cloud');
       if (entry == null) {
@@ -240,20 +266,26 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
     if (vm != null && !vm.running) {
       notify('ai-workspace-starting-vm-text');
       await _api.startHeadless(vmName);
+      booted = true;
     }
-    if (await _waitForGuest(broker, attempts: 40)) return;
+    if (await _waitForGuest(broker,
+        attempts: booted ? bootProbeAttempts : runningProbeAttempts)) {
+      resetProbeCache();
+      return;
+    }
 
     // Still nothing. VMs created by older builds carry a seed with no
     // network config, so their DHCP client asks in a way macOS never
-    // answers and they can never be reached. Rewrite the seed and reboot —
-    // repairing in place rather than throwing the disk away.
+    // answers and they can never be reached; a guest that has since lost
+    // its address or frozen looks the same from here. Rewrite the seed and
+    // reboot — repairing in place rather than throwing the disk away.
     notify('ai-workspace-repairing-text');
     resetProbeCache();
     await _api.reseed(vmName);
     await _api.stop(vmName);
     await Future<void>.delayed(setUpRetryDelay);
     await _api.startHeadless(vmName);
-    if (await _waitForGuest(broker, attempts: 40)) return;
+    if (await _waitForGuest(broker, attempts: bootProbeAttempts)) return;
 
     throw Exception('ai-workspace-vm-unreachable-text');
   }
@@ -261,8 +293,7 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
   Future<bool> _waitForGuest(ExecutionBroker broker,
       {required int attempts}) async {
     for (var attempt = 0; attempt < attempts; attempt++) {
-      final probe = await broker
-          .run(script('true', timeout: const Duration(seconds: 15)));
+      final probe = await broker.run(script('true', timeout: probeTimeout));
       if (probe.isSuccess) return true;
       await Future<void>.delayed(setUpRetryDelay);
     }

@@ -28,7 +28,10 @@ Widget _page(AiWorkspaceService service) {
 }
 
 /// Missing until [setUp] runs — the shape of a Mac with no workspace VM.
+/// [errorKey] picks which of the three provisioning states it reports.
 class _GuidedFakeRuntime extends WslWorkspaceRuntime {
+  _GuidedFakeRuntime({this.errorKey = 'ai-workspace-vm-missing-text'});
+  final String errorKey;
   bool present = false;
   int setUpCalls = 0;
 
@@ -38,7 +41,7 @@ class _GuidedFakeRuntime extends WslWorkspaceRuntime {
   @override
   Future<void> provision(ExecutionBroker broker,
       {required void Function(String key) notify}) async {
-    throw Exception('ai-workspace-vm-missing-text');
+    throw Exception(errorKey);
   }
 
   @override
@@ -498,5 +501,59 @@ void main() {
     expect(runtime.setUpCalls, 1);
     // Setup succeeded, so the page moved on to the normal tool grid.
     expect(find.byKey(const ValueKey('test-workspace-setup')), findsNothing);
+  });
+
+  testWidgets('a running VM that does not answer offers repair, not install',
+      (tester) async {
+    // The Home screen listed 'ai-workspace' as running with an address while
+    // this page said it had to be set up: the card told the user Debian
+    // would be downloaded and a VM created. It must say what is wrong.
+    tester.view.physicalSize = _kSurface;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final runtime =
+        _GuidedFakeRuntime(errorKey: 'ai-workspace-vm-unreachable-text');
+    final guided = AiWorkspaceService(
+      broker: ExecutionBroker(shell: testShell),
+      reachabilityChecker: (_) async => true,
+      runtime: runtime,
+    );
+
+    await tester.pumpWidget(_page(guided));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ai-workspace-repair-text'.i18n()), findsOneWidget);
+    expect(find.text('ai-workspace-repair-btn'.i18n()), findsOneWidget);
+    expect(find.text('ai-workspace-setup-text'.i18n()), findsNothing);
+    expect(find.text('ai-workspace-setup-btn'.i18n()), findsNothing);
+    expect(find.text('retry-text'.i18n()), findsNothing);
+
+    // The button still runs the guided setup, which is what repairs it.
+    await tester.tap(find.byKey(const ValueKey('test-workspace-setup')));
+    await tester.pumpAndSettle();
+    expect(runtime.setUpCalls, 1);
+    expect(find.byKey(const ValueKey('test-workspace-setup')), findsNothing);
+  });
+
+  testWidgets('a stopped VM offers to start it, not to create it',
+      (tester) async {
+    tester.view.physicalSize = _kSurface;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final runtime =
+        _GuidedFakeRuntime(errorKey: 'ai-workspace-vm-stopped-text');
+    final guided = AiWorkspaceService(
+      broker: ExecutionBroker(shell: testShell),
+      reachabilityChecker: (_) async => true,
+      runtime: runtime,
+    );
+
+    await tester.pumpWidget(_page(guided));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ai-workspace-start-vm-text'.i18n()), findsOneWidget);
+    expect(find.text('ai-workspace-start-vm-btn'.i18n()), findsOneWidget);
+    expect(find.text('ai-workspace-setup-text'.i18n()), findsNothing);
+    expect(find.text('ai-workspace-repair-btn'.i18n()), findsNothing);
   });
 }

@@ -540,6 +540,23 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // and boots it. Only genuinely unexpected failures render as errors.
     if (_error != null && _setupCanFix) {
       final accent = FluentTheme.of(context).accentColor;
+      // The same button drives all three cases, but a VM that is merely
+      // stopped, or up and silent over SSH, is not "not installed": the
+      // Home screen showed 'ai-workspace' running with an address while
+      // this page offered to download Debian and create it. Say which
+      // state it is in and what the button will do about it.
+      final String body;
+      final String label;
+      if (_errorKey == 'ai-workspace-vm-stopped-text') {
+        body = 'ai-workspace-start-vm-text'.i18n();
+        label = 'ai-workspace-start-vm-btn'.i18n();
+      } else if (_errorKey == 'ai-workspace-vm-unreachable-text') {
+        body = 'ai-workspace-repair-text'.i18n();
+        label = 'ai-workspace-repair-btn'.i18n();
+      } else {
+        body = 'ai-workspace-setup-text'.i18n();
+        label = 'ai-workspace-setup-btn'.i18n();
+      }
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460.0),
@@ -552,7 +569,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                   style: FluentTheme.of(context).typography.subtitle),
               const SizedBox(height: 8),
               Text(
-                'ai-workspace-setup-text'.i18n(),
+                body,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: secondaryTextColor(context)),
               ),
@@ -560,7 +577,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               BusyButton(
                 key: const ValueKey('test-workspace-setup'),
                 filled: true,
-                label: 'ai-workspace-setup-btn'.i18n(),
+                label: label,
                 busyLabel: 'ai-workspace-setup-busy-text'.i18n(),
                 busy: _settingUp,
                 onPressed: _settingUp ? null : _runGuidedSetup,

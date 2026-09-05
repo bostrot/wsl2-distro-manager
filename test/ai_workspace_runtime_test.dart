@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart' show InfoBarSeverity;
@@ -35,6 +36,33 @@ class _FixedDownloadCatalog implements VmImageCatalog {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       super.noSuchMethod(invocation);
+}
+
+/// Every `exec` fails with the timeout the broker reports for a helper it
+/// had to kill — the shape of a probe stuck behind a dead address.
+/// Everything else answers like [FakeVmctlShell].
+class _HangingExecShell extends FakeVmctlShell {
+  @override
+  Future<Process> start(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    bool includeParentEnvironment = true,
+    bool runInShell = false,
+    ProcessStartMode mode = ProcessStartMode.normal,
+  }) async {
+    if (arguments.contains('exec')) {
+      calls.add(['start:$executable', ...arguments]);
+      throw TimeoutException('probe killed', const Duration(seconds: 15));
+    }
+    return super.start(executable, arguments,
+        workingDirectory: workingDirectory,
+        environment: environment,
+        includeParentEnvironment: includeParentEnvironment,
+        runInShell: runInShell,
+        mode: mode);
+  }
 }
 
 void main() {
@@ -141,6 +169,62 @@ void main() {
       expect(shell.calls.any((c) => c.contains('reseed')), isTrue);
       expect(shell.calls.any((c) => c.contains('start')), isTrue,
           reason: 'the guest has to reboot to pick the new seed up');
+      // The VM had been running before setup began, so the user who pressed
+      // the button is not kept waiting through a first boot's worth of
+      // probes before the repair starts.
+      final reseedAt = shell.calls.indexWhere((c) => c.contains('reseed'));
+      final probesBefore = shell.calls
+          .sublist(0, reseedAt)
+          .where((c) => c.contains('exec'))
+          .length;
+      expect(probesBefore, AppleWorkspaceRuntime.runningProbeAttempts);
+      expect(probesBefore,
+          lessThan(AppleWorkspaceRuntime.bootProbeAttempts));
+    });
+
+    test('a VM setUp booted itself gets a full boot before any repair',
+        () async {
+      final shell = FakeVmctlShell();
+      final broker = ExecutionBroker(shell: shell);
+      final runtime = buildRuntime(shell)..setUpRetryDelay = Duration.zero;
+      shell.responseQueue['list'] = [
+        '{"vms":[{"name":"ai-workspace","state":"stopped"}]}',
+      ];
+      shell.responses['list'] =
+          '{"vms":[{"name":"ai-workspace","state":"running"}]}';
+      // cloud-init takes its time on a first boot: silent for a while,
+      // then fine — well past the patience a long-running guest gets.
+      final silent = AppleWorkspaceRuntime.runningProbeAttempts * 3;
+      shell.exitCodeQueue['exec'] = List<int>.filled(silent, 255, growable: true);
+      shell.exitCodes['exec'] = 0;
+
+      await runtime.setUp(broker, notify: (_) {});
+
+      expect(shell.calls.any((c) => c.contains('reseed')), isFalse,
+          reason: 'a guest still booting is not broken');
+      expect(shell.calls.where((c) => c.contains('exec')).length, silent + 1);
+    });
+
+    test('a probe the broker had to kill counts as silent, and is cached',
+        () async {
+      final shell = _HangingExecShell();
+      final broker = ExecutionBroker(shell: shell);
+      final runtime = buildRuntime(shell);
+      shell.responses['list'] =
+          '{"vms":[{"name":"ai-workspace","state":"running"}]}';
+
+      expect(await runtime.exists(broker), isFalse);
+      expect(await runtime.exists(broker), isFalse);
+      // One dial, not one per rebuild: the second answer came from the cache.
+      expect(shell.calls.where((c) => c.contains('exec')).length, 1);
+    });
+
+    test('the probe outlives the helper\'s own lease and connect waits', () {
+      // vmctl exec blocks up to 20s on the lease table and ssh up to 10s
+      // on connect; a budget below that killed the helper before it could
+      // even report why the guest was silent.
+      expect(AppleWorkspaceRuntime.probeTimeout,
+          greaterThanOrEqualTo(const Duration(seconds: 15)));
     });
 
     test('exists is true only for a running workspace VM', () async {

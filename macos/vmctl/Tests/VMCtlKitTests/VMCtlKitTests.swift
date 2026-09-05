@@ -80,6 +80,82 @@ import Testing
             mac: "fa:38:02:78:c3:e1", in: sample) == nil)
     }
 
+    @Test func expiredLeaseIsNotAnAddress() {
+        // Seen on a real host: the guest got 192.168.64.21 at boot, never
+        // renewed, and bootpd kept the block on file for days. `list`
+        // showed the address, ARP said "incomplete", ssh dialled it anyway.
+        let sample = """
+        {
+        	name=ai-workspace
+        	ip_address=192.168.64.21
+        	hw_address=1,96:93:65:58:99:14
+        	identifier=1,96:93:65:58:99:14
+        	lease=0x6a9b25a0
+        }
+        """
+        let expiry = Date(timeIntervalSince1970: 0x6a9b25a0)
+        let mac = "96:93:65:58:99:14"
+        #expect(DHCPLeases.ipFor(
+            mac: mac, hostname: "ai-workspace", in: sample,
+            now: expiry.addingTimeInterval(-60)) == "192.168.64.21")
+        #expect(DHCPLeases.ipFor(
+            mac: mac, hostname: "ai-workspace", in: sample,
+            now: expiry.addingTimeInterval(60)) == nil)
+        // Neither the DUID-suffix nor the hostname path may revive it.
+        let duid = sample.replacingOccurrences(
+            of: "1,96:93:65:58:99:14",
+            with: "ff,57:82:9b:d0:0:1:0:1:32:2c:86:78:96:93:65:58:99:14")
+        #expect(DHCPLeases.ipFor(
+            mac: mac, hostname: "ai-workspace", in: duid,
+            now: expiry.addingTimeInterval(60)) == nil)
+    }
+
+    @Test func expiredLeaseYieldsToACurrentOne() {
+        // A guest that rebooted gets a fresh block; the stale one for the
+        // same MAC must not shadow it whichever order bootpd wrote them.
+        let sample = """
+        {
+        	name=box
+        	ip_address=192.168.64.30
+        	hw_address=1,aa:bb:cc:dd:ee:ff
+        	lease=0x1000
+        }
+        {
+        	name=box
+        	ip_address=192.168.64.31
+        	hw_address=1,aa:bb:cc:dd:ee:ff
+        	lease=0x3000
+        }
+        """
+        let now = Date(timeIntervalSince1970: 0x2000)
+        #expect(DHCPLeases.ipFor(mac: "aa:bb:cc:dd:ee:ff", in: sample, now: now)
+            == "192.168.64.31")
+    }
+
+    @Test func leaseWithoutExpiryStaysValid() {
+        // No `lease=` line (older files, hand-written fixtures) and an
+        // unparseable one both mean "unknown", never "expired".
+        let sample = """
+        {
+        	ip_address=192.168.64.40
+        	hw_address=1,aa:bb:cc:dd:ee:01
+        }
+        {
+        	ip_address=192.168.64.41
+        	hw_address=1,aa:bb:cc:dd:ee:02
+        	lease=soon
+        }
+        """
+        let now = Date(timeIntervalSince1970: 4_000_000_000)
+        #expect(DHCPLeases.ipFor(mac: "aa:bb:cc:dd:ee:01", in: sample, now: now)
+            == "192.168.64.40")
+        #expect(DHCPLeases.ipFor(mac: "aa:bb:cc:dd:ee:02", in: sample, now: now)
+            == "192.168.64.41")
+        #expect(DHCPLeases.parseExpiry("0x6a9b25a0")
+            == Date(timeIntervalSince1970: 0x6a9b25a0))
+        #expect(DHCPLeases.parseExpiry("garbage") == nil)
+    }
+
     @Test func normalizeMacPadsAndLowercases() {
         #expect(DHCPLeases.normalizeMac("AA:B:1:22:3:F") == "aa:0b:01:22:03:0f")
     }
