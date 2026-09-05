@@ -99,6 +99,9 @@ refactor: trim over-explanatory comments
 - On `main` only: creates a GitHub release with tag, then triggers winget/scoop/store publish workflows
 - Nightly artifacts uploaded on every run regardless of branch
 
+## Navigation
+- **Pane destinations replace the page; only real sub-pages push.** `navigateGuarded()` in `lib/nav/router.dart` is a `go`, and every nav pane item, in-screen "upgrade" link and the Stop-WSL return to Home goes through it. A pushed page stays `mounted` underneath the next one, so a `pushNamed` here kept every Home page the user had ever left alive with its 5 s instance poll — after an hour of clicking around, dozens of `wsl.exe` spawns per tick and multi-second tab switches (ai-tasks#26). Push only for a step *into* something that pops back out (snippet editor, community browser, "add instance" from the list), and expect the covered page's timers to keep running while it is covered.
+
 ## fluent_ui Gotchas
 - **Icons:** `FluentIcons.sparkle` does not exist — use `FluentIcons.flag` or `FluentIcons.star` instead
 - **`_solid`/`_fill` icon variants are risky:** e.g. `crown_solid`, `lightbulb_solid` are declared in the Dart bindings but may not exist in the bundled `FluentIcons.ttf` subset, rendering as a blank/tofu glyph. Before using a `_solid`/`_fill` variant, grep the codebase for existing usage as proof it renders — as of this writing there is none anywhere in `lib/` (the only prior example, `heart_fill`, lived in the dead `lib/components/navbar.dart`, deleted 2026-08-28). Prefer the base variant (`crown`, `lightbulb`, …) unless you can visually confirm the solid one renders.

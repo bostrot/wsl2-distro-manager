@@ -25,10 +25,25 @@ import 'package:wsl2distromanager/screens/template_screen.dart';
 ///
 /// Every in-app navigation that replaces the body goes through here; a bare
 /// `router.pushNamed` bypasses the prompt and is what made Settings lose work.
-Future<void> navigateGuarded(String name, {String? path}) async {
-  if (path != null && router.state.uri.toString() == path) return;
+Future<void> navigateGuarded(String name, {String? path}) =>
+    navigateGuardedOn(router, name, path: path);
+
+/// [navigateGuarded] against an explicit [target]; the app has one router,
+/// tests build their own.
+///
+/// A pane destination *replaces* the page (`go`), it never pushes. Pushing
+/// kept every page the user had ever switched away from alive underneath the
+/// current one — a covered page is still `mounted` — so each visit to Home
+/// left another 5 s instance poll spawning `wsl.exe` for the rest of the
+/// session, and after an hour of clicking around a tab switch took seconds
+/// (ai-tasks#26). Screens that are genuinely a step *into* something (the
+/// snippet editor, the community browser, "add instance" from the list) still
+/// push, and pop back to where they came from.
+Future<void> navigateGuardedOn(GoRouter target, String name,
+    {String? path}) async {
+  if (path != null && target.state.uri.toString() == path) return;
   if (!await UnsavedChangesGuard.confirmLeave()) return;
-  router.pushNamed(name);
+  target.goNamed(name);
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
