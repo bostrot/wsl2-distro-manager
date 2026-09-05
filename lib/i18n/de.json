@@ -259,6 +259,7 @@
   "ai-assistant-title": "KI-Assistent",
   "ai-assistant-hint": "Frag alles rund um WSL — Konfiguration, Fehler, Befehle.",
   "ai-assistant-placeholder": "Frage zu WSL stellen...",
+  "ai-chat-button-text": "KI fragen",
   "ai-send-text": "Senden",
   "ai-generating-text": "Antwort wird erstellt...",
   "ai-error-text": "Die KI-Anfrage ist fehlgeschlagen. Bitte erneut versuchen.",

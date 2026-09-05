@@ -259,6 +259,7 @@
   "ai-assistant-title": "AI 助理",
   "ai-assistant-hint": "關於 WSL 的任何問題都可以問——設定、錯誤、指令。",
   "ai-assistant-placeholder": "詢問 WSL 相關問題...",
+  "ai-chat-button-text": "詢問 AI",
   "ai-send-text": "傳送",
   "ai-generating-text": "產生中...",
   "ai-error-text": "AI 請求失敗，請再試一次。",

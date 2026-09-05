@@ -258,6 +258,7 @@
   "ai-assistant-title": "AI-asszisztens",
   "ai-assistant-hint": "Kérdezz bármit a WSL-ről — konfiguráció, hibák, parancsok.",
   "ai-assistant-placeholder": "Kérdezz a WSL-ről...",
+  "ai-chat-button-text": "Kérdezd az AI-t",
   "ai-send-text": "Küldés",
   "ai-generating-text": "Generálás...",
   "ai-error-text": "Az AI-kérés sikertelen volt. Próbáld újra.",

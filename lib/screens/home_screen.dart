@@ -1,8 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/ai_chat_button.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -133,42 +133,14 @@ class _HomePageState extends State<HomePage> {
             // sits at its own right edge — just left of the divider.
             right: 16,
             bottom: 16,
-            // A Button rather than a GestureDetector: this is the only entry
-            // point to the AI chat panel and a GestureDetector has no focus
-            // node, so a keyboard could not reach it at all (audit IA-04).
-            child: MergeSemantics(
-              child: Tooltip(
-                message: 'ai-assistant-title'.i18n(),
-                child: Button(
-                  key: const ValueKey('test-ai-chat-toggle'),
-                  // The shell dock listens to this notifier and rebuilds; the
-                  // FAB itself looks the same open or closed, so no setState.
-                  onPressed: () => GlobalVariable.aiPanel.value =
-                      !GlobalVariable.aiPanel.value,
-                  // Accent-filled in both states. The closed state used to be
-                  // a grey wash over the page — 1.25:1 in light, 1.02:1 in
-                  // dark — so the only entry point to the AI panel was close
-                  // to invisible in both themes (audit TL-06, PS-14, LN-24).
-                  style: ButtonStyle(
-                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-                    backgroundColor: WidgetStatePropertyAll(
-                        FluentTheme.of(context).accentColor),
-                    shape: WidgetStatePropertyAll(CircleBorder(
-                      side: BorderSide(
-                        color: FluentTheme.of(context).accentColor.darker,
-                        width: 1,
-                      ),
-                    )),
-                  ),
-                  child: const SizedBox.square(
-                    dimension: 48,
-                    child: Icon(
-                      FluentIcons.chat,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
+            // The shell dock listens to the same notifier and rebuilds; the
+            // button only needs it for the open/closed semantics.
+            child: ValueListenableBuilder<bool>(
+              valueListenable: GlobalVariable.aiPanel,
+              builder: (context, open, _) => AiChatButton(
+                key: const ValueKey('test-ai-chat-toggle'),
+                open: open,
+                onPressed: () => GlobalVariable.aiPanel.value = !open,
               ),
             ),
           ),

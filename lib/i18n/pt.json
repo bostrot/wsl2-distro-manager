@@ -260,6 +260,7 @@
   "ai-assistant-title": "Assistente de IA",
   "ai-assistant-hint": "Pergunte qualquer coisa sobre o WSL — configuração, erros, comandos.",
   "ai-assistant-placeholder": "Pergunte sobre o WSL...",
+  "ai-chat-button-text": "Perguntar à IA",
   "ai-send-text": "Enviar",
   "ai-generating-text": "Gerando...",
   "ai-error-text": "A solicitação de IA falhou. Tente novamente.",

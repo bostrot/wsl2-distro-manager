@@ -258,6 +258,7 @@
   "ai-assistant-title": "AIアシスタント",
   "ai-assistant-hint": "WSLについて何でも質問できます — 設定、エラー、コマンドなど。",
   "ai-assistant-placeholder": "WSLについて質問...",
+  "ai-chat-button-text": "AIに質問",
   "ai-send-text": "送信",
   "ai-generating-text": "生成中...",
   "ai-error-text": "AIリクエストに失敗しました。もう一度お試しください。",

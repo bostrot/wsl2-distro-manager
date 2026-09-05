@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/main.dart';
+import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 /// Integration tests for WSL Distro Manager.
@@ -141,7 +142,12 @@ void main() {
 
   group('AI Chat Panel', () {
     setUp(() async {
-      SharedPreferences.setMockInitialValues({});
+      // Mark the changelog as seen: its modal barrier would otherwise
+      // swallow the tap on the toggle below.
+      SharedPreferences.setMockInitialValues({
+        'version': currentVersion,
+        'LastChangelogVersion': currentVersion,
+      });
       prefs = await SharedPreferences.getInstance();
       resetTestState();
       GlobalVariable.testProEnabled = true;
@@ -158,6 +164,15 @@ void main() {
 
       // AI toggle FAB should exist when user has Pro license
       expect(find.byKey(const ValueKey('test-ai-chat-toggle')), findsOneWidget);
+
+      // The redesigned pill (ai-tasks#27) still opens and closes the dock.
+      expect(GlobalVariable.aiPanelVisible, isFalse);
+      await tester.tap(find.byKey(const ValueKey('test-ai-chat-toggle')));
+      await tester.pumpAndSettle();
+      expect(GlobalVariable.aiPanelVisible, isTrue);
+      await tester.tap(find.byKey(const ValueKey('test-ai-chat-toggle')));
+      await tester.pumpAndSettle();
+      expect(GlobalVariable.aiPanelVisible, isFalse);
     });
 
     testWidgets('Toggle AI chat panel visibility via state', (tester) async {

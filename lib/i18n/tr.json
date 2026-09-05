@@ -258,6 +258,7 @@
   "ai-assistant-title": "AI Asistanı",
   "ai-assistant-hint": "WSL hakkında her şeyi sorabilirsiniz — yapılandırma, hatalar, komutlar.",
   "ai-assistant-placeholder": "WSL hakkında sorun...",
+  "ai-chat-button-text": "Yapay zekâya sor",
   "ai-send-text": "Gönder",
   "ai-generating-text": "Oluşturuluyor...",
   "ai-error-text": "AI isteği başarısız oldu. Lütfen tekrar deneyin.",
