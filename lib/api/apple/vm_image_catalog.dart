@@ -62,16 +62,22 @@ class VmImageCatalog {
   final Map<String, String> _resolved = {};
 
   /// Every mirror below is the distribution's own; all were live-verified
-  /// 2026-09-01. `latest-stable`/`current` style paths keep an entry fresh
-  /// across releases; Fedora pins a release directory because its layout has
-  /// no such alias — the entry keeps working, it just stops being the newest
-  /// when the next Fedora ships.
+  /// 2026-09-05. `latest-stable`/`current`/`latest` style paths keep an entry
+  /// fresh across releases; Fedora, the enterprise clones and the Ubuntu
+  /// releases pin a release directory because their layouts have no such
+  /// alias — the entry keeps working, it just stops being the newest when the
+  /// next release ships.
+  ///
+  /// Cloud images come first, since they are the entries to recommend: no
+  /// manual install, reachable over SSH on first boot. Debian's is the only
+  /// raw one; every other distro publishes arm64 cloud images as qcow2, which
+  /// vmctl converts while seeding the disk (each one below was checked to be
+  /// plain zlib qcow2 v2/v3 with no backing file, so the built-in converter
+  /// handles it). Their patterns pin the dated file names and skip a mirror's
+  /// `latest` alias and variant builds (LVM, ext4, kvm/Ignition), so version
+  /// sorting picks the newest real release.
   static final List<VmIsoCatalogEntry> entries = [
-    // First because it is the entry to recommend: a raw cloud image needs no
-    // manual install — Debian is the one major distro publishing arm64
-    // cloud images as .raw, which Virtualization.framework boots directly
-    // (the qcow2 everyone else ships would need a conversion tool we don't
-    // bundle).
+    // Raw: Virtualization.framework boots it directly, no conversion step.
     VmIsoCatalogEntry(
       name: 'Debian 13 (cloud image)',
       indexUrl: 'https://cloud.debian.org/images/cloud/trixie/latest/',
@@ -90,6 +96,74 @@ class VmImageCatalog {
           RegExp(r'generic_alpine-[0-9.]+-aarch64-uefi-cloudinit-r0\.qcow2'),
       kind: VmImageKind.cloudImage,
       idOverride: 'alpine-cloud',
+    ),
+    VmIsoCatalogEntry(
+      name: 'Ubuntu 26.04 LTS (cloud image)',
+      indexUrl: 'https://cloud-images.ubuntu.com/releases/26.04/release/',
+      pattern: RegExp(r'ubuntu-[0-9.]+-server-cloudimg-arm64\.img'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'ubuntu-26-04-cloud',
+    ),
+    VmIsoCatalogEntry(
+      name: 'Ubuntu 24.04 LTS (cloud image)',
+      indexUrl: 'https://cloud-images.ubuntu.com/releases/noble/release/',
+      pattern: RegExp(r'ubuntu-[0-9.]+-server-cloudimg-arm64\.img'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'ubuntu-24-04-cloud',
+    ),
+    VmIsoCatalogEntry(
+      name: 'Fedora 44 (cloud image)',
+      indexUrl:
+          'https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/aarch64/images/',
+      pattern: RegExp(r'Fedora-Cloud-Base-Generic-44-[0-9.]+\.aarch64\.qcow2'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'fedora-44-cloud',
+    ),
+    // "Base" (plain partitions), not the LVM build; the digits after
+    // `Base-` keep the `Base.latest` alias out of the match.
+    VmIsoCatalogEntry(
+      name: 'Rocky Linux 10 (cloud image)',
+      indexUrl: 'https://dl.rockylinux.org/pub/rocky/10/images/aarch64/',
+      pattern:
+          RegExp(r'Rocky-10-GenericCloud-Base-[0-9.]+-[0-9.]+\.aarch64\.qcow2'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'rocky-10-cloud',
+    ),
+    // The default xfs build; `GenericCloud-ext4-*` and `-latest` are skipped.
+    VmIsoCatalogEntry(
+      name: 'AlmaLinux 10 (cloud image)',
+      indexUrl: 'https://repo.almalinux.org/almalinux/10/cloud/aarch64/images/',
+      pattern:
+          RegExp(r'AlmaLinux-10-GenericCloud-[0-9.]+-[0-9.]+\.aarch64\.qcow2'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'almalinux-10-cloud',
+    ),
+    VmIsoCatalogEntry(
+      name: 'CentOS Stream 10 (cloud image)',
+      indexUrl: 'https://cloud.centos.org/centos/10-stream/aarch64/images/',
+      pattern: RegExp(r'CentOS-Stream-GenericCloud-10-[0-9.]+\.aarch64\.qcow2'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'centos-stream-10-cloud',
+    ),
+    // The "Cloud" flavour carries cloud-init; the "kvm" one is configured
+    // through Ignition/Combustion and would ignore the seed.
+    VmIsoCatalogEntry(
+      name: 'openSUSE Leap 16.0 (cloud image)',
+      indexUrl:
+          'https://download.opensuse.org/distribution/leap/16.0/appliances/',
+      pattern:
+          RegExp(r'Leap-16\.0-Minimal-VM\.aarch64-Cloud-Build[0-9.]+\.qcow2'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'opensuse-leap-16-cloud',
+    ),
+    VmIsoCatalogEntry(
+      name: 'Amazon Linux 2023 (cloud image)',
+      indexUrl:
+          'https://cdn.amazonlinux.com/al2023/os-images/latest/kvm-arm64/',
+      pattern:
+          RegExp(r'al2023-kvm-[0-9.]+-kernel-[0-9.]+-arm64\.xfs\.gpt\.qcow2'),
+      kind: VmImageKind.cloudImage,
+      idOverride: 'amazon-linux-2023-cloud',
     ),
     VmIsoCatalogEntry(
       name: 'Alpine Linux (virt)',

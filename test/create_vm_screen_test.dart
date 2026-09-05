@@ -280,6 +280,9 @@ void main() {
         find.byKey(const ValueKey('test-vm-name')), 'demo');
     await tester.enterText(find.byKey(const ValueKey('test-vm-image')),
         'Debian 13 (cloud image)');
+    // Focusing the box opened the full suggestion list, which is tall enough
+    // to reach the create button; a frame lets it filter down to the match.
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
     await tester.pumpAndSettle();
 
@@ -320,6 +323,8 @@ void main() {
         find.byKey(const ValueKey('test-vm-name')), 'demo');
     await tester.enterText(
         find.byKey(const ValueKey('test-vm-image')), '/tmp/template.raw');
+    // As above: let the open suggestion list shrink to "no results" first.
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
     await tester.pumpAndSettle();
 
