@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/app.dart';
+import 'package:wsl2distromanager/api/updater.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -13,6 +14,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/changelog_dialog.dart';
 import 'package:wsl2distromanager/dialogs/firststart_dialog.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
+import 'package:wsl2distromanager/dialogs/update_dialog.dart';
 import 'package:wsl2distromanager/theme.dart';
 
 initRoot(NotifyMessage statusMsg) async {
@@ -94,16 +96,20 @@ initRoot(NotifyMessage statusMsg) async {
     );
   }
 
-  // Check updates
+  // Check for a new release.
+  //
+  // A direct install can apply one itself, so it is offered the real thing:
+  // the banner opens the updater's dialog, which downloads and installs. A
+  // Store install is updated by the Store, so it still gets nothing but the
+  // pointer at the listing (see lib/api/updater.dart).
   App app = App();
-  app.checkUpdate(currentVersion).then((updateUrl) {
-    if (updateUrl != '') {
+  final updater = UpdateService();
+  if (updater.canSelfUpdate) {
+    updater.checkOnStartup().then((info) {
+      if (info == null) return;
       statusMsg('',
           useWidget: true,
           duration: const Duration(minutes: 1),
-          // Text.rich rather than RichText: the spans with no colour of
-          // their own inherit the surrounding DefaultTextStyle, where
-          // RichText would need a hardcoded per-theme guess (audit TL-03).
           widget: Text.rich(
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -113,30 +119,58 @@ initRoot(NotifyMessage statusMsg) async {
                     text: '${'newversion-text'.i18n()} ',
                     style: const TextStyle(fontSize: 14.0)),
                 TextSpan(
-                    text: '${'downloadnow-text'.i18n()} ',
+                    text: '${'update-install-text'.i18n()} ',
                     style: TextStyle(
                         color: Colors.purple,
                         fontSize: 14.0,
                         fontWeight: FontWeight.bold),
                     recognizer: TapGestureRecognizer()
-                      ..onTap = () => launchUrl(Uri.parse(updateUrl))),
-                // The Store alternative only exists for the Windows build.
-                if (!isAppleHost) ...[
-                TextSpan(
-                    text: '${'orcheck-text'.i18n()} ',
-                    style: const TextStyle(fontSize: 14.0)),
-                TextSpan(
-                    text: '${'windowsstore-text'.i18n()} ',
-                    style: TextStyle(
-                        color: Colors.purple,
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.bold),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () => launchUrl(Uri.parse(windowsStoreUrl))),
-                ],
+                      ..onTap = () => showUpdateDialog(info, service: updater)),
               ])));
-    }
-  });
+    });
+  } else {
+    app.checkUpdate(currentVersion).then((updateUrl) {
+      if (updateUrl != '') {
+        statusMsg('',
+            useWidget: true,
+            duration: const Duration(minutes: 1),
+            // Text.rich rather than RichText: the spans with no colour of
+            // their own inherit the surrounding DefaultTextStyle, where
+            // RichText would need a hardcoded per-theme guess (audit TL-03).
+            widget: Text.rich(
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.clip,
+                TextSpan(children: [
+                  TextSpan(
+                      text: '${'newversion-text'.i18n()} ',
+                      style: const TextStyle(fontSize: 14.0)),
+                  TextSpan(
+                      text: '${'downloadnow-text'.i18n()} ',
+                      style: TextStyle(
+                          color: Colors.purple,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => launchUrl(Uri.parse(updateUrl))),
+                  // The Store alternative only exists for the Windows build.
+                  if (!isAppleHost) ...[
+                    TextSpan(
+                        text: '${'orcheck-text'.i18n()} ',
+                        style: const TextStyle(fontSize: 14.0)),
+                    TextSpan(
+                        text: '${'windowsstore-text'.i18n()} ',
+                        style: TextStyle(
+                            color: Colors.purple,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => launchUrl(Uri.parse(windowsStoreUrl))),
+                  ],
+                ])));
+      }
+    });
+  }
 
   // Check motd once per day
   final String today = DateTime.now().toIso8601String().substring(0, 10);

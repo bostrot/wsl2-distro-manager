@@ -16,6 +16,7 @@ import 'package:wsl2distromanager/api/web/web_dashboard_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/updater.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
@@ -27,6 +28,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/components/wsl_size.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
+import 'package:wsl2distromanager/dialogs/update_dialog.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/theme.dart';
@@ -137,6 +139,12 @@ class SettingsPageState extends State<SettingsPage> {
   final WslMcpService _mcpService = WslMcpService();
   final CloudflareTunnelService _tunnelService = CloudflareTunnelService();
   final WebDashboardService _webService = WebDashboardService();
+  final UpdateService _updater = UpdateService();
+
+  /// Mirrors the preference so the toggle answers immediately; the service
+  /// reads the stored value, not this.
+  bool _autoUpdateCheck = UpdateService.autoCheckEnabled;
+  bool _checkingUpdate = false;
 
   bool _isRemoteWslTargetValid(String target) => isValidRemoteTarget(target);
 
@@ -690,6 +698,11 @@ class SettingsPageState extends State<SettingsPage> {
           header: Text('generalsettings-text'.i18n()),
           content: _buildGeneralSettings(context),
         ),
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('update-settings-text'.i18n()),
+          content: _buildUpdateSettings(context),
+        ),
         if (!isAppleHost || _useRemoteWsl) ...[
         const SizedBox(height: 10),
         Expander(
@@ -733,6 +746,82 @@ class SettingsPageState extends State<SettingsPage> {
         ],
       ],
     );
+  }
+
+  /// Updates. Only the direct builds get controls: a Store install is kept
+  /// current by the Store, and saying so is more useful than a toggle that
+  /// would do nothing (see lib/api/updater.dart).
+  Widget _buildUpdateSettings(BuildContext context) {
+    final selfUpdates = _updater.canSelfUpdate;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text('update-current-version-text'.i18n([currentVersion])),
+        ),
+        if (!selfUpdates)
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Text('update-store-managed-text'.i18n()),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                ToggleSwitch(
+                  key: const ValueKey('test-auto-update-toggle'),
+                  checked: _autoUpdateCheck,
+                  onChanged: (value) {
+                    setState(() => _autoUpdateCheck = value);
+                    UpdateService.setAutoCheckEnabled(value);
+                  },
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(child: Text('update-auto-check-text'.i18n())),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Button(
+                  key: const ValueKey('test-check-update-button'),
+                  onPressed: _checkingUpdate ? null : _checkForUpdate,
+                  child: Text('update-check-now-text'.i18n()),
+                ),
+                if (_checkingUpdate) ...[
+                  const SizedBox(width: 10.0),
+                  const SizedBox.square(
+                      dimension: 16.0, child: ProgressRing(strokeWidth: 2.0)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// A check the user asked for: no soak, and a version they skipped earlier
+  /// comes back — otherwise the button could answer "up to date" about a
+  /// release it is deliberately hiding.
+  Future<void> _checkForUpdate() async {
+    setState(() => _checkingUpdate = true);
+    Notify.message('update-checking-text'.i18n());
+    final info = await _updater.check(
+      minimumAge: Duration.zero,
+      includeSkipped: true,
+    );
+    if (!mounted) return;
+    setState(() => _checkingUpdate = false);
+    if (info == null) {
+      Notify.message('update-uptodate-text'.i18n());
+      return;
+    }
+    await showUpdateDialog(info, service: _updater, hostContext: context);
   }
 
   Widget _buildGeneralSettings(BuildContext context) {

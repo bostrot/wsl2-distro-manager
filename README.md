@@ -66,6 +66,7 @@
 - [x] Open Windows Terminal, VS Code or Explorer straight inside a distro
 - [x] Manage WSL on a *different* Windows machine over SSH
 - [x] Sync a distro between two machines on your network
+- [x] Keeps itself up to date: the website and GitHub builds download and install new releases themselves (Store installs are updated by the Store)
 - [x] Dark and light themes, available in nine languages
 
 **On macOS: native virtual machines** *(beta)*
