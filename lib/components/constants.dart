@@ -65,6 +65,7 @@ const supportedLocalesList = [
   Locale('es', ''), // es.json
   Locale('hu', ''), // hu.json
   Locale('ja', ''), // ja.json
+  Locale('ko', ''), // ko.json
   Locale('pt', ''), // pt.json
   Locale('tr', ''), // tr.json
   Locale('zh', 'CN'), // zh_CN.json, simplified
@@ -82,6 +83,7 @@ const languageOptions = {
   'es': 'Español',
   'hu': 'Magyar',
   'ja': '日本語',
+  'ko': '한국어',
   'pt': 'Português',
   'tr': 'Türkçe',
   'zh_CN': '简体中文',
