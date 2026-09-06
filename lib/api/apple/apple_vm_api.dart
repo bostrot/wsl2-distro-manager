@@ -148,35 +148,15 @@ class AppleVmApi extends VmBackend {
   String get storeDir =>
       storeDirOverride ?? (getDataPath()..cd('vms')).path;
 
-  /// Where the `vmctl` helper lives, first match wins: an explicit
-  /// `VMCTL_PATH`, the app bundle's Resources directory (release builds),
-  /// the data dir, the stable install location `build_macos.sh` fills, the
-  /// repo's own build output (debug runs from a checkout), then PATH.
+  /// Where the `vmctl` helper lives; see [findVmctlHelper] for the order.
   String helperPath() {
     if (helperPathOverride != null) return helperPathOverride!;
-    final env = Platform.environment['VMCTL_PATH'];
-    if (env != null && env.isNotEmpty && File(env).existsSync()) return env;
-
-    final exeDir = p.dirname(Platform.resolvedExecutable);
-    final home = Platform.environment['HOME'] ?? '';
-    final pwd = Platform.environment['PWD'] ?? '';
-    final candidates = <String>[
-      p.normalize(p.join(exeDir, '..', 'Resources', 'vmctl')),
-      p.join(getDataPath().path, 'bin', 'vmctl'),
-      if (home.isNotEmpty)
-        p.join(home, 'Library', 'Application Support', 'WSLManager', 'bin',
-            'vmctl'),
-      // `flutter run` from a checkout: the app inherits the tool's PWD.
-      for (final root in {pwd, Directory.current.path})
-        if (root.isNotEmpty) ...[
-          p.join(root, 'macos', 'vmctl', '.build', 'release', 'vmctl'),
-          p.join(root, 'macos', 'vmctl', '.build', 'debug', 'vmctl'),
-        ],
-    ];
-    for (final candidate in candidates) {
-      if (File(candidate).existsSync()) return candidate;
-    }
-    return 'vmctl';
+    return findVmctlHelper(
+      environment: Platform.environment,
+      executable: Platform.resolvedExecutable,
+      dataDir: getDataPath().path,
+      currentDir: Directory.current.path,
+    );
   }
 
   List<String> _baseArgs() => ['--store', storeDir];
@@ -784,4 +764,46 @@ class AppleVmApi extends VmBackend {
       return null;
     }
   }
+}
+
+/// The `vmctl` candidate chain behind [AppleVmApi.helperPath], first match
+/// wins: an explicit `VMCTL_PATH`, the app bundle's Resources directory
+/// (release builds), the data dir, the stable install location
+/// `build_macos.sh` fills, the repo's own build output (debug runs from a
+/// checkout), then the bare name so PATH gets a chance.
+///
+/// Every host input is a parameter and [exists] can replace the filesystem,
+/// so tests pin the machine down instead of asserting whatever this one
+/// happens to have installed.
+String findVmctlHelper({
+  required Map<String, String> environment,
+  required String executable,
+  required String dataDir,
+  required String currentDir,
+  bool Function(String path)? exists,
+}) {
+  final found = exists ?? (String path) => File(path).existsSync();
+  final env = environment['VMCTL_PATH'];
+  if (env != null && env.isNotEmpty && found(env)) return env;
+
+  final exeDir = p.dirname(executable);
+  final home = environment['HOME'] ?? '';
+  final pwd = environment['PWD'] ?? '';
+  final candidates = <String>[
+    p.normalize(p.join(exeDir, '..', 'Resources', 'vmctl')),
+    p.join(dataDir, 'bin', 'vmctl'),
+    if (home.isNotEmpty)
+      p.join(home, 'Library', 'Application Support', 'WSLManager', 'bin',
+          'vmctl'),
+    // `flutter run` from a checkout: the app inherits the tool's PWD.
+    for (final root in {pwd, currentDir})
+      if (root.isNotEmpty) ...[
+        p.join(root, 'macos', 'vmctl', '.build', 'release', 'vmctl'),
+        p.join(root, 'macos', 'vmctl', '.build', 'debug', 'vmctl'),
+      ],
+  ];
+  for (final candidate in candidates) {
+    if (found(candidate)) return candidate;
+  }
+  return 'vmctl';
 }

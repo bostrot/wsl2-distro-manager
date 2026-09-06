@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart' show InfoBarSeverity;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -331,15 +332,92 @@ void main() {
   });
 
   group('helper discovery', () {
-    test('a dev environment resolves a real vmctl, never the bare name',
-        () {
-      // No override: exercise the real candidate chain. In a checkout (this
-      // test run) the repo build output or the installed dev copy must win
-      // over falling through to PATH.
-      final discovered = AppleVmApi(shell: shell).helperPath();
-      expect(discovered, isNot('vmctl'),
-          reason: 'debug runs must find a concrete helper binary');
-      expect(File(discovered).existsSync(), isTrue);
+    // A fully described host: the chain only ever sees these inputs, so
+    // the test cannot pass or fail on what this machine has installed.
+    const home = '/Users/eric';
+    const repo = '/Users/eric/src/wslmanager';
+    const bundle = '/Applications/WSL Manager.app/Contents/MacOS/WSL Manager';
+    const data = '/Users/eric/Library/Containers/WSLManager/Data';
+    final bundled = p.normalize(
+      p.join(p.dirname(bundle), '..', 'Resources', 'vmctl'),
+    );
+    final inData = p.join(data, 'bin', 'vmctl');
+    final installed = p.join(
+      home,
+      'Library',
+      'Application Support',
+      'WSLManager',
+      'bin',
+      'vmctl',
+    );
+    String checkoutBuild(String root, String config) =>
+        p.join(root, 'macos', 'vmctl', '.build', config, 'vmctl');
+    final release = checkoutBuild(repo, 'release');
+    final debug = checkoutBuild(repo, 'debug');
+
+    String resolve(
+      Set<String> onDisk, {
+      Map<String, String> env = const {'HOME': home, 'PWD': repo},
+      String cwd = '/',
+    }) => findVmctlHelper(
+      environment: env,
+      executable: bundle,
+      dataDir: data,
+      currentDir: cwd,
+      exists: onDisk.contains,
+    );
+
+    test('VMCTL_PATH wins when it points at a file', () {
+      expect(
+        resolve(
+          {'/opt/vmctl', bundled},
+          env: {'HOME': home, 'VMCTL_PATH': '/opt/vmctl'},
+        ),
+        '/opt/vmctl',
+      );
+    });
+
+    test('a missing or empty VMCTL_PATH is ignored, not trusted', () {
+      expect(
+        resolve({bundled}, env: {'HOME': home, 'VMCTL_PATH': '/nowhere'}),
+        bundled,
+      );
+      expect(
+        resolve({bundled}, env: {'HOME': home, 'VMCTL_PATH': ''}),
+        bundled,
+      );
+    });
+
+    test('the bundled helper beats every dev location', () {
+      expect(resolve({bundled, inData, installed, release, debug}), bundled);
+      expect(resolve({inData, installed, release, debug}), inData);
+    });
+
+    test('the dev install beats the checkout, release beats debug', () {
+      expect(resolve({installed, release, debug}), installed);
+      expect(resolve({release, debug}), release);
+      expect(resolve({debug}), debug);
+    });
+
+    test('the checkout is found through PWD or the working directory', () {
+      final elsewhere = checkoutBuild('/elsewhere', 'debug');
+      expect(
+        resolve({elsewhere}, env: {'HOME': home, 'PWD': '/elsewhere'}),
+        elsewhere,
+      );
+      expect(resolve({debug}, env: {'HOME': home}, cwd: repo), debug);
+    });
+
+    test('no HOME skips the install location instead of crashing', () {
+      expect(resolve({installed}, env: {}), 'vmctl');
+    });
+
+    test('nothing on disk falls back to the bare name for PATH', () {
+      expect(resolve({}), 'vmctl');
+    });
+
+    test('the test override short-circuits the chain', () {
+      expect(api.helperPath(), '/fake/vmctl');
     });
   });
 
