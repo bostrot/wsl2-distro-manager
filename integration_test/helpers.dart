@@ -26,8 +26,13 @@ class TestKeys {
   static const Key darkModeToggle = ValueKey('test-dark-mode-toggle');
   static const Key bugReportButton = ValueKey('test-bug-report-button');
 
-  // License screen (one-time Store purchase model — no key input anymore)
+  // License screen. Two purchase routes on Windows — the Microsoft Store and
+  // the website that sells a licence key — so two CTAs; on macOS the website
+  // is the only route and carries [licenseStoreButton], the leading CTA key.
   static const Key licenseStoreButton = ValueKey('test-license-store-button');
+  static const Key licenseWebBuyButton =
+      ValueKey('test-license-web-buy-button');
+  static const Key licenseKeyField = ValueKey('test-license-key-field');
 
   // Create dialog
   static const Key createDialogNameInput = ValueKey('test-create-name-input');

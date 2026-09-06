@@ -87,8 +87,12 @@ same pin CI uses. Tracked as `bostrot/ai-tasks#9`.
 
 **Should do before or right after, not blocking**
 - Register `wslmanager://` on Windows (MSIX `protocol_activation` + Inno
-  registry keys) or word `/buy/success` per platform.
-- README "Pro" line still says Microsoft Store only; mention the macOS key.
+  registry keys) or word `/buy/success` per platform. The Dart side is
+  already host-agnostic — `LicenseScreen` listens on every platform — so
+  only the runner and installer registration is missing; until it lands,
+  Windows buyers paste the key into the activation box.
+- `wslmanager.com/buy` must price the Windows licence at US$ 14.99 (the Mac
+  one stays 19.99). The app links to it with `?platform=windows`.
 - `AGENTS.md` still says "no license keys, no validation backend".
 - Upstream issues worth a look before tagging: #317 (window size / dark
   mode not remembered), #309 (default user overwrites `systemd=true`), #311

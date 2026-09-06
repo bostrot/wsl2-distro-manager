@@ -381,8 +381,8 @@ void main() {
           warnIfMissed: false);
       await tester.pump(const Duration(seconds: 1));
 
-      // The license page now leads with the one-time Store purchase CTA
-      // instead of a key-entry box.
+      // The license page leads with the one-time purchase CTA — the
+      // Microsoft Store on Windows, the website on macOS.
       expect(find.byKey(const ValueKey('test-license-store-button')),
           findsOneWidget);
     });

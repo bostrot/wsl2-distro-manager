@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/purchase_routes.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/main.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/router.dart';
@@ -80,7 +82,7 @@ void main() {
     });
   });
 
-  group('Store purchase section', () {
+  group('Purchase sections', () {
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await SharedPreferences.getInstance();
@@ -96,14 +98,24 @@ void main() {
       LicenseManager.storeInstallCheckOverride = null;
     });
 
-    testWidgets('offers the Store purchase when not Pro', (tester) async {
+    testWidgets('offers every purchase route when not Pro', (tester) async {
       await tester.pumpWidget(const WSLManager());
       await tester.pumpAndSettle(const Duration(seconds: 3));
 
       router.pushNamed('license');
       await tester.pump(const Duration(seconds: 1));
 
+      // The leading CTA: the Microsoft Store on Windows, the website on macOS.
       expect(find.byKey(const ValueKey('test-license-store-button')),
+          findsOneWidget);
+      // Windows also sells a key on the website, as a second card.
+      expect(
+          find.byKey(const ValueKey('test-license-web-buy-button')),
+          purchaseRoutesFor(apple: isAppleHost).length > 1
+              ? findsOneWidget
+              : findsNothing);
+      // And a key bought there has to be redeemable here, on any host.
+      expect(find.byKey(const ValueKey('test-license-key-field')),
           findsOneWidget);
     });
 
@@ -120,6 +132,10 @@ void main() {
 
       expect(LicenseManager().isPro, true);
       expect(find.byKey(const ValueKey('test-license-store-button')),
+          findsNothing);
+      expect(find.byKey(const ValueKey('test-license-web-buy-button')),
+          findsNothing);
+      expect(find.byKey(const ValueKey('test-license-key-field')),
           findsNothing);
     });
   });

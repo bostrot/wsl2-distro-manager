@@ -6,6 +6,11 @@ const String title = 'WSL Distro Manager by Bostrot';
 /// is sold on the website and comes back as a key.
 const String macBuyUrl = "https://wslmanager.com/buy";
 
+/// Where Windows users buy Pro without going through the Microsoft Store.
+/// Same shop and the same kind of key as the Mac licence; the `platform`
+/// hint lets the page show the Windows price, and is ignored if it cannot.
+const String windowsBuyUrl = "https://wslmanager.com/buy?platform=windows";
+
 /// Turns a licence key into an entitlement. Answers
 /// `{"valid": true, "plan": "pro", ...}` or `{"valid": false, ...}`.
 const String licenseValidateUrl =

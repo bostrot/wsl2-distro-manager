@@ -5,6 +5,7 @@ import 'package:localization/localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/deep_link.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/purchase_routes.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -12,13 +13,21 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:provider/provider.dart';
 
 class LicenseScreen extends StatefulWidget {
-  const LicenseScreen({Key? key}) : super(key: key);
+  const LicenseScreen({Key? key, this.appleHost}) : super(key: key);
+
+  /// Test seam. Which host's purchase routes to render; defaults to this
+  /// machine's. Only tests pass it — the Windows layout has two buy cards
+  /// where the Mac has one, and neither dev host can pump the other's.
+  @visibleForTesting
+  final bool? appleHost;
 
   @override
   State<LicenseScreen> createState() => _LicenseScreenState();
 }
 
 class _LicenseScreenState extends State<LicenseScreen> {
+  bool get _isApple => widget.appleHost ?? isAppleHost;
+
   bool _isLoading = false;
   bool _isActivating = false;
   final TextEditingController _keyController = TextEditingController();
@@ -31,14 +40,15 @@ class _LicenseScreenState extends State<LicenseScreen> {
     // triggers Provider rebuilds that cascade into this widget's build phase)
     SchedulerBinding.instance.addPostFrameCallback((_) => _loadStatus());
 
-    // Only macOS registers the scheme; elsewhere both calls are inert.
-    if (isAppleHost) {
-      _deepLinks.listen(_handleLink);
-      SchedulerBinding.instance.addPostFrameCallback((_) async {
-        final pending = await _deepLinks.takePendingLink();
-        if (pending != null) _handleLink(pending);
-      });
-    }
+    // Listened for on every host: a key bought on the website unlocks Pro
+    // anywhere, and only macOS registers the scheme today, so on Windows and
+    // Linux the channel simply has nothing on the other end and both calls
+    // are inert rather than wrong.
+    _deepLinks.listen(_handleLink);
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      final pending = await _deepLinks.takePendingLink();
+      if (pending != null) _handleLink(pending);
+    });
   }
 
   @override
@@ -94,13 +104,12 @@ class _LicenseScreenState extends State<LicenseScreen> {
     });
   }
 
-  Future<void> _openStorePage() async {
+  Future<void> _openBuyPage(PurchaseRoute route) async {
     // No canLaunchUrl gate: on Windows it reports false for perfectly
     // launchable https URLs, which silently disabled the one thing this
     // screen asks the user to do (audit PS-07).
     try {
-      // No Microsoft Store on macOS: Pro is bought on the project website.
-      await launchUrl(Uri.parse(isAppleHost ? macBuyUrl : windowsStoreUrl),
+      await launchUrl(Uri.parse(route.url),
           mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
@@ -145,11 +154,26 @@ class _LicenseScreenState extends State<LicenseScreen> {
                             ),
                           ] else ...[
                             // Not Pro: lead with the pitch, status after.
-                            _buildStoreSection(),
-                            if (isAppleHost) ...[
+                            // Windows offers two routes — the Store, and the
+                            // website for buyers who would rather skip it —
+                            // so this is a list, not a single card.
+                            for (final route
+                                in purchaseRoutesFor(apple: _isApple)) ...[
+                              _buildBuySection(route),
                               const SizedBox(height: 20),
-                              _buildActivationSection(),
                             ],
+                            // Key entry belongs on every host now: a licence
+                            // bought on the website has to be redeemable
+                            // wherever it was bought.
+                            _buildActivationSection(),
+                            const SizedBox(height: 20),
+                            // Shown once, under whichever buy cards this host
+                            // offers, rather than repeated inside each.
+                            Card(
+                              padding: const EdgeInsets.all(20),
+                              borderRadius: BorderRadius.circular(10),
+                              child: _buildComparisonTable(),
+                            ),
                             const SizedBox(height: 20),
                             _buildStatusCard(manager),
                             const SizedBox(height: 12),
@@ -174,9 +198,13 @@ class _LicenseScreenState extends State<LicenseScreen> {
   Widget _buildRestoreRow() {
     return Row(
       children: [
-        Text('restore-hint-text'.i18n(),
-            style: TextStyle(
-                fontSize: 12, color: secondaryTextColor(context))),
+        // Flexible, not bare: the hint is a full sentence and in several
+        // locales it is long enough to push the two controls off the row.
+        Flexible(
+          child: Text('restore-hint-text'.i18n(),
+              style: TextStyle(
+                  fontSize: 12, color: secondaryTextColor(context))),
+        ),
         const SizedBox(width: 8),
         Button(
           key: const ValueKey('test-license-recheck'),
@@ -335,7 +363,14 @@ class _LicenseScreenState extends State<LicenseScreen> {
     );
   }
 
-  Widget _buildStoreSection() {
+  /// One purchase route as a card. The Store card leads on Windows and the
+  /// website card follows it; on the Mac the website card is the only one.
+  Widget _buildBuySection(PurchaseRoute route) {
+    final isStore = route.id == PurchaseRouteId.store;
+    // The Store card keeps the original keys: it is still the primary CTA on
+    // Windows, and on the Mac the sole website card inherits them, so what
+    // existing tests look for is always the card the screen leads with.
+    final leadingCta = isStore || _isApple;
     return Card(
       padding: const EdgeInsets.all(20),
       borderRadius: BorderRadius.circular(10),
@@ -343,55 +378,58 @@ class _LicenseScreenState extends State<LicenseScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'store-buy-title'.i18n(),
+            route.titleKey.i18n(),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            (isAppleHost ? 'web-buy-detail-text' : 'store-buy-detail-text')
-                .i18n(),
+            route.detailKey.i18n(),
             style: TextStyle(fontSize: 13, color: secondaryTextColor(context)),
           ),
           const SizedBox(height: 8),
           // The one question every buyer has first was the one thing the
-          // screen never answered (audit PS-02). The number is the US Store
-          // price; the button's Store page shows the buyer's own.
+          // screen never answered (audit PS-02). The number is the US price;
+          // a Store page shows the buyer's own currency.
           Text(
-            (isAppleHost ? 'web-price-text' : 'store-price-text').i18n(),
-            key: const ValueKey('test-license-price'),
+            route.priceKey.i18n(),
+            key: ValueKey(leadingCta
+                ? 'test-license-price'
+                : 'test-license-web-price'),
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              key: const ValueKey('test-license-store-button'),
-              onPressed: _openStorePage,
+              key: ValueKey(leadingCta
+                  ? 'test-license-store-button'
+                  : 'test-license-web-buy-button'),
+              onPressed: () => _openBuyPage(route),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(FluentIcons.shop, size: 16),
+                    Icon(isStore ? FluentIcons.shop : FluentIcons.globe,
+                        size: 16),
                     const SizedBox(width: 8),
-                    Text((isAppleHost ? 'web-buy-btn' : 'store-buy-btn')
-                        .i18n()),
+                    Text(route.buttonKey.i18n()),
                   ],
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildComparisonTable(),
         ],
       ),
     );
   }
 
-  /// Key entry. Two ways in: the browser hands the key over through
-  /// `wslmanager://` right after checkout, or the user pastes it here — which
-  /// is also the path for a second machine, where no purchase just happened.
+  /// Key entry, on every host. Two ways in: the browser hands the key over
+  /// through `wslmanager://` right after checkout — macOS only for now, since
+  /// it is the only runner that registers the scheme — or the user pastes it
+  /// here, which is also the path for a second machine, where no purchase
+  /// just happened.
   Widget _buildActivationSection() {
     return Card(
       padding: const EdgeInsets.all(20),
@@ -405,7 +443,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'activate-detail-text'.i18n(),
+            activateDetailKeyFor(apple: _isApple).i18n(),
             style: TextStyle(fontSize: 13, color: secondaryTextColor(context)),
           ),
           const SizedBox(height: 12),

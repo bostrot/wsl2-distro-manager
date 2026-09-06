@@ -76,7 +76,7 @@
 - [x] Run commands inside VMs over auto-provisioned SSH (cloud-init), from the GUI, the AI chat or MCP clients
 - [x] Build with `scripts/build_macos.sh` — bundles the signed `vmctl` helper
 
-**Pro** *(optional one-time purchase on the Microsoft Store — not a subscription)*
+**Pro** *(optional one-time purchase — from the Microsoft Store, or a licence key bought on [wslmanager.com](https://wslmanager.com/buy) if you would rather skip the Store; not a subscription)*
 - [x] **AI Workspace** — run Hermes Agent, OpenClaw and Open WebUI in a dedicated, isolated WSL distro
 - [x] **AI assistant with tools** — the built-in chat can actually *operate* your WSL: it lists and inspects distros, runs commands, edits config, creates snippets, mounts disks and packages distros through the same tools the MCP server exposes
 - [x] **Sandboxed AI** — spin up a throwaway Ubuntu distro and give an AI chat access to *only* the inside of that sandbox
