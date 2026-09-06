@@ -1,9 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/components/badge_pill.dart';
 
 /// Amber "BETA" pill marking features that ship before they are fully
 /// polished. Amber rather than the accent color so it does not read as
-/// [ProBadge]. The label stays untranslated.
+/// [ProBadge]. The label stays untranslated. [BadgePill] carries the
+/// geometry that centres the four capitals in it, and documents the one
+/// offset it cannot correct.
 class BetaBadge extends StatelessWidget {
   const BetaBadge({super.key});
 
@@ -25,23 +28,11 @@ class BetaBadge extends StatelessWidget {
       excludeSemantics: true,
       child: Tooltip(
         message: 'beta-info-text'.i18n(),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(3),
-            border:
-                Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
-          ),
-          child: Text(
-            'BETA',
-            style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.bold,
-              color: foreground,
-              letterSpacing: 0.5,
-            ),
-          ),
+        child: BadgePill(
+          label: 'BETA',
+          foreground: foreground,
+          background: color.withValues(alpha: 0.18),
+          border: color.withValues(alpha: 0.5),
         ),
       ),
     );

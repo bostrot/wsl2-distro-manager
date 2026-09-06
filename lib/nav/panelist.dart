@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:localization/localization.dart';
+import 'package:wsl2distromanager/components/badge_pill.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -131,22 +132,13 @@ List<NavigationPaneItem> get footerItems => [
                 return Semantics(
                   label: 'new-badge-label-text'.i18n(),
                   excludeSemantics: true,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.normal.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      'NEW',
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        color:
-                            dark ? Colors.blue.lightest : Colors.blue.darkest,
-                      ),
-                    ),
+                  // The same pill as BetaBadge, so the two line up at one
+                  // height in the pane; only the palette differs.
+                  child: BadgePill(
+                    label: 'NEW',
+                    foreground:
+                        dark ? Colors.blue.lightest : Colors.blue.darkest,
+                    background: Colors.blue.normal.withValues(alpha: 0.15),
                   ),
                 );
               }),
