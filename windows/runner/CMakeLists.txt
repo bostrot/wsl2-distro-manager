@@ -9,6 +9,7 @@ project(runner LANGUAGES CXX)
 add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
   "main.cpp"
+  "symlink_relaunch.cpp"
   "utils.cpp"
   "win32_window.cpp"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
@@ -34,6 +35,15 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+
+# Delay-load the Flutter engine so that wWinMain runs before the DLL has to
+# be found. When the app is started through a symlink (e.g. the launcher
+# winget creates in %LOCALAPPDATA%\Microsoft\WinGet\Links) the loader looks
+# for DLLs next to the link and would otherwise abort the process before
+# main.cpp gets the chance to relaunch through the real path. The plugin
+# DLLs are delay-loaded the same way from the top-level CMakeLists.txt.
+target_link_libraries(${BINARY_NAME} PRIVATE "delayimp.lib")
+target_link_options(${BINARY_NAME} PRIVATE "/DELAYLOAD:flutter_windows.dll")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
