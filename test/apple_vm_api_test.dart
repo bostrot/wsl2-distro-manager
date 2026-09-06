@@ -460,8 +460,10 @@ void main() {
     });
 
     test('start refuses while the disk is mounted in Finder', () async {
-      shell.responses['info'] =
-          'image-path : ${tempStore.path}/ubuntu/disk.img\n';
+      // Joined the way the API joins it: on a Windows CI runner the store
+      // path carries backslashes, and a hand-written '/' never matches.
+      final disk = p.join(tempStore.path, 'ubuntu', 'disk.img');
+      shell.responses['info'] = 'image-path : $disk\n';
       await expectLater(
           api.start('ubuntu'),
           throwsA(predicate(

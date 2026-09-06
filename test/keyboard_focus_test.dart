@@ -9,11 +9,15 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/list_item.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
 import 'package:wsl2distromanager/nav/shell_focus.dart';
 import 'package:wsl2distromanager/theme.dart';
+
+import 'mocks.dart';
 
 /// Labels every tab stop reachable from the pumped widget, in order, by
 /// walking the cycle until it wraps.
@@ -33,6 +37,17 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+    // ListItem asks for the host backend when it mounts. On a Windows
+    // runner that is a real WSLApi, and the first WSLApi ever built kicks
+    // off the distro-catalogue fetch — inside a widget test that is a Dio
+    // timer left pending in the fake zone, which fails the test. Building
+    // it here, outside the pump, keeps that one-off out of the test body.
+    final backend = WSLApi(shell: MockShell());
+    vmBackendBuilder = () => backend;
+  });
+
+  tearDown(() {
+    vmBackendBuilder = defaultVmBackendBuilder;
   });
 
   group('shouldAdoptKeyboardFocus', () {

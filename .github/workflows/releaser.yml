@@ -212,7 +212,6 @@ jobs:
           Start-Sleep -Seconds 5
 
           gh workflow run publish-winget.yml -f tag=$tag
-          gh workflow run publish-scoop.yml -f tag=$tag
           gh workflow run publish-store.yml -f tag=$tag
         env:
           GITHUB_TOKEN: ${{ github.token }}
