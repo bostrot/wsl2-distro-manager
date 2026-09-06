@@ -69,9 +69,15 @@ same pin CI uses. Tracked as `bostrot/ai-tasks#9`.
 3. Push `beta`, resolve the #316 conflict, merge PR #318; that is what makes
    `releaser.yml` tag and publish.
 4. Drop the `publish-scoop.yml` trigger from `releaser.yml`.
-5. macOS distribution: Developer ID certificate as `CODESIGN_IDENTITY`,
-   `notarytool submit … --wait` + `stapler` in `macos.yml`, raise the
-   deployment target, add a macOS section under "Install" in the README.
+5. ~~macOS distribution: Developer ID certificate as `CODESIGN_IDENTITY`,
+   `notarytool submit … --wait` + `stapler` in `macos.yml`, add a macOS
+   section under "Install" in the README.~~ Done 2026-09-06: the 2.0.0 dmg
+   and zip on the release are Developer ID signed, notarized and stapled
+   (`scripts/sign_macos_release.sh`, run by hand), the README has the
+   Homebrew tap (`bostrot/homebrew-tap`, cask `wsl-manager`), and
+   `macos.yml` signs in CI once the five secrets it documents are set.
+   Still open: raise `MACOSX_DEPLOYMENT_TARGET` from 10.15, and set those
+   secrets so the next release does not need the manual run.
 6. Website: commit the buy page, flip `IS_TEST_MODE`/links to the live Stripe
    payment links, deploy so `/buy` exists before any macOS binary is public.
    That also unblocks `bostrot/ai-tasks#7` and `#8`.
