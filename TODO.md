@@ -216,13 +216,24 @@ the field, one-change-per-save. Current value:
 Next step: try one swap by hand; if it reverts for you too, raise it with
 Partner Center support.
 
-### Refresh "What's new in this version"
-Still the old notes ("Fixed window not closing…"). Should describe this
-release — the UI/UX audit alone closed 214 findings — before submitting.
+### Submission 71 is live (2026-09-06)
+Published 2026-09-06 19:54 UTC. The public listing now serves the new
+description, short description, 11 feature bullets, 8 v1.11.0 screenshots and
+the "WSL Manager 2.0" release notes; the old notes ("Fixed window not
+closing…") are gone. Seeing the previous screenshots for a while after a
+submission goes live is the Store client and CDN caching them, not a failed
+submission.
 
-### Submission 71 is still a draft
-Description, short description, 11 features, 8 screenshots and all 5 logo
-slots are in place. Never submitted.
+### Checking the listing without Partner Center
+`dart run scripts/check_store_listing.dart --min-screenshots 8 --expect-notes
+"WSL Manager 2.0"` reads the public product detail endpoint and prints what a
+customer actually sees — screenshot count and sizes, logos, feature bullets,
+description lengths and "What's new" — exiting non-zero when the live listing
+falls short. Partner Center shows the draft; this shows what shipped.
+
+Nothing in the repo submits listing assets: `.github/workflows/publish-store.yml`
+uploads the MSIX only, so screenshots and text stay whatever was last submitted
+by hand.
 
 ---
 
