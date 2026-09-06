@@ -204,9 +204,20 @@ This app is available on the [Microsoft Store](https://apps.microsoft.com/store/
 </details>
 
 <details>
+<summary>macOS via Homebrew</summary>
+
+```sh
+brew tap bostrot/tap
+brew install --cask wsl-manager
+```
+
+Apple silicon, macOS 11 or newer. The cask lives in [bostrot/homebrew-tap](https://github.com/bostrot/homebrew-tap); `brew upgrade --cask wsl-manager` picks up new releases.
+</details>
+
+<details>
 <summary>Direct download</summary>
 
-You can get this app with a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-manager/releases) page. The latest version is available as a zip file.
+You can get this app with a direct download from the [Releases](https://github.com/bostrot/wsl2-distro-manager/releases) page. Windows ships as a setup `.exe`, an `.msix` and a portable `.zip`; macOS as a `.dmg`.
 </details>
 
 <details>
