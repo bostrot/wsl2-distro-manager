@@ -1,0 +1,118 @@
+name: macOS
+
+on:
+  push:
+    paths:
+      - "lib/**"
+      - "macos/**"
+      - "assets/**"
+      - "scripts/**"
+      - "pubspec.yaml"
+      - ".github/workflows/macos.yml"
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    # Apple silicon runner: matches the arm64-only vmctl target and the
+    # Apple-silicon Xcode toolchain the app is developed against. macos-14
+    # is deprecated and defaults to Xcode 15.4 (Swift 5.10), which cannot
+    # even read vmctl's swift-tools-version 6.0 manifest or run its Swift
+    # Testing suite; macos-26 ships Xcode 26.6, the version the app is built
+    # and verified with locally.
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same pin as test.yml — an unpinned 'stable' breaks CI with no change
+      # on our side.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.41.6'
+
+      - name: Check translations
+        run: dart run scripts/check_translations.dart
+
+      - name: Enable macOS Desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Warnings and errors stay fatal. Infos do not: the tree carries a
+      # long tail of style-only hints (dangling doc comments, deprecated
+      # fluent_ui members, super parameters) that flutter analyze otherwise
+      # turns into a red build with no functional change behind it.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      # Same empty define scripts/build_macos.sh passes below while the
+      # WSLMANAGER_GITHUB_CLIENT_ID variable is unset; it must resolve to the
+      # bundled id.
+      - name: Run sharing tests with an empty client-id define
+        run: flutter test --dart-define=GITHUB_CLIENT_ID= test/github_publish_test.dart
+
+      - name: Run vmctl tests
+        run: ./scripts/test_vmctl.sh
+
+      # Ad-hoc signed until a Developer ID certificate lands in the repo
+      # secrets: the app runs locally and via right-click → Open elsewhere,
+      # but is not notarized. Set CODESIGN_IDENTITY from a secret to change
+      # that without touching the script.
+      # WSLMANAGER_GITHUB_CLIENT_ID is an optional repository *variable*
+      # (Settings → Secrets and variables → Actions → Variables), not a
+      # secret: the OAuth client id is public. It overrides the id bundled
+      # in lib/api/github_publish.dart; unset, the bundled id ships. See
+      # doc/github-oauth-setup.md.
+      - name: Build app with vmctl
+        env:
+          GITHUB_CLIENT_ID: ${{ vars.WSLMANAGER_GITHUB_CLIENT_ID }}
+        run: ./scripts/build_macos.sh
+
+      - name: Get version
+        id: get_version
+        run: echo "version=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Package
+        run: |
+          APP="build/macos/Build/Products/Release/WSL Manager.app"
+          STAGE=$(mktemp -d)
+          cp -R "$APP" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "WSL Manager" -srcfolder "$STAGE" -ov -format UDZO \
+            "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" \
+            "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip"
+
+      - name: Upload nightly artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: |
+            wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg
+            wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip
+
+      # The Windows releaser creates the GitHub release on main; this only
+      # attaches the mac artifacts to it once it exists. Best effort: on a
+      # race (release not created yet) the nightly artifacts above still
+      # carry the build.
+      - name: Attach to release (main only)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in 1 2 3 4 5; do
+            if gh release upload "v${{ steps.get_version.outputs.version }}" \
+              "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg" \
+              "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip" \
+              --clobber; then
+              exit 0
+            fi
+            sleep 60
+          done
+          exit 1

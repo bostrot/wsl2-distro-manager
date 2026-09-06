@@ -1,0 +1,573 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/helpers.dart';
+
+/// Records every request it sees and replies based on the path, so tests can
+/// assert both "which endpoint got hit" and "what happened with the reply"
+/// without making a real network call.
+class _RecordingAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+  ResponseBody Function(RequestOptions options) responder;
+
+  _RecordingAdapter(this.responder);
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    requests.add(options);
+    return responder(options);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+    // Not Pro by default; tests that need it flip the override and re-init.
+    LicenseManager.storeInstallCheckOverride = () => false;
+    await LicenseManager().init();
+  });
+
+  tearDown(() {
+    LicenseManager.storeInstallCheckOverride = null;
+  });
+
+  group('AiService BYOK configuration', () {
+    test('not configured without a key', () {
+      final ai = AiService();
+      expect(ai.hasByokConfigured, false);
+    });
+
+    test('a stored key means configured, independent of Pro status', () {
+      final ai = AiService();
+      ai.setByokApiKey('sk-test');
+
+      // Configuration is a pure "is the key there" signal — Pro gating
+      // happens in sendMessage, not here, so Settings can manage the key
+      // regardless of entitlement.
+      expect(ai.hasByokConfigured, true);
+    });
+
+    test('base URL and model fall back to defaults when unset', () {
+      final ai = AiService();
+      expect(ai.byokBaseUrl, AiService.defaultByokBaseUrl);
+      expect(ai.byokModel, AiService.defaultByokModel);
+    });
+
+    test('base URL, key, and model are trimmed and persisted', () {
+      final ai = AiService();
+      ai.setByokBaseUrl('  https://my-proxy.example.com/v1  ');
+      ai.setByokApiKey('  sk-abc123  ');
+      ai.setByokModel('  gpt-4o  ');
+
+      expect(ai.byokBaseUrl, 'https://my-proxy.example.com/v1');
+      expect(ai.byokApiKey, 'sk-abc123');
+      expect(ai.byokModel, 'gpt-4o');
+    });
+
+    test('setting an empty value clears the stored override', () {
+      final ai = AiService();
+      ai.setByokBaseUrl('https://my-proxy.example.com/v1');
+      ai.setByokBaseUrl('');
+
+      expect(ai.byokBaseUrl, AiService.defaultByokBaseUrl);
+    });
+  });
+
+  group('AiService sendMessage', () {
+    test('throws pro-required when not Pro', () async {
+      final ai = AiService();
+      await ai.init();
+
+      expect(
+        () => ai.sendMessage('hello'),
+        throwsA(predicate((e) => e.toString().contains('pro-required'))),
+      );
+    });
+
+    test('throws byok-required when Pro but no key is configured', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      await ai.init();
+
+      expect(
+        () => ai.sendMessage('hello'),
+        throwsA(predicate((e) => e.toString().contains('byok-required'))),
+      );
+    });
+
+    test('sends via the configured endpoint with the bearer key', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.setByokBaseUrl('https://my-proxy.example.com/v1');
+      ai.setByokModel('gpt-4o');
+      await ai.init();
+      ai.clearHistory();
+
+      final adapter = _RecordingAdapter((options) {
+        expect(options.headers['Authorization'], 'Bearer sk-test');
+        return ResponseBody.fromString(
+          json.encode({
+            'choices': [
+              {
+                'message': {'content': 'byok reply'}
+              }
+            ]
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      final reply = await ai.sendMessage('hello');
+
+      expect(reply, 'byok reply');
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.single.path,
+          'https://my-proxy.example.com/v1/chat/completions');
+      final body = json.decode(adapter.requests.single.data as String)
+          as Map<String, dynamic>;
+      expect(body['model'], 'gpt-4o');
+    });
+
+    test('a request failure keeps the user message so retry can re-run it',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      await ai.init();
+      ai.clearHistory();
+
+      final adapter = _RecordingAdapter((options) {
+        return ResponseBody.fromString('server error', 500);
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      await expectLater(ai.sendMessage('hello'), throwsException);
+      // The question stays — retryLast re-runs it without a retype.
+      expect(ai.conversationHistory, hasLength(1));
+      expect(ai.conversationHistory.single.role, 'user');
+      expect(ai.conversationHistory.single.content, 'hello');
+
+      // And a retry over the same history reaches the provider again.
+      final retryAdapter = _RecordingAdapter((options) => ResponseBody.fromString(
+          json.encode({
+            'choices': [
+              {'message': {'content': 'ok now'}}
+            ]
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          }));
+      ai.dioForTesting.httpClientAdapter = retryAdapter;
+      final reply = await ai.retryLast();
+      expect(reply, 'ok now');
+      expect(ai.conversationHistory, hasLength(2));
+    });
+  });
+
+  group('AiService without the retired Claude provider', () {
+    test('configured state and its message follow the API key alone', () {
+      final ai = AiService();
+      expect(ai.hasAiConfigured, false);
+      expect(ai.configRequiredKey, 'byok-required-text');
+
+      ai.setByokApiKey('sk-test');
+      expect(ai.hasAiConfigured, true);
+    });
+
+    test('init purges the Sign in with Claude leftovers, keeps the key',
+        () async {
+      // A profile written by a build that still had the provider: the
+      // selection, the client ID and — the part that matters — OAuth tokens.
+      prefs.setString('AiProvider', 'claude');
+      prefs.setString('ClaudeOAuthClientId', 'cid');
+      prefs.setString('ClaudeModel', 'claude-x');
+      prefs.setString('ClaudeAccessToken', 'at-1');
+      prefs.setString('ClaudeRefreshToken', 'rt-1');
+      prefs.setInt('ClaudeTokenExpiry', 1);
+      prefs.setString('ByokApiKey', 'sk-kept');
+
+      final ai = AiService();
+      await ai.init();
+
+      for (final key in AiService.retiredClaudePrefKeys) {
+        expect(prefs.containsKey(key), false, reason: key);
+      }
+      expect(ai.byokApiKey, 'sk-kept');
+      // The stale provider choice no longer blocks the key path.
+      expect(ai.hasAiConfigured, true);
+    });
+
+    test('a stale Claude selection without a key asks for the key, not a sign-in',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      prefs.setString('AiProvider', 'claude');
+      await ai.init();
+
+      await expectLater(
+        ai.sendMessage('hello'),
+        throwsA(predicate((e) => e.toString().contains('byok-required'))),
+      );
+    });
+  });
+
+  group('AiService model list and test probe', () {
+    test('lists BYOK models from /models with the typed key', () async {
+      final ai = AiService();
+      final adapter = _RecordingAdapter((options) {
+        expect(options.path, 'https://typed.example.com/v1/models');
+        expect(options.headers['Authorization'], 'Bearer typed-key');
+        return ResponseBody.fromString(
+          json.encode({
+            'data': [
+              {'id': 'b-model'},
+              {'id': 'a-model'}
+            ]
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      final models = await ai.listModels(
+          baseUrl: 'https://typed.example.com/v1', apiKey: 'typed-key');
+
+      expect(models, ['a-model', 'b-model']);
+    });
+
+    test('the test probe posts one tiny chat request as typed', () async {
+      final ai = AiService();
+      final adapter = _RecordingAdapter((options) {
+        final body =
+            json.decode(options.data as String) as Map<String, dynamic>;
+        expect(body['model'], 'typed-model');
+        expect(body['max_tokens'], 16);
+        return ResponseBody.fromString(json.encode({'choices': []}), 200,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            });
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      await ai.testConnection(
+          baseUrl: 'https://typed.example.com/v1',
+          apiKey: 'k',
+          model: 'typed-model');
+
+      expect(adapter.requests.single.path,
+          'https://typed.example.com/v1/chat/completions');
+    });
+
+    test('a refused probe throws ai-test-failed', () async {
+      final ai = AiService();
+      ai.dioForTesting.httpClientAdapter =
+          _RecordingAdapter((_) => ResponseBody.fromString('denied', 401));
+
+      await expectLater(
+        ai.testConnection(
+            baseUrl: 'https://x.example.com/v1', apiKey: 'k', model: 'm'),
+        throwsA(predicate((e) => e.toString().contains('ai-test-failed'))),
+      );
+    });
+  });
+
+  group('AiService tool-use agent', () {
+    late McpTool echoTool;
+    late List<Map<String, dynamic>> echoArgs;
+
+    setUp(() {
+      echoArgs = [];
+      echoTool = McpTool(
+        name: 'echo',
+        description: 'echoes text',
+        inputSchema: const {
+          'type': 'object',
+          'properties': {
+            'text': {'type': 'string'}
+          },
+          'required': ['text'],
+        },
+        handler: (args) async {
+          echoArgs.add(args);
+          return 'echoed:${args['text']}';
+        },
+      );
+    });
+
+    ResponseBody _json(Map<String, dynamic> body) => ResponseBody.fromString(
+          json.encode(body),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+
+    test('BYOK: a tool call runs, its result is fed back, answer returns',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [echoTool];
+      await ai.init();
+      ai.clearHistory();
+
+      var call = 0;
+      final adapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          // First turn: ask to call the tool.
+          return _json({
+            'choices': [
+              {
+                'message': {
+                  'role': 'assistant',
+                  'content': null,
+                  'tool_calls': [
+                    {
+                      'id': 'c1',
+                      'type': 'function',
+                      'function': {
+                        'name': 'echo',
+                        'arguments': '{"text":"hi"}',
+                      },
+                    }
+                  ],
+                }
+              }
+            ]
+          });
+        }
+        // Second turn: the tool result must be present, then answer.
+        final body = json.decode(options.data as String) as Map<String, dynamic>;
+        final msgs = body['messages'] as List;
+        expect(
+            msgs.any((m) => m['role'] == 'tool' && m['content'] == 'echoed:hi'),
+            true);
+        return _json({
+          'choices': [
+            {
+              'message': {'role': 'assistant', 'content': 'done: hi'}
+            }
+          ]
+        });
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      var updates = 0;
+      final reply = await ai.sendMessage('echo hi', onUpdate: () => updates++);
+
+      expect(reply, 'done: hi');
+      expect(echoArgs.single['text'], 'hi');
+      expect(adapter.requests, hasLength(2));
+      expect(updates, greaterThan(0));
+      // The transcript carries a tool note.
+      expect(ai.conversationHistory.any((m) => m.role == 'tool'), true);
+    });
+
+    test('BYOK: an SSE stream assembles text deltas into the reply', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [];
+      await ai.init();
+      ai.clearHistory();
+
+      const sse = 'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n'
+          'data: {"choices":[{"delta":{"content":"lo!"}}]}\n\n'
+          'data: {"usage":{"total_tokens":42},"choices":[]}\n\n'
+          'data: [DONE]\n\n';
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        // The request opts into streaming…
+        final body =
+            json.decode(options.data as String) as Map<String, dynamic>;
+        expect(body['stream'], true);
+        return ResponseBody.fromString(sse, 200, headers: {
+          Headers.contentTypeHeader: ['text/event-stream'],
+        });
+      });
+
+      expect(await ai.sendMessage('hi'), 'Hello!');
+    });
+
+    test('BYOK: streamed tool_call fragments reassemble and execute',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [echoTool];
+      await ai.init();
+      ai.clearHistory();
+
+      var call = 0;
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          // The name arrives whole, the arguments split across two deltas —
+          // exactly how providers stream function calls.
+          const sse =
+              'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"echo","arguments":"{\\"te"}}]}}]}\n\n'
+              'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"xt\\":\\"hi\\"}"}}]}}]}\n\n'
+              'data: [DONE]\n\n';
+          return ResponseBody.fromString(sse, 200, headers: {
+            Headers.contentTypeHeader: ['text/event-stream'],
+          });
+        }
+        // Round two must carry the executed tool result back.
+        final body =
+            json.decode(options.data as String) as Map<String, dynamic>;
+        final msgs = body['messages'] as List;
+        expect(
+            msgs.any((m) => m['role'] == 'tool' && m['content'] == 'echoed:hi'),
+            true);
+        return ResponseBody.fromString(
+            'data: {"choices":[{"delta":{"content":"done"}}]}\n\ndata: [DONE]\n\n',
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['text/event-stream'],
+            });
+      });
+
+      expect(await ai.sendMessage('echo hi'), 'done');
+      expect(echoArgs.single['text'], 'hi');
+    });
+
+    test('cancel stops the loop: no further request, transcript kept',
+        () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.clearHistory();
+
+      final signal = CancelSignal();
+      ai.toolsForTesting = [
+        McpTool(
+          name: 'echo',
+          description: 'echoes',
+          inputSchema: const {'type': 'object', 'properties': {}},
+          handler: (_) async {
+            // The user presses Cancel while a tool is running: the loop must
+            // stop before the next provider request fires.
+            signal.cancel();
+            return 'done anyway';
+          },
+        )
+      ];
+      await ai.init();
+
+      final adapter = _RecordingAdapter((_) => ResponseBody.fromString(
+            json.encode({
+              'choices': [
+                {
+                  'message': {
+                    'role': 'assistant',
+                    'content': null,
+                    'tool_calls': [
+                      {
+                        'id': 'c1',
+                        'type': 'function',
+                        'function': {'name': 'echo', 'arguments': '{}'},
+                      }
+                    ],
+                  }
+                }
+              ]
+            }),
+            200,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ));
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      await expectLater(
+          ai.sendMessage('go', cancel: signal), throwsA(isA<CancelledException>()));
+
+      // Exactly one request — the loop never came back for round two.
+      expect(adapter.requests, hasLength(1));
+      // What ran, ran: the user turn and the tool note survive the cancel.
+      expect(ai.conversationHistory.any((m) => m.role == 'user'), true);
+      expect(ai.conversationHistory.any((m) => m.role == 'tool'), true);
+    });
+
+    test('capTranscript keeps only the newest turns within both budgets', () {
+      final msgs = [
+        for (var i = 0; i < 100; i++)
+          AiMessage(
+              role: i.isEven ? 'user' : 'assistant',
+              content: 'message $i',
+              timestamp: DateTime.now()),
+        // Tool notes never go over the wire at all.
+        AiMessage(role: 'tool', content: 'wsl_run_command', timestamp: DateTime.now()),
+      ];
+      final capped = AiService.capTranscript(msgs);
+      expect(capped.length, 30);
+      expect(capped.last.content, 'message 99');
+      expect(capped.first.content, 'message 70');
+      expect(capped.any((m) => m.role == 'tool'), false);
+
+      // One enormous old message cannot smuggle the char budget away from
+      // the recent turns — the newest message always survives.
+      final huge = [
+        AiMessage(
+            role: 'user', content: 'x' * 100000, timestamp: DateTime.now()),
+        AiMessage(role: 'assistant', content: 'small', timestamp: DateTime.now()),
+      ];
+      final cappedHuge = AiService.capTranscript(huge);
+      expect(cappedHuge.last.content, 'small');
+      expect(cappedHuge.length, 1);
+    });
+
+    test('with no tools it still answers in one turn', () async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = [];
+      await ai.init();
+      ai.clearHistory();
+
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((_) => _json({
+            'choices': [
+              {
+                'message': {'role': 'assistant', 'content': 'plain answer'}
+              }
+            ]
+          }));
+
+      expect(await ai.sendMessage('hi'), 'plain answer');
+    });
+  });
+}

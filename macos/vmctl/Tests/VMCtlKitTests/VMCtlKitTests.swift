@@ -1,0 +1,375 @@
+import Foundation
+import Testing
+@testable import VMCtlKit
+
+@Suite struct VMNameTests {
+    @Test func validNames() {
+        #expect(isValidVmName("ubuntu"))
+        #expect(isValidVmName("my-vm_2.0"))
+        #expect(!(isValidVmName("")))
+        #expect(!(isValidVmName(".hidden")))
+        #expect(!(isValidVmName("has space")))
+        #expect(!(isValidVmName("../escape")))
+        #expect(!(isValidVmName(String(repeating: "a", count: 65))))
+    }
+}
+
+@Suite struct DHCPLeasesTests {
+    @Test func parsesLeaseBlocks() {
+        let sample = """
+        {
+        \tname=ubuntu
+        \tip_address=192.168.64.5
+        \thw_address=1,aa:bb:cc:d:ee:ff
+        \tidentifier=1,aa:bb:cc:d:ee:ff
+        \tlease=0x66aa
+        }
+        {
+        \tname=other
+        \tip_address=192.168.64.9
+        \thw_address=1,11:22:33:44:55:66
+        }
+        """
+        let leases = DHCPLeases.parse(sample)
+        // Octets are zero-padded on the way in.
+        #expect(leases["aa:bb:cc:0d:ee:ff"] == "192.168.64.5")
+        #expect(leases["11:22:33:44:55:66"] == "192.168.64.9")
+    }
+
+    @Test func rfc4361IdentifierMatchesByMacSuffix() {
+        // Alpine's dhcpcd sends a DUID client-id; macOS records it as a long
+        // hw_address whose final six octets are the interface MAC.
+        let sample = """
+        {
+        	name=alpine
+        	ip_address=192.168.64.3
+        	hw_address=ff,d1:c1:6c:8e:0:1:0:1:32:29:d4:58:ea:fd:d1:c1:6c:8e
+        }
+        {
+        	name=plain
+        	ip_address=192.168.64.9
+        	hw_address=1,ea:fd:d1:c1:6c:8e
+        }
+        """
+        // The exact-MAC lease outranks the DUID one when both exist.
+        #expect(DHCPLeases.ipForMac("EA:FD:D1:C1:6C:8E", in: sample) == "192.168.64.9")
+        // With only the DUID lease present, the suffix match resolves it.
+        let duidOnly = sample.components(separatedBy: "{").prefix(2).joined(separator: "{")
+        #expect(DHCPLeases.ipForMac("EA:FD:D1:C1:6C:8E", in: duidOnly) == "192.168.64.3")
+        // A MAC that merely shares trailing octets must not match.
+        #expect(DHCPLeases.ipForMac("00:00:d1:c1:6c:8e", in: duidOnly) == nil)
+    }
+
+    @Test func networkdDuidLeaseResolvesByHostname() {
+        // systemd-networkd's default DUID is machine-id-derived: the MAC
+        // appears nowhere in the lease, so the hostname (pinned to the VM
+        // name by the seed) is the only key left.
+        let sample = """
+        {
+        	name=dtest
+        	ip_address=192.168.64.10
+        	hw_address=ff,f1:f5:dd:7f:0:2:0:0:ab:11:e5:db:f0:13:5d:b2:72:c8
+        }
+        """
+        #expect(DHCPLeases.ipFor(
+            mac: "fa:38:02:78:c3:e1", hostname: "dtest", in: sample)
+            == "192.168.64.10")
+        #expect(DHCPLeases.ipFor(
+            mac: "fa:38:02:78:c3:e1", hostname: "other", in: sample) == nil)
+        #expect(DHCPLeases.ipFor(
+            mac: "fa:38:02:78:c3:e1", in: sample) == nil)
+    }
+
+    @Test func expiredLeaseIsNotAnAddress() {
+        // Seen on a real host: the guest got 192.168.64.21 at boot, never
+        // renewed, and bootpd kept the block on file for days. `list`
+        // showed the address, ARP said "incomplete", ssh dialled it anyway.
+        let sample = """
+        {
+        	name=ai-workspace
+        	ip_address=192.168.64.21
+        	hw_address=1,96:93:65:58:99:14
+        	identifier=1,96:93:65:58:99:14
+        	lease=0x6a9b25a0
+        }
+        """
+        let expiry = Date(timeIntervalSince1970: 0x6a9b25a0)
+        let mac = "96:93:65:58:99:14"
+        #expect(DHCPLeases.ipFor(
+            mac: mac, hostname: "ai-workspace", in: sample,
+            now: expiry.addingTimeInterval(-60)) == "192.168.64.21")
+        #expect(DHCPLeases.ipFor(
+            mac: mac, hostname: "ai-workspace", in: sample,
+            now: expiry.addingTimeInterval(60)) == nil)
+        // Neither the DUID-suffix nor the hostname path may revive it.
+        let duid = sample.replacingOccurrences(
+            of: "1,96:93:65:58:99:14",
+            with: "ff,57:82:9b:d0:0:1:0:1:32:2c:86:78:96:93:65:58:99:14")
+        #expect(DHCPLeases.ipFor(
+            mac: mac, hostname: "ai-workspace", in: duid,
+            now: expiry.addingTimeInterval(60)) == nil)
+    }
+
+    @Test func expiredLeaseYieldsToACurrentOne() {
+        // A guest that rebooted gets a fresh block; the stale one for the
+        // same MAC must not shadow it whichever order bootpd wrote them.
+        let sample = """
+        {
+        	name=box
+        	ip_address=192.168.64.30
+        	hw_address=1,aa:bb:cc:dd:ee:ff
+        	lease=0x1000
+        }
+        {
+        	name=box
+        	ip_address=192.168.64.31
+        	hw_address=1,aa:bb:cc:dd:ee:ff
+        	lease=0x3000
+        }
+        """
+        let now = Date(timeIntervalSince1970: 0x2000)
+        #expect(DHCPLeases.ipFor(mac: "aa:bb:cc:dd:ee:ff", in: sample, now: now)
+            == "192.168.64.31")
+    }
+
+    @Test func leaseWithoutExpiryStaysValid() {
+        // No `lease=` line (older files, hand-written fixtures) and an
+        // unparseable one both mean "unknown", never "expired".
+        let sample = """
+        {
+        	ip_address=192.168.64.40
+        	hw_address=1,aa:bb:cc:dd:ee:01
+        }
+        {
+        	ip_address=192.168.64.41
+        	hw_address=1,aa:bb:cc:dd:ee:02
+        	lease=soon
+        }
+        """
+        let now = Date(timeIntervalSince1970: 4_000_000_000)
+        #expect(DHCPLeases.ipFor(mac: "aa:bb:cc:dd:ee:01", in: sample, now: now)
+            == "192.168.64.40")
+        #expect(DHCPLeases.ipFor(mac: "aa:bb:cc:dd:ee:02", in: sample, now: now)
+            == "192.168.64.41")
+        #expect(DHCPLeases.parseExpiry("0x6a9b25a0")
+            == Date(timeIntervalSince1970: 0x6a9b25a0))
+        #expect(DHCPLeases.parseExpiry("garbage") == nil)
+    }
+
+    @Test func normalizeMacPadsAndLowercases() {
+        #expect(DHCPLeases.normalizeMac("AA:B:1:22:3:F") == "aa:0b:01:22:03:0f")
+    }
+
+    @Test func lookupUsesNormalizedMac() {
+        let sample = "{\nip_address=10.0.0.2\nhw_address=1,a:b:c:d:e:f\n}"
+        let leases = DHCPLeases.parse(sample)
+        #expect(leases[DHCPLeases.normalizeMac("0A:0B:0C:0D:0E:0F")] == "10.0.0.2")
+    }
+}
+
+@Suite struct CloudInitTests {
+    @Test func userDataContainsUserAndKey() {
+        let text = CloudInit.userData(
+            user: "eric", publicKey: "ssh-ed25519 AAAA test", hostname: "dev")
+        #expect(text.hasPrefix("#cloud-config"))
+        #expect(text.contains("name: eric"))
+        #expect(text.contains("ssh-ed25519 AAAA test"))
+        #expect(text.contains("hostname: dev"))
+        #expect(text.contains("NOPASSWD:ALL"))
+    }
+
+    @Test func metaDataCarriesInstanceId() {
+        let text = CloudInit.metaData(hostname: "dev")
+        #expect(text.contains("instance-id: iid-dev"))
+        #expect(text.contains("local-hostname: dev"))
+    }
+}
+
+@Suite final class VMStoreTests {
+    let tempRoot: URL
+    let store: VMStore
+
+    init() throws {
+        tempRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vmctl-tests-\(UUID().uuidString)")
+        store = VMStore(root: tempRoot)
+        try store.ensureExists()
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: tempRoot)
+    }
+
+    @Test func configRoundTrip() throws {
+        let config = VMConfig(
+            name: "trip", os: .linux, cpus: 3,
+            memoryBytes: 2_147_483_648, diskSizeBytes: 1_073_741_824,
+            user: "dev", macAddress: "aa:bb:cc:dd:ee:ff")
+        try store.saveConfig(config)
+        let loaded = try store.loadConfig("trip")
+        #expect(loaded.name == config.name)
+        #expect(loaded.os == .linux)
+        #expect(loaded.cpus == 3)
+        #expect(loaded.memoryBytes == 2_147_483_648)
+        #expect(loaded.user == "dev")
+        #expect(loaded.macAddress == "aa:bb:cc:dd:ee:ff")
+    }
+
+    @Test func missingConfigThrows() {
+        #expect(throws: (any Error).self) { try store.loadConfig("nope") }
+    }
+
+    @Test func allNamesListsOnlyRealVms() throws {
+        try store.saveConfig(VMConfig(
+            name: "b", os: .linux, cpus: 1, memoryBytes: 1, diskSizeBytes: 1,
+            user: "u", macAddress: "aa:aa:aa:aa:aa:aa"))
+        try store.saveConfig(VMConfig(
+            name: "a", os: .linux, cpus: 1, memoryBytes: 1, diskSizeBytes: 1,
+            user: "u", macAddress: "aa:aa:aa:aa:aa:ab"))
+        // A stray directory without config.json is not a VM.
+        try FileManager.default.createDirectory(
+            at: tempRoot.appendingPathComponent("junk"),
+            withIntermediateDirectories: true)
+        #expect(try store.allNames() == ["a", "b"])
+    }
+
+    @Test func createDiskImageIsSparseAndGrows() throws {
+        let disk = tempRoot.appendingPathComponent("disk.img")
+        try store.createDiskImage(at: disk, sizeBytes: 4096 * 10)
+        #expect(store.fileSize(disk) == 4096 * 10)
+        // Growing keeps content; shrinking never happens.
+        try store.createDiskImage(at: disk, sizeBytes: 4096 * 5)
+        #expect(store.fileSize(disk) == 4096 * 10)
+        try store.createDiskImage(at: disk, sizeBytes: 4096 * 20)
+        #expect(store.fileSize(disk) == 4096 * 20)
+    }
+
+    @Test func stalePidReadsAsStopped() throws {
+        let name = "stale"
+        try store.saveConfig(VMConfig(
+            name: name, os: .linux, cpus: 1, memoryBytes: 1, diskSizeBytes: 1,
+            user: "u", macAddress: "aa:aa:aa:aa:aa:ac"))
+        try FileManager.default.createDirectory(
+            at: store.runDir(name), withIntermediateDirectories: true)
+        // A PID that can't exist.
+        try "999999".write(to: store.pidPath(name), atomically: true, encoding: .utf8)
+        #expect(!(store.isRunning(name)))
+        // And the stale file is cleaned up.
+        #expect(!(FileManager.default.fileExists(atPath: store.pidPath(name).path)))
+    }
+
+    @Test func listEntriesReportsState() throws {
+        try store.saveConfig(VMConfig(
+            name: "one", os: .linux, cpus: 2, memoryBytes: 1024, diskSizeBytes: 0,
+            user: "dev", macAddress: "aa:aa:aa:aa:aa:ad"))
+        let entries = try store.listEntries { _ in "10.0.0.9" }
+        #expect(entries.count == 1)
+        #expect(entries[0].name == "one")
+        #expect(entries[0].state == "stopped")
+        // The resolver only runs for running VMs.
+        #expect(entries[0].ip == nil)
+        #expect(entries[0].user == "dev")
+    }
+}
+
+@Suite struct ArgumentBagTests {
+    @Test func optionsFlagsAndRemainder() {
+        let bag = ArgumentBag(
+            ["--name", "vm1", "--gui", "--user", "root", "--", "echo", "hi"],
+            flagNames: ["gui"])
+        #expect(bag.options["name"] == "vm1")
+        #expect(bag.options["user"] == "root")
+        #expect(bag.flags.contains("gui"))
+        #expect(bag.remainder == ["echo", "hi"])
+    }
+
+    @Test func requireThrowsWhenMissing() {
+        let bag = ArgumentBag([], flagNames: [])
+        #expect(throws: (any Error).self) { try bag.require("name") }
+    }
+
+    @Test func intFallsBackToDefault() {
+        let bag = ArgumentBag(["--cpus", "8", "--memory", "x"], flagNames: [])
+        #expect(bag.int("cpus", default: 2) == 8)
+        #expect(bag.int("memory", default: 4) == 4)
+        #expect(bag.int("disk-size", default: 32) == 32)
+    }
+}
+
+// Serialized: the long-socket-path fallback chdirs the process, which is
+// safe in the daemon (one bind at startup) and the one-shot CLI, but races
+// when parallel tests each bind their own relay.
+@Suite(.serialized) final class ConsoleRelayTests {
+    let dir: URL
+    let relay: ConsoleRelay
+
+    init() throws {
+        dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("relay-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        relay = try ConsoleRelay(
+            socketPath: dir.appendingPathComponent("console.sock").path,
+            logPath: dir.appendingPathComponent("serial.log").path)
+        relay.start()
+    }
+
+    deinit {
+        relay.shutdown()
+        try? FileManager.default.removeItem(at: dir)
+    }
+
+    private func connectClient() throws -> Int32 {
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        try UnixSocketAddress.connect(fd, to: relay.socketPath)
+        return fd
+    }
+
+    private func readSome(_ fd: Int32, timeoutMs: Int32 = 2000) -> [UInt8] {
+        var p = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+        guard poll(&p, 1, timeoutMs) > 0 else { return [] }
+        var buffer = [UInt8](repeating: 0, count: 256)
+        let count = read(fd, &buffer, buffer.count)
+        return count > 0 ? Array(buffer[0..<count]) : []
+    }
+
+    @Test func guestOutputReachesClientAndLog() throws {
+        let client = try connectClient()
+        defer { close(client) }
+        Thread.sleep(forTimeInterval: 0.2) // let accept() land
+
+        let payload = Array("login: ".utf8)
+        _ = payload.withUnsafeBytes { write(relay.vmSideFd, $0.baseAddress, payload.count) }
+
+        #expect(readSome(client) == payload)
+        // The log tee keeps working for the early-exit diagnostics.
+        Thread.sleep(forTimeInterval: 0.2)
+        let log = try String(
+            contentsOf: dir.appendingPathComponent("serial.log"), encoding: .utf8)
+        #expect(log.contains("login: "))
+    }
+
+    @Test func clientInputReachesGuest() throws {
+        let client = try connectClient()
+        defer { close(client) }
+        Thread.sleep(forTimeInterval: 0.2)
+
+        let payload = Array("root\n".utf8)
+        _ = payload.withUnsafeBytes { write(client, $0.baseAddress, payload.count) }
+        #expect(readSome(relay.vmSideFd) == payload)
+    }
+
+    @Test func newClientReplacesOldOne() throws {
+        let first = try connectClient()
+        Thread.sleep(forTimeInterval: 0.2)
+        let second = try connectClient()
+        defer { close(second) }
+        Thread.sleep(forTimeInterval: 0.2)
+
+        let payload = Array("hello".utf8)
+        _ = payload.withUnsafeBytes { write(relay.vmSideFd, $0.baseAddress, payload.count) }
+        #expect(readSome(second) == payload)
+        // The first connection was closed by the relay.
+        #expect(readSome(first, timeoutMs: 500).isEmpty)
+        close(first)
+    }
+}

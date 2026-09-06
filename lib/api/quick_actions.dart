@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:yaml/yaml.dart';
@@ -62,17 +63,22 @@ class QuickActionItem {
         content: content);
   }
 
-  /// To yaml string
+  /// To yaml string.
+  ///
+  /// Scalars are JSON-quoted (valid YAML double-quoted scalars) so an empty
+  /// field stays a string instead of parsing back as null — an unquoted
+  /// `description: ` is YAML null, which [fromYamlString] rejects, dropping
+  /// the whole snippet from the list on reload.
   String toYamlString() {
-    return '''
-name: $name
-description: $description
-version: $version
-author: $author
-license: $license
-git: $git
-distro: $distro
-''';
+    final distroYaml =
+        distro is List ? distro.toString() : jsonEncode(distro?.toString() ?? '');
+    return 'name: ${jsonEncode(name)}\n'
+        'description: ${jsonEncode(description)}\n'
+        'version: ${jsonEncode(version)}\n'
+        'author: ${jsonEncode(author)}\n'
+        'license: ${jsonEncode(license)}\n'
+        'git: ${jsonEncode(git)}\n'
+        'distro: $distroYaml\n';
   }
 }
 

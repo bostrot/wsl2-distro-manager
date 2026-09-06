@@ -1,10 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/components/ai_chat_button.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
-
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
-import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/list.dart';
+import 'package:wsl2distromanager/components/recommendations_panel.dart';
 
 import 'dart:io';
 
@@ -20,15 +23,27 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  WSLApi api = WSLApi();
+  final VmBackend api = vmBackend();
+  List<String> distroNames = [];
+
+  /// One key for the life of the page. Re-created inline on every build, it
+  /// tore down and rebuilt the whole list subtree — collapsing every expanded
+  /// row and restarting the 5s poll — each time the AI panel toggled
+  /// (audit LN-03).
+  final GlobalKey<NavigatorState> _infoboxKey = GlobalKey<NavigatorState>();
 
   void enableAnalytics() async {
     String platform = Platform.operatingSystemVersion;
-    String exec = Platform.resolvedExecutable.toString();
-    if (exec.contains("9891PhantomDevs.WSL2Manager")) {
-      exec = "store";
-    } else {
-      exec = "git";
+    String exec = 'unknown';
+    try {
+      exec = Platform.resolvedExecutable.toString();
+      if (exec.contains("9891PhantomDevs.WSL2Manager")) {
+        exec = "store";
+      } else {
+        exec = "git";
+      }
+    } catch (_) {
+      exec = 'git';
     }
     var tmpPlatform = platform;
     int? build;
@@ -48,7 +63,6 @@ class _HomePageState extends State<HomePage> {
       platform = tmpPlatform;
     }
 
-    // Enable analytics
     plausible.event(name: 'Devices', props: {
       'app_source': exec,
       'app_version': currentVersion,
@@ -56,6 +70,17 @@ class _HomePageState extends State<HomePage> {
       'app_locale': language,
       'app_theme': AppTheme.themeMode == ThemeMode.dark ? 'dark' : 'light',
     });
+  }
+
+  Future<List<String>> _fetchDistroNames() async {
+    try {
+      final instances = await api.list(prefs.getBool('showDocker') ?? false);
+      final list = instances.all;
+      if (list.isNotEmpty && list[0] != 'wslNotInstalled') {
+        return list;
+      }
+    } catch (_) {}
+    return [];
   }
 
   @override
@@ -66,14 +91,59 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      key: (GlobalVariable.infobox = GlobalKey()),
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        DistroList(
-          api: api,
+    bool isPro = false;
+    try {
+      isPro = GlobalVariable.testProEnabled || LicenseManager().isPro;
+    } catch (_) {
+      isPro = false;
+    }
+
+    return Stack(
+      children: [
+        // Just the main content now. The AI chat is docked by the shell
+        // (nav/root_screen.dart) so the status/notification bar sits beside
+        // it instead of sliding underneath it and colliding with the panel's
+        // own input and this button.
+        SizedBox.expand(
+          child: Column(
+            key: (GlobalVariable.infobox = _infoboxKey),
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              FutureBuilder<List<String>>(
+                future: _fetchDistroNames(),
+                builder: (context, snapshot) {
+                  final names = snapshot.data ?? [];
+                  if (names.isNotEmpty && names != distroNames) {
+                    distroNames = names;
+                  }
+                  return RecommendationsPanel(
+                    key: const ValueKey('test-recommendations-panel'),
+                    distroNames: distroNames,
+                  );
+                },
+              ),
+              DistroList(api: api),
+            ],
+          ),
         ),
+        if (isPro)
+          Positioned(
+            // The home body already excludes the dock's width, so the button
+            // sits at its own right edge — just left of the divider.
+            right: 16,
+            bottom: 16,
+            // The shell dock listens to the same notifier and rebuilds; the
+            // button only needs it for the open/closed semantics.
+            child: ValueListenableBuilder<bool>(
+              valueListenable: GlobalVariable.aiPanel,
+              builder: (context, open, _) => AiChatButton(
+                key: const ValueKey('test-ai-chat-toggle'),
+                open: open,
+                onPressed: () => GlobalVariable.aiPanel.value = !open,
+              ),
+            ),
+          ),
       ],
     );
   }

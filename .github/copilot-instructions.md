@@ -48,6 +48,15 @@ Always reference these instructions first and fallback to search or bash command
 - Always run `flutter test` to ensure no regressions in core functionality
 - Verify the build completes successfully with `flutter build windows`
 
+### Commits
+- One author only: `Eric Trenkel <eric@bostrot.com>`. No `Co-Authored-By:` trailers.
+- No tool attribution anywhere -- no "Generated with", no session links, no bot
+  signatures, no emoji footers, in commit messages or PR descriptions.
+- Conventional Commits, matching existing history: `type(scope): short description`
+  using `feat`, `fix`, `refactor`, `docs`, `ci`, `test`, `chore`.
+- Keep the subject short, imperative and descriptive, with no trailing period.
+  Add a body only when the reason is not obvious from the subject.
+
 ### Code Quality
 - Follow Dart/Flutter conventions as enforced by analysis_options.yaml
 - Use the existing localization system in `/lib/i18n/` for any user-facing strings
