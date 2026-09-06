@@ -20,6 +20,10 @@ jobs:
     # Testing suite; macos-26 ships Xcode 26.6, the version the app is built
     # and verified with locally.
     runs-on: macos-26
+    env:
+      # Secrets cannot be tested in a step `if`, so the presence check lives
+      # here and the steps key off HAS_SIGNING.
+      HAS_SIGNING: ${{ secrets.MACOS_SIGNING_CERT_P12 != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -59,10 +63,36 @@ jobs:
       - name: Run vmctl tests
         run: ./scripts/test_vmctl.sh
 
-      # Ad-hoc signed until a Developer ID certificate lands in the repo
-      # secrets: the app runs locally and via right-click → Open elsewhere,
-      # but is not notarized. Set CODESIGN_IDENTITY from a secret to change
-      # that without touching the script.
+      # Developer ID signing and notarization run when the four secrets
+      # below exist; without them the build is ad-hoc signed (runs locally
+      # and via right-click → Open, but Gatekeeper refuses it on first open).
+      #   MACOS_SIGNING_CERT_P12       base64 of the Developer ID Application
+      #                                .p12 (certificate + private key)
+      #   MACOS_SIGNING_CERT_PASSWORD  its password
+      #   NOTARY_KEY_P8                the App Store Connect API key (.p8 text)
+      #   NOTARY_KEY_ID / NOTARY_ISSUER_ID   from App Store Connect → Integrations
+      - name: Import signing certificate
+        if: env.HAS_SIGNING == 'true'
+        env:
+          CERT_P12: ${{ secrets.MACOS_SIGNING_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          echo "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" -A \
+            -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain
+          rm -f "$RUNNER_TEMP/cert.p12"
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"')
+          [ -n "$IDENTITY" ] || { echo "no Developer ID identity in the p12" >&2; exit 1; }
+          echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
       # WSLMANAGER_GITHUB_CLIENT_ID is an optional repository *variable*
       # (Settings → Secrets and variables → Actions → Variables), not a
       # secret: the OAuth client id is public. It overrides the id bundled
@@ -77,7 +107,24 @@ jobs:
         id: get_version
         run: echo "version=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)" >> "$GITHUB_OUTPUT"
 
-      - name: Package
+      - name: Sign, notarize and package
+        if: env.HAS_SIGNING == 'true'
+        env:
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_PROFILE: ci-notary
+        run: |
+          printf '%s' "$NOTARY_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+            --key "$RUNNER_TEMP/AuthKey.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID"
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
+          ./scripts/sign_macos_release.sh \
+            "build/macos/Build/Products/Release/WSL Manager.app" \
+            "${{ steps.get_version.outputs.version }}" "$PWD"
+
+      - name: Package (ad-hoc build)
+        if: env.HAS_SIGNING != 'true'
         run: |
           APP="build/macos/Build/Products/Release/WSL Manager.app"
           STAGE=$(mktemp -d)
@@ -106,8 +153,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          TAG="v${{ steps.get_version.outputs.version }}"
+          # An ad-hoc build must never replace a signed, notarized asset that
+          # is already on the release (2.0.0 was signed by hand). Only a
+          # signed build, or a release with no mac assets yet, gets uploaded.
+          if [ "$HAS_SIGNING" != "true" ] && gh release view "$TAG" --json assets \
+               --jq '.assets[].name' 2>/dev/null | grep -q -- '-macos.dmg$'; then
+            echo "$TAG already carries a macOS dmg and this build is unsigned; not clobbering."
+            exit 0
+          fi
           for i in 1 2 3 4 5; do
-            if gh release upload "v${{ steps.get_version.outputs.version }}" \
+            if gh release upload "$TAG" \
               "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg" \
               "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip" \
               --clobber; then
