@@ -50,27 +50,7 @@ List<NavigationPaneItem> get originalItems {
     key: const Key('/ai-workspace'),
     icon: const Icon(FluentIcons.robot),
     title: Text('ai-workspace-title'.i18n()),
-    // infoBadge, not a Row in title — fluent_ui only extracts the pane
-    // label from a literal Text title. Below fluent's 1008px threshold the
-    // pane is a 48px icon rail and the badge has nowhere to go but *over*
-    // the robot glyph, hiding the page's only affordance (audit LN-10,
-    // PS-10) — so compact mode gets a corner dot instead of the full pill.
-    infoBadge: Builder(
-      builder: (context) => MediaQuery.of(context).size.width < 1008
-          ? Semantics(
-              label: 'beta-badge-label-text'.i18n(),
-              excludeSemantics: true,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: BetaBadge.color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            )
-          : const BetaBadge(),
-    ),
+    infoBadge: const BetaPaneBadge(),
     body: const SizedBox.shrink(),
     onTap: () {
       navigateGuarded('ai-workspace', path: '/ai-workspace');
@@ -90,6 +70,10 @@ List<NavigationPaneItem> get originalItems {
     key: const Key('/package'),
     icon: const Icon(FluentIcons.package),
     title: Text('custompackage-text'.i18n()),
+    // `.wsl` packaging is as new as the AI Workspace and rests on a WSL
+    // feature that is itself young, so the pane marks it the same way
+    // (bostrot/ai-tasks#36).
+    infoBadge: const BetaPaneBadge(),
     body: const SizedBox.shrink(),
     onTap: () {
       navigateGuarded('package', path: '/package');

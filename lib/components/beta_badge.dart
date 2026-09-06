@@ -52,3 +52,43 @@ class BetaBanner extends StatelessWidget {
     );
   }
 }
+
+/// The [BetaBadge] as a `PaneItem.infoBadge`.
+///
+/// infoBadge, not a Row in the item's title — fluent_ui only extracts the pane
+/// label from a literal Text title, so a Row renders an unnamed entry.
+///
+/// Below fluent's 1008px threshold the pane collapses to a 48px icon rail and
+/// the badge has nowhere to go but *over* the item's glyph, hiding the
+/// destination's only affordance (audit LN-10, PS-10) — so compact mode gets a
+/// corner dot instead of the full pill. The dot carries the pill's accessible
+/// name so the marker is still announced either way.
+class BetaPaneBadge extends StatelessWidget {
+  const BetaPaneBadge({super.key});
+
+  /// The pane width below which fluent_ui shows the icon rail rather than the
+  /// open pane.
+  static const double compactPaneThreshold = 1008;
+
+  /// The corner dot's diameter, in the compact rail.
+  static const double dotSize = 8;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.of(context).size.width >= compactPaneThreshold) {
+      return const BetaBadge();
+    }
+    return Semantics(
+      label: 'beta-badge-label-text'.i18n(),
+      excludeSemantics: true,
+      child: Container(
+        width: dotSize,
+        height: dotSize,
+        decoration: const BoxDecoration(
+          color: BetaBadge.color,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}

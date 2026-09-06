@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
+import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/panelist.dart';
 import 'package:wsl2distromanager/screens/template_screen.dart';
@@ -53,6 +54,36 @@ void main() {
       // Templates and create stay: they are first-class on every backend.
       expect(keys, contains("[<'/templates'>]"));
       expect(keys, contains("[<'/addinstance'>]"));
+    });
+  });
+
+  group('beta markers in the pane', () {
+    Widget? badgeFor(String path) {
+      vmBackendBuilder = () => WSLApi(shell: MockShell());
+      final item = originalItems
+          .whereType<PaneItem>()
+          .firstWhere((item) => item.key == Key(path));
+      return item.infoBadge;
+    }
+
+    test('distro packaging is marked beta like the AI Workspace', () {
+      // `.wsl` packaging ships before it is fully polished, so the pane says
+      // so where the user picks the destination (bostrot/ai-tasks#36).
+      expect(badgeFor('/package'), isA<BetaPaneBadge>());
+    });
+
+    test('the settled destinations carry no badge', () {
+      // The marker only means something while it is rare.
+      expect(badgeFor('/templates'), isNull);
+      expect(badgeFor('/addinstance'), isNull);
+      expect(badgeFor('/'), isNull);
+    });
+
+    test('the AI Workspace keeps its badge', () {
+      // Its entry is Windows-only (it needs a local wsl.exe), so there is
+      // nothing to assert about it elsewhere.
+      if (!Platform.isWindows) return;
+      expect(badgeFor('/ai-workspace'), isA<BetaPaneBadge>());
     });
   });
 
