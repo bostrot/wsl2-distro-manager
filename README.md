@@ -76,7 +76,7 @@
 - [x] Run commands inside VMs over auto-provisioned SSH (cloud-init), from the GUI, the AI chat or MCP clients
 - [x] Build with `scripts/build_macos.sh` — bundles the signed `vmctl` helper
 
-**Pro** *(optional one-time purchase on the Microsoft Store — not a subscription)*
+**Pro** *(one-time purchase: Microsoft Store on Windows, licence key from [wslmanager.com/buy](https://wslmanager.com/buy/) on macOS and for non-Store installs — never a subscription)*
 - [x] **AI Workspace** — run Hermes Agent, OpenClaw and Open WebUI in a dedicated, isolated WSL distro
 - [x] **AI assistant with tools** — the built-in chat can actually *operate* your WSL: it lists and inspects distros, runs commands, edits config, creates snippets, mounts disks and packages distros through the same tools the MCP server exposes
 - [x] **Sandboxed AI** — spin up a throwaway Ubuntu distro and give an AI chat access to *only* the inside of that sandbox
@@ -89,7 +89,17 @@
 > requests pass through anyone else's servers. Pro unlocks the features in the
 > app; it does not buy AI credits. See [Free vs Pro](https://github.com/bostrot/wsl2-distro-manager/wiki/Pro-Version).
 
-## 🤖 AI assistant & MCP
+> **Why is there a paid tier at all?** WSL Manager has been a one-person,
+> spare-time project since 2021, and every feature above — the free ones
+> included — was built in evenings and weekends. Managing your distros and VMs
+> is free and stays free, and the whole app stays open source. Pro is the AI
+> layer on top, and what it earns is what lets maintenance and new features
+> become planned, regular work instead of whatever time is left over. Buy it
+> once, keep it forever, and you are directly funding the next release.
+
+## 🤖 AI assistant & MCP *(Pro)*
+
+Everything in this section is part of **Pro**; the free app has none of it.
 
 The AI assistant is an **agent**, not just a chat box: it is given the same tool
 set the MCP server exposes, so when you ask "what distros do I have?" or "install
@@ -101,10 +111,6 @@ OpenAI-compatible endpoint works (OpenAI, Azure, a LiteLLM proxy, Ollama, LM
 Studio, …). Enter the base URL, key and model. The **Load model list** button
 fills an autocomplete from the provider's `/models`, and **Test connection**
 proves the credentials work before you open the chat.
-
-There is no *Sign in with Claude*: Anthropic's terms do not allow third-party
-apps to offer Claude.ai login or to run on a Claude Pro/Max subscription, so
-Claude access needs an API key from the Claude Console like any other provider.
 
 **Sandboxes** (AI Workspace → *Add sandbox distro*) create a throwaway distro
 from any catalog image (newest Ubuntu by default). Its chat is handed only the
@@ -176,7 +182,7 @@ endpoint with an `Authorization: Bearer <TOKEN>` header, skipping `mcp-remote`.
 To reach it from another machine, enable the built-in **Cloudflare tunnel**
 toggle in the same panel and use the public URL it prints.
 
-## 📱 Web dashboard
+## 📱 Web dashboard *(Pro)*
 
 Turn on **Settings → Web Dashboard** (Pro) and the app serves a browser
 dashboard on port `59134` for every device on your network — Windows and macOS
