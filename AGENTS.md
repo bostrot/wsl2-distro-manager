@@ -8,7 +8,7 @@ Flutter desktop app for managing WSL distributions on Windows x64 (primary targe
 | Task | Command | Notes |
 |------|---------|-------|
 | Get deps | `flutter pub get` | 2-3 min, do not cancel |
-| Static analysis | `flutter analyze` | Must pass before PR |
+| Static analysis | `flutter analyze --no-fatal-infos` | Must pass before PR; the same gate `macos.yml` runs. Warnings and errors fail it, the pre-existing style infos do not |
 | Run tests | `flutter test` | Needs WSL installed; 2-5 min |
 | Run e2e tests | `flutter test integration_test/` | UI click-through tests; ~4 min |
 | Run dev | `flutter run -d windows` | Hot reload enabled |

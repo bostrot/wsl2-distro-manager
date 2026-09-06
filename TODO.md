@@ -54,8 +54,15 @@ same pin CI uses. Tracked as `bostrot/ai-tasks#9`.
   pushing.
 
 **Ship blockers, in order**
-1. Get `flutter analyze` to exit 0 (fix or explicitly allow the infos) so
-   `macos.yml` passes.
+1. ~~Get `flutter analyze` to exit 0 (fix or explicitly allow the infos) so
+   `macos.yml` passes.~~ Done 2026-09-06 (`bostrot/ai-tasks#33`): the
+   Analyze step runs `flutter analyze --no-fatal-infos` (warnings and
+   errors stay fatal; 98 style-only infos remain), and the job moved from
+   the deprecated `macos-14` runner (Xcode 15.4, cannot read vmctl's
+   Swift 6 manifest) to `macos-26` (Xcode 26.6, the local toolchain).
+   Every step — analyze, tests, sharing tests, vmctl tests,
+   `build_macos.sh`, dmg/zip packaging — was run locally on that
+   toolchain before the change. The infos themselves are still open.
 2. Bump the version (1.12.0) and write release notes: the audit's 214
    fixes, MCP server, AI workspace/sandbox/task queue, snippets sharing,
    macOS VMs (beta), licence keys.
