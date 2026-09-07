@@ -37,7 +37,84 @@ public enum CloudInit {
               password: "*"
               type: hash
         package_update: false
+        bootcmd:
+          - |
+        \(indented(consoleGettyFixScript, by: 4))
+
         """
+    }
+
+    /// Busybox init restarts a getty for every `respawn` line in
+    /// /etc/inittab whether or not the tty behind it exists. Alpine's cloud
+    /// images are built for QEMU's `virt` machine and ship a getty on the
+    /// PL011 UART, ttyAMA0; Virtualization.framework has no such UART, so
+    /// that getty dies the instant it starts and init respawns it forever,
+    /// burying the login prompt on the graphical console under an endless
+    /// "can't open /dev/ttyAMA0: No such file or directory".
+    ///
+    /// Comment those entries out, and put a getty on the virtio console the
+    /// VZ serial port does expose so `vmctl console` reaches a login prompt
+    /// too. `kill -HUP 1` makes busybox init re-read the file, which stops
+    /// the flood without a reboot.
+    ///
+    /// Nothing is appended to an inittab that has no live getty line: a
+    /// systemd guest can still carry a vestigial /etc/inittab, and a busybox
+    /// entry in it would be dead weight nobody reads.
+    ///
+    /// Wrapped in a function rather than written straight down, because
+    /// cloud-init splices every `bootcmd` entry into one generated script:
+    /// a bare `exit` here would swallow whatever entry came next.
+    ///
+    /// The three environment overrides are what let the tests run this
+    /// against a fixture instead of the host's own /etc and init.
+    public static let consoleGettyFixScript = """
+    vmctl_fix_gettys() {
+      inittab=${WSLMANAGER_INITTAB:-/etc/inittab}
+      devdir=${WSLMANAGER_DEV:-/dev}
+      initpid=${WSLMANAGER_INIT_PID-1}
+      [ -f "$inittab" ] || return 0
+      tmp="$inittab.vmctl.$$"
+      : > "$tmp" || return 0
+      changed=0
+      gettys=0
+      while IFS= read -r line || [ -n "$line" ]; do
+        case $line in
+          '#'*) ;;
+          *:respawn:*getty*)
+            gettys=1
+            tty=${line%%:*}
+            if [ -n "$tty" ] && [ ! -e "$devdir/$tty" ]; then
+              line="#$line"
+              changed=1
+            fi
+            ;;
+        esac
+        printf '%s\\n' "$line" >> "$tmp"
+      done < "$inittab"
+      if [ "$gettys" = 1 ] && [ -e "$devdir/hvc0" ] \\
+        && ! grep -q '^hvc0:' "$inittab"; then
+        printf '%s\\n' 'hvc0::respawn:/sbin/getty -L 0 hvc0 vt100' >> "$tmp"
+        changed=1
+      fi
+      if [ "$changed" = 1 ]; then
+        cat "$tmp" > "$inittab"
+        [ -n "$initpid" ] && kill -HUP "$initpid" 2>/dev/null
+      fi
+      rm -f "$tmp"
+      return 0
+    }
+    vmctl_fix_gettys
+    """
+
+    /// Pads every line so a multi-line script can sit inside a YAML block
+    /// scalar. Empty lines stay empty: trailing blanks would be preserved
+    /// verbatim in the block.
+    static func indented(_ text: String, by spaces: Int) -> String {
+        let pad = String(repeating: " ", count: spaces)
+        return text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { $0.isEmpty ? "" : pad + $0 }
+            .joined(separator: "\n")
     }
 
     /// Without this, images that leave all networking to cloud-init (Debian

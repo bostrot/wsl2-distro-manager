@@ -386,7 +386,9 @@ public enum VmctlCLI {
     /// VMs created by older builds carry a seed with no network config at
     /// all: their DHCP client sends a DUID that macOS never answers, so they
     /// boot without an address and nothing can reach them. Recreating the VM
-    /// would work but throws the disk away; this repairs it in place.
+    /// would work but throws the disk away; this repairs it in place. Older
+    /// seeds also lack the getty repair, so an Alpine guest made by one goes
+    /// on flooding its console with "can't open /dev/ttyAMA0" until reseeded.
     static func reseed(_ store: VMStore, _ rest: [String]) throws {
         let bag = ArgumentBag(rest, flagNames: [])
         let name = try bag.require("name")

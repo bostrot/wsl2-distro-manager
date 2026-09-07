@@ -183,6 +183,121 @@ import Testing
         #expect(text.contains("instance-id: iid-dev"))
         #expect(text.contains("local-hostname: dev"))
     }
+
+    @Test func userDataRunsTheGettyFixEveryBoot() {
+        let text = CloudInit.userData(
+            user: "eric", publicKey: "ssh-ed25519 AAAA test", hostname: "dev")
+        // bootcmd, not runcmd: the flood starts long before the final stage.
+        #expect(text.contains("bootcmd:\n  - |\n"))
+        // Indented into the block scalar, or the YAML does not parse.
+        #expect(text.contains("\n    vmctl_fix_gettys() {\n"))
+        #expect(text.contains("\n    vmctl_fix_gettys\n"))
+    }
+
+    /// Runs the guest-side script against a fixture — its own inittab, its
+    /// own "/dev", and no init to signal — and returns the inittab after.
+    private func runGettyFix(inittab: String, devices: [String]) throws -> String {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("vmctl-getty-\(UUID().uuidString)")
+        let devDir = dir.appendingPathComponent("dev")
+        try fm.createDirectory(at: devDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+        for device in devices {
+            fm.createFile(atPath: devDir.appendingPathComponent(device).path, contents: nil)
+        }
+        let inittabURL = dir.appendingPathComponent("inittab")
+        try inittab.write(to: inittabURL, atomically: true, encoding: .utf8)
+        let scriptURL = dir.appendingPathComponent("fix.sh")
+        try CloudInit.consoleGettyFixScript
+            .write(to: scriptURL, atomically: true, encoding: .utf8)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [scriptURL.path]
+        process.environment = [
+            "WSLMANAGER_INITTAB": inittabURL.path,
+            "WSLMANAGER_DEV": devDir.path,
+            // Empty on purpose: nothing may HUP the *host's* pid 1.
+            "WSLMANAGER_INIT_PID": "",
+        ]
+        try process.run()
+        process.waitUntilExit()
+        #expect(process.terminationStatus == 0)
+        return try String(contentsOf: inittabURL, encoding: .utf8)
+    }
+
+    @Test func gettyFixDisablesTtysTheMachineLacks() throws {
+        let result = try runGettyFix(
+            inittab: """
+            ::sysinit:/sbin/openrc sysinit
+            tty1::respawn:/sbin/getty 38400 tty1
+            ttyAMA0::respawn:/sbin/getty -L 0 ttyAMA0 vt100
+            ttyS0::respawn:/sbin/getty -L 0 ttyS0 vt100
+
+            """,
+            devices: ["tty1", "hvc0"])
+
+        // The two serial gettys VZ cannot back are out...
+        #expect(result.contains("\n#ttyAMA0::respawn:"))
+        #expect(result.contains("\n#ttyS0::respawn:"))
+        // ...the console that does exist keeps its getty, and hvc0 gains one.
+        #expect(result.contains("\ntty1::respawn:/sbin/getty 38400 tty1\n"))
+        #expect(result.contains("\nhvc0::respawn:/sbin/getty -L 0 hvc0 vt100\n"))
+        // Non-getty lines are none of its business.
+        #expect(result.contains("::sysinit:/sbin/openrc sysinit"))
+    }
+
+    @Test func gettyFixLeavesAnAlreadyGoodInittabAlone() throws {
+        // Second boot: nothing to comment out twice, no duplicate hvc0 line.
+        let inittab = """
+        tty1::respawn:/sbin/getty 38400 tty1
+        #ttyAMA0::respawn:/sbin/getty -L 0 ttyAMA0 vt100
+        hvc0::respawn:/sbin/getty -L 0 hvc0 vt100
+
+        """
+        let result = try runGettyFix(inittab: inittab, devices: ["tty1", "hvc0"])
+        #expect(result == inittab)
+    }
+
+    @Test func gettyFixAddsNothingToAnInittabNothingReads() throws {
+        // A systemd guest can still carry a leftover /etc/inittab. It runs no
+        // getty from it, so a busybox line there would only be litter.
+        let inittab = """
+        # Legacy file, kept by the distro and read by nothing.
+        id:5:initdefault:
+
+        """
+        let result = try runGettyFix(inittab: inittab, devices: ["hvc0"])
+        #expect(result == inittab)
+    }
+
+    @Test func gettyFixIgnoresGuestsWithoutAnInittab() throws {
+        // Debian/Ubuntu cloud images are systemd: no inittab to repair, and
+        // the script must not invent one.
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("vmctl-getty-\(UUID().uuidString)")
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: dir) }
+        let inittabURL = dir.appendingPathComponent("inittab")
+        let scriptURL = dir.appendingPathComponent("fix.sh")
+        try CloudInit.consoleGettyFixScript
+            .write(to: scriptURL, atomically: true, encoding: .utf8)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [scriptURL.path]
+        process.environment = [
+            "WSLMANAGER_INITTAB": inittabURL.path,
+            "WSLMANAGER_DEV": dir.path,
+            "WSLMANAGER_INIT_PID": "",
+        ]
+        try process.run()
+        process.waitUntilExit()
+        #expect(process.terminationStatus == 0)
+        #expect(!fm.fileExists(atPath: inittabURL.path))
+    }
 }
 
 @Suite final class VMStoreTests {
