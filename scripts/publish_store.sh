@@ -43,7 +43,10 @@ request() {
   code=$(curl "${args[@]}" "$url")
   cat "$WORK/body"
   [[ "$code" =~ ^2 ]] || {
+    # Callers that only want the status discard stdout, so the API's own
+    # explanation has to reach the log by another route.
     echo "$method $url -> HTTP $code" >&2
+    cat "$WORK/body" >&2; echo >&2
     return 1
   }
 }
