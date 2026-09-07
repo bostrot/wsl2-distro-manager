@@ -16,6 +16,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/error_view.dart';
+import 'package:wsl2distromanager/components/form_card.dart';
 import 'package:wsl2distromanager/components/suggest_on_focus.dart';
 
 enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
@@ -592,7 +593,7 @@ class _CreateWidgetState extends State<CreateWidget> {
             builder: (context, failure, _) {
               if (failure == null) return const SizedBox.shrink();
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
+                padding: const EdgeInsets.only(bottom: 12.0),
                 child: InfoBar(
                   title: Text(failure.message),
                   content: failure.details.isEmpty
@@ -610,345 +611,357 @@ class _CreateWidgetState extends State<CreateWidget> {
               );
             },
           ),
-        Container(
-          height: 5.0,
-        ),
-        // An InfoLabel like the field below it (audit CI-06).
-        InfoLabel(
-          label: 'name-text'.i18n(),
-          child: MergeSemantics(
-            child: Tooltip(
-              message: 'namehint-text'.i18n(),
-              child: TextBox(
-                key: const ValueKey('test-create-name-input'),
-                controller: widget.nameController,
-                placeholder: 'name-text'.i18n(),
-                // The clear X only while there is something to clear
-                // (audit CI-07).
-                suffix: widget.nameController.text.isEmpty
-                    ? null
-                    : NamedIconButton(
-                        label: 'clear-text'.i18n(),
-                        icon: FluentIcons.chrome_close,
-                        iconSize: 11.0,
-                        onPressed: () {
-                          widget.nameController.clear();
-                        },
+        // What the instance is and where it comes from. The form used to be
+        // one flat column of every control it has, spaced by a run of
+        // `Container(height: …)`s (bostrot/ai-tasks#50).
+        FormCard(
+          icon: FluentIcons.text_document,
+          title: 'createbasics-text'.i18n(),
+          children: [
+            // An InfoLabel like the field below it (audit CI-06).
+            InfoLabel(
+              label: 'name-text'.i18n(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MergeSemantics(
+                    child: Tooltip(
+                      message: 'namehint-text'.i18n(),
+                      child: TextBox(
+                        key: const ValueKey('test-create-name-input'),
+                        controller: widget.nameController,
+                        placeholder: 'name-text'.i18n(),
+                        // The clear X only while there is something to clear
+                        // (audit CI-07).
+                        suffix: widget.nameController.text.isEmpty
+                            ? null
+                            : NamedIconButton(
+                                label: 'clear-text'.i18n(),
+                                icon: FluentIcons.chrome_close,
+                                iconSize: 11.0,
+                                onPressed: () {
+                                  widget.nameController.clear();
+                                },
+                              ),
                       ),
-              ),
-            ),
-          ),
-        ),
-        // A live preview whenever sanitising would change the typed name —
-        // `[^A-Za-z0-9_-]` becomes `_`, and nothing said so, so an
-        // all-non-ASCII name silently became underscores (audit CI-04).
-        if (!nameExists &&
-            widget.nameController.text.isNotEmpty &&
-            sanitizeDistroName(widget.nameController.text) !=
-                widget.nameController.text)
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0, left: 4.0),
-            child: Text(
-              'namewillbe-text'
-                  .i18n([sanitizeDistroName(widget.nameController.text)]),
-              key: const ValueKey('test-create-name-preview'),
-              style:
-                  TextStyle(color: secondaryTextColor(context), fontSize: 12.0),
-            ),
-          ),
-        if (nameExists)
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0, left: 4.0),
-            // The one inline message in the app that was bold, and the one
-            // that hardcoded its red instead of resolving it per theme
-            // (audit CI-03).
-            child: Text(
-              'distroexists-text'.i18n(),
-              style:
-                  TextStyle(color: destructiveColor(context), fontSize: 12.0),
-            ),
-          ),
-        Container(
-          height: 10.0,
-        ),
-        Container(
-          height: 5.0,
-        ),
-        InfoLabel(
-          label: 'sourcetype-text'.i18n(),
-          // A DropDownButton's flyout opens *below* the control; the ComboBox
-          // it replaces aligned the popup over its selected item, so with a
-          // later value chosen it opened upward and covered the title and the
-          // name the user had just typed (audit CI-25). The flyout also
-          // groups the three sources that download from the three that read a
-          // local file, and says what each one needs (CI-26).
-          child: DropDownButton(
-            key: const ValueKey('test-create-sourcetype'),
-            title: Expanded(
-              child: Text(_sourceTypeLabel(sourceType),
-                  textAlign: TextAlign.start),
-            ),
-            items: [
-              _sourceTypeItem(CreateSourceType.repo, 'downloadfromrepo-text',
-                  'downloadfromrepo-desc'),
-              _sourceTypeItem(CreateSourceType.turnkey, 'turnkeylinux-text',
-                  'turnkeylinux-desc'),
-              _sourceTypeItem(CreateSourceType.docker, 'dockerimage-text',
-                  'dockerimage-desc'),
-              const MenuFlyoutSeparator(),
-              _sourceTypeItem(CreateSourceType.local, 'localrootfsfile-text',
-                  'localrootfsfile-desc'),
-              _sourceTypeItem(CreateSourceType.dockerLocalImage,
-                  'localdockerimage-text', 'localdockerimage-desc'),
-              _sourceTypeItem(
-                  CreateSourceType.vhdx, 'importvhdx-text', 'importvhdx-desc'),
-            ],
-          ),
-        ),
-        Container(
-          height: 10.0,
-        ),
-        MergeSemantics(
-          child: Tooltip(
-            // Says what this source actually takes, not "path to rootfs"
-            // for all six types (audit CI-09).
-            message: _sourceTooltip(),
-            child: FutureBuilder<List<String>>(
-                future: _sourceOptions,
-                builder: (context, snapshot) {
-              // A load that failed used to hit a branch whose entire body
-              // was `{}`, so the box offered nothing with no reason
-              // (audit CI-11).
-              if (snapshot.hasError) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('snippetsloadfailed-text'.i18n(),
-                        style: TextStyle(
-                            color: destructiveColor(context), fontSize: 12.0)),
-                    const SizedBox(height: 4.0),
-                    Button(
-                      key: const ValueKey('test-create-source-retry'),
-                      onPressed: () => setState(
-                          () => _sourceOptions = _fetchSourceOptions()),
-                      child: Text('retry-text'.i18n()),
                     ),
-                  ],
-                );
-              }
-              final loading =
-                  snapshot.connectionState != ConnectionState.done &&
-                      (sourceType == CreateSourceType.repo ||
-                          sourceType == CreateSourceType.turnkey ||
-                          sourceType == CreateSourceType.dockerLocalImage);
-              List<AutoSuggestBoxItem<String>> list = [];
-              if (snapshot.hasData) {
-                for (var i = 0; i < snapshot.data!.length; i++) {
-                  list.add(suggestionItem(snapshot.data![i]));
-                }
-              }
-              if (loading) {
-                return Row(
-                  children: [
-                    const SizedBox.square(
-                        dimension: 16, child: ProgressRing(strokeWidth: 2.0)),
-                    const SizedBox(width: 8.0),
-                    Text('loading-text'.i18n(),
-                        style:
-                            TextStyle(color: secondaryTextColor(context))),
-                  ],
-                );
-              }
-              // The list opens on click, not on the first keystroke
-              // (bostrot/ai-tasks#4).
-              return SuggestOnFocus<String>(
-                builder: (context, boxKey, node) => AutoSuggestBox(
-                  key: boxKey,
-                  focusNode: node,
-                  placeholder: sourceType == CreateSourceType.docker
-                      ? 'dockerimageplaceholder-text'.i18n()
-                      : sourceType == CreateSourceType.dockerLocalImage
-                          ? 'localdockerimageplaceholder-text'.i18n()
-                          : sourceType == CreateSourceType.local
-                          ? 'pathtorootfsarchive-text'.i18n()
-                          : sourceType == CreateSourceType.vhdx
-                              ? 'pathtovhdxfile-text'.i18n()
-                              : 'distroname-text'.i18n(),
-                  controller: widget.autoSuggestBox,
-                  items: list,
-                  noResultsFoundBuilder: (context) => Builder(builder: (context) {
-                    String text = 'noresultsfound-text'.i18n();
-                    if (sourceType == CreateSourceType.docker) {
-                      text = widget.autoSuggestBox.text;
-                      if (text.startsWith('dockerhub:')) {
-                        text = text.split('dockerhub:')[1];
-                      } else if (text.startsWith('docker:')) {
-                        text = text.split('docker:')[1];
-                      }
-                      String image = text;
-                      String tag = 'latest';
-                      bool error = false;
-                      try {
-                        if (text.contains(':')) {
-                          image = text.split(':')[0];
-                          tag = text.split(':')[1];
-                        }
-                      } catch (e) {
-                        // Keyed: these three were the only hardcoded English
-                        // strings in the panel (audit CI-10).
-                        text = 'dockerimagecheck-text'.i18n();
-                        error = true;
-                      }
-                      if (!error) {
-                        text = 'dockerimagepreview-text'.i18n(['$image:$tag']);
-                      }
-                    } else if (sourceType == CreateSourceType.dockerLocalImage) {
-                      text = widget.autoSuggestBox.text.isEmpty
-                          ? 'localdockerimagenotfound-text'.i18n()
-                          : 'localdockerpreview-text'
-                              .i18n([widget.autoSuggestBox.text]);
-                    } else if (sourceType == CreateSourceType.local) {
-                      text = 'selectlocalfile-text'.i18n();
-                    } else if (sourceType == CreateSourceType.vhdx) {
-                      text = 'selectvhdxfile-text'.i18n();
-                    } else {
-                      text = 'noresultsfound-text'.i18n();
-                    }
-                    return Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Text(text),
-                    );
-                  }),
-                  onChanged: (String value, TextChangedReason reason) {
-                    if (value.startsWith('dockerhub:') ||
-                        value.startsWith('docker:')) {
-                      widget.sourceType.value = CreateSourceType.docker;
-                    }
-                  },
-                  trailingIcon: sourceType == CreateSourceType.local ||
-                          sourceType == CreateSourceType.vhdx
-                      ? NamedIconButton(
-                          label: 'choosefile-text'.i18n(),
-                          icon: FluentIcons.open_folder_horizontal,
-                          onPressed: () async {
-                            FilePickerResult? result =
-                                await FilePicker.platform.pickFiles(
-                              type: FileType.custom,
-                              allowedExtensions: sourceType == CreateSourceType.vhdx
-                                  ? ['vhdx']
-                                  : ['*'],
-                            );
-  
-                            if (result != null) {
-                              widget.autoSuggestBox.text =
-                                  result.files.single.path!;
-                            } else {
-                              // User canceled the picker
-                            }
-                          },
-                        )
-                      : null,
-                ),
-              );
-            }),
-          ),
-        ),
-        Container(
-          height: 10.0,
-        ),
-        ToggleSwitch(
-          checked: customLocation,
-          content: Text('savelocationhint-text'.i18n()),
-          onChanged: (v) {
-            setState(() {
-              customLocation = v;
-              if (!v) widget.locationController.clear();
-            });
-          },
-        ),
-        if (customLocation) ...[
-          Container(
-            height: 10.0,
-          ),
-          MergeSemantics(
-            child: Tooltip(
-              message: 'savelocationhint-text'.i18n(),
-              child: TextBox(
-                key: const ValueKey('test-create-location-input'),
-                controller: widget.locationController,
-                placeholder: 'savelocationplaceholder-text'.i18n(),
-                suffix: IconButton(
-                  icon:
-                      const Icon(FluentIcons.open_folder_horizontal, size: 15.0),
-                  onPressed: () async {
-                    String? path = await FilePicker.platform.getDirectoryPath();
-                    if (path != null) {
-                      widget.locationController.text = path;
-                    } else {
-                      // User canceled the picker
-                    }
-                  },
-                ),
+                  ),
+                  // A live preview whenever sanitising would change the typed
+                  // name — `[^A-Za-z0-9_-]` becomes `_`, and nothing said so,
+                  // so an all-non-ASCII name silently became underscores
+                  // (audit CI-04).
+                  if (!nameExists &&
+                      widget.nameController.text.isNotEmpty &&
+                      sanitizeDistroName(widget.nameController.text) !=
+                          widget.nameController.text)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        'namewillbe-text'.i18n(
+                            [sanitizeDistroName(widget.nameController.text)]),
+                        key: const ValueKey('test-create-name-preview'),
+                        style: TextStyle(
+                            color: secondaryTextColor(context), fontSize: 12.0),
+                      ),
+                    ),
+                  if (nameExists)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      // The one inline message in the app that was bold, and
+                      // the one that hardcoded its red instead of resolving it
+                      // per theme (audit CI-03).
+                      child: Text(
+                        'distroexists-text'.i18n(),
+                        style: TextStyle(
+                            color: destructiveColor(context), fontSize: 12.0),
+                      ),
+                    ),
+                ],
               ),
             ),
-          ),
-        ],
-        Container(
-          height: 10.0,
-        ),
-        // An InfoBar with one sentence. The old form was five italic lines
-        // naming `fake_systemd` and an `ip a | grep inet` pipeline — a
-        // changelog entry, a troubleshooting note and a shell tutorial in one
-        // string (audit CI-27).
-        sourceType == CreateSourceType.turnkey
-            ? InfoBar(
+            InfoLabel(
+              label: 'sourcetype-text'.i18n(),
+              // A DropDownButton's flyout opens *below* the control; the
+              // ComboBox it replaces aligned the popup over its selected item,
+              // so with a later value chosen it opened upward and covered the
+              // title and the name the user had just typed (audit CI-25). The
+              // flyout also groups the three sources that download from the
+              // three that read a local file, and says what each one needs
+              // (CI-26).
+              child: DropDownButton(
+                key: const ValueKey('test-create-sourcetype'),
+                title: Expanded(
+                  child: Text(_sourceTypeLabel(sourceType),
+                      textAlign: TextAlign.start),
+                ),
+                items: [
+                  _sourceTypeItem(CreateSourceType.repo, 'downloadfromrepo-text',
+                      'downloadfromrepo-desc'),
+                  _sourceTypeItem(CreateSourceType.turnkey, 'turnkeylinux-text',
+                      'turnkeylinux-desc'),
+                  _sourceTypeItem(CreateSourceType.docker, 'dockerimage-text',
+                      'dockerimage-desc'),
+                  const MenuFlyoutSeparator(),
+                  _sourceTypeItem(CreateSourceType.local, 'localrootfsfile-text',
+                      'localrootfsfile-desc'),
+                  _sourceTypeItem(CreateSourceType.dockerLocalImage,
+                      'localdockerimage-text', 'localdockerimage-desc'),
+                  _sourceTypeItem(CreateSourceType.vhdx, 'importvhdx-text',
+                      'importvhdx-desc'),
+                ],
+              ),
+            ),
+            MergeSemantics(
+              child: Tooltip(
+                // Says what this source actually takes, not "path to rootfs"
+                // for all six types (audit CI-09).
+                message: _sourceTooltip(),
+                child: FutureBuilder<List<String>>(
+                    future: _sourceOptions,
+                    builder: (context, snapshot) {
+                  // A load that failed used to hit a branch whose entire body
+                  // was `{}`, so the box offered nothing with no reason
+                  // (audit CI-11).
+                  if (snapshot.hasError) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('snippetsloadfailed-text'.i18n(),
+                            style: TextStyle(
+                                color: destructiveColor(context),
+                                fontSize: 12.0)),
+                        const SizedBox(height: 4.0),
+                        Button(
+                          key: const ValueKey('test-create-source-retry'),
+                          onPressed: () => setState(
+                              () => _sourceOptions = _fetchSourceOptions()),
+                          child: Text('retry-text'.i18n()),
+                        ),
+                      ],
+                    );
+                  }
+                  final loading =
+                      snapshot.connectionState != ConnectionState.done &&
+                          (sourceType == CreateSourceType.repo ||
+                              sourceType == CreateSourceType.turnkey ||
+                              sourceType == CreateSourceType.dockerLocalImage);
+                  List<AutoSuggestBoxItem<String>> list = [];
+                  if (snapshot.hasData) {
+                    for (var i = 0; i < snapshot.data!.length; i++) {
+                      list.add(suggestionItem(snapshot.data![i]));
+                    }
+                  }
+                  if (loading) {
+                    return Row(
+                      children: [
+                        const SizedBox.square(
+                            dimension: 16,
+                            child: ProgressRing(strokeWidth: 2.0)),
+                        const SizedBox(width: 8.0),
+                        Text('loading-text'.i18n(),
+                            style:
+                                TextStyle(color: secondaryTextColor(context))),
+                      ],
+                    );
+                  }
+                  // The list opens on click, not on the first keystroke
+                  // (bostrot/ai-tasks#4).
+                  return SuggestOnFocus<String>(
+                    builder: (context, boxKey, node) => AutoSuggestBox(
+                      key: boxKey,
+                      focusNode: node,
+                      placeholder: sourceType == CreateSourceType.docker
+                          ? 'dockerimageplaceholder-text'.i18n()
+                          : sourceType == CreateSourceType.dockerLocalImage
+                              ? 'localdockerimageplaceholder-text'.i18n()
+                              : sourceType == CreateSourceType.local
+                              ? 'pathtorootfsarchive-text'.i18n()
+                              : sourceType == CreateSourceType.vhdx
+                                  ? 'pathtovhdxfile-text'.i18n()
+                                  : 'distroname-text'.i18n(),
+                      controller: widget.autoSuggestBox,
+                      items: list,
+                      noResultsFoundBuilder: (context) => Builder(builder: (context) {
+                        String text = 'noresultsfound-text'.i18n();
+                        if (sourceType == CreateSourceType.docker) {
+                          text = widget.autoSuggestBox.text;
+                          if (text.startsWith('dockerhub:')) {
+                            text = text.split('dockerhub:')[1];
+                          } else if (text.startsWith('docker:')) {
+                            text = text.split('docker:')[1];
+                          }
+                          String image = text;
+                          String tag = 'latest';
+                          bool error = false;
+                          try {
+                            if (text.contains(':')) {
+                              image = text.split(':')[0];
+                              tag = text.split(':')[1];
+                            }
+                          } catch (e) {
+                            // Keyed: these three were the only hardcoded
+                            // English strings in the panel (audit CI-10).
+                            text = 'dockerimagecheck-text'.i18n();
+                            error = true;
+                          }
+                          if (!error) {
+                            text =
+                                'dockerimagepreview-text'.i18n(['$image:$tag']);
+                          }
+                        } else if (sourceType ==
+                            CreateSourceType.dockerLocalImage) {
+                          text = widget.autoSuggestBox.text.isEmpty
+                              ? 'localdockerimagenotfound-text'.i18n()
+                              : 'localdockerpreview-text'
+                                  .i18n([widget.autoSuggestBox.text]);
+                        } else if (sourceType == CreateSourceType.local) {
+                          text = 'selectlocalfile-text'.i18n();
+                        } else if (sourceType == CreateSourceType.vhdx) {
+                          text = 'selectvhdxfile-text'.i18n();
+                        } else {
+                          text = 'noresultsfound-text'.i18n();
+                        }
+                        return Container(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Text(text),
+                        );
+                      }),
+                      onChanged: (String value, TextChangedReason reason) {
+                        if (value.startsWith('dockerhub:') ||
+                            value.startsWith('docker:')) {
+                          widget.sourceType.value = CreateSourceType.docker;
+                        }
+                      },
+                      trailingIcon: sourceType == CreateSourceType.local ||
+                              sourceType == CreateSourceType.vhdx
+                          ? NamedIconButton(
+                              label: 'choosefile-text'.i18n(),
+                              icon: FluentIcons.open_folder_horizontal,
+                              onPressed: () async {
+                                FilePickerResult? result =
+                                    await FilePicker.platform.pickFiles(
+                                  type: FileType.custom,
+                                  allowedExtensions:
+                                      sourceType == CreateSourceType.vhdx
+                                          ? ['vhdx']
+                                          : ['*'],
+                                );
+
+                                if (result != null) {
+                                  widget.autoSuggestBox.text =
+                                      result.files.single.path!;
+                                } else {
+                                  // User canceled the picker
+                                }
+                              },
+                            )
+                          : null,
+                    ),
+                  );
+                }),
+              ),
+            ),
+            // An InfoBar with one sentence. The old form was five italic lines
+            // naming `fake_systemd` and an `ip a | grep inet` pipeline — a
+            // changelog entry, a troubleshooting note and a shell tutorial in
+            // one string (audit CI-27).
+            if (sourceType == CreateSourceType.turnkey)
+              InfoBar(
                 title: Text('turnkeywarningtitle-text'.i18n()),
                 content: Text('turnkeywarning-text'.i18n()),
                 severity: InfoBarSeverity.warning,
                 isLong: true,
-              )
-            : Container(),
-        supportsDefaultUser(sourceType)
-            ? ToggleSwitch(
-                checked: createUser,
-                content: Text('createuser-text'.i18n()),
-                onChanged: (v) {
-                  setState(() {
-                    createUser = v;
-                    if (!v) widget.userController.clear();
-                  });
-                  widget.createUserEnabled?.value = v;
-                },
-              )
-            : Container(),
-        supportsDefaultUser(sourceType) && createUser
-            ? Column(
-                children: [
-                  Container(
-                    height: 10.0,
-                  ),
-                  Tooltip(
-                    message: 'optionalusername-text'.i18n(),
-                    child: TextBox(
-                      controller: widget.userController,
-                      placeholder: 'optionaluser-text'.i18n(),
-                    ),
-                  ),
-                  const SizedBox(height: 6.0),
-                  // The password step opens a console window outside the app
-                  // and nothing said so, which is half of audit CI-13 — the
-                  // other half is that the create no longer races past it.
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'passwordwindowhint-text'.i18n(),
-                      key: const ValueKey('test-create-password-hint'),
-                      style: TextStyle(color: secondaryTextColor(context)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Everything that is off by default: where the instance is stored and
+        // whether it gets an account of its own.
+        FormCard(
+          icon: FluentIcons.settings,
+          title: 'createoptions-text'.i18n(),
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ToggleSwitch(
+                  checked: customLocation,
+                  content: Text('savelocationhint-text'.i18n()),
+                  onChanged: (v) {
+                    setState(() {
+                      customLocation = v;
+                      if (!v) widget.locationController.clear();
+                    });
+                  },
+                ),
+                if (customLocation) ...[
+                  const SizedBox(height: 10.0),
+                  MergeSemantics(
+                    child: Tooltip(
+                      message: 'savelocationhint-text'.i18n(),
+                      child: TextBox(
+                        key: const ValueKey('test-create-location-input'),
+                        controller: widget.locationController,
+                        placeholder: 'savelocationplaceholder-text'.i18n(),
+                        suffix: NamedIconButton(
+                          label: 'choosefolder-text'.i18n(),
+                          icon: FluentIcons.open_folder_horizontal,
+                          iconSize: 15.0,
+                          onPressed: () async {
+                            String? path =
+                                await FilePicker.platform.getDirectoryPath();
+                            if (path != null) {
+                              widget.locationController.text = path;
+                            } else {
+                              // User canceled the picker
+                            }
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              )
-            : Container(),
+              ],
+            ),
+            if (supportsDefaultUser(sourceType))
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ToggleSwitch(
+                    checked: createUser,
+                    content: Text('createuser-text'.i18n()),
+                    onChanged: (v) {
+                      setState(() {
+                        createUser = v;
+                        if (!v) widget.userController.clear();
+                      });
+                      widget.createUserEnabled?.value = v;
+                    },
+                  ),
+                  if (createUser) ...[
+                    const SizedBox(height: 10.0),
+                    Tooltip(
+                      message: 'optionalusername-text'.i18n(),
+                      child: TextBox(
+                        controller: widget.userController,
+                        placeholder: 'optionaluser-text'.i18n(),
+                      ),
+                    ),
+                    const SizedBox(height: 6.0),
+                    // The password step opens a console window outside the app
+                    // and nothing said so, which is half of audit CI-13 — the
+                    // other half is that the create no longer races past it.
+                    Text(
+                      'passwordwindowhint-text'.i18n(),
+                      key: const ValueKey('test-create-password-hint'),
+                      style: TextStyle(
+                          fontSize: 12.0, color: secondaryTextColor(context)),
+                    ),
+                  ],
+                ],
+              ),
+          ],
+        ),
       ],
     );
   }

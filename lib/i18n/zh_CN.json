@@ -870,5 +870,9 @@
   "update-downloading-text": "正在下载更新... %s",
   "update-installing-text": "正在启动安装程序...",
   "update-failed-text": "无法下载更新，请稍后再试。",
-  "update-failed-extract-text": "无法解压下载的更新。"
+  "update-failed-extract-text": "无法解压下载的更新。",
+  "createbasics-text": "基本信息",
+  "createresources-text": "资源",
+  "createoptions-text": "选项",
+  "createinstanceinfo-text": "为实例命名，并选择创建来源：发行版镜像、Docker 镜像或本地文件。"
 }

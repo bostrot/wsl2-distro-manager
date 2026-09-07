@@ -869,5 +869,9 @@
   "update-downloading-text": "更新をダウンロードしています... %s",
   "update-installing-text": "インストーラーを起動しています...",
   "update-failed-text": "更新をダウンロードできませんでした。しばらくしてからもう一度お試しください。",
-  "update-failed-extract-text": "ダウンロードした更新を展開できませんでした。"
+  "update-failed-extract-text": "ダウンロードした更新を展開できませんでした。",
+  "createbasics-text": "基本",
+  "createresources-text": "リソース",
+  "createoptions-text": "オプション",
+  "createinstanceinfo-text": "インスタンスに名前を付け、作成元を選びます。ディストリビューションのイメージ、Dockerイメージ、またはローカルファイルから作成できます。"
 }

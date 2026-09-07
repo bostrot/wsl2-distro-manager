@@ -9,6 +9,7 @@ import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart' show formatTransferSize;
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
+import 'package:wsl2distromanager/components/form_card.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/components/suggest_on_focus.dart';
@@ -266,37 +267,36 @@ class _CreateVmPageState extends State<CreateVmPage> {
       for (final entry in VmImageCatalog.entries)
         if (entry.isCloudImage != isIso) suggestionItem(entry.name),
     ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FormCard(
+      icon: FluentIcons.pop_expand,
+      // The card's heading is the label the two choices used to carry; a
+      // second one inside it would say "Boot from" twice.
+      title: 'vmbootsource-text'.i18n(),
       children: [
-        InfoLabel(
-          label: 'vmbootsource-text'.i18n(),
-          // A Wrap, not a Row: the two labels do not fit side by side in
-          // every locale (or at a narrow window), and must not overflow.
-          child: Wrap(
-            spacing: 24,
-            runSpacing: 8,
-            children: [
-              RadioButton(
-                key: const ValueKey('test-vm-boot-cloud-image'),
-                checked: !isIso,
-                onChanged: _creating
-                    ? null
-                    : (_) => _chooseBootKind(VmBootKind.cloudImage),
-                content: Text('vmbootcloudimage-text'.i18n()),
-              ),
-              RadioButton(
-                key: const ValueKey('test-vm-boot-installer-iso'),
-                checked: isIso,
-                onChanged: _creating
-                    ? null
-                    : (_) => _chooseBootKind(VmBootKind.installerIso),
-                content: Text('vmbootinstalleriso-text'.i18n()),
-              ),
-            ],
-          ),
+        // A Wrap, not a Row: the two labels do not fit side by side in
+        // every locale (or at a narrow window), and must not overflow.
+        Wrap(
+          spacing: 24,
+          runSpacing: 8,
+          children: [
+            RadioButton(
+              key: const ValueKey('test-vm-boot-cloud-image'),
+              checked: !isIso,
+              onChanged: _creating
+                  ? null
+                  : (_) => _chooseBootKind(VmBootKind.cloudImage),
+              content: Text('vmbootcloudimage-text'.i18n()),
+            ),
+            RadioButton(
+              key: const ValueKey('test-vm-boot-installer-iso'),
+              checked: isIso,
+              onChanged: _creating
+                  ? null
+                  : (_) => _chooseBootKind(VmBootKind.installerIso),
+              content: Text('vmbootinstalleriso-text'.i18n()),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
         InfoLabel(
           label: isIso
               ? 'vminstalleriso-text'.i18n()
@@ -436,103 +436,132 @@ class _CreateVmPageState extends State<CreateVmPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('createnewinstance-text'.i18n(),
-                  style: FluentTheme.of(context).typography.titleLarge),
-              const SizedBox(height: 4),
-              Text('vmcreateinfo-text'.i18n(),
-                  style: TextStyle(color: secondaryTextColor(context))),
-              const SizedBox(height: 16),
-              InfoLabel(
-                label: 'name-text'.i18n(),
-                child: TextBox(
-                  key: const ValueKey('test-vm-name'),
-                  controller: _name,
-                  enabled: !_creating,
-                ),
+              FormPageHeader(
+                icon: FluentIcons.add_to,
+                title: 'createnewinstance-text'.i18n(),
+                description: 'vmcreateinfo-text'.i18n(),
               ),
-              if (_nameError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(_nameError!,
-                      key: const ValueKey('test-vm-name-error'),
-                      style: TextStyle(color: destructiveColor(context))),
-                ),
-              const SizedBox(height: 12),
-              InfoLabel(
-                label: 'vmguestos-text'.i18n(),
-                child: ComboBox<String>(
-                  key: const ValueKey('test-vm-guest-os'),
-                  value: _guestOs,
-                  items: const [
-                    ComboBoxItem(value: 'linux', child: Text('Linux')),
-                    ComboBoxItem(value: 'macos', child: Text('macOS')),
-                  ],
-                  onChanged: _creating
-                      ? null
-                      : (value) =>
-                          setState(() => _guestOs = value ?? 'linux'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (isLinux) ...[
-                _bootSourceSection(),
-                const SizedBox(height: 12),
-                InfoLabel(
-                  label: 'optionalusername-text'.i18n(),
-                  child: TextBox(controller: _user, enabled: !_creating),
-                ),
-              ] else ...[
-                _fileField(
-                  'vmrestoreimage-text'.i18n(),
-                  _restoreImage,
-                  const ['ipsw'],
-                  hint: 'vmrestoreimagehint-text'.i18n(),
-                  key: const ValueKey('test-vm-restore-image'),
-                ),
-                const SizedBox(height: 4),
-                Text('vmmacosrequiresapplesilicon-text'.i18n(),
-                    style: TextStyle(
-                        fontSize: 12, color: secondaryTextColor(context))),
-              ],
-              const SizedBox(height: 12),
-              Row(
+              const SizedBox(height: 20),
+              FormCard(
+                icon: FluentIcons.text_document,
+                title: 'createbasics-text'.i18n(),
                 children: [
-                  _numberField('vmdisksize-text'.i18n(), _diskSize,
-                      key: const ValueKey('test-vm-disk-size')),
-                  const SizedBox(width: 8),
-                  _numberField('vmcpus-text'.i18n(), _cpus,
-                      key: const ValueKey('test-vm-cpus')),
-                  const SizedBox(width: 8),
-                  _numberField('vmmemorygb-text'.i18n(), _memory,
-                      key: const ValueKey('test-vm-memory')),
+                  InfoLabel(
+                    label: 'name-text'.i18n(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextBox(
+                          key: const ValueKey('test-vm-name'),
+                          controller: _name,
+                          enabled: !_creating,
+                        ),
+                        if (_nameError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(_nameError!,
+                                key: const ValueKey('test-vm-name-error'),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: destructiveColor(context))),
+                          ),
+                      ],
+                    ),
+                  ),
+                  InfoLabel(
+                    label: 'vmguestos-text'.i18n(),
+                    child: ComboBox<String>(
+                      key: const ValueKey('test-vm-guest-os'),
+                      value: _guestOs,
+                      isExpanded: true,
+                      items: const [
+                        ComboBoxItem(value: 'linux', child: Text('Linux')),
+                        ComboBoxItem(value: 'macos', child: Text('macOS')),
+                      ],
+                      onChanged: _creating
+                          ? null
+                          : (value) =>
+                              setState(() => _guestOs = value ?? 'linux'),
+                    ),
+                  ),
+                  if (isLinux)
+                    InfoLabel(
+                      label: 'optionalusername-text'.i18n(),
+                      child: TextBox(controller: _user, enabled: !_creating),
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
-              // Optional: a curated service (MinIO, Postgres, …) installed
-              // into the VM the first time it is running.
-              InfoLabel(
-                label: 'vmservice-text'.i18n(),
-                child: ComboBox<String>(
-                  key: const ValueKey('test-vm-recipe'),
-                  value: _recipeId,
-                  isExpanded: true,
-                  placeholder: Text('vmservicenone-text'.i18n()),
-                  items: [
-                    ComboBoxItem(
-                        value: '', child: Text('vmservicenone-text'.i18n())),
-                    for (final recipe in RecipeCatalog.recipes)
-                      ComboBoxItem(
-                        value: recipe.id,
-                        child: Text('${recipe.name} — ${recipe.description}',
-                            overflow: TextOverflow.ellipsis),
-                      ),
+              if (isLinux)
+                _bootSourceSection()
+              else
+                FormCard(
+                  icon: FluentIcons.pop_expand,
+                  title: 'vmbootsource-text'.i18n(),
+                  spacing: 8,
+                  children: [
+                    _fileField(
+                      'vmrestoreimage-text'.i18n(),
+                      _restoreImage,
+                      const ['ipsw'],
+                      hint: 'vmrestoreimagehint-text'.i18n(),
+                      key: const ValueKey('test-vm-restore-image'),
+                    ),
+                    Text('vmmacosrequiresapplesilicon-text'.i18n(),
+                        style: TextStyle(
+                            fontSize: 12, color: secondaryTextColor(context))),
                   ],
-                  onChanged: _creating
-                      ? null
-                      : (value) => setState(() => _recipeId = value ?? ''),
                 ),
+              const SizedBox(height: 12),
+              FormCard(
+                icon: FluentIcons.processing,
+                title: 'createresources-text'.i18n(),
+                children: [
+                  // Bottom-aligned: the three labels are short in English and
+                  // two lines long in more than one locale, and the boxes have
+                  // to line up either way.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _numberField('vmdisksize-text'.i18n(), _diskSize,
+                          key: const ValueKey('test-vm-disk-size')),
+                      const SizedBox(width: 8),
+                      _numberField('vmcpus-text'.i18n(), _cpus,
+                          key: const ValueKey('test-vm-cpus')),
+                      const SizedBox(width: 8),
+                      _numberField('vmmemorygb-text'.i18n(), _memory,
+                          key: const ValueKey('test-vm-memory')),
+                    ],
+                  ),
+                  // Optional: a curated service (MinIO, Postgres, …)
+                  // installed into the VM the first time it is running.
+                  InfoLabel(
+                    label: 'vmservice-text'.i18n(),
+                    child: ComboBox<String>(
+                      key: const ValueKey('test-vm-recipe'),
+                      value: _recipeId,
+                      isExpanded: true,
+                      placeholder: Text('vmservicenone-text'.i18n()),
+                      items: [
+                        ComboBoxItem(
+                            value: '',
+                            child: Text('vmservicenone-text'.i18n())),
+                        for (final recipe in RecipeCatalog.recipes)
+                          ComboBoxItem(
+                            value: recipe.id,
+                            child: Text(
+                                '${recipe.name} — ${recipe.description}',
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                      ],
+                      onChanged: _creating
+                          ? null
+                          : (value) => setState(() => _recipeId = value ?? ''),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   BusyButton(

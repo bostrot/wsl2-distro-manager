@@ -869,5 +869,9 @@
   "update-downloading-text": "Güncelleme indiriliyor... %s",
   "update-installing-text": "Kurulum başlatılıyor...",
   "update-failed-text": "Güncelleme indirilemedi. Lütfen daha sonra tekrar deneyin.",
-  "update-failed-extract-text": "İndirilen güncelleme açılamadı."
+  "update-failed-extract-text": "İndirilen güncelleme açılamadı.",
+  "createbasics-text": "Temel bilgiler",
+  "createresources-text": "Kaynaklar",
+  "createoptions-text": "Seçenekler",
+  "createinstanceinfo-text": "Dağıtıma bir ad verin ve neyden oluşturulacağını seçin: bir dağıtım görüntüsü, bir Docker görüntüsü veya yerel bir dosya."
 }

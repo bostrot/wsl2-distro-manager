@@ -869,5 +869,9 @@
   "update-downloading-text": "Frissítés letöltése... %s",
   "update-installing-text": "A telepítő indítása...",
   "update-failed-text": "A frissítést nem sikerült letölteni. Próbáld meg később.",
-  "update-failed-extract-text": "A letöltött frissítést nem sikerült kicsomagolni."
+  "update-failed-extract-text": "A letöltött frissítést nem sikerült kicsomagolni.",
+  "createbasics-text": "Alapok",
+  "createresources-text": "Erőforrások",
+  "createoptions-text": "Beállítások",
+  "createinstanceinfo-text": "Adj nevet a példánynak, és válaszd ki, miből jöjjön létre: disztribúciós képfájlból, Docker képfájlból vagy helyi fájlból."
 }

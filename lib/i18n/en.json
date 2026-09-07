@@ -869,5 +869,9 @@
   "update-downloading-text": "Downloading update... %s",
   "update-installing-text": "Starting the installer...",
   "update-failed-text": "The update could not be downloaded. Please try again later.",
-  "update-failed-extract-text": "The downloaded update could not be unpacked."
+  "update-failed-extract-text": "The downloaded update could not be unpacked.",
+  "createbasics-text": "Basics",
+  "createresources-text": "Resources",
+  "createoptions-text": "Options",
+  "createinstanceinfo-text": "Name the instance and choose what it is created from — a distro image, a Docker image or a local file."
 }

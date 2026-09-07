@@ -870,5 +870,9 @@
   "update-downloading-text": "正在下載更新... %s",
   "update-installing-text": "正在啟動安裝程式...",
   "update-failed-text": "無法下載更新，請稍後再試。",
-  "update-failed-extract-text": "無法解壓縮下載的更新。"
+  "update-failed-extract-text": "無法解壓縮下載的更新。",
+  "createbasics-text": "基本資訊",
+  "createresources-text": "資源",
+  "createoptions-text": "選項",
+  "createinstanceinfo-text": "為安裝實體命名，並選擇建立來源：發行版映像檔、Docker 映像檔或本機檔案。"
 }

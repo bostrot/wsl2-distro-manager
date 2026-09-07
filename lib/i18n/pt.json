@@ -871,5 +871,9 @@
   "update-downloading-text": "Baixando a atualização... %s",
   "update-installing-text": "Iniciando o instalador...",
   "update-failed-text": "Não foi possível baixar a atualização. Tente novamente mais tarde.",
-  "update-failed-extract-text": "Não foi possível descompactar a atualização baixada."
+  "update-failed-extract-text": "Não foi possível descompactar a atualização baixada.",
+  "createbasics-text": "Básico",
+  "createresources-text": "Recursos",
+  "createoptions-text": "Opções",
+  "createinstanceinfo-text": "Dê um nome à instância e escolha a partir do que ela será criada: uma imagem de distribuição, uma imagem Docker ou um arquivo local."
 }

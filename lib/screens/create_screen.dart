@@ -4,6 +4,7 @@ import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
+import 'package:wsl2distromanager/components/form_card.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/unsaved_changes.dart';
 import 'package:wsl2distromanager/dialogs/create_dialog.dart';
@@ -245,11 +246,12 @@ class _CreatePageState extends State<CreatePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'createnewinstance-text'.i18n(),
-                style: FluentTheme.of(context).typography.titleLarge,
+              FormPageHeader(
+                icon: FluentIcons.add_to,
+                title: 'createnewinstance-text'.i18n(),
+                description: 'createinstanceinfo-text'.i18n(),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               CreateWidget(
                   nameController: _nameController,
                   api: _api,

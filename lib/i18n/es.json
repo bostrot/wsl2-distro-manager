@@ -869,5 +869,9 @@
   "update-downloading-text": "Descargando la actualización... %s",
   "update-installing-text": "Iniciando el instalador...",
   "update-failed-text": "No se pudo descargar la actualización. Inténtalo de nuevo más tarde.",
-  "update-failed-extract-text": "No se pudo descomprimir la actualización descargada."
+  "update-failed-extract-text": "No se pudo descomprimir la actualización descargada.",
+  "createbasics-text": "Datos básicos",
+  "createresources-text": "Recursos",
+  "createoptions-text": "Opciones",
+  "createinstanceinfo-text": "Asigna un nombre a la instancia y elige a partir de qué se crea: una imagen de distribución, una imagen Docker o un archivo local."
 }

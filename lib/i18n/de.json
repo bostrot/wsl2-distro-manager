@@ -870,5 +870,9 @@
   "update-downloading-text": "Update wird heruntergeladen... %s",
   "update-installing-text": "Installation wird gestartet...",
   "update-failed-text": "Das Update konnte nicht heruntergeladen werden. Bitte versuche es später erneut.",
-  "update-failed-extract-text": "Das heruntergeladene Update konnte nicht entpackt werden."
+  "update-failed-extract-text": "Das heruntergeladene Update konnte nicht entpackt werden.",
+  "createbasics-text": "Grundlagen",
+  "createresources-text": "Ressourcen",
+  "createoptions-text": "Optionen",
+  "createinstanceinfo-text": "Vergib einen Namen und wähle, woraus die Instanz erstellt wird — ein Distro-Image, ein Docker-Image oder eine lokale Datei."
 }
