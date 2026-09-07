@@ -1,6 +1,7 @@
 import Cocoa
 import FlutterMacOS
 import XCTest
+import macos_window_utils
 
 @testable import WSL_Manager
 
@@ -59,5 +60,48 @@ class RunnerTests: XCTestCase {
       NSApplication.shared,
       open: [url("https://example.com/"), url("wslmanager://activate?key=k"), url("file:///tmp")])
     XCTAssertEqual(delegate.pendingLink, "wslmanager://activate?key=k")
+  }
+
+  /// `flutter_acrylic` puts its own view controller between the window and the
+  /// Flutter view. Left to do that at runtime it guesses at
+  /// `NSApp.windows.first` and swaps the content view out from under plugins
+  /// that were already handed the Flutter view, which is how a plugin ends up
+  /// holding a window reference it no longer owns (bostrot/ai-tasks#49). The
+  /// window has to hand plugins a view that is already in place.
+  func testPluginsAreRegisteredAgainstAViewAlreadyInTheWindow() {
+    let window = MainFlutterWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+      styleMask: [.titled, .closable, .resizable],
+      backing: .buffered,
+      defer: false)
+    window.awakeFromNib()
+
+    let controller = window.contentViewController as? MacOSWindowUtilsViewController
+    XCTAssertNotNil(controller, "flutter_acrylic's view controller must own the content view")
+    XCTAssertTrue(
+      controller?.flutterViewController.view.window === window,
+      "plugins registered against a Flutter view outside the window")
+  }
+
+  /// The deep-link channel hangs off the Flutter view controller, which
+  /// `flutter_acrylic` nests one level down. Missing it would leave
+  /// `wslmanager://` purchases stranded: the delegate would keep holding the
+  /// link and Dart would never be given a channel to collect it from.
+  func testLaunchFindsTheFlutterControllerNestedByAcrylic() {
+    let window = MainFlutterWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+      styleMask: [.titled, .closable, .resizable],
+      backing: .buffered,
+      defer: false)
+    window.awakeFromNib()
+
+    let delegate = AppDelegate()
+    delegate.mainFlutterWindow = window
+    launched(delegate)
+
+    delegate.application(NSApplication.shared, open: [url("wslmanager://activate?key=abc")])
+    XCTAssertNil(
+      delegate.pendingLink,
+      "the link was parked instead of going out over the deep-link channel")
   }
 }

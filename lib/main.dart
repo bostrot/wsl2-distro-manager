@@ -11,6 +11,7 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
+import 'package:wsl2distromanager/api/app_window.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
@@ -39,29 +40,29 @@ Future<void> restoreWindowBounds() async {
   final left = prefs.getDouble('WindowLeft');
   final top = prefs.getDouble('WindowTop');
 
-  await windowManager.setSize(width != null && height != null
+  await appWindow.setSize(width != null && height != null
       ? Size(width, height)
       : defaultWindowSize);
 
   if (left != null && top != null) {
-    await windowManager.setPosition(Offset(left, top));
+    await appWindow.setPosition(Offset(left, top));
     // A screen that is gone (undocked laptop, changed layout) would leave the
     // window off-screen.
     if (!await _isOnAVisibleScreen()) {
-      await windowManager.center();
+      await appWindow.center();
     }
   } else {
-    await windowManager.center();
+    await appWindow.center();
   }
 
   if (prefs.getBool('WindowMaximized') ?? false) {
-    await windowManager.maximize();
+    await appWindow.maximize();
   }
 }
 
 Future<bool> _isOnAVisibleScreen() async {
   try {
-    final bounds = await windowManager.getBounds();
+    final bounds = await appWindow.getBounds();
     final displays = await screenRetriever.getAllDisplays();
     return displays.any((display) {
       final origin = display.visiblePosition ?? Offset.zero;
@@ -108,26 +109,25 @@ void main() async {
     if (isWindows) {
       await flutter_acrylic.Window.hideWindowControls();
     }
-    await WindowManager.instance.ensureInitialized();
-    await windowManager.waitUntilReadyToShow().then((_) async {
+    await appWindow.waitUntilReadyToShow().then((_) async {
       if (isWindows) {
-        await windowManager.setTitleBarStyle(
+        await appWindow.setTitleBarStyle(
           TitleBarStyle.hidden,
           windowButtonVisibility: false,
         );
       } else if (isLinux) {
-        await windowManager.setAsFrameless();
+        await appWindow.setAsFrameless();
       } else if (isMacOS) {
         // One bar, like Windows: hide the native title bar (the traffic
         // lights stay, overlaying the app bar, which insets its leading for
         // them — see root_screen.dart).
-        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+        await appWindow.setTitleBarStyle(TitleBarStyle.hidden);
       }
-      await windowManager.setMinimumSize(const Size(700, 500));
+      await appWindow.setMinimumSize(const Size(700, 500));
       await restoreWindowBounds();
-      await windowManager.show();
-      await windowManager.setPreventClose(true);
-      await windowManager.setSkipTaskbar(false);
+      await appWindow.show();
+      await appWindow.setPreventClose(true);
+      await appWindow.setSkipTaskbar(false);
     });
   }
 

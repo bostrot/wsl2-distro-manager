@@ -21,6 +21,18 @@ class AppDelegate: FlutterAppDelegate {
     return true
   }
 
+  /// `flutter_acrylic` nests the Flutter view controller inside one of its own
+  /// (see `MainFlutterWindow`), so the window's content view controller is not
+  /// the one holding the engine any more. Look one level down rather than
+  /// giving up and losing the deep-link channel.
+  private var flutterViewController: FlutterViewController? {
+    guard let root = mainFlutterWindow?.contentViewController else { return nil }
+    if let controller = root as? FlutterViewController {
+      return controller
+    }
+    return root.children.compactMap { $0 as? FlutterViewController }.first
+  }
+
   /// `override` is required even though `FlutterAppDelegate` does not
   /// implement this selector: Swift imports every optional
   /// `NSApplicationDelegate` method as an overridable member of an ObjC
@@ -30,9 +42,7 @@ class AppDelegate: FlutterAppDelegate {
   /// observes `NSApplication.didFinishLaunchingNotification` itself and does
   /// not depend on this method being forwarded.
   override func applicationDidFinishLaunching(_ notification: Notification) {
-    guard
-      let controller = mainFlutterWindow?.contentViewController as? FlutterViewController
-    else {
+    guard let controller = flutterViewController else {
       return
     }
 

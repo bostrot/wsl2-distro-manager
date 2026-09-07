@@ -7,8 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:localization/localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:wsl2distromanager/api/app_window.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
 import 'package:wsl2distromanager/components/ai_chat_panel.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -376,9 +377,9 @@ class RootPageState extends State<RootPage> with WindowListener {
   /// left off. Skipped while maximized, otherwise the restored-down size would
   /// be lost.
   Future<void> _saveWindowBounds() async {
-    if (await windowManager.isMaximized()) return;
-    final size = await windowManager.getSize();
-    final position = await windowManager.getPosition();
+    if (await appWindow.isMaximized()) return;
+    final size = await appWindow.getSize();
+    final position = await appWindow.getPosition();
     await prefs.setDouble('WindowWidth', size.width);
     await prefs.setDouble('WindowHeight', size.height);
     await prefs.setDouble('WindowLeft', position.dx);
