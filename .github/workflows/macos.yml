@@ -219,6 +219,17 @@ jobs:
             echo "::notice::$TAG carries no $DMG; leaving the cask alone."
             exit 0
           fi
+          # Homebrew quarantines what a cask installs, so pointing it at a
+          # build Gatekeeper rejects is worse than leaving it stale: every
+          # `brew install` then dies with "damaged and can't be opened".
+          # Without the signing secrets the job packages an ad-hoc dmg, and
+          # the attach step will publish it when the release carries no mac
+          # asset yet — so check the artifact, not this job's own config.
+          if ! xcrun stapler validate "$RUNNER_TEMP/$DMG" >/dev/null 2>&1; then
+            echo "::warning::$DMG is not notarized; leaving the cask where it is."
+            exit 0
+          fi
+
           SHA=$(shasum -a 256 "$RUNNER_TEMP/$DMG" | awk '{print $1}')
 
           GH_TOKEN="$TAP_TOKEN" gh api "repos/$TAP/contents/$CASK" \
