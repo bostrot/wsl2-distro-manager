@@ -6,8 +6,8 @@
 # Center reports this app's base price as "Base" — the "price tier is not
 # set" placeholder — and the API rejects on write what it just emitted on
 # read: "'Base' is not a valid PriceId for base price". The action has no
-# input to leave that section alone, so this script does the same calls and
-# simply does not send `pricing`. The submission is a clone of the published
+# input to leave that section alone, so this script does the same calls but
+# never sends a base price id. The submission is a clone of the published
 # one, so the prices already sit on it server-side and stay exactly as they
 # were.
 #
@@ -85,10 +85,13 @@ trap 'cleanup_submission; rm -rf "$WORK"' EXIT
 MSIX_NAME="$(basename "$MSIX_PATH")"
 echo "Replacing the packages with $MSIX_NAME, leaving pricing untouched..."
 
-# `del(.pricing)` is the entire point of this script. Everything else is sent
-# back exactly as the clone provided it.
+# Dropping the base-price id is the entire point of this script. The API
+# insists on a pricing object ("Pricing data was not provided"), so the rest
+# of it goes back exactly as the clone provided it; only the "Base"
+# placeholder it will not accept is left out, and the server keeps the base
+# price it already holds.
 BODY=$(jq --arg name "$MSIX_NAME" '
-  del(.pricing)
+  del(.pricing.priceId)
   | .applicationPackages = (
       [ (.applicationPackages // [])[] | .fileStatus = "PendingDelete" ]
       + [ { fileName: $name,
@@ -98,8 +101,8 @@ BODY=$(jq --arg name "$MSIX_NAME" '
     )
 ' <<<"$SUBMISSION")
 
-jq -e 'has("pricing") | not' <<<"$BODY" >/dev/null \
-  || { echo "Refusing to send a body that still carries pricing" >&2; exit 1; }
+jq -e '.pricing | has("priceId") | not' <<<"$BODY" >/dev/null \
+  || { echo "Refusing to send a body that still carries a base price id" >&2; exit 1; }
 
 request PUT "$API/$STORE_APP_ID/submissions/$SUBMISSION_ID" "$BODY" >/dev/null
 
