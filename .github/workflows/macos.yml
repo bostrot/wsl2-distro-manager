@@ -24,6 +24,7 @@ jobs:
       # Secrets cannot be tested in a step `if`, so the presence check lives
       # here and the steps key off HAS_SIGNING.
       HAS_SIGNING: ${{ secrets.MACOS_SIGNING_CERT_P12 != '' }}
+      HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -172,3 +173,65 @@ jobs:
             sleep 60
           done
           exit 1
+
+      # The cask cannot live in this repository: `brew tap bostrot/tap`
+      # resolves by name to github.com/bostrot/homebrew-tap, and only the
+      # two-argument `brew tap <name> <url>` form escapes that convention —
+      # which would cost the one-line `brew install --cask
+      # bostrot/tap/wsl-manager` the README and the release notes advertise.
+      # So the cask stays in the tap; what it no longer needs is a human to
+      # retype the version and the checksum after every release.
+      #
+      # HOMEBREW_TAP_TOKEN is a token with contents:write on
+      # bostrot/homebrew-tap. Without it the step is skipped, so forks and
+      # contributors' builds are unaffected.
+      - name: Update the Homebrew cask (main only)
+        if: github.ref == 'refs/heads/main' && env.HAS_TAP_TOKEN == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION"
+          TAP="bostrot/homebrew-tap"
+          CASK="Casks/wsl-manager.rb"
+          DMG="wsl2-distro-manager-v$VERSION-macos.dmg"
+
+          # Hash what the release actually serves rather than the file just
+          # built: the attach step above deliberately leaves a signed asset
+          # in place instead of clobbering it with an ad-hoc one, so the two
+          # are not always the same bytes. A cask whose sha256 does not match
+          # the download fails for every user with a checksum error.
+          if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+               --pattern "$DMG" --dir "$RUNNER_TEMP" --clobber; then
+            echo "::notice::$TAG carries no $DMG; leaving the cask alone."
+            exit 0
+          fi
+          SHA=$(shasum -a 256 "$RUNNER_TEMP/$DMG" | awk '{print $1}')
+
+          GH_TOKEN="$TAP_TOKEN" gh api "repos/$TAP/contents/$CASK" \
+            -H "Accept: application/vnd.github.raw" > cask.rb
+          BLOB=$(GH_TOKEN="$TAP_TOKEN" gh api "repos/$TAP/contents/$CASK" --jq .sha)
+
+          if grep -q "  version \"$VERSION\"" cask.rb \
+             && grep -q "  sha256 \"$SHA\"" cask.rb; then
+            echo "::notice::Cask is already at $VERSION with this checksum."
+            exit 0
+          fi
+
+          sed -i '' -E "s|^  version \".*\"$|  version \"$VERSION\"|" cask.rb
+          sed -i '' -E "s|^  sha256 \".*\"$|  sha256 \"$SHA\"|" cask.rb
+
+          # A silent no-op here would publish a cask pointing at the new
+          # version with the old checksum.
+          grep -q "  version \"$VERSION\"" cask.rb \
+            || { echo "::error::version line not updated"; exit 1; }
+          grep -q "  sha256 \"$SHA\"" cask.rb \
+            || { echo "::error::sha256 line not updated"; exit 1; }
+
+          GH_TOKEN="$TAP_TOKEN" gh api --method PUT "repos/$TAP/contents/$CASK" \
+            -f message="wsl-manager $VERSION" \
+            -f sha="$BLOB" \
+            -f content="$(base64 < cask.rb | tr -d '\n')" --silent
+          echo "::notice::Cask updated to $VERSION ($SHA)."
