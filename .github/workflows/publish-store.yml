@@ -35,18 +35,29 @@ jobs:
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/publish_store.sh
+          sparse-checkout-cone-mode: false
+
       - name: Download release asset
         uses: dsaltares/fetch-gh-release-asset@master
         with:
           version: tags/${{ steps.resolve.outputs.tag }}
           file: wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix
-          target: ${{ github.workspace }}/release.msix
+          target: ${{ github.workspace }}/pkg/wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix
 
+      # Not isaacrlevin/windows-store-action: it PUTs the cloned submission
+      # back whole, pricing included, and Partner Center reports this app's
+      # base price as the unset placeholder "Base", which the API refuses on
+      # write. The script makes the same calls and never sends pricing, so
+      # the prices stay whatever Partner Center already has.
       - name: Publish to Store
-        uses: isaacrlevin/windows-store-action@main
-        with:
-          tenant-id: ${{ secrets.AZURE_AD_TENANT_ID }}
-          client-id: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
-          client-secret: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
-          app-id: ${{ secrets.STORE_APP_ID }}
-          package-path: ${{ github.workspace }}
+        env:
+          STORE_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          STORE_CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          STORE_CLIENT_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+          STORE_APP_ID: ${{ secrets.STORE_APP_ID }}
+        run: |
+          scripts/publish_store.sh \
+            "pkg/wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix"
