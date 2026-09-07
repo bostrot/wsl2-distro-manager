@@ -4,6 +4,15 @@ import macos_window_utils
 
 class MainFlutterWindow: NSWindow {
   override func awakeFromNib() {
+    // The standalone Dart VM ignores SIGPIPE; Flutter's macOS embedder does
+    // not, so a write to a socket whose peer already hung up — a keep-alive
+    // connection the analytics host had closed, in the case that killed the
+    // notarized 2.0.1 the moment Settings opened — takes the whole process
+    // down with no crash report instead of surfacing as a SocketException
+    // the caller can handle. Set before the engine exists so nothing can
+    // race the first write (bostrot/ai-tasks#49).
+    signal(SIGPIPE, SIG_IGN)
+
     let windowFrame = self.frame
 
     // `flutter_acrylic` needs its own view controller between the window and

@@ -104,4 +104,26 @@ class RunnerTests: XCTestCase {
       delegate.pendingLink,
       "the link was parked instead of going out over the deep-link channel")
   }
+
+  /// A write to a socket whose peer has gone away must come back as EPIPE,
+  /// not kill the process. The standalone Dart VM arranges that; the Flutter
+  /// embedder does not, and the notarized 2.0.1 died of exactly this when
+  /// Settings opened (bostrot/ai-tasks#49). Pin that the window's wake-up
+  /// leaves SIGPIPE ignored for the whole process.
+  func testSigpipeIsIgnoredOnceTheWindowWakes() {
+    signal(SIGPIPE, SIG_DFL)  // whatever the test host had, start from fatal
+    let window = MainFlutterWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+      styleMask: [.titled, .closable, .resizable],
+      backing: .buffered,
+      defer: false)
+    window.awakeFromNib()
+
+    // C function pointers are not Equatable in Swift; compare bit patterns.
+    var action = sigaction()
+    sigaction(SIGPIPE, nil, &action)
+    let handler = unsafeBitCast(action.__sigaction_u.__sa_handler, to: Int.self)
+    XCTAssertEqual(handler, unsafeBitCast(SIG_IGN, to: Int.self),
+                   "SIGPIPE is still fatal after awakeFromNib")
+  }
 }
