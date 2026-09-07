@@ -170,12 +170,16 @@ ReleaseAsset? selectUpdateAsset(
 /// `/Applications/WSL Manager.app/Contents/MacOS/wsl2distromanager` → the
 /// `.app` around it. Null when the executable is not inside a bundle, which
 /// is what `flutter run` and the tests look like.
+///
+/// Posix explicitly, not the ambient context: the path is always a macOS one,
+/// so a Windows host must not rejoin it with backslashes. That only shows up
+/// when the tests run on the Windows CI runner.
 String? macAppBundleFor(String executablePath) {
-  final parts = p.split(executablePath);
+  final parts = p.posix.split(executablePath);
   final index =
       parts.lastIndexWhere((part) => part.toLowerCase().endsWith('.app'));
   if (index < 0) return null;
-  return p.joinAll(parts.sublist(0, index + 1));
+  return p.posix.joinAll(parts.sublist(0, index + 1));
 }
 
 /// Single-quotes [value] for `/bin/sh`. Bundle paths contain spaces and the
