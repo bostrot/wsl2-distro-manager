@@ -193,6 +193,17 @@ jobs:
           VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           set -euo pipefail
+
+          # A secret pasted with a trailing newline yields an Authorization
+          # header Go's http client rejects outright ("invalid header field
+          # value"), which reads like a broken token rather than a stray
+          # byte. A token never contains whitespace, so strip it.
+          TAP_TOKEN=$(printf '%s' "$TAP_TOKEN" | tr -d '[:space:]')
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::error::HOMEBREW_TAP_TOKEN is empty once whitespace is stripped."
+            exit 1
+          fi
+
           TAG="v$VERSION"
           TAP="bostrot/homebrew-tap"
           CASK="Casks/wsl-manager.rb"
