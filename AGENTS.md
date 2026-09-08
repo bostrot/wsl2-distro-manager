@@ -16,10 +16,27 @@ Flutter desktop app for managing WSL distributions on Windows x64 (primary targe
 | MSIX package | `dart run msix:create` | Config in `pubspec.yaml` under `msix_config` |
 | Check translations | `dart run scripts/check_translations.dart` | Run before every build; CI gate |
 | Build macOS app | `scripts/build_macos.sh` | Builds + signs `vmctl`, then `flutter build macos`; needs full Xcode |
+| Run dev (macOS) | `VMCTL_ONLY=1 scripts/build_macos.sh` then `flutter run -d macos` | The helper step is **not optional** and `flutter run` never does it — see below |
 | vmctl Swift tests | `scripts/test_vmctl.sh` | Works with Command Line Tools only |
 | Runner XCTests (macOS) | `flutter build macos --debug && xcodebuild test -workspace macos/Runner.xcworkspace -scheme Runner -configuration Debug -destination 'platform=macOS'` | `AppDelegate` deep-link tests in `macos/RunnerTests/`; needs full Xcode |
 
 **Required setup:** `flutter config --enable-windows-desktop` (Windows) / `flutter config --enable-macos-desktop` (macOS)
+
+**macOS dev runs need a signed `vmctl` first.** VMs are created by the Swift
+helper, not by the Flutter app, and Virtualization.framework only answers a
+process holding `com.apple.security.virtualization`. `swift build` signs its
+output ad-hoc with `get-task-allow` alone, so the helper has to be re-signed
+with `macos/vmctl/vmctl.entitlements` — which is what `VMCTL_ONLY=1
+scripts/build_macos.sh` does, installing the result to `~/Library/Application
+Support/WSLManager/bin/vmctl`. That path sits ahead of the repo's `.build/`
+output in the `findVmctlHelper` candidate chain
+(`lib/api/apple/apple_vm_api.dart`), so an install is what keeps a debug run off
+the unsigned binary. Miss it and the app starts normally but every VM start
+fails with `VZErrorDomain Code=2 "The process doesn't have the
+"com.apple.security.virtualization" entitlement."`. **Re-run it after any change
+under `macos/vmctl/`** — `flutter run` rebuilds Dart only, so an edited helper is
+silently the old one. `helperPath()` re-resolves per call, so a running
+`flutter run` session picks up a freshly installed helper without a restart.
 
 ## Post-Change Verification
 After implementing or changing anything in the code, run the following to check for errors:

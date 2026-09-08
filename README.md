@@ -293,7 +293,9 @@ The latest nightly build is available as an artifact in the "releaser" workflow 
 
 ## ⚙️ Build
 
-Make sure [flutter](https://flutter.dev/desktop) is installed:
+Make sure [flutter](https://flutter.dev/desktop) is installed.
+
+### Windows
 
 ```powershell
 flutter config --enable-windows-desktop
@@ -302,6 +304,41 @@ flutter upgrade
 flutter build windows # build it
 flutter run -d windows # run it
 ```
+
+### macOS
+
+VMs are created by `vmctl`, a small Swift helper that drives
+Virtualization.framework — not by the Flutter app itself. The framework only
+answers processes carrying the `com.apple.security.virtualization` entitlement,
+and `swift build` does not add it, so **the helper must be built and signed
+before the app can start a VM**:
+
+```bash
+flutter config --enable-macos-desktop
+
+# Build + sign vmctl and install it for dev runs. Re-run after any change
+# under macos/vmctl/ — `flutter run` never rebuilds the helper.
+VMCTL_ONLY=1 scripts/build_macos.sh
+
+flutter run -d macos
+```
+
+Skip that step and the app launches fine, but starting a VM fails with:
+
+```
+VM failed to start: Error Domain=VZErrorDomain Code=2 "The process doesn't
+have the "com.apple.security.virtualization" entitlement."
+```
+
+That is the *helper* missing the entitlement, not the app — `Runner`'s own
+entitlements are already correct. The signed helper is installed to
+`~/Library/Application Support/WSLManager/bin/vmctl`, which is where debug runs
+look for it; without it they fall back to the unsigned `swift build` output
+under `macos/vmctl/.build/`, which is what produces the error above.
+
+`scripts/build_macos.sh` without `VMCTL_ONLY` does the same signing and then
+builds the release app, bundling the signed helper into the bundle's
+`Contents/Resources/`. Building the app itself needs full Xcode.
 
 ## Author
 
