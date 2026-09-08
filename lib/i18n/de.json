@@ -1010,5 +1010,21 @@
   "cloudstage-downloading-text": "Root-Dateisystem wird heruntergeladen",
   "cloudstage-importinglocally-text": "Wird auf diesem Rechner importiert",
   "cloudstage-cleaningup-text": "Wird aufgeräumt",
-  "cloudstage-done-text": "Fertig"
+  "cloudstage-done-text": "Fertig",
+  "vmrootfsnotfound-text": "Auf diesem Rechner gibt es keine VM namens %s.",
+  "vmrootfsmacosguest-text": "%s ist ein macOS-Gast. Nur Linux-VMs lassen sich als Wurzeldateisystem verschieben.",
+  "vmrootfsstarting-text": "%s wird gestartet",
+  "vmrootfswaiting-text": "Warten, bis %s antwortet",
+  "vmrootfsunreachable-text": "%s war über SSH nicht erreichbar, das Wurzeldateisystem kann nicht gelesen werden.",
+  "vmrootfsexporting-text": "Wurzeldateisystem von %s wird gelesen",
+  "vmrootfsexportfailed-text": "Das Wurzeldateisystem von %s konnte nicht gelesen werden.",
+  "vmrootfsempty-text": "%s hat ein leeres Wurzeldateisystem geliefert.",
+  "vmrootfsnosource-text": "Dieses Backend stellt in eine Kopie der VM wieder her, aus der bereitgestellt wurde – es wurde keine genannt.",
+  "vmrootfsnametaken-text": "Eine VM namens %s existiert bereits.",
+  "vmrootfssourcemissing-text": "%s ist nicht mehr auf diesem Rechner. Die Festplatte wird als Grundlage für die Wiederherstellung gebraucht, denn ein Wurzeldateisystem allein bringt keinen Kernel zum Starten mit.",
+  "vmrootfssourcerunning-text": "Bitte %s zuerst stoppen. Die Festplatte wird als Grundlage für die Wiederherstellung kopiert und lässt sich im laufenden Betrieb nicht kopieren.",
+  "vmrootfscloning-text": "%s0 wird als %s1 kopiert",
+  "vmrootfsrestoring-text": "Wurzeldateisystem wird in %s wiederhergestellt",
+  "vmrootfsrestorefailed-text": "Das Wurzeldateisystem konnte nicht in %s wiederhergestellt werden.",
+  "cloudpullbodyclone-text": "%s wird auf dem Server exportiert und hier in eine Kopie der lokalen VM zurückgespielt, aus der es bereitgestellt wurde. Diese VM muss vorhanden und gestoppt sein; sie wird nicht verändert, und der Server läuft weiter."
 }

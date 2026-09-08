@@ -227,18 +227,50 @@ class FakeDeployBackend extends VmBackend {
   FakeDeployBackend({
     this.instances = const ['Ubuntu'],
     this.rootfsExport = true,
+    this.rootfsImportNeedsBase = false,
     this.exportFails = false,
   });
 
   List<String> instances;
   final bool rootfsExport;
+  final bool rootfsImportNeedsBase;
   final bool exportFails;
+
+  /// Sub-steps the backend reports while exporting, in order.
+  List<String> exportStatus = const [];
+
+  @override
+  Future<void> exportRootfs(String instance, String tarPath,
+      {void Function(String detail)? onStatus}) async {
+    for (final status in exportStatus) {
+      onStatus?.call(status);
+    }
+    await super.exportRootfs(instance, tarPath, onStatus: onStatus);
+  }
 
   /// `[distribution, location, format]` of every export.
   final List<List<String?>> exports = [];
 
   /// `[distribution, installLocation, filename]` of every import.
   final List<List<String>> imports = [];
+
+  /// `[name, tarPath, sourceInstance]` of every rootfs import. Separate from
+  /// [imports] because the source is what a backend that cannot boot a bare
+  /// filesystem restores onto, and losing it on the way through the deploy
+  /// service would only show up on macOS.
+  final List<List<String>> rootfsImports = [];
+
+  @override
+  Future<void> importRootfs(String name, String tarPath,
+      {String installLocation = '',
+      String sourceInstance = '',
+      void Function(String detail)? onStatus}) async {
+    rootfsImports.add([name, tarPath, sourceInstance]);
+    await super.importRootfs(name, tarPath,
+        installLocation: installLocation,
+        sourceInstance: sourceInstance,
+        onStatus: onStatus);
+  }
 
   @override
   String get backendId => 'fake';
@@ -247,7 +279,9 @@ class FakeDeployBackend extends VmBackend {
   String get instanceNoun => 'distro';
 
   @override
-  VmFeatures get features => VmFeatures(rootfsExport: rootfsExport);
+  VmFeatures get features => VmFeatures(
+      rootfsExport: rootfsExport,
+      rootfsImportNeedsBase: rootfsImportNeedsBase);
 
   @override
   Future<Instances> list(bool showDocker) async =>

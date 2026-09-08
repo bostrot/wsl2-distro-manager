@@ -1009,5 +1009,21 @@
   "cloudstage-downloading-text": "Descargando el sistema de archivos raíz",
   "cloudstage-importinglocally-text": "Importándolo en este equipo",
   "cloudstage-cleaningup-text": "Limpiando",
-  "cloudstage-done-text": "Listo"
+  "cloudstage-done-text": "Listo",
+  "vmrootfsnotfound-text": "No hay ninguna VM llamada %s en este equipo.",
+  "vmrootfsmacosguest-text": "%s es un invitado macOS. Solo las VM Linux pueden moverse como sistema de archivos raíz.",
+  "vmrootfsstarting-text": "Iniciando %s",
+  "vmrootfswaiting-text": "Esperando a que %s responda",
+  "vmrootfsunreachable-text": "No se pudo alcanzar %s por SSH, así que no se puede leer su sistema de archivos raíz.",
+  "vmrootfsexporting-text": "Leyendo el sistema de archivos raíz de %s",
+  "vmrootfsexportfailed-text": "No se pudo leer el sistema de archivos raíz de %s.",
+  "vmrootfsempty-text": "%s devolvió un sistema de archivos raíz vacío.",
+  "vmrootfsnosource-text": "Este backend restaura sobre una copia de la VM desde la que se desplegó, y no se indicó ninguna.",
+  "vmrootfsnametaken-text": "Ya existe una VM llamada %s.",
+  "vmrootfssourcemissing-text": "%s ya no está en este equipo. Su disco hace falta como base para la restauración, porque un sistema de archivos raíz por sí solo no lleva núcleo con el que arrancar.",
+  "vmrootfssourcerunning-text": "Detén %s primero. Su disco se copia como base para la restauración y no puede copiarse mientras se ejecuta.",
+  "vmrootfscloning-text": "Copiando %s0 como %s1",
+  "vmrootfsrestoring-text": "Restaurando el sistema de archivos raíz en %s",
+  "vmrootfsrestorefailed-text": "No se pudo restaurar el sistema de archivos raíz en %s.",
+  "cloudpullbodyclone-text": "%s se exporta en el servidor y se restaura aquí sobre una copia de la VM local desde la que se desplegó. Esa VM debe existir y estar detenida; no se modifica, y el servidor sigue funcionando."
 }

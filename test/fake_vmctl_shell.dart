@@ -28,6 +28,15 @@ class FakeVmctlShell implements Shell {
   /// answer next — modelling a repair that makes the guest reachable.
   void Function(String command)? onCommand;
 
+  /// Every process [start] handed back, newest last. A streamed command is
+  /// only observable through the process itself — what was written to its
+  /// stdin is nowhere else.
+  final List<MockProcess> processes = [];
+
+  /// When set, a started process stays alive this long instead of exiting at
+  /// once — a transfer that hangs rather than one that fails.
+  Duration? startDelay;
+
   String _responseFor(String command) {
     final queue = responseQueue[command];
     if (queue != null && queue.isNotEmpty) return queue.removeAt(0);
@@ -85,10 +94,13 @@ class FakeVmctlShell implements Shell {
     calls.add(['start:$executable', ...arguments]);
     final command = _commandOf(arguments);
     onCommand?.call(command);
-    return MockProcess(
+    final process = MockProcess(
       exitCode: _exitCodeFor(command),
       stdout: _responseFor(command),
       stderr: errors[command] ?? '',
+      delay: startDelay,
     );
+    processes.add(process);
+    return process;
   }
 }

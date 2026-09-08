@@ -39,6 +39,9 @@ void main() {
       helperPathOverride: '/fake/vmctl',
       storeDirOverride: tempStore.path,
       earlyExitProbeDelay: Duration.zero,
+      // A test may not sit through a guest boot: one probe, no sleep.
+      guestReadyTimeout: Duration.zero,
+      guestReadyPollInterval: Duration.zero,
     );
   });
 
@@ -796,6 +799,310 @@ void main() {
             'create', '--name', 'sequoia', '--os', 'macos',
             '--restore-image', '/tmp/r.ipsw',
           ]));
+    });
+  });
+
+  group('root filesystem transfer', () {
+    String vmList(List<Map<String, Object?>> vms) => json.encode({'vms': vms});
+
+    Map<String, Object?> vm(String name,
+            {bool running = false, String os = 'linux'}) =>
+        {
+          'name': name,
+          'state': running ? 'running' : 'stopped',
+          'os': os,
+          'user': 'dev',
+        };
+
+    /// The single argument `vmctl exec` was handed for the streamed command.
+    String remoteCommandOf(List<String> call) => call.last;
+
+    List<String> streamedExecCall() =>
+        shell.calls.lastWhere((c) => c.first.startsWith('start:'));
+
+    late File archive;
+
+    setUp(() {
+      archive = File(p.join(tempStore.path, 'rootfs.tar'));
+    });
+
+    test('the feature flags advertise a rootfs the long way round', () {
+      // vmctl's own export is a raw disk; the flag says the *backend* can
+      // still produce a root filesystem, which is what the cloud deploy asks
+      // for. The second flag is why the pull-back reads differently here.
+      expect(api.features.rootfsExport, isTrue);
+      expect(api.features.rootfsImportNeedsBase, isTrue);
+    });
+
+    test('a running guest is tarred over vmctl exec, straight to the file',
+        () async {
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.responses['exec'] = 'TAR-BYTES';
+
+      await api.exportRootfs('ubuntu', archive.path);
+
+      expect(archive.readAsStringSync(), 'TAR-BYTES');
+      final call = streamedExecCall();
+      expect(call, containsAll(['exec', '--name', 'ubuntu', '--user', 'root']));
+      final remote = remoteCommandOf(call);
+      expect(remote, startsWith("'tar' '-cf' '-' '-C' '/'"));
+      expect(remote, endsWith("'.'"));
+      // Nothing was started or stopped: the guest was already up.
+      expect(shell.calls.any((c) => c.contains('start')), isFalse);
+      expect(shell.calls.any((c) => c.contains('stop')), isFalse);
+    });
+
+    test('every exclude is quoted, so the guest shell cannot glob it',
+        () async {
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.responses['exec'] = 'TAR';
+
+      await api.exportRootfs('ubuntu', archive.path);
+
+      final remote = remoteCommandOf(streamedExecCall());
+      // `./proc/*` reaching an unquoted remote shell is a glob against the
+      // guest's home directory, not an argument for tar.
+      expect(remote, contains("'--exclude=./proc/*'"));
+      // A mount point keeps its directory; the kernel and its modules go
+      // whole, because the machine they belong to is not the one this lands
+      // on.
+      expect(remote, isNot(contains("'--exclude=./proc'")));
+      expect(remote, contains("'--exclude=./boot'"));
+      expect(remote, contains("'--exclude=./boot/*'"));
+      expect(remote, contains("'--exclude=./lib/modules'"));
+    });
+
+    test('a stopped guest is started headless and stopped again', () async {
+      shell.responseQueue['list'] = [
+        vmList([vm('ubuntu')]),
+        vmList([vm('ubuntu', running: true)]),
+      ];
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.responses['exec'] = 'TAR';
+
+      await api.exportRootfs('ubuntu', archive.path);
+
+      final start = shell.calls.firstWhere((c) => c.contains('start'));
+      expect(start, containsAll(['start', '--name', 'ubuntu']));
+      // Headless: an export is not a reason to put a window on the screen.
+      expect(start, isNot(contains('--gui')));
+      expect(shell.calls.any((c) => c.contains('stop')), isTrue);
+    });
+
+    test('a macOS guest is refused before anything is started', () async {
+      shell.responses['list'] = vmList([vm('sequoia', os: 'macos')]);
+
+      await expectLater(
+        api.exportRootfs('sequoia', archive.path),
+        // Unit tests run without a loaded locale, so a translated message
+        // is its own key — which is exactly the assertion worth making: the
+        // refusal names the macOS guest, not some generic failure.
+        throwsA(predicate((e) => '$e'.contains('vmrootfsmacosguest-text'))),
+      );
+      expect(shell.calls.any((c) => c.contains('start')), isFalse);
+      expect(archive.existsSync(), isFalse);
+    });
+
+    test('a VM that is not there is refused by name', () async {
+      shell.responses['list'] = vmList([vm('other', running: true)]);
+
+      await expectLater(
+        api.exportRootfs('ubuntu', archive.path),
+        throwsA(predicate((e) => '$e'.contains('vmrootfsnotfound-text'))),
+      );
+    });
+
+    test('a guest that never answers reports ssh\'s own words', () async {
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.exitCodes['exec'] = 255;
+      shell.errors['exec'] = 'Connection refused';
+
+      await expectLater(
+        api.exportRootfs('ubuntu', archive.path),
+        throwsA(predicate((e) => '$e'.contains('Connection refused'))),
+      );
+    });
+
+    test('a failing tar surfaces the guest stderr and fails the export',
+        () async {
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      // The readiness probe passes; the tar itself does not.
+      shell.exitCodeQueue['exec'] = [0, 2];
+      shell.errors['exec'] = 'tar: /: Cannot open: Permission denied';
+
+      await expectLater(
+        api.exportRootfs('ubuntu', archive.path),
+        throwsA(predicate((e) => '$e'.contains('Permission denied'))),
+      );
+      // Whatever tar managed to write before it gave up is a truncated
+      // archive, and nothing downstream can tell one of those from a whole
+      // one.
+      expect(archive.existsSync(), isFalse);
+    });
+
+    test('a transfer that hangs is killed and reported', () async {
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.responses['exec'] = 'TAR';
+      shell.startDelay = const Duration(seconds: 30);
+      final impatient = AppleVmApi(
+        shell: shell,
+        helperPathOverride: '/fake/vmctl',
+        storeDirOverride: tempStore.path,
+        earlyExitProbeDelay: Duration.zero,
+        guestReadyTimeout: Duration.zero,
+        guestReadyPollInterval: Duration.zero,
+        rootfsTransferTimeout: const Duration(milliseconds: 10),
+      );
+
+      await expectLater(
+        impatient.exportRootfs('ubuntu', archive.path),
+        throwsA(predicate((e) => '$e'.contains('Timed out'))),
+      );
+      expect(shell.processes.last.killCount, greaterThan(0));
+      expect(archive.existsSync(), isFalse);
+    });
+
+    test('an archive with nothing in it is refused, not deployed', () async {
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.responses['exec'] = '';
+
+      await expectLater(
+        api.exportRootfs('ubuntu', archive.path),
+        throwsA(isA<AppleVmException>()),
+      );
+      expect(archive.existsSync(), isFalse);
+    });
+
+    group('restore', () {
+      setUp(() {
+        archive.writeAsStringSync('ARCHIVE');
+        shell.responses['export'] = '{}';
+        shell.responses['import'] = '{}';
+      });
+
+      /// list answers: the source alone, then the fresh clone stopped, then
+      /// the clone running — the states a restore actually walks through.
+      void listsCloneComingUp() {
+        shell.responseQueue['list'] = [
+          vmList([vm('ubuntu')]),
+          vmList([vm('ubuntu'), vm('ubuntu-cloud')]),
+          vmList([vm('ubuntu'), vm('ubuntu-cloud', running: true)]),
+        ];
+        shell.responses['list'] =
+            vmList([vm('ubuntu'), vm('ubuntu-cloud', running: true)]);
+      }
+
+      test('clones the source, streams the archive in and leaves it stopped',
+          () async {
+        listsCloneComingUp();
+        shell.responses['exec'] = 'tar (GNU tar) 1.35';
+
+        await api.importRootfs('ubuntu-cloud', archive.path,
+            sourceInstance: 'ubuntu');
+
+        // The clone is taken from the source, whose disk carries the kernel a
+        // bare root filesystem does not.
+        final export = shell.calls.firstWhere((c) => c.contains('export'));
+        expect(export, containsAll(['--name', 'ubuntu']));
+        final import = shell.calls.firstWhere((c) => c.contains('import'));
+        expect(import, containsAll(['--name', 'ubuntu-cloud']));
+
+        final call = streamedExecCall();
+        expect(call, containsAll(['--name', 'ubuntu-cloud', '--user', 'root']));
+        final remote = remoteCommandOf(call);
+        expect(remote, startsWith("'tar' '-xf' '-' '-C' '/'"));
+        // The archive travels on stdin; nothing buffers a root filesystem.
+        expect(utf8.decode(shell.processes.last.stdinBytes), 'ARCHIVE');
+        // Everything under /etc and /usr was replaced beneath a running
+        // systemd, so the restored VM is left for the user to boot.
+        expect(shell.calls.any((c) => c.contains('stop')), isTrue);
+      });
+
+      test('a GNU guest gets --unlink-first so a busy binary can be replaced',
+          () async {
+        listsCloneComingUp();
+        shell.responses['exec'] = 'tar (GNU tar) 1.35';
+
+        await api.importRootfs('ubuntu-cloud', archive.path,
+            sourceInstance: 'ubuntu');
+
+        expect(remoteCommandOf(streamedExecCall()),
+            contains("'--unlink-first'"));
+      });
+
+      test('a busybox guest is not sent an option it would reject', () async {
+        listsCloneComingUp();
+        shell.responses['exec'] = 'BusyBox v1.36.1 multi-call binary';
+
+        await api.importRootfs('ubuntu-cloud', archive.path,
+            sourceInstance: 'ubuntu');
+
+        expect(remoteCommandOf(streamedExecCall()),
+            isNot(contains('unlink-first')));
+      });
+
+      test('a restore with no source named is refused', () async {
+        shell.responses['list'] = vmList([vm('ubuntu')]);
+
+        await expectLater(
+          api.importRootfs('ubuntu-cloud', archive.path),
+          throwsA(isA<AppleVmException>()),
+        );
+        expect(shell.calls.any((c) => c.contains('export')), isFalse);
+      });
+
+      test('a source that is gone is refused, and nothing is cloned',
+          () async {
+        shell.responses['list'] = vmList([vm('something-else')]);
+
+        await expectLater(
+          api.importRootfs('ubuntu-cloud', archive.path,
+              sourceInstance: 'ubuntu'),
+          throwsA(predicate((e) => '$e'.contains('vmrootfssourcemissing-text'))),
+        );
+        expect(shell.calls.any((c) => c.contains('export')), isFalse);
+      });
+
+      test('a running source is refused rather than copied torn', () async {
+        shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+
+        await expectLater(
+          api.importRootfs('ubuntu-cloud', archive.path,
+              sourceInstance: 'ubuntu'),
+          throwsA(predicate((e) => '$e'.contains('vmrootfssourcerunning-text'))),
+        );
+        expect(shell.calls.any((c) => c.contains('export')), isFalse);
+      });
+
+      test('an existing name is refused instead of being overwritten',
+          () async {
+        shell.responses['list'] =
+            vmList([vm('ubuntu'), vm('ubuntu-cloud')]);
+
+        await expectLater(
+          api.importRootfs('ubuntu-cloud', archive.path,
+              sourceInstance: 'ubuntu'),
+          throwsA(predicate((e) => '$e'.contains('vmrootfsnametaken-text'))),
+        );
+        expect(shell.calls.any((c) => c.contains('export')), isFalse);
+      });
+
+      test('a clone left half-restored is deleted, not handed over', () async {
+        listsCloneComingUp();
+        shell.responses['exec'] = 'tar (GNU tar) 1.35';
+        // The readiness probe and the tar --version pass; the restore does
+        // not.
+        shell.exitCodeQueue['exec'] = [0, 0, 3];
+        shell.errors['exec'] = 'tar: short read';
+
+        await expectLater(
+          api.importRootfs('ubuntu-cloud', archive.path,
+              sourceInstance: 'ubuntu'),
+          throwsA(predicate((e) => '$e'.contains('short read'))),
+        );
+        final delete = shell.calls.lastWhere((c) => c.contains('delete'));
+        expect(delete, containsAll(['delete', '--name', 'ubuntu-cloud']));
+      });
     });
   });
 }

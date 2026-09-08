@@ -1009,5 +1009,21 @@
   "cloudstage-downloading-text": "루트 파일 시스템을 내려받는 중",
   "cloudstage-importinglocally-text": "이 컴퓨터에서 가져오는 중",
   "cloudstage-cleaningup-text": "정리하는 중",
-  "cloudstage-done-text": "완료"
+  "cloudstage-done-text": "완료",
+  "vmrootfsnotfound-text": "이 컴퓨터에는 %s(이)라는 VM이 없습니다.",
+  "vmrootfsmacosguest-text": "%s은(는) macOS 게스트입니다. 루트 파일 시스템으로 옮길 수 있는 것은 Linux VM뿐입니다.",
+  "vmrootfsstarting-text": "%s 시작 중",
+  "vmrootfswaiting-text": "%s의 응답을 기다리는 중",
+  "vmrootfsunreachable-text": "SSH로 %s에 연결하지 못해 루트 파일 시스템을 읽을 수 없습니다.",
+  "vmrootfsexporting-text": "%s의 루트 파일 시스템을 읽는 중",
+  "vmrootfsexportfailed-text": "%s의 루트 파일 시스템을 읽지 못했습니다.",
+  "vmrootfsempty-text": "%s이(가) 빈 루트 파일 시스템을 반환했습니다.",
+  "vmrootfsnosource-text": "이 백엔드는 배포에 사용한 VM의 사본으로 복원하는데, 그런 VM이 지정되지 않았습니다.",
+  "vmrootfsnametaken-text": "%s(이)라는 VM이 이미 있습니다.",
+  "vmrootfssourcemissing-text": "%s은(는) 더 이상 이 컴퓨터에 없습니다. 루트 파일 시스템만으로는 부팅할 커널이 없으므로 복원의 바탕으로 그 디스크가 필요합니다.",
+  "vmrootfssourcerunning-text": "먼저 %s을(를) 중지하세요. 복원의 바탕으로 디스크를 복사하는데, 실행 중에는 복사할 수 없습니다.",
+  "vmrootfscloning-text": "%s0을(를) %s1(으)로 복사하는 중",
+  "vmrootfsrestoring-text": "루트 파일 시스템을 %s에 복원하는 중",
+  "vmrootfsrestorefailed-text": "루트 파일 시스템을 %s에 복원하지 못했습니다.",
+  "cloudpullbodyclone-text": "%s은(는) 서버에서 내보내진 뒤, 배포에 사용한 로컬 VM의 사본으로 여기에 복원됩니다. 그 VM은 존재해야 하고 중지되어 있어야 합니다. 원본은 변경되지 않으며 서버도 계속 실행됩니다."
 }

@@ -48,13 +48,25 @@ class VmFeatures {
   /// without any display window.
   final bool serialConsole;
 
-  /// An instance exports as a root filesystem tarball rather than as a
-  /// bootable disk image. That is what makes an instance portable to
-  /// somewhere else entirely — the cloud deploy imports one straight into a
-  /// container on the server (bostrot/ai-tasks#62). The Apple backend exports
-  /// a raw disk instead, which carries a partition table and a bootloader and
-  /// is not a filesystem anything else can read.
+  /// The backend can hand out an instance's root filesystem as a plain tar
+  /// archive, and build a local instance back out of one. That is what makes
+  /// an instance portable to somewhere else entirely — the cloud deploy
+  /// imports one straight into a container on the server
+  /// (bostrot/ai-tasks#62).
+  ///
+  /// WSL does it natively (`wsl --export --format tar`). The Apple backend
+  /// cannot: its export is a raw disk, with a partition table and a
+  /// bootloader, which no `docker import` can read — so it takes the long way
+  /// round and tars the *running guest's* root filesystem over SSH instead.
+  /// See [VmBackend.exportRootfs].
   final bool rootfsExport;
+
+  /// Restoring a root filesystem needs an existing local instance as its
+  /// base, because the backend cannot boot a bare filesystem — the Apple
+  /// backend's VMs start through EFI and need the kernel and partition table
+  /// only a real disk carries. The pull-back wording says so, because the
+  /// user has to keep that instance around and stopped.
+  final bool rootfsImportNeedsBase;
 
   /// The instance has a login account of its own — one the user may have to
   /// type at a console — so the app can show them what it is. WSL distros
@@ -74,6 +86,7 @@ class VmFeatures {
     this.serialConsole = false,
     this.guestCredentials = false,
     this.rootfsExport = false,
+    this.rootfsImportNeedsBase = false,
   });
 }
 
@@ -148,6 +161,47 @@ abstract class VmBackend {
 
   /// Export an instance to [location].
   Future<String> export(String distribution, String location, {String? format});
+
+  /// Write [instance]'s root filesystem to [tarPath] as a plain tar archive —
+  /// no partition table, no bootloader, nothing machine-specific: the thing
+  /// `docker import` and `wsl --import` both read.
+  ///
+  /// Only meaningful when [VmFeatures.rootfsExport] is set. The default is
+  /// the backend's own export asked for in tar format, which is exactly what
+  /// WSL does; a backend whose export is a disk image (the Apple one)
+  /// overrides this with a route of its own.
+  ///
+  /// [onStatus] carries the sub-steps a caller may want to show — a backend
+  /// that has to boot the instance first spends minutes before the first byte
+  /// is written.
+  Future<void> exportRootfs(String instance, String tarPath,
+      {void Function(String detail)? onStatus}) async {
+    _requireRootfsSupport();
+    await export(instance, tarPath, format: 'tar');
+  }
+
+  /// Build a local instance called [name] out of the root filesystem tarball
+  /// at [tarPath], leaving every existing instance alone.
+  ///
+  /// [sourceInstance] is the local instance the rootfs originally came from,
+  /// when the caller knows it. A backend that can boot a bare root filesystem
+  /// ignores it; one that cannot (the Apple backend needs a kernel and a
+  /// bootloader, which only a real disk carries) uses it as the base to
+  /// restore onto.
+  Future<void> importRootfs(String name, String tarPath,
+      {String installLocation = '',
+      String sourceInstance = '',
+      void Function(String detail)? onStatus}) async {
+    _requireRootfsSupport();
+    await import(name, installLocation, tarPath);
+  }
+
+  void _requireRootfsSupport() {
+    if (!features.rootfsExport) {
+      throw UnsupportedError(
+          '$backendId cannot move a $instanceNoun as a root filesystem.');
+    }
+  }
 
   /// Import an instance from [filename] as [distribution].
   Future<String> import(

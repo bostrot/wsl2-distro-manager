@@ -1009,5 +1009,21 @@
   "cloudstage-downloading-text": "Downloading the root filesystem",
   "cloudstage-importinglocally-text": "Importing it on this machine",
   "cloudstage-cleaningup-text": "Cleaning up",
-  "cloudstage-done-text": "Done"
+  "cloudstage-done-text": "Done",
+  "vmrootfsnotfound-text": "There is no VM named %s on this machine.",
+  "vmrootfsmacosguest-text": "%s is a macOS guest. Only Linux VMs can be moved as a root filesystem.",
+  "vmrootfsstarting-text": "Starting %s",
+  "vmrootfswaiting-text": "Waiting for %s to answer",
+  "vmrootfsunreachable-text": "Could not reach %s over SSH, so its root filesystem cannot be read.",
+  "vmrootfsexporting-text": "Reading the root filesystem of %s",
+  "vmrootfsexportfailed-text": "Could not read the root filesystem of %s.",
+  "vmrootfsempty-text": "%s handed back an empty root filesystem.",
+  "vmrootfsnosource-text": "This backend restores into a copy of the VM the deploy came from, and none was named.",
+  "vmrootfsnametaken-text": "A VM named %s already exists.",
+  "vmrootfssourcemissing-text": "%s is no longer on this machine. Its disk is needed as the base to restore onto, because a root filesystem on its own carries no kernel to boot.",
+  "vmrootfssourcerunning-text": "Stop %s first. Its disk is copied as the base for the restore, and it cannot be copied while it runs.",
+  "vmrootfscloning-text": "Copying %s0 as %s1",
+  "vmrootfsrestoring-text": "Restoring the root filesystem into %s",
+  "vmrootfsrestorefailed-text": "Could not restore the root filesystem into %s.",
+  "cloudpullbodyclone-text": "%s is exported on the server and restored here into a copy of the local VM it was deployed from. That VM has to exist and be stopped; it is not changed, and the server keeps running."
 }

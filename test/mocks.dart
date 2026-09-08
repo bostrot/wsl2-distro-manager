@@ -535,6 +535,13 @@ class MockProcess implements Process {
   /// The signal handed to the last [kill] call, if any.
   ProcessSignal? lastKillSignal;
 
+  /// Everything written to the process's stdin, so a test can pin what was
+  /// streamed *into* a command — a root filesystem restore hands its whole
+  /// archive over that way and nothing else records it.
+  final List<int> stdinBytes = [];
+  late final StreamController<List<int>> _stdinController =
+      StreamController<List<int>>()..stream.listen(stdinBytes.addAll);
+
   /// When set, the process stays alive for [delay] before exiting — the shape
   /// of a hung command. [kill] cuts it short.
   ///
@@ -584,7 +591,7 @@ class MockProcess implements Process {
   Stream<List<int>> get stderr => Stream.fromIterable(_stderrChunks);
 
   @override
-  IOSink get stdin => IOSink(StreamController<List<int>>().sink);
+  late final IOSink stdin = IOSink(_stdinController.sink);
 
   @override
   Stream<List<int>> get stdout => Stream.fromIterable(_stdoutChunks);

@@ -1010,5 +1010,21 @@
   "cloudstage-downloading-text": "正在下载根文件系统",
   "cloudstage-importinglocally-text": "正在本机导入",
   "cloudstage-cleaningup-text": "正在清理",
-  "cloudstage-done-text": "完成"
+  "cloudstage-done-text": "完成",
+  "vmrootfsnotfound-text": "本机上没有名为 %s 的虚拟机。",
+  "vmrootfsmacosguest-text": "%s 是 macOS 客户机。只有 Linux 虚拟机才能以根文件系统的形式迁移。",
+  "vmrootfsstarting-text": "正在启动 %s",
+  "vmrootfswaiting-text": "正在等待 %s 响应",
+  "vmrootfsunreachable-text": "无法通过 SSH 连接到 %s，因此读取不到它的根文件系统。",
+  "vmrootfsexporting-text": "正在读取 %s 的根文件系统",
+  "vmrootfsexportfailed-text": "无法读取 %s 的根文件系统。",
+  "vmrootfsempty-text": "%s 返回的根文件系统是空的。",
+  "vmrootfsnosource-text": "该后端会恢复到部署来源虚拟机的副本中，但没有指定这样的虚拟机。",
+  "vmrootfsnametaken-text": "已经存在名为 %s 的虚拟机。",
+  "vmrootfssourcemissing-text": "%s 已经不在本机上。根文件系统本身不带可启动的内核，因此需要它的磁盘作为恢复的基础。",
+  "vmrootfssourcerunning-text": "请先停止 %s。它的磁盘会被复制为恢复的基础，运行时无法复制。",
+  "vmrootfscloning-text": "正在把 %s0 复制为 %s1",
+  "vmrootfsrestoring-text": "正在把根文件系统恢复到 %s",
+  "vmrootfsrestorefailed-text": "无法把根文件系统恢复到 %s。",
+  "cloudpullbodyclone-text": "%s 会在服务器上导出，并在本机恢复到部署来源那台虚拟机的副本中。那台虚拟机必须存在且已停止；它不会被改动，服务器也会继续运行。"
 }

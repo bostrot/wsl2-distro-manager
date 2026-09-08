@@ -10,7 +10,7 @@
 //
 // What *is* portable is the root filesystem. So a deploy is:
 //
-//   1. export the instance to a rootfs tarball (`wsl --export --format tar`),
+//   1. export the instance to a rootfs tarball,
 //   2. create a stock server at the provider, whose cloud-init installs
 //      Docker and nothing else,
 //   3. `docker import` the tarball there and run it,
@@ -18,7 +18,15 @@
 // which lands the user's whole setup — packages, dotfiles, /etc, their data —
 // on a machine with a public address, in one step, on a base image that the
 // provider itself keeps bootable. A pull is the same three steps read
-// backwards: `docker export`, download, `wsl --import`.
+// backwards: `docker export`, download, import locally.
+//
+// Step 1 and the last step are the backend's, not this file's
+// ([VmBackend.exportRootfs] / [VmBackend.importRootfs]), because they are the
+// only part that differs per backend: WSL hands over a rootfs tarball
+// directly (`wsl --export --format tar`), while the Apple backend has to tar
+// its running guest over SSH and, coming back, restore into a clone of the VM
+// the deploy came from — a bare rootfs has no kernel to boot there. Nothing
+// below cares which of the two it got.
 //
 // It also means this file re-uses the app's existing idea of a container as
 // "a process tree the engine owns" rather than inventing a second one: the
@@ -176,10 +184,11 @@ class CloudDeployService {
 
   /// Whether this host can deploy at all.
   ///
-  /// Gated on the backend, not the OS: what a deploy needs is an instance
-  /// that exports as a root filesystem tarball. WSL does; the Apple backend
-  /// exports a raw disk image, which is a bootable disk rather than a
-  /// filesystem and is not something `docker import` can read.
+  /// Gated on the backend, not the OS: what a deploy needs is an instance the
+  /// backend can hand over as a root filesystem tarball. Both shipped
+  /// backends can — WSL natively, the Apple one by reading the running guest
+  /// — so this is a flag rather than a platform check for the backend that
+  /// cannot.
   bool get canDeploy => backend.features.rootfsExport;
 
   /// Deploy [instance] onto a newly created server.
@@ -208,7 +217,8 @@ class CloudDeployService {
     final tarPath = _localStagingPath(instance);
     try {
       report(DeployStage.exporting, instance);
-      await backend.export(instance, tarPath, format: 'tar');
+      await backend.exportRootfs(instance, tarPath,
+          onStatus: (detail) => report(DeployStage.exporting, detail));
       if (!await File(tarPath).exists()) {
         throw CloudException('Exporting $instance produced no file.');
       }
@@ -282,8 +292,10 @@ class CloudDeployService {
   ///
   /// The local name is separate on purpose: pulling onto the instance the
   /// deploy came from would destroy whatever the user did locally in the
-  /// meantime, and `wsl --import` onto an existing name fails rather than
-  /// merging. The screen suggests `<instance>-cloud`.
+  /// meantime, and importing onto an existing name fails rather than merging.
+  /// The screen suggests `<instance>-cloud`. [instance] is still needed —
+  /// it names the container on the server, and it is the base the Apple
+  /// backend restores onto.
   Future<void> pullBack({
     required CloudServer server,
     required String instance,
@@ -316,7 +328,10 @@ class CloudDeployService {
       await _download(target, remoteTar, tarPath);
 
       report(DeployStage.importingLocally, localName);
-      await backend.import(localName, installLocation, tarPath);
+      await backend.importRootfs(localName, tarPath,
+          installLocation: installLocation,
+          sourceInstance: instance,
+          onStatus: (detail) => report(DeployStage.importingLocally, detail));
 
       report(DeployStage.cleaningUp);
       await _run(target, ['rm', '-f', remoteTar],

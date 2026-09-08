@@ -56,15 +56,31 @@ void main() {
 
     test('Cloud follows the backend that can export a root filesystem', () {
       // Unlike Kubernetes, this destination is gated: the deploy needs an
-      // instance that exports as a rootfs tarball, and a Cloud screen that
-      // cannot deploy is a server list with a delete button — a second
-      // control panel for somebody else's product (bostrot/ai-tasks#62).
+      // instance the backend can hand over as a rootfs tarball, and a Cloud
+      // screen that cannot deploy is a server list with a delete button — a
+      // second control panel for somebody else's product
+      // (bostrot/ai-tasks#62).
       vmBackendBuilder = () => WSLApi(shell: MockShell());
       expect(vmBackend().features.rootfsExport, isTrue);
       expect(paneKeys(), contains("[<'/cloud'>]"));
       vmBackendBuilder = FakeBackend.new;
       expect(vmBackend().features.rootfsExport, isFalse);
       expect(paneKeys(), isNot(contains("[<'/cloud'>]")));
+    });
+
+    test('Cloud is offered on the Apple backend too', () {
+      // `vmctl export` hands out a raw disk, but the backend can still read a
+      // root filesystem out of the running guest, so the destination is not
+      // Windows-only — and the pull-back there needs a local base to restore
+      // onto, which the dialog wording depends on.
+      vmBackendBuilder = () => AppleVmApi(
+            helperPathOverride: '/fake/vmctl',
+            storeDirOverride:
+                Directory.systemTemp.createTempSync('cloud-gating').path,
+          );
+      expect(vmBackend().features.rootfsExport, isTrue);
+      expect(vmBackend().features.rootfsImportNeedsBase, isTrue);
+      expect(paneKeys(), contains("[<'/cloud'>]"));
     });
 
     test('a backend without WSL features hides the WSL-only entries', () {

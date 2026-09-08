@@ -69,10 +69,11 @@
 - [x] Open a workload to see its pods, tail their logs, restart a pod, roll out a restart, scale, or read the full details
 - [x] Front end only: it drives the `kubectl` you already have, and never rewrites your kubeconfig or switches your context
 
-**Deploy to the cloud** *(beta, WSL backend)*
+**Deploy to the cloud** *(beta)*
 - [x] Push a whole instance to a brand-new Hetzner Cloud server in one step — the root filesystem is exported, uploaded and started there as a container
 - [x] The server is created for you: size, location and base image, with cloud-init installing Docker and your own SSH key authorized for `root`
-- [x] Pull it back down again as a new local instance whenever you want, leaving the server running
+- [x] Works from macOS too: a Linux VM's root filesystem is read out of the running guest, since its disk image is a bootable machine rather than something a container engine can read
+- [x] Pull it back down again as a new local instance whenever you want, leaving the server running — on macOS that restores into a copy of the VM it was deployed from, which has to still exist and be stopped, because a bare root filesystem has no kernel to boot
 - [x] See what each server costs per month, power them on and off, and delete them from the same list
 
 **Configure without editing files by hand**

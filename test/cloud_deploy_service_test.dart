@@ -369,11 +369,51 @@ void main() {
     expect(download, isNot(contains(tempDir.path)));
     // Imported under the new name, never over the instance it came from.
     expect(backend.imports.single[0], 'Ubuntu-cloud');
+    // The instance it came from still travels with it: a backend that cannot
+    // boot a bare root filesystem restores onto a copy of that instance, and
+    // dropping it here would break only the Apple backend.
+    expect(backend.rootfsImports.single[0], 'Ubuntu-cloud');
+    expect(backend.rootfsImports.single[2], 'Ubuntu');
     expect(stages, contains(DeployStage.downloading));
     expect(stages.last, DeployStage.done);
     // The server is left alone: pulling back is a copy, not a move.
     expect(provider.deleted, isEmpty);
     expect(provider.poweredOff, isEmpty);
+  });
+
+  test('a backend that reports its own sub-steps has them shown', () async {
+    // Reading a root filesystem out of a stopped VM means booting it first —
+    // minutes in which the deploy has nothing else to say. The backend's own
+    // wording is what reaches the progress line.
+    final backend = FakeDeployBackend()..exportStatus = ['Starting Ubuntu'];
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+    final details = <String>[];
+
+    await service(FakeCloudShell(), provider, backend: backend).deploy(
+      instance: 'Ubuntu',
+      serverName: 'deploy-1',
+      serverType: 'cx22',
+      image: 'ubuntu-24.04',
+      location: 'nbg1',
+      onProgress: (progress) => details.add(progress.detail),
+    );
+
+    expect(details, contains('Starting Ubuntu'));
+  });
+
+  test('a backend that cannot export a rootfs never pulls one back', () async {
+    final backend = FakeDeployBackend(rootfsExport: false);
+
+    await expectLater(
+      service(FakeCloudShell(), FakeCloudProvider(), backend: backend)
+          .pullBack(
+        server: _running(),
+        instance: 'Ubuntu',
+        localName: 'Ubuntu-cloud',
+      ),
+      throwsA(isA<CloudException>()),
+    );
+    expect(backend.imports, isEmpty);
   });
 
   test('refuses to pull from a server with no address', () async {

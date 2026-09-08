@@ -1010,5 +1010,21 @@
   "cloudstage-downloading-text": "正在下載根檔案系統",
   "cloudstage-importinglocally-text": "正在本機匯入",
   "cloudstage-cleaningup-text": "正在清理",
-  "cloudstage-done-text": "完成"
+  "cloudstage-done-text": "完成",
+  "vmrootfsnotfound-text": "本機上沒有名為 %s 的虛擬機。",
+  "vmrootfsmacosguest-text": "%s 是 macOS 客體。只有 Linux 虛擬機能以根檔案系統的形式搬移。",
+  "vmrootfsstarting-text": "正在啟動 %s",
+  "vmrootfswaiting-text": "正在等待 %s 回應",
+  "vmrootfsunreachable-text": "無法透過 SSH 連線到 %s，因此讀不到它的根檔案系統。",
+  "vmrootfsexporting-text": "正在讀取 %s 的根檔案系統",
+  "vmrootfsexportfailed-text": "無法讀取 %s 的根檔案系統。",
+  "vmrootfsempty-text": "%s 傳回的根檔案系統是空的。",
+  "vmrootfsnosource-text": "這個後端會還原到部署來源虛擬機的副本中，但沒有指定這樣的虛擬機。",
+  "vmrootfsnametaken-text": "已經有名為 %s 的虛擬機。",
+  "vmrootfssourcemissing-text": "%s 已經不在本機上。根檔案系統本身不帶可開機的核心，因此需要它的磁碟作為還原的基礎。",
+  "vmrootfssourcerunning-text": "請先停止 %s。它的磁碟會被複製成還原的基礎，執行中無法複製。",
+  "vmrootfscloning-text": "正在把 %s0 複製為 %s1",
+  "vmrootfsrestoring-text": "正在把根檔案系統還原到 %s",
+  "vmrootfsrestorefailed-text": "無法把根檔案系統還原到 %s。",
+  "cloudpullbodyclone-text": "%s 會在伺服器上匯出，並在本機還原到部署來源那台虛擬機的副本中。那台虛擬機必須存在且已停止；它不會被更動，伺服器也會繼續執行。"
 }

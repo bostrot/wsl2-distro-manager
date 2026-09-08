@@ -59,28 +59,6 @@ List<NavigationPaneItem> get originalItems {
       navigateGuarded('kubernetes', path: '/kubernetes');
     },
   ),
-  // Cloud sits after Kubernetes for the third time in the same argument:
-  // these machines belong to a provider, not to this app, and a deploy is
-  // the one place where a local instance crosses over (bostrot/ai-tasks#62).
-  //
-  // Gated on rootfsExport, unlike Containers and Kubernetes, because that is
-  // what deploying needs — and a Cloud screen that cannot deploy is a server
-  // list with a delete button, which is the "second control panel for
-  // somebody else's product" this app deliberately does not build. It also
-  // keeps the pane from growing a destination that cannot do its job: at a
-  // small window height the pane scrolls, and every entry past the fold is
-  // one the user has to go looking for.
-  if (features.rootfsExport)
-  PaneItem(
-    key: const Key('/cloud'),
-    icon: const Icon(FluentIcons.cloud_upload),
-    title: Text('cloud-text'.i18n()),
-    infoBadge: const BetaPaneBadge(),
-    body: const SizedBox.shrink(),
-    onTap: () {
-      navigateGuarded('cloud', path: '/cloud');
-    },
-  ),
   PaneItem(
     key: const Key('/templates'),
     icon: const Icon(FluentIcons.file_template),
@@ -134,6 +112,34 @@ List<NavigationPaneItem> get originalItems {
     body: const SizedBox.shrink(),
     onTap: () {
       showMountDialog();
+    },
+  ),
+  // Cloud goes last, and that placement is the whole argument for where it
+  // belongs. It shares its subject with Containers and Kubernetes — machines
+  // this app does not own — but it is also the newest and the most
+  // specialised of the destinations, and the pane runs out of height before
+  // it runs out of entries: at 800x600 on the Apple backend it holds seven.
+  // Whatever sits last is the entry a user at that size has to scroll for,
+  // and Add instance and the AI Workspace are not entries to hide
+  // (bostrot/ai-tasks#62).
+  //
+  // Gated on rootfsExport, unlike Containers and Kubernetes, because that is
+  // what deploying needs — a Cloud screen that cannot deploy is a server list
+  // with a delete button, which is the "second control panel for somebody
+  // else's product" this app deliberately does not build. Both shipped
+  // backends pass that gate: the Apple one reads the root filesystem out of
+  // the running guest rather than out of its disk image (#62, reopened). The
+  // gate stays because it is the capability the screen depends on, not a
+  // platform check in disguise.
+  if (features.rootfsExport)
+  PaneItem(
+    key: const Key('/cloud'),
+    icon: const Icon(FluentIcons.cloud_upload),
+    title: Text('cloud-text'.i18n()),
+    infoBadge: const BetaPaneBadge(),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      navigateGuarded('cloud', path: '/cloud');
     },
   ),
   ];

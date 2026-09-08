@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/cloud/cloud_deploy_service.dart';
 import 'package:wsl2distromanager/api/cloud/cloud_models.dart';
 import 'package:wsl2distromanager/api/cloud/cloud_provider.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/screens/cloud_screen.dart';
@@ -245,6 +246,40 @@ void main() {
         .controller!
         .text;
     expect(cloudNamePattern.hasMatch(name), isTrue, reason: name);
+  });
+
+  // On WSL a pull is an import and nothing else. On the Apple backend it
+  // restores into a copy of the VM the deploy came from, which the user has
+  // to have kept and stopped — so the dialog cannot say the same thing on
+  // both backends.
+  Future<void> openPull(WidgetTester tester, VmBackend backend) async {
+    final provider = FakeCloudProvider(servers: [
+      _server(labels: const {CloudServer.deployedInstanceLabel: 'Ubuntu'}),
+    ]);
+    await pump(
+      tester,
+      CloudPage(
+        provider: provider,
+        backend: backend,
+        service: CloudDeployService(provider: provider, backend: backend),
+      ),
+    );
+    await openRow(tester, 'deploy-1');
+    await tester.tap(find.byKey(const ValueKey('test-cloud-pull-1')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the pull dialog describes a plain import by default',
+      (tester) async {
+    await openPull(tester, FakeDeployBackend());
+    expect(find.textContaining('cloudpullbody-text'), findsOneWidget);
+    expect(find.textContaining('cloudpullbodyclone-text'), findsNothing);
+  });
+
+  testWidgets('the pull dialog says so when a local base is restored onto',
+      (tester) async {
+    await openPull(tester, FakeDeployBackend(rootfsImportNeedsBase: true));
+    expect(find.textContaining('cloudpullbodyclone-text'), findsOneWidget);
   });
 
   testWidgets('a backend that cannot export a rootfs says so instead of '

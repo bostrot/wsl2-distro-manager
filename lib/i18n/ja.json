@@ -1009,5 +1009,21 @@
   "cloudstage-downloading-text": "ルートファイルシステムをダウンロード中",
   "cloudstage-importinglocally-text": "このマシンでインポート中",
   "cloudstage-cleaningup-text": "クリーンアップ中",
-  "cloudstage-done-text": "完了"
+  "cloudstage-done-text": "完了",
+  "vmrootfsnotfound-text": "このマシンに %s という名前の VM はありません。",
+  "vmrootfsmacosguest-text": "%s は macOS ゲストです。ルートファイルシステムとして移せるのは Linux の VM だけです。",
+  "vmrootfsstarting-text": "%s を起動しています",
+  "vmrootfswaiting-text": "%s の応答を待っています",
+  "vmrootfsunreachable-text": "%s に SSH で到達できなかったため、ルートファイルシステムを読み取れません。",
+  "vmrootfsexporting-text": "%s のルートファイルシステムを読み取っています",
+  "vmrootfsexportfailed-text": "%s のルートファイルシステムを読み取れませんでした。",
+  "vmrootfsempty-text": "%s から返ってきたルートファイルシステムは空でした。",
+  "vmrootfsnosource-text": "このバックエンドはデプロイ元の VM の複製に復元しますが、その VM が指定されていません。",
+  "vmrootfsnametaken-text": "%s という名前の VM はすでに存在します。",
+  "vmrootfssourcemissing-text": "%s はこのマシンにもうありません。ルートファイルシステム単体では起動するカーネルを持たないため、復元先の土台としてそのディスクが必要です。",
+  "vmrootfssourcerunning-text": "まず %s を停止してください。そのディスクを復元の土台として複製しますが、実行中は複製できません。",
+  "vmrootfscloning-text": "%s0 を %s1 として複製しています",
+  "vmrootfsrestoring-text": "ルートファイルシステムを %s に復元しています",
+  "vmrootfsrestorefailed-text": "ルートファイルシステムを %s に復元できませんでした。",
+  "cloudpullbodyclone-text": "%s はサーバー上でエクスポートされ、デプロイ元のローカル VM の複製としてここに復元されます。その VM は存在し、停止している必要があります。元の VM は変更されず、サーバーもそのまま動き続けます。"
 }

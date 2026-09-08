@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:localization/localization.dart';
 import 'package:path/path.dart' as p;
+import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
@@ -162,8 +163,16 @@ class AppleVmApi extends VmBackend {
     this.helperPathOverride,
     this.storeDirOverride,
     Duration? earlyExitProbeDelay,
+    Duration? rootfsTransferTimeout,
+    Duration? guestReadyTimeout,
+    Duration? guestReadyPollInterval,
   })  : shell = shell ?? ProcessShell(),
-        earlyExitProbeDelay = earlyExitProbeDelay ?? _defaultEarlyExitProbeDelay;
+        earlyExitProbeDelay = earlyExitProbeDelay ?? _defaultEarlyExitProbeDelay,
+        rootfsTransferTimeout =
+            rootfsTransferTimeout ?? const Duration(hours: 4),
+        guestReadyTimeout = guestReadyTimeout ?? const Duration(minutes: 5),
+        guestReadyPollInterval =
+            guestReadyPollInterval ?? const Duration(seconds: 5);
 
   @override
   String get backendId => 'applevirt';
@@ -183,6 +192,11 @@ class AppleVmApi extends VmBackend {
         // over SSH exactly as it does over wsl.exe.
         quickActions: true,
         guestCredentials: true,
+        // Not because `vmctl export` produces one — it produces a raw disk —
+        // but because [exportRootfs] can tar the running guest's root
+        // filesystem over SSH, which is the same artifact by a longer road.
+        rootfsExport: true,
+        rootfsImportNeedsBase: true,
       );
 
   /// The VM store: one directory per VM under the app's data path.
@@ -925,6 +939,335 @@ class AppleVmApi extends VmBackend {
     await shell.run('chmod', ['+x', scriptPath], runInShell: false);
     await shell.start('open', [scriptPath],
         mode: ProcessStartMode.detached, runInShell: false);
+  }
+
+  // -----------------------------------------------------------------------
+  // Root filesystem transfer (bostrot/ai-tasks#62)
+  // -----------------------------------------------------------------------
+
+  /// Paths dropped from a root filesystem archive, contents *and* directory.
+  ///
+  /// These belong to the machine that boots, not to the system the user
+  /// built: a kernel and its modules only work together, and the container
+  /// this ends up in has no use for either. Restoring them onto another VM
+  /// would replace a kernel that boots with one that may not.
+  static const List<String> _rootfsPrunedPaths = [
+    'boot',
+    'lib/modules',
+    'usr/lib/modules',
+    'lost+found',
+    // Ubuntu's cloud images keep a swap file in the root filesystem; it is
+    // as large as the guest's RAM and holds nothing worth carrying.
+    'swap.img',
+    'swapfile',
+  ];
+
+  /// Paths whose *contents* are dropped while the directory itself is kept.
+  ///
+  /// Every one of these is a mount point. Archiving what is under them is
+  /// worse than useless — `/proc/kcore` alone is a file as large as the
+  /// guest's address space — but dropping the directory too would hand
+  /// `docker import` a root filesystem with nowhere to mount `/proc`, and a
+  /// container whose first `ps` fails is not a working system.
+  static const List<String> _rootfsEmptiedPaths = [
+    'proc',
+    'sys',
+    'dev',
+    'run',
+    'tmp',
+    'var/tmp',
+    'var/cache',
+    'var/run',
+    'var/lock',
+    'mnt',
+    'media',
+  ];
+
+  /// `--exclude=` arguments for both halves of the list above.
+  ///
+  /// Two patterns per pruned path on purpose: GNU tar prunes a matching
+  /// directory whole, busybox tar (what Alpine guests have) matches each
+  /// member name on its own and would otherwise keep everything beneath it.
+  static List<String> get _rootfsExcludeArgs => [
+        for (final path in _rootfsPrunedPaths) ...[
+          '--exclude=./$path',
+          '--exclude=./$path/*',
+        ],
+        for (final path in _rootfsEmptiedPaths) '--exclude=./$path/*',
+      ];
+
+  /// How long a whole root filesystem may take to stream in or out. These are
+  /// gigabytes over a virtual network to a spinning-up guest, and a deploy
+  /// that gives up on a slow one has thrown away an hour of the user's time.
+  final Duration rootfsTransferTimeout;
+
+  /// How long to wait for a guest to boot far enough to answer SSH.
+  final Duration guestReadyTimeout;
+
+  /// Gap between guest-readiness probes.
+  final Duration guestReadyPollInterval;
+
+  /// Tar the *running* guest's root filesystem into [tarPath].
+  ///
+  /// The Apple backend's own export is a raw disk — a partition table, an EFI
+  /// system partition and a bootloader — which is a bootable machine and not
+  /// a filesystem `docker import` can read. What is portable is what is
+  /// inside it, so this reads it out the only way anything can without
+  /// mounting ext4 on macOS: from the guest itself, over the SSH path
+  /// `vmctl exec` already owns, with the archive streamed straight to disk so
+  /// a 20 GB system never has to fit in memory.
+  ///
+  /// The guest is running while it is read, so the archive is a snapshot in
+  /// the same sense any live backup is: consistent for files nothing is
+  /// writing, which is every file that matters in a system image. A guest
+  /// this call started is stopped again once the read is over, whether or not
+  /// it produced an archive; one that never became reachable is left up, so
+  /// the user can open its window and see why.
+  @override
+  Future<void> exportRootfs(String instance, String tarPath,
+      {void Function(String detail)? onStatus}) async {
+    final startedNow = await _ensureGuestReady(instance, onStatus: onStatus);
+    final file = File(tarPath);
+    try {
+      await file.parent.create(recursive: true);
+      onStatus?.call('vmrootfsexporting-text'.i18n([instance]));
+      await _streamExec(
+        instance,
+        ['tar', '-cf', '-', '-C', '/', ..._rootfsExcludeArgs, '.'],
+        stdoutFile: file,
+        what: 'vmrootfsexportfailed-text'.i18n([instance]),
+      );
+      if (!await file.exists() || await file.length() == 0) {
+        throw AppleVmException('vmrootfsempty-text'.i18n([instance]));
+      }
+    } catch (_) {
+      // Never leave a truncated archive on disk: it is gigabytes, and the
+      // next thing to read it cannot tell it apart from a whole one.
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {
+        // The failure being reported is the one that matters.
+      }
+      rethrow;
+    } finally {
+      if (startedNow) {
+        // Leave the machine as it was found: this export started it.
+        try {
+          await stop(instance);
+        } catch (_) {
+          // A guest that will not stop is not a reason to fail an export
+          // that already produced its archive.
+        }
+      }
+    }
+  }
+
+  /// Rebuild a local VM called [name] from the root filesystem in [tarPath].
+  ///
+  /// A bare root filesystem cannot boot here: Virtualization.framework starts
+  /// this backend's VMs through EFI, which needs a partition table, an ESP
+  /// and a kernel — none of which a tarball carries. So the base is
+  /// [sourceInstance], the very VM the archive was deployed from: its disk is
+  /// cloned under the new name, the clone is booted, and the archive is
+  /// unpacked over it with the boot half of the system excluded. The kernel
+  /// that comes up is therefore the one that already worked on exactly this
+  /// disk, and everything above it is what came back from the cloud.
+  ///
+  /// [sourceInstance] must exist and be stopped — `vmctl export` refuses to
+  /// copy a disk out from under a running guest, and a clone taken from one
+  /// would be a torn filesystem. Nothing about the source is modified.
+  @override
+  Future<void> importRootfs(String name, String tarPath,
+      {String installLocation = '',
+      String sourceInstance = '',
+      void Function(String detail)? onStatus}) async {
+    if (sourceInstance.isEmpty) {
+      throw AppleVmException('vmrootfsnosource-text'.i18n());
+    }
+    final vms = await listVms();
+    if (vms.any((vm) => vm.name == name)) {
+      throw AppleVmException('vmrootfsnametaken-text'.i18n([name]));
+    }
+    AppleVmInfo? source;
+    for (final vm in vms) {
+      if (vm.name == sourceInstance) source = vm;
+    }
+    if (source == null) {
+      throw AppleVmException('vmrootfssourcemissing-text'.i18n([sourceInstance]));
+    }
+    if (source.running) {
+      throw AppleVmException('vmrootfssourcerunning-text'.i18n([sourceInstance]));
+    }
+
+    onStatus?.call('vmrootfscloning-text'.i18n([sourceInstance, name]));
+    await copy(sourceInstance, name);
+    var restored = false;
+    try {
+      await _ensureGuestReady(name, onStatus: onStatus);
+      onStatus?.call('vmrootfsrestoring-text'.i18n([name]));
+      await _streamExec(
+        name,
+        [
+          'tar',
+          '-xf',
+          '-',
+          '-C',
+          '/',
+          // Replace a busy binary by removing it first: extracting over a
+          // running /usr/bin/* in place is ETXTBSY, and half of the restore
+          // would fail on a guest that is by definition running. Only GNU tar
+          // has the flag, so ask first rather than send busybox an option it
+          // will reject outright.
+          if (await _guestTarIsGnu(name)) '--unlink-first',
+          ..._rootfsExcludeArgs,
+        ],
+        stdinFile: File(tarPath),
+        what: 'vmrootfsrestorefailed-text'.i18n([name]),
+      );
+      restored = true;
+    } finally {
+      try {
+        await stop(name);
+      } catch (_) {
+        // Best effort; the delete below and the user's own stop both still
+        // work on a guest that ignored the shutdown.
+      }
+      if (!restored) {
+        // A clone with half a system on it is worse than no clone: the name
+        // is freed for a retry and the source it was copied from is
+        // untouched either way.
+        try {
+          await remove(name);
+        } catch (_) {
+          // Nothing left to try; the original failure is the one to report.
+        }
+      }
+    }
+  }
+
+  /// Whether the guest's `tar` is GNU tar rather than busybox's applet.
+  Future<bool> _guestTarIsGnu(String instance) async {
+    try {
+      final result = await execCommand(instance, 'tar --version 2>&1 || true',
+          timeout: const Duration(seconds: 30));
+      return result.stdout.toString().toLowerCase().contains('gnu tar');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Make sure [instance] is a Linux guest that answers SSH, starting it
+  /// headless when it is not running. Returns whether this call started it.
+  Future<bool> _ensureGuestReady(String instance,
+      {void Function(String detail)? onStatus}) async {
+    final info = await vmInfo(instance);
+    if (info == null) {
+      throw AppleVmException('vmrootfsnotfound-text'.i18n([instance]));
+    }
+    if (info.os == 'macos') {
+      throw AppleVmException('vmrootfsmacosguest-text'.i18n([instance]));
+    }
+    var startedNow = false;
+    if (!info.running) {
+      onStatus?.call('vmrootfsstarting-text'.i18n([instance]));
+      await startHeadless(instance);
+      startedNow = true;
+    }
+    onStatus?.call('vmrootfswaiting-text'.i18n([instance]));
+    final deadline = DateTime.now().add(guestReadyTimeout);
+    var lastMessage = '';
+    while (true) {
+      final probe = await probeGuestAccess(instance);
+      if (probe.ok) return startedNow;
+      lastMessage = probe.message;
+      if (!DateTime.now().isBefore(deadline)) break;
+      await Future.delayed(guestReadyPollInterval);
+    }
+    throw AppleVmException('vmrootfsunreachable-text'.i18n([instance]) +
+        (lastMessage.isEmpty ? '' : '\n$lastMessage'));
+  }
+
+  /// Run [args] in [instance] over `vmctl exec`, streaming one side of it to
+  /// or from a local file instead of buffering the output.
+  ///
+  /// `vmctl exec` inherits the standard streams straight through to ssh, so
+  /// the guest's stdout is this process's stdout: a root filesystem crosses
+  /// the boundary without ever being a string. The command travels as a
+  /// single argument that the guest's shell re-parses, so every token is
+  /// quoted here — the exclude patterns contain `*`, and an unquoted one
+  /// would be globbed against the guest's home directory before `tar` ever
+  /// saw it.
+  Future<void> _streamExec(
+    String instance,
+    List<String> args, {
+    File? stdoutFile,
+    File? stdinFile,
+    required String what,
+  }) async {
+    final remote = args.map(_shSingleQuote).join(' ');
+    final Process process;
+    try {
+      process = await shell.start(
+        helperPath(),
+        [..._baseArgs(), 'exec', '--name', instance, '--user', 'root', '--',
+          remote],
+        runInShell: false,
+      );
+    } on ProcessException catch (e) {
+      throw AppleVmException(
+          'Could not run the vmctl helper (${helperPath()}): ${e.message}');
+    }
+
+    final stderrBuffer = StringBuffer();
+    final stderrDone = process.stderr
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .forEach(stderrBuffer.write);
+    final Future<void> stdoutDone = stdoutFile == null
+        ? process.stdout.drain<void>()
+        : process.stdout.pipe(stdoutFile.openWrite());
+
+    Object? writeError;
+    if (stdinFile != null) {
+      try {
+        await process.stdin.addStream(stdinFile.openRead());
+        await process.stdin.flush();
+      } catch (error) {
+        // A guest that died mid-restore closes the pipe; the exit code and
+        // its stderr say why, and that is the message worth showing.
+        writeError = error;
+      }
+    }
+    try {
+      await process.stdin.close();
+    } catch (_) {
+      // Already closed by the child going away.
+    }
+
+    int exitCode;
+    var timedOut = false;
+    try {
+      exitCode = await process.exitCode.timeout(rootfsTransferTimeout);
+    } on TimeoutException {
+      // Killing the child closes the pipes, which is what lets the two
+      // futures below finish — and the file sink they own close with them.
+      // Throwing before that leaks an open archive for the app's lifetime.
+      await ExecutionBroker.terminate(process);
+      timedOut = true;
+      exitCode = -1;
+    }
+    await stdoutDone;
+    await stderrDone;
+    if (timedOut) {
+      throw AppleVmException('$what\n'
+          'Timed out after ${rootfsTransferTimeout.inMinutes} minutes.');
+    }
+    if (exitCode != 0) {
+      final detail = stderrBuffer.toString().trim();
+      throw AppleVmException(detail.isEmpty ? what : '$what\n$detail');
+    }
+    if (writeError != null) {
+      throw AppleVmException('$what\n$writeError');
+    }
   }
 
   /// The guest's current IP, or null while it has none (booting, no DHCP

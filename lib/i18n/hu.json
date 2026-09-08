@@ -1009,5 +1009,21 @@
   "cloudstage-downloading-text": "A gyökér-fájlrendszer letöltése",
   "cloudstage-importinglocally-text": "Importálás ezen a gépen",
   "cloudstage-cleaningup-text": "Takarítás",
-  "cloudstage-done-text": "Kész"
+  "cloudstage-done-text": "Kész",
+  "vmrootfsnotfound-text": "Ezen a gépen nincs %s nevű VM.",
+  "vmrootfsmacosguest-text": "A(z) %s egy macOS vendég. Csak Linux VM-ek mozgathatók gyökérfájlrendszerként.",
+  "vmrootfsstarting-text": "%s indítása",
+  "vmrootfswaiting-text": "Várakozás, amíg %s válaszol",
+  "vmrootfsunreachable-text": "A(z) %s nem volt elérhető SSH-n, így a gyökérfájlrendszere nem olvasható.",
+  "vmrootfsexporting-text": "A(z) %s gyökérfájlrendszerének olvasása",
+  "vmrootfsexportfailed-text": "A(z) %s gyökérfájlrendszerét nem sikerült beolvasni.",
+  "vmrootfsempty-text": "A(z) %s üres gyökérfájlrendszert adott vissza.",
+  "vmrootfsnosource-text": "Ez a háttérrendszer annak a VM-nek a másolatába állít vissza, amelyikről a telepítés indult – ilyet nem adtak meg.",
+  "vmrootfsnametaken-text": "Már létezik %s nevű VM.",
+  "vmrootfssourcemissing-text": "A(z) %s már nincs ezen a gépen. A lemezére alapként szükség van a visszaállításhoz, mert a gyökérfájlrendszer önmagában nem hoz magával indítható kernelt.",
+  "vmrootfssourcerunning-text": "Előbb állítsa le a(z) %s VM-et. A lemezét a visszaállítás alapjaként másoljuk, futás közben pedig nem másolható.",
+  "vmrootfscloning-text": "%s0 másolása %s1 néven",
+  "vmrootfsrestoring-text": "A gyökérfájlrendszer visszaállítása ide: %s",
+  "vmrootfsrestorefailed-text": "A gyökérfájlrendszert nem sikerült visszaállítani ide: %s.",
+  "cloudpullbodyclone-text": "A(z) %s a kiszolgálón exportálódik, és itt annak a helyi VM-nek a másolatába kerül vissza, amelyikről telepítve lett. Ennek a VM-nek léteznie kell és leállítva kell lennie; nem módosul, a kiszolgáló pedig tovább fut."
 }

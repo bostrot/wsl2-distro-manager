@@ -210,7 +210,9 @@ class _CloudPageState extends State<CloudPage> {
       hostContext: host,
       item: instance,
       title: 'cloudpullquestion-text'.i18n([instance]),
-      body: 'cloudpullbody-text'.i18n([instance]),
+      body: _backend.features.rootfsImportNeedsBase
+          ? 'cloudpullbodyclone-text'.i18n([instance])
+          : 'cloudpullbody-text'.i18n([instance]),
       submitText: 'cloudpull-text'.i18n(),
       placeholder: 'cloudpullname-text'.i18n(),
       validateInput: (value) => cloudNamePattern.hasMatch(value.trim())

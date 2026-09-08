@@ -1009,5 +1009,21 @@
   "cloudstage-downloading-text": "Kök dosya sistemi indiriliyor",
   "cloudstage-importinglocally-text": "Bu makinede içe aktarılıyor",
   "cloudstage-cleaningup-text": "Temizleniyor",
-  "cloudstage-done-text": "Tamamlandı"
+  "cloudstage-done-text": "Tamamlandı",
+  "vmrootfsnotfound-text": "Bu makinede %s adında bir VM yok.",
+  "vmrootfsmacosguest-text": "%s bir macOS konuğu. Yalnızca Linux VM’leri kök dosya sistemi olarak taşınabilir.",
+  "vmrootfsstarting-text": "%s başlatılıyor",
+  "vmrootfswaiting-text": "%s yanıt verene kadar bekleniyor",
+  "vmrootfsunreachable-text": "%s SSH üzerinden erişilemedi, bu yüzden kök dosya sistemi okunamıyor.",
+  "vmrootfsexporting-text": "%s kök dosya sistemi okunuyor",
+  "vmrootfsexportfailed-text": "%s kök dosya sistemi okunamadı.",
+  "vmrootfsempty-text": "%s boş bir kök dosya sistemi verdi.",
+  "vmrootfsnosource-text": "Bu arka uç, dağıtımın yapıldığı VM’in bir kopyasına geri yükler; böyle bir VM belirtilmedi.",
+  "vmrootfsnametaken-text": "%s adında bir VM zaten var.",
+  "vmrootfssourcemissing-text": "%s artık bu makinede değil. Diski geri yüklemenin temeli olarak gerekli, çünkü kök dosya sistemi tek başına önyükleyecek bir çekirdek taşımaz.",
+  "vmrootfssourcerunning-text": "Önce %s durdurun. Diski geri yüklemenin temeli olarak kopyalanır ve çalışırken kopyalanamaz.",
+  "vmrootfscloning-text": "%s0, %s1 olarak kopyalanıyor",
+  "vmrootfsrestoring-text": "Kök dosya sistemi %s içine geri yükleniyor",
+  "vmrootfsrestorefailed-text": "Kök dosya sistemi %s içine geri yüklenemedi.",
+  "cloudpullbodyclone-text": "%s sunucuda dışa aktarılır ve burada, dağıtımın yapıldığı yerel VM’in bir kopyasına geri yüklenir. O VM var olmalı ve durdurulmuş olmalıdır; değiştirilmez ve sunucu çalışmaya devam eder."
 }
