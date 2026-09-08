@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,12 +139,48 @@ class _FakeInterface implements NetworkInterface {
   @override
   final String name;
   @override
-  final List<InternetAddress> addresses;
+  final List<InterfaceAddress> addresses;
   @override
   final int index = 0;
 
   _FakeInterface(this.name, List<String> ips)
-      : addresses = [for (final ip in ips) InternetAddress(ip)];
+      : addresses = [
+          for (final ip in ips) _FakeInterfaceAddress(InternetAddress(ip))
+        ];
+}
+
+/// `NetworkInterface.addresses` is a list of [InterfaceAddress], which has no
+/// public constructor — so the fake wraps a real [InternetAddress] and adds
+/// the two members the wider interface asks for. Everything the service reads
+/// (`type`, `isLoopback`, `isLinkLocal`, `address`) is forwarded, so the
+/// filtering under test runs against genuine address parsing rather than
+/// against answers this class made up.
+class _FakeInterfaceAddress implements InterfaceAddress {
+  _FakeInterfaceAddress(this._address);
+
+  final InternetAddress _address;
+
+  @override
+  int get prefixLength => 24;
+  @override
+  InternetAddress? get broadcast => null;
+
+  @override
+  InternetAddressType get type => _address.type;
+  @override
+  String get address => _address.address;
+  @override
+  String get host => _address.host;
+  @override
+  Uint8List get rawAddress => _address.rawAddress;
+  @override
+  bool get isLoopback => _address.isLoopback;
+  @override
+  bool get isLinkLocal => _address.isLinkLocal;
+  @override
+  bool get isMulticast => _address.isMulticast;
+  @override
+  Future<InternetAddress> reverse() => _address.reverse();
 }
 
 void main() {
