@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/containers/container_models.dart';
+import 'package:wsl2distromanager/api/containers/container_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
@@ -1948,10 +1950,62 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  /// ComboBox value standing for "no engine pinned"; a ComboBox cannot carry
+  /// null as one of its items.
+  static const String _autoEngine = 'auto';
+
   Widget _buildDockerSettings(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Which engine the Containers screen and the container_* tools drive.
+        // "Automatic" is the pref simply being absent, so an install of Docker
+        // after the fact is picked up without anyone revisiting this
+        // (bostrot/ai-tasks#57).
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InfoLabel(
+            label: 'containerengine-text'.i18n(),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            child: Row(
+              children: [
+                ComboBox<String>(
+                  key: const ValueKey('test-container-engine'),
+                  // Through byExecutable, so a pinned engine a later build
+                  // no longer ships reads as "automatic" instead of asserting
+                  // its way out of the settings page.
+                  value:
+                      ContainerEngine.byExecutable(
+                                  prefs.getString(containerEnginePrefKey))
+                              ?.executable ??
+                          _autoEngine,
+                  items: [
+                    ComboBoxItem(
+                      value: _autoEngine,
+                      child: Text('automatic-text'.i18n()),
+                    ),
+                    for (final engine in ContainerEngine.values)
+                      ComboBoxItem(
+                        value: engine.executable,
+                        child: Text(engine.label),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == null || value == _autoEngine) {
+                        prefs.remove(containerEnginePrefKey);
+                      } else {
+                        prefs.setString(containerEnginePrefKey, value);
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(width: 10.0),
+                Flexible(child: Text('containerenginehint-text'.i18n())),
+              ],
+            ),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

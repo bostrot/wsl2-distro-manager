@@ -4,7 +4,9 @@
 // WSL distros on Windows and Apple Virtualization VMs on macOS. The
 // WSL-specific families (wsl.conf, .wslconfig, packaging, mounting,
 // diskpart) are only registered when the backend is WSL, and the Apple
-// backend brings its own vm_* creation tools.
+// backend brings its own vm_* creation tools. The container_* family is
+// registered everywhere: a Docker/Podman engine belongs to the host, not to
+// the backend driving its instances (bostrot/ai-tasks#57).
 //
 // The one-way operations are gated instead of hidden: unregistering needs an
 // explicit confirm flag and points at the export tool first, so an agent can
@@ -17,6 +19,8 @@ import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
+import 'package:wsl2distromanager/api/containers/container_models.dart';
+import 'package:wsl2distromanager/api/containers/container_service.dart';
 import 'package:wsl2distromanager/api/distro_package.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
@@ -35,9 +39,11 @@ List<McpTool> buildWslMcpTools(
   Dio? dio,
   App? app,
   DistroPackager? packager,
+  ContainerService? containerService,
 }) {
   return [
     ..._genericTools(backend),
+    ..._containerTools(containerService ?? ContainerService()),
     if (backend is WSLApi)
       ..._wslOnlyTools(
         backend,
@@ -1588,6 +1594,260 @@ List<McpTool> _terminalTools(WslTerminalManager terminalManager) {
         }
         await terminalManager.closeSession(sessionId);
         return 'Closed session $sessionId.';
+      },
+    ),
+  ];
+}
+
+/// Container tools. Registered for every backend: a container engine is a
+/// host-level thing, so a Mac driving Apple VMs and a Windows box driving WSL
+/// both have one — or neither, in which case each tool says so instead of
+/// failing obscurely (bostrot/ai-tasks#57).
+///
+/// Every tool takes an optional `engine`, because a host can run Docker and
+/// Podman side by side and a bare name is ambiguous there. Omitted, it
+/// resolves through the engine the user pinned in Settings.
+List<McpTool> _containerTools(ContainerService service) {
+  Future<ContainerEngine> resolveEngine(Map<String, dynamic> args) async {
+    final requested = (args['engine'] as String?)?.trim();
+    if (requested != null && requested.isNotEmpty) {
+      final engine = ContainerEngine.byExecutable(requested.toLowerCase());
+      if (engine == null) {
+        throw ArgumentError('Unknown engine "$requested". Use '
+            '${ContainerEngine.values.map((e) => e.executable).join(" or ")}.');
+      }
+      return engine;
+    }
+    final active = await service.activeEngine();
+    if (active == null) {
+      throw ArgumentError(ContainerService.noEngineMessage);
+    }
+    return active;
+  }
+
+  const engineProperty = {
+    'type': 'string',
+    'description': 'Container engine to use: "docker" or "podman". Defaults '
+        'to the engine configured in the app.',
+  };
+  const containerProperty = {
+    'type': 'string',
+    'description': 'Container name or id, as listed by container_list.',
+  };
+
+  return [
+    McpTool(
+      name: 'container_list',
+      description:
+          'List Docker/Podman containers on this host with their state, '
+          'image and published ports. Containers are separate from WSL '
+          'distros and VMs — use wsl_list_distros for those.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'engine': engineProperty,
+          'running_only': {
+            'type': 'boolean',
+            'description':
+                'Only list running containers. Defaults to false (all).',
+          },
+        },
+      },
+      handler: (args) async {
+        final runningOnly = args['running_only'] == true;
+        final requested = (args['engine'] as String?)?.trim();
+        // "Nothing installed" is an answer, not a failure: a model that asked
+        // what is running deserves the sentence that tells it what to do.
+        if ((await service.availableEngines()).isEmpty) {
+          return ContainerService.noEngineMessage;
+        }
+        final containers = requested == null || requested.isEmpty
+            ? await service.listAll(runningOnly: runningOnly)
+            : await service.list(
+                engine: await resolveEngine(args), runningOnly: runningOnly);
+        if (containers.isEmpty) {
+          return runningOnly
+              ? 'No running containers.'
+              : 'No containers on this host.';
+        }
+        return containers
+            .map((c) => '[${c.engine.executable}] ${c.summary}')
+            .join('\n');
+      },
+    ),
+    McpTool(
+      name: 'container_engines',
+      description:
+          'Which container engines are installed on this host, and which one '
+          'the app uses by default.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {},
+      },
+      handler: (_) async {
+        final available = await service.availableEngines();
+        if (available.isEmpty) return ContainerService.noEngineMessage;
+        final active = await service.activeEngine();
+        return available
+            .map((e) => '${e.label} (${e.executable})'
+                '${e == active ? " — active" : ""}')
+            .join('\n');
+      },
+    ),
+    McpTool(
+      name: 'container_start',
+      description: 'Start a stopped container.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+        },
+        'required': ['container'],
+      },
+      handler: (args) async {
+        final container = _requireString(args, 'container');
+        await service.start(await resolveEngine(args), container);
+        return 'Started $container.';
+      },
+    ),
+    McpTool(
+      name: 'container_stop',
+      description: 'Stop a running container.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+        },
+        'required': ['container'],
+      },
+      handler: (args) async {
+        final container = _requireString(args, 'container');
+        await service.stop(await resolveEngine(args), container);
+        return 'Stopped $container.';
+      },
+    ),
+    McpTool(
+      name: 'container_restart',
+      description: 'Restart a container, running or not.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+        },
+        'required': ['container'],
+      },
+      handler: (args) async {
+        final container = _requireString(args, 'container');
+        await service.restart(await resolveEngine(args), container);
+        return 'Restarted $container.';
+      },
+    ),
+    McpTool(
+      name: 'container_remove',
+      description:
+          'PERMANENTLY delete a container and its writable layer. Anything '
+          'not in a volume is lost. Refuses to run unless confirm is true.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+          'force': {
+            'type': 'boolean',
+            'description':
+                'Kill the container first when it is still running. Without '
+                'it the engine refuses to remove a running container.',
+          },
+          'confirm': {
+            'type': 'boolean',
+            'description':
+                'Must be true. Confirms the permanent deletion is intended.',
+          },
+        },
+        'required': ['container', 'confirm'],
+      },
+      handler: (args) async {
+        final container = _requireString(args, 'container');
+        if (args['confirm'] != true) {
+          throw ArgumentError(
+              'Refused: removing "$container" deletes its writable layer for '
+              'good. Call again with confirm: true once that is intended.');
+        }
+        await service.remove(await resolveEngine(args), container,
+            force: args['force'] == true);
+        return 'Removed $container.';
+      },
+    ),
+    McpTool(
+      name: 'container_logs',
+      description: 'Tail a container log.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+          'lines': {
+            'type': 'integer',
+            'description': 'How many trailing lines to return. Default 200.',
+          },
+        },
+        'required': ['container'],
+      },
+      handler: (args) async {
+        final container = _requireString(args, 'container');
+        final lines = args['lines'];
+        final output = await service.logs(
+          await resolveEngine(args),
+          container,
+          lines: lines is int && lines > 0 ? lines : 200,
+        );
+        return output.isEmpty ? '$container has logged nothing.' : output;
+      },
+    ),
+    McpTool(
+      name: 'container_exec',
+      description:
+          'Run a shell command inside a RUNNING container and return its '
+          'output. The container needs a shell on its PATH.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+          'command': {
+            'type': 'string',
+            'description': 'Shell command to run inside the container.',
+          },
+        },
+        'required': ['container', 'command'],
+      },
+      handler: (args) async {
+        final container = _requireString(args, 'container');
+        final command = _requireString(args, 'command');
+        final output =
+            await service.exec(await resolveEngine(args), container, command);
+        return output.isEmpty ? 'Command finished with no output.' : output;
+      },
+    ),
+    McpTool(
+      name: 'container_inspect',
+      description:
+          "The engine's full JSON description of a container: mounts, "
+          'networks, environment and configuration.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+        },
+        'required': ['container'],
+      },
+      handler: (args) async {
+        final container = _requireString(args, 'container');
+        return service.inspect(await resolveEngine(args), container);
       },
     ),
   ];

@@ -57,6 +57,12 @@
 - [x] Snippets: keep your setup commands in the app and run them on any instance
 - [x] Point the app at your own repository of rootfs images
 
+**Docker and Podman containers**
+- [x] See every container on the machine — both engines at once — next to your instances
+- [x] Start, stop, restart, remove and tail the logs of a container without leaving the app
+- [x] Front end only: it drives the `docker`/`podman` you already have, and installs nothing
+- [x] The AI chat and the MCP server get the same container tools
+
 **Configure without editing files by hand**
 - [x] systemd, automount, default user, start command and start path per distro
 - [x] Memory, processors, swap, networking mode, DNS and the rest of `.wslconfig`

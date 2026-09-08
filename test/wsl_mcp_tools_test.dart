@@ -109,9 +109,20 @@ void main() {
     final names =
         buildWslMcpTools(wslApi, terminalManager).map((t) => t.name).toSet();
     // v2 exposes create → configure → operate → destroy. The one-way
-    // operation (unregister) is confirm-gated rather than hidden — see the
-    // dedicated group below.
+    // operations (unregister, container_remove) are confirm-gated rather than
+    // hidden — see the dedicated group below. The container_* family rides
+    // along on every backend: the engine belongs to the host, not to WSL
+    // (bostrot/ai-tasks#57).
     expect(names, {
+      'container_list',
+      'container_engines',
+      'container_start',
+      'container_stop',
+      'container_restart',
+      'container_remove',
+      'container_logs',
+      'container_exec',
+      'container_inspect',
       'wsl_list_distros',
       'wsl_distro_info',
       'wsl_status',

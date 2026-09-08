@@ -12,6 +12,7 @@ import 'package:wsl2distromanager/screens/community_screen.dart';
 import 'package:wsl2distromanager/screens/snippet_editor_screen.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/screens/containers_screen.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
@@ -99,6 +100,13 @@ final router = GoRouter(
           path: '/community',
           name: 'community',
           builder: (context, state) => const CommunityPage(),
+        ),
+
+        /// Containers (Docker / Podman on the host)
+        GoRoute(
+          path: '/containers',
+          name: 'containers',
+          builder: (context, state) => const ContainersPage(),
         ),
 
         /// Templates

@@ -36,6 +36,17 @@ List<NavigationPaneItem> get originalItems {
       navigateGuarded('quickactions', path: '/quickactions');
     },
   ),
+  // Containers sit next to the instances rather than inside their list: the
+  // engine, not this app, owns their lifecycle (bostrot/ai-tasks#57).
+  PaneItem(
+    key: const Key('/containers'),
+    icon: const Icon(FluentIcons.product_list),
+    title: Text('containers-text'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      navigateGuarded('containers', path: '/containers');
+    },
+  ),
   PaneItem(
     key: const Key('/templates'),
     icon: const Icon(FluentIcons.file_template),
