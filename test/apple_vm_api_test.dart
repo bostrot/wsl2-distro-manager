@@ -234,6 +234,75 @@ void main() {
     });
   });
 
+  // The backend-neutral surface the AI sandbox runs on: same contract as the
+  // WSL side, over `vmctl exec` instead of wsl.exe (bostrot/ai-tasks#59).
+  group('in-instance run and files', () {
+    test('runInInstance keeps the guest exit code and both channels',
+        () async {
+      shell.responses['exec'] = 'out';
+      shell.errors['exec'] = 'err';
+      shell.exitCodes['exec'] = 2;
+
+      final out = await api.runInInstance('ubuntu', 'false', user: 'dev');
+
+      expect(out.exitCode, 2);
+      expect(out.ok, false);
+      expect(out.stdout, 'out');
+      expect(out.stderr, 'err');
+      expect(lastCall(), containsAll(['--user', 'dev']));
+    });
+
+    test('a blank user still runs as root', () async {
+      shell.responses['exec'] = '';
+      await api.runInInstance('ubuntu', 'id', user: '   ');
+      expect(lastCall(), containsAll(['--user', 'root']));
+    });
+
+    test('writeInstanceFile sends the payload base64-encoded', () async {
+      shell.responses['exec'] = '';
+
+      final ok = await api.writeInstanceFile(
+          'ubuntu', '/etc/motd', "hi \$USER; rm -rf /");
+
+      expect(ok, true);
+      final script = lastCall().last;
+      // Nothing the guest's shell can act on survives into the script: the
+      // content travels as base64 and is decoded inside the guest.
+      expect(script, contains('base64 -d > /etc/motd'));
+      expect(script, isNot(contains('rm -rf')));
+      expect(script, contains(base64.encode(utf8.encode("hi \$USER; rm -rf /"))));
+    });
+
+    test('a path a shell would reinterpret is refused, not quoted', () async {
+      final ok = await api.writeInstanceFile(
+          'ubuntu', '/etc/motd; rm -rf /', 'x');
+
+      expect(ok, false);
+      expect(shell.calls, isEmpty);
+      expect(await api.readInstanceFile('ubuntu', '/etc/motd; rm -rf /'),
+          isNull);
+      expect(shell.calls, isEmpty);
+    });
+
+    test('an unreachable guest reads as null, not as an empty file', () async {
+      shell.exitCodes['exec'] = 255;
+      shell.errors['exec'] = 'ssh: connect to host port 22: no route';
+
+      expect(await api.readInstanceFile('ubuntu', '/etc/hostname'), isNull);
+    });
+
+    test('a readable file comes back verbatim', () async {
+      shell.responses['exec'] = 'guest-1\n';
+      expect(await api.readInstanceFile('ubuntu', '/etc/hostname'),
+          'guest-1\n');
+    });
+
+    test('a write the guest rejects reports failure', () async {
+      shell.exitCodes['exec'] = 1;
+      expect(await api.writeInstanceFile('ubuntu', '/etc/motd', 'x'), false);
+    });
+  });
+
   // A VM installed by hand from an ISO never got the store key from
   // cloud-init, so `exec` — and every snippet — failed with ssh's
   // "Permission denied" in a Terminal window (bostrot/ai-tasks#16).

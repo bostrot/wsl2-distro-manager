@@ -1902,7 +1902,7 @@ WslTerminalSession _requireSession(
 /// is the inside of the sandbox" a property of the tools, not just a request
 /// in the prompt.
 List<McpTool> buildSandboxTools(
-  WSLApi wslApi,
+  VmBackend backend,
   WslTerminalManager terminalManager,
   String distro,
 ) {
@@ -1937,17 +1937,10 @@ List<McpTool> buildSandboxTools(
         final cwd = (args['cwd'] as String?)?.trim() ?? '';
         final timeoutSeconds =
             ((args['timeout_seconds'] as num?)?.toInt() ?? 300).clamp(1, 3600);
-        final out = await wslApi.runVerb([
-          '-d',
-          distro,
-          if (cwd.isNotEmpty) ...['--cd', cwd],
-          '-u',
-          user.isEmpty ? 'root' : user,
-          '--exec',
-          'bash',
-          '-c',
-          command,
-        ], timeout: Duration(seconds: timeoutSeconds));
+        final out = await backend.runInInstance(distro, command,
+            user: user.isEmpty ? 'root' : user,
+            cwd: cwd,
+            timeout: Duration(seconds: timeoutSeconds));
         if (out.exitCode != 0) {
           return 'Exit code ${out.exitCode}.'
               '${out.text.isEmpty ? "" : "\n${out.text}"}';
@@ -1975,7 +1968,7 @@ List<McpTool> buildSandboxTools(
         if (!path.startsWith('/')) {
           throw ArgumentError('path must be absolute: $path');
         }
-        final ok = await wslApi.writeDistroFile(distro, path, content);
+        final ok = await backend.writeInstanceFile(distro, path, content);
         if (!ok) throw StateError('Could not write $path.');
         return 'Wrote ${content.length} bytes to $path.';
       },
@@ -1995,7 +1988,7 @@ List<McpTool> buildSandboxTools(
       },
       handler: (args) async {
         final path = _requireString(args, 'path');
-        final text = await wslApi.readDistroFile(distro, path);
+        final text = await backend.readInstanceFile(distro, path);
         if (text == null) throw ArgumentError('Could not read $path.');
         return text.isEmpty ? '(empty file)' : text;
       },

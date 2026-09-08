@@ -54,6 +54,24 @@ class FakeBackend extends VmBackend {
   Future<String> execCmdAsRoot(String distribution, String cmd) async => '';
 
   @override
+  Future<VmCommandOutput> runInInstance(
+    String instance,
+    String command, {
+    String user = 'root',
+    String cwd = '',
+    Duration timeout = const Duration(minutes: 5),
+  }) async =>
+      const VmCommandOutput(0, '', '');
+
+  @override
+  Future<String?> readInstanceFile(String instance, String path) async => null;
+
+  @override
+  Future<bool> writeInstanceFile(
+          String instance, String path, String content) async =>
+      false;
+
+  @override
   Future<Process> startShell(String distribution, {String? user}) =>
       throw UnsupportedError('no shell in the fake');
 

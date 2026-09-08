@@ -699,6 +699,8 @@
   "sandbox-stage-resolving-text": "イメージを解決中",
   "sandbox-stage-downloading-text": "ダウンロード中",
   "sandbox-stage-importing-text": "インポート中",
+  "sandbox-stage-creating-text": "VM を作成中",
+  "sandbox-stage-starting-text": "VM を起動中",
   "sandbox-created-text": "サンドボックスを作成しました。",
   "sandbox-create-failed-text": "サンドボックスを作成できませんでした。",
   "sandbox-chat-title": "サンドボックス チャット — %s",

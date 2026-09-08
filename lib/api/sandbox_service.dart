@@ -1,8 +1,9 @@
-// A "sandbox": an ordinary WSL distro this app created to be an isolated
-// playground for the AI chat. The distro is real WSL — the isolation is that
-// the sandbox chat is handed only the `sandbox_*` tools (buildSandboxTools),
-// which hardcode this one distro, so the model can run anything *inside* it
-// but cannot see the Windows host or any other distro.
+// A "sandbox": an ordinary instance this app created to be an isolated
+// playground for the AI chat — a WSL distro on Windows, a Linux VM on the
+// Apple backend. The instance is real; the isolation is that the sandbox chat
+// is handed only the `sandbox_*` tools (buildSandboxTools), which hardcode
+// this one instance, so the model can run anything *inside* it but cannot see
+// the host or any other instance.
 
 import 'dart:io';
 
@@ -18,18 +19,28 @@ import 'package:wsl2distromanager/api/todo_store.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:flutter/foundation.dart';
+import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 class SandboxService {
-  SandboxService({WSLApi? api, App? app, Dio? dio})
-      : _api = api ?? WSLApi(),
+  SandboxService({VmBackend? backend, App? app, Dio? dio, VmImageCatalog? catalog})
+      : _api = backend ?? vmBackend(),
         _app = app ?? App(),
-        _dio = dio ?? Dio();
+        _dio = dio ?? Dio(),
+        _catalog = catalog ?? vmImageCatalogBuilder();
 
-  final WSLApi _api;
+  /// The backend the sandbox lives on. `wsl.exe` on Windows (or over SSH),
+  /// `vmctl` on macOS — the two need different plumbing to *create* a
+  /// sandbox, and nothing at all in common afterwards: the sandbox tools go
+  /// through [VmBackend] either way.
+  final VmBackend _api;
   final App _app;
   final Dio _dio;
+  final VmImageCatalog _catalog;
 
   /// Registered names carry this prefix so a sandbox is recognisable in the
   /// distro list and never collides with a normal instance.
@@ -87,20 +98,63 @@ class SandboxService {
       ValueNotifier<double?>(null);
 
   static CancelToken? _creationCancelToken;
+  static CancelSignal? _creationCancelSignal;
 
   /// Aborts the running creation: the download is torn down and the partial
-  /// file deleted.
-  static void cancelCreation() => _creationCancelToken?.cancel();
+  /// file deleted. Both backends have one in flight at most, and only the one
+  /// that is running has a token to cancel.
+  static void cancelCreation() {
+    _creationCancelToken?.cancel();
+    _creationCancelSignal?.cancel();
+  }
 
   /// Creation refuses to start below this much free disk. The rootfs plus
   /// its imported VHD comfortably exceed 2 GB, and this machine has already
   /// demonstrated what 0 bytes free does to everything else (2026-08-31).
   static const int minFreeBytes = 3 * 1024 * 1024 * 1024;
 
-  /// Creates a sandbox from a catalog image ([image] is a catalog key;
-  /// null = newest Ubuntu): downloads the rootfs and imports it as a new
-  /// distro. Returns the registered distro name. Progress is published on
-  /// [creationStage] / [creationProgress] so any page (or none) can watch.
+  /// The image choices for the add-sandbox dialog, and what
+  /// [createUbuntuSandbox]'s [image] accepts.
+  ///
+  /// Catalog keys on WSL (rootfs tarballs), cloud-image names on the Apple
+  /// backend. Installer ISOs are left out on purpose: they need a human to
+  /// click through an installer at the VM's console, which is no use to a
+  /// sandbox that has to come up on its own.
+  Future<List<String>> imageChoices() async {
+    if (_api is AppleVmApi) {
+      return VmImageCatalog.entries
+          .where((entry) => entry.isCloudImage)
+          .map((entry) => entry.name)
+          .toList();
+    }
+    return (await _app.getDistroLinks()).keys.toList()..sort();
+  }
+
+  /// The catalog entry for [image] (a cloud-image name or slug), or — when
+  /// [image] is null — the newest Ubuntu cloud image, falling back to any
+  /// cloud image at all.
+  VmIsoCatalogEntry? _pickVmImage(String? image) {
+    if (image != null && image.trim().isNotEmpty) {
+      final named = VmImageCatalog.entryFor(image) ??
+          VmImageCatalog.entryById(image);
+      // An installer ISO would sit at its own console waiting to be
+      // installed; refuse rather than create a VM that never answers.
+      return (named != null && named.isCloudImage) ? named : null;
+    }
+    final cloud =
+        VmImageCatalog.entries.where((entry) => entry.isCloudImage).toList();
+    if (cloud.isEmpty) return null;
+    final ubuntu = cloud
+        .where((entry) => entry.name.toLowerCase().contains('ubuntu'))
+        .toList()
+      ..sort((a, b) => b.name.compareTo(a.name)); // newest label first
+    return ubuntu.isNotEmpty ? ubuntu.first : cloud.first;
+  }
+
+  /// Creates a sandbox from a catalog image ([image] is a catalog key on WSL,
+  /// a cloud-image name on the Apple backend; null = newest Ubuntu). Returns
+  /// the registered instance name. Progress is published on [creationStage] /
+  /// [creationProgress] so any page (or none) can watch.
   Future<String> createUbuntuSandbox(String name, {String? image}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw ArgumentError('A name is required.');
@@ -108,22 +162,42 @@ class SandboxService {
     final distro = distroNameFor(trimmed);
 
     creationStage.value = 'resolving';
+    try {
+      final api = _api;
+      if (api is AppleVmApi) {
+        await _createAppleSandbox(api, distro, image);
+      } else {
+        await _createWslSandbox(distro, trimmed, image);
+      }
+      _remember(distro);
+      return distro;
+    } finally {
+      _creationCancelToken = null;
+      _creationCancelSignal = null;
+      creationProgress.value = null;
+      creationStage.value = null;
+    }
+  }
+
+  /// Windows: download a rootfs tarball and `wsl --import` it.
+  Future<void> _createWslSandbox(
+      String distro, String trimmed, String? image) async {
     final cancelToken = _creationCancelToken = CancelToken();
     final tmp = '${Directory.systemTemp.path}${Platform.pathSeparator}'
         'wslm-sandbox-${trimmed.hashCode}.tar.gz';
     try {
       // Refuse up front rather than fail mid-download: a full disk here took
       // the whole machine down with it, not just this feature.
-      final free = await _api
-          .freeSpaceBytes(prefs.getString('DistroPath') ?? Directory.systemTemp.path);
+      final api = _api;
+      final free = api is WSLApi
+          ? await api.freeSpaceBytes(
+              prefs.getString('DistroPath') ?? Directory.systemTemp.path)
+          : null;
       if (free != null && free < minFreeBytes) {
         throw Exception('sandbox-disk-space');
       }
 
-      final existing = await _api.list(false);
-      if (existing.all.any((d) => d.toLowerCase() == distro.toLowerCase())) {
-        throw StateError('A distro named "$distro" already exists.');
-      }
+      await _refuseIfTaken(distro);
 
       final links = await _app.getDistroLinks();
       final url = _pickImageUrl(links, image);
@@ -140,9 +214,6 @@ class SandboxService {
       creationProgress.value = null;
       creationStage.value = 'importing';
       await _api.import(distro, '', tmp);
-
-      _remember(distro);
-      return distro;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) throw const CancelledException();
       rethrow;
@@ -150,15 +221,94 @@ class SandboxService {
       try {
         File(tmp).deleteSync();
       } catch (_) {}
-      _creationCancelToken = null;
-      creationProgress.value = null;
-      creationStage.value = null;
     }
   }
+
+  /// macOS: download a cloud image and have `vmctl` seed a VM from it, then
+  /// boot it headless.
+  ///
+  /// Unlike a WSL distro, a VM is not started by the first command that wants
+  /// it — it has to boot, and cloud-init has to finish, before anything can
+  /// reach it over SSH. So creation starts it and waits, best effort: a guest
+  /// that has not answered by [bootProbeAttempts] is still a created sandbox
+  /// (the image is downloaded, the VM exists), and the chat's first command
+  /// reports the real state rather than this throwing away several GB of
+  /// download over a slow boot.
+  Future<void> _createAppleSandbox(
+      AppleVmApi api, String distro, String? image) async {
+    final cancel = _creationCancelSignal = CancelSignal();
+    final entry = _pickVmImage(image);
+    if (entry == null) {
+      throw StateError('No matching image is available in the catalog.');
+    }
+
+    await _refuseIfTaken(distro);
+
+    creationStage.value = 'downloading';
+    final imagePath = await _catalog.download(entry, cancelSignal: cancel,
+        onProgress: (received, total) {
+      creationProgress.value = total > 0 ? received / total : null;
+    });
+    cancel.throwIfCancelled();
+
+    creationProgress.value = null;
+    creationStage.value = 'creating';
+    await api.createLinuxVm(distro,
+        imagePath: imagePath,
+        diskSizeGb: sandboxDiskGb,
+        cpus: sandboxCpus,
+        memoryGb: sandboxMemoryGb);
+    // Registered before the boot, not after it: a VM that fails to start is
+    // still a VM on disk, and one this list never learned about is one the
+    // page shows no delete button for — the name would stay taken with no
+    // way back to it from the UI.
+    _remember(distro);
+
+    creationStage.value = 'starting';
+    await api.startHeadless(distro);
+    for (var attempt = 0; attempt < bootProbeAttempts; attempt++) {
+      cancel.throwIfCancelled();
+      final probe = await api.probeGuestAccess(distro);
+      if (probe.ok) return;
+      await Future<void>.delayed(bootProbeDelay);
+    }
+  }
+
+  /// A name already on the backend is a collision, not something to import
+  /// over: the existing instance would be replaced or the import would fail
+  /// halfway.
+  Future<void> _refuseIfTaken(String distro) async {
+    final existing = await _api.list(false);
+    if (existing.all.any((d) => d.toLowerCase() == distro.toLowerCase())) {
+      throw StateError('A distro named "$distro" already exists.');
+    }
+  }
+
+  /// Sizing for a sandbox VM on the Apple backend — the same shape the AI
+  /// Workspace VM uses, which is enough for a package manager and a build.
+  static const int sandboxDiskGb = 32;
+  static const int sandboxCpus = 2;
+  static const int sandboxMemoryGb = 4;
+
+  /// How long creation waits for a freshly booted guest to answer over SSH.
+  /// A cloud image runs cloud-init end to end before sshd is up; overridable
+  /// so tests do not sit through a boot's worth of sleeps.
+  static int bootProbeAttempts = 40;
+  static Duration bootProbeDelay = const Duration(seconds: 3);
 
   /// Unregisters a sandbox distro, drops it from the list and deletes its
   /// chat transcript.
   Future<void> deleteSandbox(String distro) async {
+    // `vmctl delete` refuses a running VM, and a sandbox is left running by
+    // its own creation — so stop it first. A WSL distro is unregistered
+    // running or not and needs no such step.
+    if (_api is AppleVmApi) {
+      try {
+        await _api.stop(distro);
+      } catch (_) {
+        // Already stopped, or gone: the delete below says so properly.
+      }
+    }
     await _api.remove(distro);
     _forget(distro);
     SandboxChat.dropTranscript(distro);
@@ -224,8 +374,13 @@ class SandboxChat {
 
   List<McpTool>? _toolsOverride;
   List<McpTool> get _tools => _toolsOverride ??= [
-        ...buildSandboxTools(
-            WSLApi(), WslTerminalManager(wslApi: WSLApi()), distro),
+        // One backend instance for both: the tools and the terminal sessions
+        // have to talk to the same host — wsl.exe on Windows, vmctl on macOS.
+        ...() {
+          final backend = vmBackend();
+          return buildSandboxTools(
+              backend, WslTerminalManager(wslApi: backend), distro);
+        }(),
         // The task queue works in the sandbox chat too — the todo tools touch
         // only the app's own list, never the host.
         ...buildTodoTools(TodoStore.instance),
@@ -238,8 +393,16 @@ class SandboxChat {
 
   bool get canSend => LicenseManager().isPro && _ai.hasAiConfigured;
 
+  /// What the sandbox is called in the prompt: a WSL distro on Windows, a VM
+  /// on the Apple backend. The model reasons about the environment it is told
+  /// it is in, so a macOS sandbox described as a WSL distro invites advice
+  /// about `wsl.exe` that has nothing to act on.
+  String get _environmentNoun => vmBackend() is AppleVmApi
+      ? 'a Linux virtual machine'
+      : 'a WSL distro';
+
   String get _systemPrompt => '''
-You are an assistant confined to a single sandboxed Linux environment (a WSL distro named "$distro"). Everything you do happens INSIDE it through the sandbox_* tools — you cannot see or affect the user's Windows machine or any other distro, and there is no such thing to reach. Use sandbox_run_command to inspect and work inside the sandbox. After acting, say briefly what you did. Keep answers concise.
+You are an assistant confined to a single sandboxed Linux environment ($_environmentNoun named "$distro"). Everything you do happens INSIDE it through the sandbox_* tools — you cannot see or affect the user's own machine or any other instance, and there is no such thing to reach. Use sandbox_run_command to inspect and work inside the sandbox. After acting, say briefly what you did. Keep answers concise.
 You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one inside the sandbox, and mark it done with todo_set_done as soon as you finish it.''';
 
   Future<String> send(String query,

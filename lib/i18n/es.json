@@ -699,6 +699,8 @@
   "sandbox-stage-resolving-text": "resolviendo imagen",
   "sandbox-stage-downloading-text": "descargando",
   "sandbox-stage-importing-text": "importando",
+  "sandbox-stage-creating-text": "creando la VM",
+  "sandbox-stage-starting-text": "iniciando la VM",
   "sandbox-created-text": "Entorno aislado creado.",
   "sandbox-create-failed-text": "No se pudo crear el entorno aislado.",
   "sandbox-chat-title": "Chat aislado — %s",

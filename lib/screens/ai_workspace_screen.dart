@@ -6,7 +6,6 @@ import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
@@ -802,15 +801,18 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               ),
               const SizedBox(height: 12),
               // Any catalog image, not just Ubuntu — the plumbing has always
-              // taken an arbitrary rootfs URL.
-              FutureBuilder<Map<String, String>>(
-                future: App().getDistroLinks(),
+              // taken an arbitrary image. Which catalog that is comes from
+              // the backend: rootfs tarballs on WSL, cloud images on macOS.
+              FutureBuilder<List<String>>(
+                future: _sandbox.imageChoices(),
                 builder: (context, snapshot) {
-                  final keys = (snapshot.data ?? const {}).keys.toList()
-                    ..sort();
+                  final keys = snapshot.data ?? const <String>[];
                   return DropDownButton(
                     key: const ValueKey('test-sandbox-image'),
-                    title: Text(image ?? 'sandbox-image-default-text'.i18n()),
+                    // Cloud-image names run long ("Ubuntu 26.04 LTS (cloud
+                    // image)"); the dialog is narrower than they are.
+                    title: Text(image ?? 'sandbox-image-default-text'.i18n(),
+                        overflow: TextOverflow.ellipsis),
                     items: [
                       MenuFlyoutItem(
                         selected: image == null,
@@ -827,7 +829,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                           leading: image == key
                               ? const Icon(FluentIcons.check_mark, size: 12.0)
                               : const SizedBox.square(dimension: 12.0),
-                          text: Text(key),
+                          text: Text(key, overflow: TextOverflow.ellipsis),
                           onPressed: () => setDialogState(() => image = key),
                         ),
                     ],

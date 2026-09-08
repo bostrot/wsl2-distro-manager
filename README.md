@@ -125,12 +125,13 @@ Studio, …). Enter the base URL, key and model. The **Load model list** button
 fills an autocomplete from the provider's `/models`, and **Test connection**
 proves the credentials work before you open the chat.
 
-**Sandboxes** (AI Workspace → *Add sandbox distro*) create a throwaway distro
-from any catalog image (newest Ubuntu by default). Its chat is handed only the
-`sandbox_*` tools, which are locked to that one distro — the model can run
-anything *inside* the sandbox and can never see your Windows host or any other
-distro. One honest caveat: the sandbox distro itself has normal outbound
-internet access, like any WSL distro. Sandbox chats use the same docked panel
+**Sandboxes** (AI Workspace → *Add sandbox distro*) create a throwaway
+instance from any catalog image (newest Ubuntu by default) — a WSL distro on
+Windows, a Linux VM seeded from a cloud image on macOS, which is created and
+booted for you. Its chat is handed only the `sandbox_*` tools, which are locked
+to that one instance — the model can run anything *inside* the sandbox and can
+never see your host or any other instance. One honest caveat: the sandbox
+itself has normal outbound internet access, like any distro or VM. Sandbox chats use the same docked panel
 as the assistant (task queue included), their transcripts persist, and the
 history button in the chat header switches between the assistant and any
 sandbox session.

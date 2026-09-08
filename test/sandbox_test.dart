@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -6,6 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/app.dart';
+import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
@@ -14,6 +18,7 @@ import 'package:wsl2distromanager/api/sandbox_service.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
+import 'fake_vmctl_shell.dart';
 import 'mocks.dart';
 
 class _FakeApp extends App {
@@ -21,6 +26,25 @@ class _FakeApp extends App {
   final Map<String, String> links;
   @override
   Future<Map<String, String>> getDistroLinks() async => links;
+}
+
+/// A catalog that hands back a local path without touching the network, and
+/// remembers which entry it was asked for.
+class _FakeCatalog extends VmImageCatalog {
+  _FakeCatalog(this.path);
+  final String path;
+  VmIsoCatalogEntry? requested;
+
+  @override
+  Future<String> download(
+    VmIsoCatalogEntry entry, {
+    void Function(int received, int total)? onProgress,
+    CancelSignal? cancelSignal,
+  }) async {
+    requested = entry;
+    onProgress?.call(1, 2);
+    return path;
+  }
 }
 
 class _StringAdapter implements HttpClientAdapter {
@@ -66,7 +90,7 @@ void main() {
         ..httpClientAdapter = _StringAdapter(
             (_) => ResponseBody.fromString('rootfs-bytes', 200));
       final svc = SandboxService(
-        api: api,
+        backend: api,
         app: _FakeApp({
           'Alpine': 'https://example.com/alpine.tar.gz',
           'Ubuntu-24.04': 'https://example.com/ubuntu-2404.tar.gz',
@@ -86,7 +110,7 @@ void main() {
 
     test('refuses a blank name', () async {
       await expectLater(
-          SandboxService(api: WSLApi(shell: MockShell()))
+          SandboxService(backend: WSLApi(shell: MockShell()))
               .createUbuntuSandbox('   '),
           throwsArgumentError);
     });
@@ -95,7 +119,7 @@ void main() {
       final adapter = _StringAdapter(
           (_) => ResponseBody.fromString('rootfs-bytes', 200));
       final svc = SandboxService(
-        api: WSLApi(shell: MockShell()),
+        backend: WSLApi(shell: MockShell()),
         app: _FakeApp({
           'Alpine': 'https://example.com/alpine.tar.gz',
           'Ubuntu-24.04': 'https://example.com/ubuntu-2404.tar.gz',
@@ -111,7 +135,7 @@ void main() {
 
     test('creation publishes stage and clears it when done', () async {
       final svc = SandboxService(
-        api: WSLApi(shell: MockShell()),
+        backend: WSLApi(shell: MockShell()),
         app: _FakeApp({'Ubuntu-24.04': 'https://example.com/u.tar.gz'}),
         dio: Dio()
           ..httpClientAdapter = _StringAdapter(
@@ -127,6 +151,224 @@ void main() {
 
       expect(stages, containsAllInOrder(['resolving', 'downloading', 'importing', null]));
       expect(SandboxService.isCreating, false);
+    });
+  });
+
+  group('SandboxService on the Apple backend', () {
+    late FakeVmctlShell shell;
+    late AppleVmApi api;
+    late Directory store;
+
+    /// A store with no VMs first (the name-collision check), then one running
+    /// VM (the post-start liveness check).
+    void scriptAHealthyCreate(String distro) {
+      shell.responseQueue['list'] = [
+        '{"vms":[]}',
+        '{"vms":[{"name":"$distro","state":"running","os":"linux"}]}',
+      ];
+      shell.responses['list'] =
+          '{"vms":[{"name":"$distro","state":"running","os":"linux"}]}';
+      shell.responses['create'] = '{"created":"$distro"}';
+      shell.responses['start'] = '{"started":"$distro"}';
+    }
+
+    SandboxService service(_FakeCatalog catalog) =>
+        SandboxService(backend: api, catalog: catalog);
+
+    setUp(() {
+      shell = FakeVmctlShell();
+      store = Directory.systemTemp.createTempSync('sandbox-apple-test');
+      api = AppleVmApi(
+        shell: shell,
+        helperPathOverride: '/fake/vmctl',
+        storeDirOverride: store.path,
+        earlyExitProbeDelay: Duration.zero,
+      );
+      SandboxService.bootProbeDelay = Duration.zero;
+      SandboxService.bootProbeAttempts = 3;
+    });
+
+    tearDown(() {
+      if (store.existsSync()) store.deleteSync(recursive: true);
+      SandboxService.bootProbeDelay = const Duration(seconds: 3);
+      SandboxService.bootProbeAttempts = 40;
+    });
+
+    List<String> callWith(String verb) =>
+        shell.calls.lastWhere((c) => c.contains(verb));
+
+    test('creates a VM from the newest Ubuntu cloud image and boots it',
+        () async {
+      scriptAHealthyCreate('wslm-sandbox-play');
+      final catalog = _FakeCatalog('/tmp/ubuntu-cloud.img');
+
+      final name = await service(catalog).createUbuntuSandbox('play');
+
+      expect(name, 'wslm-sandbox-play');
+      // The default is a cloud image — an installer ISO would sit at its own
+      // console waiting for a human, which no sandbox can use.
+      expect(catalog.requested!.isCloudImage, true);
+      expect(catalog.requested!.id, 'ubuntu-26-04-cloud');
+      // Seeded from that image, under the sandbox name…
+      final create = callWith('create');
+      expect(create, containsAllInOrder(['--name', 'wslm-sandbox-play']));
+      expect(create, containsAllInOrder(['--image', '/tmp/ubuntu-cloud.img']));
+      // …and started, so the chat has something to talk to.
+      expect(callWith('start'), contains('wslm-sandbox-play'));
+      expect(SandboxService(backend: api).list(),
+          contains('wslm-sandbox-play'));
+    });
+
+    test('a named cloud image overrides the Ubuntu default', () async {
+      scriptAHealthyCreate('wslm-sandbox-deb');
+      final catalog = _FakeCatalog('/tmp/debian.raw');
+
+      await service(catalog)
+          .createUbuntuSandbox('deb', image: 'Debian 13 (cloud image)');
+
+      expect(catalog.requested!.id, 'debian-13-cloud');
+    });
+
+    test('an installer ISO is refused, and nothing is created', () async {
+      scriptAHealthyCreate('wslm-sandbox-iso');
+      final catalog = _FakeCatalog('/tmp/never.iso');
+
+      await expectLater(
+          service(catalog)
+              .createUbuntuSandbox('iso', image: 'Debian (netinst)'),
+          throwsStateError);
+
+      expect(catalog.requested, isNull);
+      expect(shell.calls.any((c) => c.contains('create')), false);
+      expect(SandboxService(backend: api).list(), isEmpty);
+      expect(SandboxService.isCreating, false);
+    });
+
+    test('an existing VM of the same name is a collision, not an overwrite',
+        () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"wslm-sandbox-taken","state":"stopped"}]}';
+      final catalog = _FakeCatalog('/tmp/img');
+
+      await expectLater(
+          service(catalog).createUbuntuSandbox('taken'), throwsStateError);
+
+      expect(shell.calls.any((c) => c.contains('create')), false);
+    });
+
+    test('a guest that never answers still leaves a created sandbox',
+        () async {
+      scriptAHealthyCreate('wslm-sandbox-slow');
+      // Every SSH probe fails: the VM exists and is booting, it is simply not
+      // reachable yet. Throwing here would discard a multi-GB download.
+      shell.exitCodes['exec'] = 255;
+
+      final name =
+          await service(_FakeCatalog('/tmp/img')).createUbuntuSandbox('slow');
+
+      expect(name, 'wslm-sandbox-slow');
+      expect(SandboxService(backend: api).list(), contains(name));
+      expect(
+          shell.calls.where((c) => c.contains('exec')).length,
+          SandboxService.bootProbeAttempts);
+    });
+
+    test('a VM that fails to start is still listed, so it can be deleted',
+        () async {
+      shell.responseQueue['list'] = ['{"vms":[]}'];
+      shell.responses['list'] =
+          '{"vms":[{"name":"wslm-sandbox-dud","state":"stopped"}]}';
+      shell.responses['create'] = '{"created":"wslm-sandbox-dud"}';
+      shell.exitCodes['start'] = 1;
+      shell.errors['start'] = 'no bootable device';
+
+      await expectLater(
+          service(_FakeCatalog('/tmp/img')).createUbuntuSandbox('dud'),
+          throwsA(isA<AppleVmException>()));
+
+      // The VM exists on disk; a name the list never learned about would be
+      // taken with no delete button anywhere to release it.
+      expect(SandboxService(backend: api).list(),
+          contains('wslm-sandbox-dud'));
+    });
+
+    test('deleting stops the VM first — vmctl refuses to delete a running one',
+        () async {
+      scriptAHealthyCreate('wslm-sandbox-gone');
+      final svc = service(_FakeCatalog('/tmp/img'));
+      await svc.createUbuntuSandbox('gone');
+      shell.calls.clear();
+
+      await svc.deleteSandbox('wslm-sandbox-gone');
+
+      final verbs = shell.calls
+          .map((c) => c.firstWhere((a) => a == 'stop' || a == 'delete',
+              orElse: () => ''))
+          .where((v) => v.isNotEmpty)
+          .toList();
+      expect(verbs, ['stop', 'delete']);
+      expect(svc.list(), isEmpty);
+    });
+
+    test('publishes every stage and clears it when done', () async {
+      scriptAHealthyCreate('wslm-sandbox-stagey');
+      final stages = <String?>[];
+      void listener() => stages.add(SandboxService.creationStage.value);
+      SandboxService.creationStage.addListener(listener);
+      addTearDown(
+          () => SandboxService.creationStage.removeListener(listener));
+
+      await service(_FakeCatalog('/tmp/img')).createUbuntuSandbox('stagey');
+
+      expect(
+          stages,
+          containsAllInOrder(
+              ['resolving', 'downloading', 'creating', 'starting', null]));
+      expect(SandboxService.isCreating, false);
+    });
+
+    test('offers only cloud images as sandbox images', () async {
+      final choices = await SandboxService(backend: api).imageChoices();
+
+      expect(choices, isNotEmpty);
+      expect(choices, contains('Ubuntu 26.04 LTS (cloud image)'));
+      expect(choices.any((name) => name.contains('netinst')), false);
+      for (final name in choices) {
+        expect(VmImageCatalog.entryFor(name)!.isCloudImage, true);
+      }
+    });
+
+    test('sandbox tools reach the VM through vmctl, never wsl.exe', () async {
+      shell.responses['exec'] = 'root';
+      final tools = buildSandboxTools(
+          api, WslTerminalManager(wslApi: api), 'wslm-sandbox-box');
+
+      final out = await tools
+          .firstWhere((t) => t.name == 'sandbox_run_command')
+          .handler({'command': 'whoami'});
+
+      expect(out, 'root');
+      final call = callWith('exec');
+      expect(call.first, '/fake/vmctl');
+      final nameIndex = call.indexOf('--name');
+      expect(nameIndex, isNonNegative);
+      expect(call[nameIndex + 1], 'wslm-sandbox-box');
+      expect(call.last, 'whoami');
+    });
+
+    test('a failing command reports its exit code instead of "(no output)"',
+        () async {
+      shell.exitCodes['exec'] = 3;
+      shell.errors['exec'] = 'no such file';
+      final tools = buildSandboxTools(
+          api, WslTerminalManager(wslApi: api), 'wslm-sandbox-box');
+
+      final out = await tools
+          .firstWhere((t) => t.name == 'sandbox_run_command')
+          .handler({'command': 'cat /nope'});
+
+      expect(out, contains('Exit code 3'));
+      expect(out, contains('no such file'));
     });
   });
 

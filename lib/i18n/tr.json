@@ -699,6 +699,8 @@
   "sandbox-stage-resolving-text": "imaj çözümleniyor",
   "sandbox-stage-downloading-text": "indiriliyor",
   "sandbox-stage-importing-text": "içe aktarılıyor",
+  "sandbox-stage-creating-text": "VM oluşturuluyor",
+  "sandbox-stage-starting-text": "VM başlatılıyor",
   "sandbox-created-text": "Kum havuzu oluşturuldu.",
   "sandbox-create-failed-text": "Kum havuzu oluşturulamadı.",
   "sandbox-chat-title": "Kum havuzu sohbeti — %s",

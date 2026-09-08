@@ -699,6 +699,8 @@
   "sandbox-stage-resolving-text": "이미지 확인 중",
   "sandbox-stage-downloading-text": "다운로드 중",
   "sandbox-stage-importing-text": "가져오는 중",
+  "sandbox-stage-creating-text": "VM 생성 중",
+  "sandbox-stage-starting-text": "VM 시작 중",
   "sandbox-created-text": "샌드박스가 만들어졌습니다.",
   "sandbox-create-failed-text": "샌드박스를 만들 수 없습니다.",
   "sandbox-chat-title": "샌드박스 채팅 — %s",

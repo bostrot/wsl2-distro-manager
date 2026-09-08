@@ -700,6 +700,8 @@
   "sandbox-stage-resolving-text": "正在解析映像",
   "sandbox-stage-downloading-text": "正在下載",
   "sandbox-stage-importing-text": "正在匯入",
+  "sandbox-stage-creating-text": "正在建立虛擬機器",
+  "sandbox-stage-starting-text": "正在啟動虛擬機器",
   "sandbox-created-text": "沙箱已建立。",
   "sandbox-create-failed-text": "無法建立沙箱。",
   "sandbox-chat-title": "沙箱聊天 — %s",

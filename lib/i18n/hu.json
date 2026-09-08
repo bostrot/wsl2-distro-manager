@@ -699,6 +699,8 @@
   "sandbox-stage-resolving-text": "kép feloldása",
   "sandbox-stage-downloading-text": "letöltés",
   "sandbox-stage-importing-text": "importálás",
+  "sandbox-stage-creating-text": "VM létrehozása",
+  "sandbox-stage-starting-text": "VM indítása",
   "sandbox-created-text": "Homokozó létrehozva.",
   "sandbox-create-failed-text": "A homokozót nem sikerült létrehozni.",
   "sandbox-chat-title": "Homokozó-csevegés — %s",

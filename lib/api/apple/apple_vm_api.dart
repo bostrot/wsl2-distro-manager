@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/shell.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
+import 'package:wsl2distromanager/api/wsl_args.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -380,6 +381,75 @@ class AppleVmApi extends VmBackend {
       throw AppleVmException(
           'Could not run the vmctl helper (${helperPath()}): ${e.message}');
     }
+  }
+
+  /// The backend-neutral in-instance run: `vmctl exec` over SSH, with the
+  /// guest's exit code kept. See [VmBackend.runInInstance].
+  @override
+  Future<VmCommandOutput> runInInstance(
+    String instance,
+    String command, {
+    String user = 'root',
+    String cwd = '',
+    Duration timeout = const Duration(minutes: 5),
+  }) async {
+    final result = await execCommand(instance, command,
+        user: user.trim().isEmpty ? 'root' : user.trim(),
+        cwd: cwd,
+        timeout: timeout);
+    return VmCommandOutput(result.exitCode, result.stdout.toString(),
+        result.stderr.toString());
+  }
+
+  /// Ceiling for a single whole-file read or write in a guest. Generous for
+  /// the work — a few hundred bytes over an already-open SSH path — and sized
+  /// for a guest that is busy, not for one that is gone.
+  static const Duration _guestFileTimeout = Duration(seconds: 60);
+
+  /// Read [path] from inside [instance] as root; null when the guest could
+  /// not be reached. Mirrors [WSLApi.readDistroFile], including the
+  /// `2>/dev/null; exit 0` that keeps "the file is not there" apart from
+  /// "the guest did not answer".
+  @override
+  Future<String?> readInstanceFile(String instance, String path) async {
+    if (!isPlainDistroPath(path)) {
+      logDebug(
+          'Refusing to read $path from $instance: not a plain path', null, null);
+      return null;
+    }
+    final result = await execCommand(instance, 'cat $path 2>/dev/null; exit 0',
+        timeout: _guestFileTimeout);
+    if (result.exitCode != 0) {
+      logDebug('Could not read $path from $instance: ${result.stderr}', null,
+          null);
+      return null;
+    }
+    return result.stdout.toString();
+  }
+
+  /// Write [content] to [path] inside [instance] as root, whole file at once.
+  ///
+  /// base64 for the payload and [isPlainDistroPath] for the destination, for
+  /// the same reason [WSLApi.writeDistroFile] uses both: the payload travels
+  /// through a shell, and the redirection target has to *be* shell syntax.
+  @override
+  Future<bool> writeInstanceFile(
+      String instance, String path, String content) async {
+    if (!isPlainDistroPath(path)) {
+      logDebug('Refusing to write $path in $instance: not a plain path', null,
+          null);
+      return false;
+    }
+    final payload = base64.encode(utf8.encode(content));
+    final result = await execCommand(
+        instance, "printf %s '$payload' | base64 -d > $path",
+        timeout: _guestFileTimeout);
+    if (result.exitCode != 0) {
+      logDebug(
+          'Could not write $path in $instance: ${result.stderr}', null, null);
+      return false;
+    }
+    return true;
   }
 
   /// The environment variable `vmctl authorize` reads the guest password

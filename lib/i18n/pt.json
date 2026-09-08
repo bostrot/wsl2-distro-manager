@@ -701,6 +701,8 @@
   "sandbox-stage-resolving-text": "resolvendo imagem",
   "sandbox-stage-downloading-text": "baixando",
   "sandbox-stage-importing-text": "importando",
+  "sandbox-stage-creating-text": "criando a VM",
+  "sandbox-stage-starting-text": "iniciando a VM",
   "sandbox-created-text": "Sandbox criada.",
   "sandbox-create-failed-text": "Não foi possível criar a sandbox.",
   "sandbox-chat-title": "Chat da sandbox — %s",

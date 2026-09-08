@@ -2450,6 +2450,39 @@ try {
     }
   }
 
+  /// The backend-neutral in-instance run: `wsl -d <distro> --exec bash -c`,
+  /// with the exit code kept. See [VmBackend.runInInstance].
+  @override
+  Future<VmCommandOutput> runInInstance(
+    String instance,
+    String command, {
+    String user = 'root',
+    String cwd = '',
+    Duration timeout = const Duration(minutes: 5),
+  }) async {
+    final out = await runVerb([
+      '-d',
+      instance,
+      if (cwd.isNotEmpty) ...['--cd', cwd],
+      '-u',
+      user.trim().isEmpty ? 'root' : user.trim(),
+      '--exec',
+      'bash',
+      '-c',
+      command,
+    ], timeout: timeout);
+    return VmCommandOutput(out.exitCode, out.stdout, out.stderr);
+  }
+
+  @override
+  Future<String?> readInstanceFile(String instance, String path) =>
+      readDistroFile(instance, path);
+
+  @override
+  Future<bool> writeInstanceFile(
+          String instance, String path, String content) =>
+      writeDistroFile(instance, path, content);
+
   /// Read [path] from inside [distro] as root.
   ///
   /// Returns null when the distro could not be reached at all, which is the

@@ -62,6 +62,25 @@ class VmFeatures {
   });
 }
 
+/// One command run inside an instance: what it printed and how it ended.
+///
+/// The sandbox tools need the exit code, not just the text — "the command
+/// failed" and "the command printed nothing" are different answers to give a
+/// model, and each backend reports them on its own channels.
+class VmCommandOutput {
+  final int exitCode;
+  final String stdout;
+  final String stderr;
+
+  const VmCommandOutput(this.exitCode, this.stdout, this.stderr);
+
+  bool get ok => exitCode == 0;
+
+  /// stdout when there is any, else stderr — a failing command often says
+  /// everything it has to say on the other channel.
+  String get text => stdout.trim().isNotEmpty ? stdout.trim() : stderr.trim();
+}
+
 /// The backend-independent surface for managing virtual machine instances.
 ///
 /// [WSLApi] implements it on top of `wsl.exe` (local or over SSH), and
@@ -122,6 +141,30 @@ abstract class VmBackend {
 
   /// Run one shell command inside an instance as root, returning stdout.
   Future<String> execCmdAsRoot(String distribution, String cmd);
+
+  /// Run [command] inside [instance] through its shell, reporting the exit
+  /// code alongside the output.
+  ///
+  /// Distinct from [execCmdAsRoot], which throws the exit code away: this is
+  /// what the AI sandbox runs, and a model told only "(no output)" about a
+  /// command that failed will happily build on top of it. [cwd] empty means
+  /// the user's default directory.
+  Future<VmCommandOutput> runInInstance(
+    String instance,
+    String command, {
+    String user = 'root',
+    String cwd = '',
+    Duration timeout = const Duration(minutes: 5),
+  });
+
+  /// Read a whole text file from inside [instance], or null when it could not
+  /// be read — a distinction callers depend on: a missing file is empty and
+  /// may be created, an unreachable one must never be overwritten.
+  Future<String?> readInstanceFile(String instance, String path);
+
+  /// Write [content] to [path] inside [instance] as root, whole file at once.
+  /// Returns whether the write actually happened.
+  Future<bool> writeInstanceFile(String instance, String path, String content);
 
   /// Start a persistent interactive shell inside an instance. Callers drive
   /// stdin/stdout themselves and must kill the process when done.
