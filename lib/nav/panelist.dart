@@ -47,6 +47,18 @@ List<NavigationPaneItem> get originalItems {
       navigateGuarded('containers', path: '/containers');
     },
   ),
+  // Kubernetes sits next to Containers for the same reason Containers sits
+  // next to the instances: the cluster owns these, this app only drives them
+  // (bostrot/ai-tasks#61).
+  PaneItem(
+    key: const Key('/kubernetes'),
+    icon: const Icon(FluentIcons.cloud),
+    title: Text('kubernetes-text'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      navigateGuarded('kubernetes', path: '/kubernetes');
+    },
+  ),
   PaneItem(
     key: const Key('/templates'),
     icon: const Icon(FluentIcons.file_template),

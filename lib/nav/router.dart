@@ -16,6 +16,7 @@ import 'package:wsl2distromanager/screens/containers_screen.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
 import 'package:wsl2distromanager/screens/home_screen.dart';
+import 'package:wsl2distromanager/screens/kubernetes_screen.dart';
 import 'package:wsl2distromanager/screens/license_screen.dart';
 import 'package:wsl2distromanager/screens/package_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
@@ -107,6 +108,13 @@ final router = GoRouter(
           path: '/containers',
           name: 'containers',
           builder: (context, state) => const ContainersPage(),
+        ),
+
+        /// Kubernetes (clusters from the host's kubeconfig)
+        GoRoute(
+          path: '/kubernetes',
+          name: 'kubernetes',
+          builder: (context, state) => const KubernetesPage(),
         ),
 
         /// Templates

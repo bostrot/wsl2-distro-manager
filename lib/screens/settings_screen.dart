@@ -10,6 +10,7 @@ import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
+import 'package:wsl2distromanager/api/kubernetes/kube_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
@@ -24,6 +25,7 @@ import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/components/debounced_text_box.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -712,6 +714,11 @@ class SettingsPageState extends State<SettingsPage> {
           content: _buildDockerSettings(context),
         ),
         ],
+        const SizedBox(height: 10),
+        Expander(
+          header: Text('kubernetessettings-text'.i18n()),
+          content: _buildKubernetesSettings(context),
+        ),
         const SizedBox(height: 10),
         Expander(
           header: _betaHeader('byok-settings-text'.i18n()),
@@ -1953,6 +1960,37 @@ class SettingsPageState extends State<SettingsPage> {
   /// ComboBox value standing for "no engine pinned"; a ComboBox cannot carry
   /// null as one of its items.
   static const String _autoEngine = 'auto';
+
+  /// Where the Kubernetes screen reads its clusters from.
+  ///
+  /// Empty is the normal case and means kubectl's own lookup — `KUBECONFIG`,
+  /// then `~/.kube/config`. The field exists for the developer whose clusters
+  /// live in a file their terminal points at per project
+  /// (bostrot/ai-tasks#61).
+  Widget _buildKubernetesSettings(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: InfoLabel(
+        label: 'kubeconfig-text'.i18n(),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DebouncedTextBox(
+              key: const ValueKey('test-kubeconfig-path'),
+              initialValue: prefs.getString(kubeConfigPathPrefKey) ?? '',
+              placeholder: 'kubeconfigplaceholder-text'.i18n(),
+              onCommit: (value) => KubeService().setKubeConfigPath(value),
+            ),
+            const SizedBox(height: 6.0),
+            Text('kubeconfighint-text'.i18n(),
+                style:
+                    TextStyle(color: secondaryTextColor(context), fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildDockerSettings(BuildContext context) {
     return Column(

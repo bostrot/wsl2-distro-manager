@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
+import 'package:wsl2distromanager/components/empty_state.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/base_dialog.dart';
@@ -203,12 +204,11 @@ class _ContainersPageState extends State<ContainersPage> {
               future: _snapshot,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return _message(
-                    context,
-                    FluentIcons.error,
-                    'containerenginefailed-text'.i18n(),
-                    '${snapshot.error}',
-                    testKey: 'test-containers-error',
+                  return EmptyState(
+                    key: const ValueKey('test-containers-error'),
+                    icon: FluentIcons.error,
+                    title: 'containerenginefailed-text'.i18n(),
+                    body: '${snapshot.error}',
                   );
                 }
                 final data = snapshot.data;
@@ -216,21 +216,19 @@ class _ContainersPageState extends State<ContainersPage> {
                   return const Center(child: ProgressRing());
                 }
                 if (data.engines.isEmpty) {
-                  return _message(
-                    context,
-                    FluentIcons.blocked,
-                    'nocontainerengine-text'.i18n(),
-                    'nocontainerenginehint-text'.i18n(),
-                    testKey: 'test-containers-no-engine',
+                  return EmptyState(
+                    key: const ValueKey('test-containers-no-engine'),
+                    icon: FluentIcons.blocked,
+                    title: 'nocontainerengine-text'.i18n(),
+                    body: 'nocontainerenginehint-text'.i18n(),
                   );
                 }
                 if (data.containers.isEmpty) {
-                  return _message(
-                    context,
-                    FluentIcons.package,
-                    'nocontainers-text'.i18n(),
-                    'nocontainershint-text'.i18n(),
-                    testKey: 'test-containers-empty',
+                  return EmptyState(
+                    key: const ValueKey('test-containers-empty'),
+                    icon: FluentIcons.package,
+                    title: 'nocontainers-text'.i18n(),
+                    body: 'nocontainershint-text'.i18n(),
                   );
                 }
                 return ListView.builder(
@@ -242,45 +240,6 @@ class _ContainersPageState extends State<ContainersPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _message(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String body, {
-    required String testKey,
-  }) {
-    return Center(
-      key: ValueKey(testKey),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color:
-                    FluentTheme.of(context).accentColor.withValues(alpha: 0.10),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon,
-                  size: 26, color: FluentTheme.of(context).accentColor),
-            ),
-            const SizedBox(height: 16),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style:
-                  TextStyle(color: secondaryTextColor(context), fontSize: 12),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -45,6 +45,15 @@ void main() {
       expect(keys, contains("[<'/addinstance'>]"));
     });
 
+    test('Kubernetes is offered on every backend', () {
+      // kubectl runs on the host, not inside a distro or a VM, so the
+      // destination is the same on Windows and macOS (bostrot/ai-tasks#61).
+      vmBackendBuilder = () => WSLApi(shell: MockShell());
+      expect(paneKeys(), contains("[<'/kubernetes'>]"));
+      vmBackendBuilder = FakeBackend.new;
+      expect(paneKeys(), contains("[<'/kubernetes'>]"));
+    });
+
     test('a backend without WSL features hides the WSL-only entries', () {
       vmBackendBuilder = FakeBackend.new;
       final keys = paneKeys();

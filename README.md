@@ -63,6 +63,12 @@
 - [x] Front end only: it drives the `docker`/`podman` you already have, and installs nothing
 - [x] The AI chat and the MCP server get the same container tools
 
+**Kubernetes clusters**
+- [x] Every cluster in your kubeconfig, one namespace at a time — built for ten clusters of a hundred apps
+- [x] Deployments, StatefulSets and DaemonSets with health at a glance, filtered by name, namespace or image
+- [x] Open a workload to see its pods, tail their logs, restart a pod, roll out a restart, scale, or read the full details
+- [x] Front end only: it drives the `kubectl` you already have, and never rewrites your kubeconfig or switches your context
+
 **Configure without editing files by hand**
 - [x] systemd, automount, default user, start command and start path per distro
 - [x] Memory, processors, swap, networking mode, DNS and the rest of `.wslconfig`
