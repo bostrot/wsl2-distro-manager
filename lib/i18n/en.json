@@ -895,5 +895,15 @@
   "deletedcontainer-text": "Deleted container %s",
   "containerengine-text": "Container engine",
   "containerenginehint-text": "Which engine the Containers screen and the AI tools drive. Automatic uses Docker when it is installed, otherwise Podman.",
-  "automatic-text": "Automatic"
+  "automatic-text": "Automatic",
+  "vmlogindetails-text": "Login details for %s",
+  "vmlogindetailstooltip-text": "Login details",
+  "vmlogindetailsbody-text": "The app signs in with its SSH key, so it never asks for these. The VM's own screen and serial console do: this is the account and password to type at their login prompt.",
+  "vmloginuser-text": "User",
+  "vmloginnopassword-text": "The app keeps no login password for this VM: a root-only Linux guest needs none, and a macOS guest uses the account you set up on its first boot.",
+  "vmloginpending-text": "This VM was created before it could be given a password. One has been set now and takes effect the next time the VM boots.",
+  "vmloginsshkey-text": "SSH key",
+  "vmloginreveal-text": "Show password",
+  "vmloginhide-text": "Hide password",
+  "vminvaliduser-text": "Use a lower-case Linux account name: letters, digits, - and _, starting with a letter or _."
 }

@@ -1,18 +1,41 @@
 import Foundation
 
 /// Builds a NoCloud cloud-init seed ISO so a fresh Linux guest (cloud image
-/// or installer supporting cloud-init) comes up with a known user, the
-/// store's SSH key for both that user and root, and passwordless sudo —
-/// which is what makes `vmctl exec`/`shell` possible without any manual
-/// guest setup.
+/// or installer supporting cloud-init) comes up with a known user, the app's
+/// SSH keys for both that user and root, a console password for that user and
+/// passwordless sudo — which is what makes `vmctl exec`/`shell` possible
+/// without any manual guest setup, and what makes the guest's own login
+/// prompt answerable by the person who created it.
 public enum CloudInit {
-    public static func userData(user: String, publicKey: String, hostname: String) -> String {
+    /// [publicKeys] are all authorized for both [user] and root — the store's
+    /// key, which `exec`/`shell` use, plus the Mac user's own so a plain
+    /// `ssh user@ip` works from their Terminal.
+    ///
+    /// [password] is what [user] types at the VM's screen or serial console.
+    /// Without one the account has no password at all and the login prompt on
+    /// the console can never be satisfied, which is what made a guest with a
+    /// custom user look locked out of itself (bostrot/ai-tasks#60). SSH stays
+    /// key-only either way (`ssh_pwauth: false`), so the password buys a
+    /// console login and nothing reachable over the network.
+    public static func userData(
+        user: String, publicKeys: [String], hostname: String, password: String? = nil
+    ) -> String {
         // /bin/sh, not bash: Alpine has no bash and a user with a missing
-        // shell cannot exec anything over SSH. The chpasswd block writes `*`
-        // hashes: `lock_passwd` leaves `!` in /etc/shadow, and Alpine's sshd
-        // refuses "locked" accounts even for public-key auth — `*` means
-        // "no password" without counting as locked.
-        """
+        // shell cannot exec anything over SSH. Without a password the chpasswd
+        // block writes `*` hashes: `lock_passwd` leaves `!` in /etc/shadow,
+        // and Alpine's sshd refuses "locked" accounts even for public-key
+        // auth — `*` means "no password" without counting as locked. root
+        // keeps that treatment even when the user gets a password: the seeded
+        // user has passwordless sudo, so an unlocked root would only add a
+        // console login nobody asked for.
+        let keyList = publicKeys.map { "  - \($0)" }.joined(separator: "\n")
+        let userKeyList = publicKeys.map { "      - \($0)" }.joined(separator: "\n")
+        // Interpolated text keeps its own indentation — the literal's baseline
+        // strip only applies to the literal's lines — so the continuation
+        // carries the six spaces the YAML needs, spelled out.
+        let userSecret = password.map { "password: \"\($0)\"\n      type: text" }
+            ?? "password: \"*\"\n      type: hash"
+        return """
         #cloud-config
         hostname: \(hostname)
         users:
@@ -20,12 +43,12 @@ public enum CloudInit {
             groups: [sudo, wheel]
             sudo: ALL=(ALL) NOPASSWD:ALL
             shell: /bin/sh
-            lock_passwd: true
+            lock_passwd: \(password == nil)
             ssh_authorized_keys:
-              - \(publicKey)
+        \(userKeyList)
         disable_root: false
         ssh_authorized_keys:
-          - \(publicKey)
+        \(keyList)
         ssh_pwauth: false
         chpasswd:
           expire: false
@@ -34,8 +57,7 @@ public enum CloudInit {
               password: "*"
               type: hash
             - name: \(user)
-              password: "*"
-              type: hash
+              \(userSecret)
         package_update: false
         bootcmd:
           - |
@@ -154,8 +176,9 @@ public enum CloudInit {
     public static func writeSeedIso(
         to isoURL: URL,
         user: String,
-        publicKey: String,
+        publicKeys: [String],
         hostname: String,
+        password: String? = nil,
         instanceId: String? = nil
     ) throws {
         let fm = FileManager.default
@@ -164,7 +187,8 @@ public enum CloudInit {
         try fm.createDirectory(at: seedDir, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: seedDir) }
 
-        try userData(user: user, publicKey: publicKey, hostname: hostname)
+        try userData(
+            user: user, publicKeys: publicKeys, hostname: hostname, password: password)
             .write(to: seedDir.appendingPathComponent("user-data"), atomically: true, encoding: .utf8)
         try metaData(hostname: hostname, instanceId: instanceId)
             .write(to: seedDir.appendingPathComponent("meta-data"), atomically: true, encoding: .utf8)

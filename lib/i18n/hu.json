@@ -895,5 +895,15 @@
   "deletedcontainer-text": "%s konténer törölve",
   "containerengine-text": "Konténermotor",
   "containerenginehint-text": "Melyik motort használja a Konténerek képernyő és az MI-eszközök. Az automatikus a Dockert használja, ha telepítve van, egyébként a Podmant.",
-  "automatic-text": "Automatikus"
+  "automatic-text": "Automatikus",
+  "vmlogindetails-text": "%s bejelentkezési adatai",
+  "vmlogindetailstooltip-text": "Bejelentkezési adatok",
+  "vmlogindetailsbody-text": "Az alkalmazás az SSH-kulcsával jelentkezik be, ezért soha nem kéri ezeket. A VM saját képernyője és soros konzolja viszont igen: ez az a fiók és jelszó, amelyet a bejelentkezési kérdésnél be kell írni.",
+  "vmloginuser-text": "Felhasználó",
+  "vmloginnopassword-text": "Az alkalmazás nem tárol bejelentkezési jelszót ehhez a VM-hez: egy csak root Linux vendégnek nincs rá szüksége, a macOS vendég pedig az első indításkor beállított fiókot használja.",
+  "vmloginpending-text": "Ez a VM még azelőtt készült, hogy jelszót lehetett volna adni neki. Most beállítottunk egyet, amely a VM következő indításakor lép életbe.",
+  "vmloginsshkey-text": "SSH-kulcs",
+  "vmloginreveal-text": "Jelszó megjelenítése",
+  "vmloginhide-text": "Jelszó elrejtése",
+  "vminvaliduser-text": "Használjon kisbetűs Linux-fióknevet: betűk, számjegyek, - és _, betűvel vagy _ jellel kezdve."
 }

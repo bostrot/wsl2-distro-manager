@@ -170,12 +170,59 @@ import Testing
 @Suite struct CloudInitTests {
     @Test func userDataContainsUserAndKey() {
         let text = CloudInit.userData(
-            user: "eric", publicKey: "ssh-ed25519 AAAA test", hostname: "dev")
+            user: "eric", publicKeys: ["ssh-ed25519 AAAA test"], hostname: "dev")
         #expect(text.hasPrefix("#cloud-config"))
         #expect(text.contains("name: eric"))
         #expect(text.contains("ssh-ed25519 AAAA test"))
         #expect(text.contains("hostname: dev"))
         #expect(text.contains("NOPASSWD:ALL"))
+    }
+
+    @Test func everyAuthorizedKeyReachesTheUserAndRoot() {
+        let store = "ssh-ed25519 AAAA store"
+        let host = "ssh-ed25519 AAAA eric@mac"
+        let text = CloudInit.userData(
+            user: "eric", publicKeys: [store, host], hostname: "dev")
+        // Once under the user's block (six spaces) and once at the top level
+        // for root (two) — the Mac user's own key included, which is what
+        // makes `ssh eric@<ip>` work from their Terminal.
+        #expect(text.contains("      - \(store)\n      - \(host)\n"))
+        #expect(text.contains("\nssh_authorized_keys:\n  - \(store)\n  - \(host)\n"))
+    }
+
+    @Test func withoutAPasswordTheAccountStaysLockedAsBefore() {
+        let text = CloudInit.userData(
+            user: "eric", publicKeys: ["k"], hostname: "dev")
+        #expect(text.contains("lock_passwd: true"))
+        #expect(text.contains("    - name: eric\n      password: \"*\"\n      type: hash"))
+    }
+
+    @Test func aPasswordUnlocksTheConsoleLoginButNotSsh() {
+        let text = CloudInit.userData(
+            user: "eric", publicKeys: ["k"], hostname: "dev", password: "Abc23xyz")
+        // The account has to be unlocked or the console login prompt can
+        // never be satisfied, however right the password is.
+        #expect(text.contains("lock_passwd: false"))
+        #expect(text.contains("    - name: eric\n      password: \"Abc23xyz\"\n      type: text"))
+        // root keeps no password at all, and SSH stays key-only.
+        #expect(text.contains("    - name: root\n      password: \"*\"\n      type: hash"))
+        #expect(text.contains("ssh_pwauth: false"))
+    }
+
+    @Test func generatedPasswordsAreTypeableAndUnrepeated() {
+        let first = generateGuestPassword()
+        #expect(first.count == 20)
+        // Nothing that needs YAML quoting, and none of the glyph pairs that
+        // are a coin flip in a console font.
+        #expect(first.allSatisfy { $0.isLetter || $0.isNumber })
+        #expect(!first.contains(where: { "01lIO".contains($0) }))
+        #expect(first != generateGuestPassword())
+    }
+
+    @Test func onlyNonRootAccountsTakeAPassword() {
+        #expect(guestTakesPassword(user: "eric"))
+        #expect(!guestTakesPassword(user: "root"))
+        #expect(!guestTakesPassword(user: ""))
     }
 
     @Test func metaDataCarriesInstanceId() {
@@ -186,7 +233,7 @@ import Testing
 
     @Test func userDataRunsTheGettyFixEveryBoot() {
         let text = CloudInit.userData(
-            user: "eric", publicKey: "ssh-ed25519 AAAA test", hostname: "dev")
+            user: "eric", publicKeys: ["ssh-ed25519 AAAA test"], hostname: "dev")
         // bootcmd, not runcmd: the flood starts long before the final stage.
         #expect(text.contains("bootcmd:\n  - |\n"))
         // Indented into the block scalar, or the YAML does not parse.
@@ -302,17 +349,82 @@ import Testing
 
 @Suite final class VMStoreTests {
     let tempRoot: URL
+    let hostSshDir: URL
     let store: VMStore
 
     init() throws {
         tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("vmctl-tests-\(UUID().uuidString)")
-        store = VMStore(root: tempRoot)
+        // Never the real ~/.ssh: these tests generate keys into it.
+        hostSshDir = tempRoot.appendingPathComponent("home-ssh")
+        store = VMStore(root: tempRoot, hostSshDir: hostSshDir)
         try store.ensureExists()
     }
 
     deinit {
         try? FileManager.default.removeItem(at: tempRoot)
+    }
+
+    @Test func hostKeyIsGeneratedWhenTheMacHasNoneAndReusedAfterwards() throws {
+        #expect(!FileManager.default.fileExists(atPath: hostSshDir.path))
+        let generated = try #require(store.hostSshPublicKey())
+        #expect(generated.hasPrefix("ssh-ed25519 "))
+        #expect(generated.hasSuffix("wslmanager"))
+        // A second ask reuses it rather than rotating the user's identity.
+        #expect(store.hostSshPublicKey() == generated)
+        let attrs = try FileManager.default
+            .attributesOfItem(atPath: hostSshDir.path)
+        #expect((attrs[.posixPermissions] as? Int) == 0o700)
+    }
+
+    @Test func anExistingHostKeyIsUsedUntouched() throws {
+        try FileManager.default.createDirectory(
+            at: hostSshDir, withIntermediateDirectories: true)
+        let mine = "ssh-rsa AAAAB3NzaC1yc2EAAAA mine@mac"
+        try mine.write(
+            to: hostSshDir.appendingPathComponent("id_rsa.pub"),
+            atomically: true, encoding: .utf8)
+
+        #expect(store.hostSshPublicKey() == mine)
+        // Nothing was generated over it.
+        #expect(!FileManager.default.fileExists(
+            atPath: hostSshDir.appendingPathComponent("id_ed25519").path))
+    }
+
+    @Test func authorizedKeysPairsTheStoreKeyWithTheHostOne() throws {
+        let keys = try store.authorizedKeys()
+        #expect(keys.count == 2)
+        // The store key first: it is the one exec/shell sign in with.
+        #expect(keys[0] == (try store.sshPublicKey()))
+        #expect(keys[1] == store.hostSshPublicKey())
+        #expect(Set(keys).count == keys.count)
+    }
+
+    @Test func aGuestWithoutAReadableHostKeyStillGetsTheStoreKey() throws {
+        // A file where ~/.ssh should be: the directory cannot be created and
+        // ssh-keygen never runs, but VM creation must not fail over it.
+        try Data().write(to: hostSshDir)
+        #expect(store.hostSshPublicKey() == nil)
+        #expect(try store.authorizedKeys() == [try store.sshPublicKey()])
+    }
+
+    @Test func passwordSurvivesAConfigRoundTripAndOldConfigsReadAsNone() throws {
+        let config = VMConfig(
+            name: "pw", os: .linux, cpus: 1, memoryBytes: 1, diskSizeBytes: 1,
+            user: "dev", password: "Abc23xyz", macAddress: "aa:aa:aa:aa:aa:ae")
+        try store.saveConfig(config)
+        #expect(try store.loadConfig("pw").password == "Abc23xyz")
+
+        // A config.json written before passwords existed has no such key.
+        let old = #"""
+        {"createdAt":"2026-01-02T03:04:05Z","cpus":1,"diskSizeBytes":1,
+         "macAddress":"aa:aa:aa:aa:aa:af","memoryBytes":1,"name":"old",
+         "os":"linux","user":"dev"}
+        """#
+        try FileManager.default.createDirectory(
+            at: store.vmDir("old"), withIntermediateDirectories: true)
+        try old.write(to: store.configPath("old"), atomically: true, encoding: .utf8)
+        #expect(try store.loadConfig("old").password == nil)
     }
 
     @Test func configRoundTrip() throws {
@@ -384,6 +496,60 @@ import Testing
         // The resolver only runs for running VMs.
         #expect(entries[0].ip == nil)
         #expect(entries[0].user == "dev")
+    }
+}
+
+@Suite struct GuestUserTests {
+    @Test func acceptsWhatUseraddWould() {
+        #expect(isValidGuestUser("user"))
+        #expect(isValidGuestUser("_svc"))
+        #expect(isValidGuestUser("eric-2"))
+    }
+
+    @Test func refusesAnythingThatWouldHaveToBeEscaped() {
+        // The name reaches an ssh target, a --user argument and the
+        // .command script Terminal opens; none of these are places to
+        // discover a quote.
+        #expect(!isValidGuestUser(#"x" ; rm -rf /"#))
+        #expect(!isValidGuestUser("has space"))
+        #expect(!isValidGuestUser("Eric"))
+        #expect(!isValidGuestUser("2cool"))
+        #expect(!isValidGuestUser(""))
+        #expect(!isValidGuestUser(String(repeating: "a", count: 33)))
+    }
+}
+
+@Suite struct GuestPasswordTests {
+    private func config(os: GuestOS, user: String, password: String? = nil) -> VMConfig {
+        VMConfig(
+            name: "vm", os: os, cpus: 1, memoryBytes: 1, diskSizeBytes: 1,
+            user: user, password: password, macAddress: "aa:aa:aa:aa:aa:aa")
+    }
+
+    /// The store is only there to satisfy the signature; nothing is read.
+    private let store = VMStore(
+        root: URL(fileURLWithPath: "/nonexistent"),
+        hostSshDir: URL(fileURLWithPath: "/nonexistent/.ssh"))
+
+    @Test func aLinuxGuestWithoutOneGetsAPasswordExactlyOnce() throws {
+        var subject = config(os: .linux, user: "eric")
+        #expect(try VmctlCLI.ensureGuestPassword(store, &subject))
+        let first = try #require(subject.password)
+        #expect(!first.isEmpty)
+        // Idempotent: asking again must not rotate a password the user has
+        // already been shown and the guest has already applied.
+        #expect(!(try VmctlCLI.ensureGuestPassword(store, &subject)))
+        #expect(subject.password == first)
+    }
+
+    @Test func rootAndMacosGuestsAreLeftAlone() throws {
+        var asRoot = config(os: .linux, user: "root")
+        #expect(!(try VmctlCLI.ensureGuestPassword(store, &asRoot)))
+        #expect(asRoot.password == nil)
+
+        var mac = config(os: .macos, user: "eric")
+        #expect(!(try VmctlCLI.ensureGuestPassword(store, &mac)))
+        #expect(mac.password == nil)
     }
 }
 

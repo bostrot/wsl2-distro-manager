@@ -896,5 +896,15 @@
   "deletedcontainer-text": "Container %s gelöscht",
   "containerengine-text": "Container-Engine",
   "containerenginehint-text": "Welche Engine die Container-Seite und die KI-Werkzeuge steuern. Automatisch nutzt Docker, sofern installiert, sonst Podman.",
-  "automatic-text": "Automatisch"
+  "automatic-text": "Automatisch",
+  "vmlogindetails-text": "Anmeldedaten für %s",
+  "vmlogindetailstooltip-text": "Anmeldedaten",
+  "vmlogindetailsbody-text": "Die App meldet sich mit ihrem SSH-Schlüssel an und fragt diese Daten daher nie ab. Der Bildschirm und die serielle Konsole der VM schon: Das sind Benutzer und Passwort für deren Anmeldeaufforderung.",
+  "vmloginuser-text": "Benutzer",
+  "vmloginnopassword-text": "Die App speichert für diese VM kein Anmeldepasswort: Ein reines Root-Linux-System braucht keines, und ein macOS-Gast nutzt das Konto, das beim ersten Start eingerichtet wurde.",
+  "vmloginpending-text": "Diese VM wurde erstellt, bevor Passwörter vergeben werden konnten. Jetzt wurde eines gesetzt; es gilt ab dem nächsten Start der VM.",
+  "vmloginsshkey-text": "SSH-Schlüssel",
+  "vmloginreveal-text": "Passwort anzeigen",
+  "vmloginhide-text": "Passwort verbergen",
+  "vminvaliduser-text": "Verwenden Sie einen kleingeschriebenen Linux-Kontonamen: Buchstaben, Ziffern, - und _, beginnend mit einem Buchstaben oder _."
 }

@@ -895,5 +895,15 @@
   "deletedcontainer-text": "%s konteyneri silindi",
   "containerengine-text": "Konteyner motoru",
   "containerenginehint-text": "Konteynerler ekranının ve yapay zekâ araçlarının kullandığı motor. Otomatik, kuruluysa Docker'ı, değilse Podman'ı kullanır.",
-  "automatic-text": "Otomatik"
+  "automatic-text": "Otomatik",
+  "vmlogindetails-text": "%s oturum açma bilgileri",
+  "vmlogindetailstooltip-text": "Oturum açma bilgileri",
+  "vmlogindetailsbody-text": "Uygulama SSH anahtarıyla oturum açar, bu yüzden bunları hiç sormaz. VM'in kendi ekranı ve seri konsolu sorar: oturum açma isteminde yazılacak hesap ve parola bunlardır.",
+  "vmloginuser-text": "Kullanıcı",
+  "vmloginnopassword-text": "Uygulama bu VM için bir oturum açma parolası tutmuyor: yalnızca root kullanan bir Linux konuğunun parolaya ihtiyacı yoktur, macOS konuğu ise ilk açılışta kurduğunuz hesabı kullanır.",
+  "vmloginpending-text": "Bu VM, kendisine parola verilebilmesinden önce oluşturuldu. Şimdi bir parola belirlendi ve VM bir sonraki açılışında geçerli olacak.",
+  "vmloginsshkey-text": "SSH anahtarı",
+  "vmloginreveal-text": "Parolayı göster",
+  "vmloginhide-text": "Parolayı gizle",
+  "vminvaliduser-text": "Küçük harfli bir Linux hesap adı kullanın: harf, rakam, - ve _, başlangıç bir harf veya _ olmalı."
 }

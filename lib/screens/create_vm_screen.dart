@@ -58,6 +58,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
   String _recipeId = '';
   bool _creating = false;
   String? _nameError;
+  String? _userError;
   String? _bootSourceError;
 
   /// Live while a catalog ISO is being fetched; the Cancel button stops it.
@@ -99,11 +100,27 @@ class _CreateVmPageState extends State<CreateVmPage> {
   int _intOf(TextEditingController controller, int fallback) =>
       int.tryParse(controller.text.trim()) ?? fallback;
 
+  /// The account cloud-init will create, checked the way `useradd` would.
+  /// vmctl refuses anything else — the name reaches an ssh target and the
+  /// `.command` script Terminal opens — so say so under the field rather
+  /// than let the create fail with the helper's English-only complaint.
+  static final RegExp _guestUserPattern = RegExp(r'^[a-z_][a-z0-9_-]{0,31}$');
+
   Future<void> _create() async {
     final api = appleVmApiBuilder();
     final name = sanitizeDistroName(_name.text.trim());
     if (name.isEmpty) {
       setState(() => _nameError = 'errorentername-text'.i18n());
+      return;
+    }
+    final user = _user.text.trim();
+    if (_guestOs == 'linux' &&
+        user.isNotEmpty &&
+        !_guestUserPattern.hasMatch(user)) {
+      setState(() {
+        _nameError = null;
+        _userError = 'vminvaliduser-text'.i18n();
+      });
       return;
     }
     try {
@@ -126,6 +143,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
     if (_guestOs == 'linux' && bootSource.isEmpty) {
       setState(() {
         _nameError = null;
+        _userError = null;
         _bootSourceError = 'vmbootsourcerequired-text'.i18n();
       });
       return;
@@ -133,6 +151,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
 
     setState(() {
       _nameError = null;
+      _userError = null;
       _bootSourceError = null;
       _creating = true;
     });
@@ -213,7 +232,7 @@ class _CreateVmPageState extends State<CreateVmPage> {
           diskSizeGb: _intOf(_diskSize, 32),
           cpus: _intOf(_cpus, 2),
           memoryGb: _intOf(_memory, 4),
-          user: _user.text.trim().isEmpty ? 'user' : _user.text.trim(),
+          user: user.isEmpty ? 'user' : user,
         );
       }
       if (_recipeId.isNotEmpty) {
@@ -487,7 +506,24 @@ class _CreateVmPageState extends State<CreateVmPage> {
                   if (isLinux)
                     InfoLabel(
                       label: 'optionalusername-text'.i18n(),
-                      child: TextBox(controller: _user, enabled: !_creating),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextBox(
+                              key: const ValueKey('test-vm-user'),
+                              controller: _user,
+                              enabled: !_creating),
+                          if (_userError != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(_userError!,
+                                  key: const ValueKey('test-vm-user-error'),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: destructiveColor(context))),
+                            ),
+                        ],
+                      ),
                     ),
                 ],
               ),

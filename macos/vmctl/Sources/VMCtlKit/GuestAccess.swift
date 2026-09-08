@@ -1,8 +1,9 @@
 import Foundation
 
-/// Puts the store's public key into a guest that cloud-init never
-/// provisioned — a VM installed by hand from an ISO, or an imported disk
-/// without cloud-init — so `exec`/`shell` work by key from then on.
+/// Puts the app's public keys — the store's own and the Mac user's — into a
+/// guest that cloud-init never provisioned (a VM installed by hand from an
+/// ISO, or an imported disk without cloud-init), so `exec`/`shell` and a
+/// plain `ssh` from the user's Terminal work by key from then on.
 ///
 /// The guest's login password is used exactly once, for that one SSH
 /// session, and travels only through channels other users on the Mac cannot
@@ -36,20 +37,35 @@ public enum GuestAccess {
         "rc=$?; rm -f \"$T\"; exit $rc'"
 
     /// POSIX-sh installer, run in the guest as the login user. It adds the
-    /// key to that user's authorized_keys, then re-runs itself as root
+    /// keys to that user's authorized_keys, then re-runs itself as root
     /// (`--as-root`) through whichever of sudo/doas/su the guest offers.
-    /// The key goes in base64 so no quoting reaches the guest shell.
+    /// The keys go in base64 so no quoting reaches the guest shell.
+    ///
+    /// The loop splits on newlines through `IFS` rather than piping into
+    /// `while read`: a pipeline's body runs in a subshell whose exit status
+    /// is all `install_key` would have to report on, and this function's
+    /// return value is what decides `VMCTL_USER_OK`.
     ///
     /// Relies on the wrapper's `PW` and `T` (its own path) being in scope,
     /// which sourcing guarantees.
-    public static func installerScript(publicKey: String) -> String {
-        let encoded = Data(publicKey.utf8).base64EncodedString()
+    public static func installerScript(publicKeys: [String]) -> String {
+        let encoded = Data(publicKeys.joined(separator: "\n").utf8).base64EncodedString()
         return """
-        KEY=$(printf %s \(encoded) | base64 -d)
+        KEYS=$(printf %s \(encoded) | base64 -d)
         install_key() {
           d="$1/.ssh"; f="$d/authorized_keys"
           mkdir -p "$d" && chmod 700 "$d" && touch "$f" && chmod 600 "$f" || return 1
-          grep -qxF "$KEY" "$f" 2>/dev/null || printf '%s\\n' "$KEY" >>"$f"
+          oldifs=$IFS
+          IFS='
+        '
+          for k in $KEYS; do
+            [ -n "$k" ] || continue
+            grep -qxF "$k" "$f" 2>/dev/null || printf '%s\\n' "$k" >>"$f" || {
+              IFS=$oldifs; return 1
+            }
+          done
+          IFS=$oldifs
+          return 0
         }
         if [ "$1" = "--as-root" ]; then
           eval H=~root
@@ -112,7 +128,7 @@ public enum GuestAccess {
     /// reported. Throws when ssh itself fails (wrong password, no sshd,
     /// password login disabled) with ssh's own words.
     public static func install(
-        publicKey: String, user: String, ip: String, password: String, askpassPath: URL
+        publicKeys: [String], user: String, ip: String, password: String, askpassPath: URL
     ) throws -> Report {
         try writeAskpassHelper(at: askpassPath)
 
@@ -134,7 +150,7 @@ public enum GuestAccess {
         ssh.standardError = stderr
         try ssh.run()
 
-        let payload = password + "\n" + installerScript(publicKey: publicKey)
+        let payload = password + "\n" + installerScript(publicKeys: publicKeys)
         stdin.fileHandleForWriting.write(Data(payload.utf8))
         try? stdin.fileHandleForWriting.close()
 

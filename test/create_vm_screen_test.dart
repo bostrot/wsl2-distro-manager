@@ -214,6 +214,43 @@ void main() {
     expect(catalog.downloaded, isEmpty);
   });
 
+  testWidgets('a guest account name useradd would refuse never reaches vmctl',
+      (tester) async {
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-user')), 'Eric Trenkel');
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('test-vm-user-error')), findsOneWidget);
+    // Refused here rather than by the helper: the name reaches an ssh
+    // target and the .command script Terminal opens.
+    expect(shell.calls.any((c) => c.contains('create')), isFalse);
+  });
+
+  testWidgets('a valid account name is passed through untouched',
+      (tester) async {
+    shell.exitCodes['create'] = 1;
+    shell.errors['create'] = 'refused by test';
+    await pump(tester);
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-name')), 'demo');
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-user')), 'eric_2');
+    await tester.enterText(
+        find.byKey(const ValueKey('test-vm-image')), '/tmp/local.img');
+    // Let the open suggestion list shrink to "no results" first.
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('test-vm-user-error')), findsNothing);
+    final create = shell.calls.lastWhere((c) => c.contains('create'));
+    expect(create[create.indexOf('--user') + 1], 'eric_2');
+  });
+
   testWidgets('switching the choice clears a stale boot-source error',
       (tester) async {
     await pump(tester);

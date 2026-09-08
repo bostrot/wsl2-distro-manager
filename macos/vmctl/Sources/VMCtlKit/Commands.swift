@@ -112,6 +112,8 @@ public enum VmctlCLI {
                 return try exec(store, rest)
             case "authorize":
                 try authorize(store, rest)
+            case "credentials":
+                try credentials(store, rest)
             case "console":
                 return try console(store, rest)
             case "show":
@@ -137,6 +139,7 @@ public enum VmctlCLI {
       list                                  List VMs as JSON
       create --name N --os linux [--iso PATH] [--image PATH]
              [--disk-size GB] [--cpus N] [--memory GB] [--user NAME]
+             [--password PW]
       create --name N --os macos [--restore-image PATH.ipsw]
              [--disk-size GB] [--cpus N] [--memory GB]
       start --name N [--gui]                Start a VM (detached daemon)
@@ -152,6 +155,8 @@ public enum VmctlCLI {
                                             guest via password login; reads
                                             the password from
                                             $VMCTL_GUEST_PASSWORD
+      credentials --name N                  Guest login account, console
+                                            password and SSH key as JSON
       shell --name N [--user U]             Interactive guest shell (SSH)
       console --name N                      Attach to the serial console
       show --name N                         Open/front the VM's screen window
@@ -187,13 +192,27 @@ public enum VmctlCLI {
         let diskSizeBytes = UInt64(diskSizeGb) * 1024 * 1024 * 1024
 
         try store.ensureExists()
+        let user = bag.options["user"] ?? "user"
+        guard os == .macos || isValidGuestUser(user) else {
+            throw VmctlError(
+                "Invalid --user \"\(user)\": use a lower-case Linux account name.")
+        }
+        // Without a password the seeded account cannot answer the login
+        // prompt on the VM's own screen, which is the whole of
+        // bostrot/ai-tasks#60. --password exists for a caller that wants to
+        // choose one; everything else gets a generated one it can read back
+        // with `credentials`.
+        let password = os == .linux && guestTakesPassword(user: user)
+            ? (bag.options["password"] ?? generateGuestPassword())
+            : nil
         var config = VMConfig(
             name: name,
             os: os,
             cpus: cpus,
             memoryBytes: UInt64(memoryGb) * 1024 * 1024 * 1024,
             diskSizeBytes: diskSizeBytes,
-            user: bag.options["user"] ?? "user",
+            user: user,
+            password: password,
             macAddress: VMFactory.randomMacAddress(),
             isoPath: bag.options["iso"]
         )
@@ -243,12 +262,12 @@ public enum VmctlCLI {
             throw VmctlError("Installer ISO not found: \(isoPath)")
         }
 
-        let publicKey = try store.sshPublicKey()
         try CloudInit.writeSeedIso(
             to: store.seedIsoPath(config.name),
             user: config.user,
-            publicKey: publicKey,
-            hostname: config.name)
+            publicKeys: store.authorizedKeys(),
+            hostname: config.name,
+            password: config.password)
     }
 
     static func createMacos(
@@ -392,15 +411,66 @@ public enum VmctlCLI {
     static func reseed(_ store: VMStore, _ rest: [String]) throws {
         let bag = ArgumentBag(rest, flagNames: [])
         let name = try bag.require("name")
-        let config = try store.loadConfig(name)
-        let publicKey = try store.sshPublicKey()
+        var config = try store.loadConfig(name)
+        if try ensureGuestPassword(store, &config) { try store.saveConfig(config) }
+        try writeSeed(store, config, fresh: true)
+        printJson(["reseeded": name])
+    }
+
+    /// Gives [config] a console password when it has none and its user can
+    /// take one, reporting whether it changed. VMs made before passwords
+    /// existed pick one up the first time anything asks.
+    @discardableResult
+    static func ensureGuestPassword(_ store: VMStore, _ config: inout VMConfig) throws -> Bool {
+        guard config.os == .linux, config.password == nil,
+              guestTakesPassword(user: config.user) else { return false }
+        config.password = generateGuestPassword()
+        return true
+    }
+
+    /// (Re)writes a VM's cloud-init seed from its current config. [fresh]
+    /// stamps a new instance id, which is what makes cloud-init apply the
+    /// seed again on the next boot instead of skipping it as already done.
+    static func writeSeed(_ store: VMStore, _ config: VMConfig, fresh: Bool) throws {
         try CloudInit.writeSeedIso(
             to: store.seedIsoPath(config.name),
             user: config.user,
-            publicKey: publicKey,
+            publicKeys: store.authorizedKeys(),
             hostname: config.name,
-            instanceId: "iid-\(config.name)-\(Int(Date().timeIntervalSince1970))")
-        printJson(["reseeded": name])
+            password: config.password,
+            instanceId: fresh
+                ? "iid-\(config.name)-\(Int(Date().timeIntervalSince1970))"
+                : nil)
+    }
+
+    /// Everything needed to sign in to a guest by hand: the account, its
+    /// console password and the key a plain `ssh` would use.
+    ///
+    /// A VM that has no password yet (created before they existed) is given
+    /// one here and reseeded, so the answer is never "there isn't one" —
+    /// `appliedOnNextBoot` says the guest has not read it yet.
+    static func credentials(_ store: VMStore, _ rest: [String]) throws {
+        let bag = ArgumentBag(rest, flagNames: [])
+        let name = try bag.require("name")
+        var config = try store.loadConfig(name)
+        var pending = false
+        if try ensureGuestPassword(store, &config) {
+            try store.saveConfig(config)
+            try writeSeed(store, config, fresh: true)
+            pending = true
+        }
+        var out: [String: Any] = [
+            "name": name,
+            "user": config.user,
+            "sshKey": store.sshKeyPath().path,
+            "appliedOnNextBoot": pending,
+        ]
+        if let password = config.password { out["password"] = password }
+        if store.isRunning(name),
+           let ip = DHCPLeases.ipFor(mac: config.macAddress, hostname: config.name) {
+            out["ip"] = ip
+        }
+        printJson(out)
     }
 
     static func ip(_ store: VMStore, _ rest: [String]) throws {
@@ -438,13 +508,19 @@ public enum VmctlCLI {
             throw VmctlError("Disk image not found: \(input)")
         }
         try store.ensureExists()
+        let user = bag.options["user"] ?? "user"
+        guard isValidGuestUser(user) else {
+            throw VmctlError(
+                "Invalid --user \"\(user)\": use a lower-case Linux account name.")
+        }
         let config = VMConfig(
             name: name,
             os: .linux,
             cpus: bag.int("cpus", default: 2),
             memoryBytes: UInt64(bag.int("memory", default: 4)) * 1024 * 1024 * 1024,
             diskSizeBytes: 0,
-            user: bag.options["user"] ?? "user",
+            user: user,
+            password: guestTakesPassword(user: user) ? generateGuestPassword() : nil,
             macAddress: VMFactory.randomMacAddress())
         do {
             try FileManager.default.createDirectory(
@@ -456,8 +532,9 @@ public enum VmctlCLI {
             try CloudInit.writeSeedIso(
                 to: store.seedIsoPath(name),
                 user: config.user,
-                publicKey: store.sshPublicKey(),
-                hostname: name)
+                publicKeys: store.authorizedKeys(),
+                hostname: name,
+                password: config.password)
             try store.saveConfig(config)
         } catch {
             try? FileManager.default.removeItem(at: store.vmDir(name))
@@ -513,7 +590,7 @@ public enum VmctlCLI {
             throw VmctlError("VM \(name) has no IP address yet (no DHCP lease).")
         }
         let report = try GuestAccess.install(
-            publicKey: store.sshPublicKey(),
+            publicKeys: store.authorizedKeys(),
             user: user,
             ip: ip,
             password: password,

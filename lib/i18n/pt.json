@@ -897,5 +897,15 @@
   "deletedcontainer-text": "Contêiner %s excluído",
   "containerengine-text": "Motor de contêineres",
   "containerenginehint-text": "Qual motor a tela Contêineres e as ferramentas de IA usam. Automático usa o Docker quando instalado e, caso contrário, o Podman.",
-  "automatic-text": "Automático"
+  "automatic-text": "Automático",
+  "vmlogindetails-text": "Dados de acesso de %s",
+  "vmlogindetailstooltip-text": "Dados de acesso",
+  "vmlogindetailsbody-text": "A aplicação inicia sessão com a sua chave SSH, por isso nunca pede estes dados. O ecrã da VM e a consola série pedem: esta é a conta e a palavra-passe a escrever na linha de início de sessão.",
+  "vmloginuser-text": "Utilizador",
+  "vmloginnopassword-text": "A aplicação não guarda qualquer palavra-passe de acesso para esta VM: um convidado Linux apenas com root não precisa de nenhuma, e um convidado macOS usa a conta que configurou no primeiro arranque.",
+  "vmloginpending-text": "Esta VM foi criada antes de ser possível atribuir-lhe uma palavra-passe. Foi definida uma agora, que passa a valer no próximo arranque da VM.",
+  "vmloginsshkey-text": "Chave SSH",
+  "vmloginreveal-text": "Mostrar palavra-passe",
+  "vmloginhide-text": "Ocultar palavra-passe",
+  "vminvaliduser-text": "Use um nome de conta Linux em minúsculas: letras, dígitos, - e _, começando por uma letra ou _."
 }

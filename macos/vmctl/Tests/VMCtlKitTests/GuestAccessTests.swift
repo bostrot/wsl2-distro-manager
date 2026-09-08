@@ -4,9 +4,10 @@ import Testing
 
 @Suite struct GuestAccessTests {
     let key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyBytes wslmanager-vmctl"
+    let hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHostKeyBytes eric@mac"
 
     @Test func installerCarriesTheKeyBase64OnlyAndInstallsForBothAccounts() {
-        let script = GuestAccess.installerScript(publicKey: key)
+        let script = GuestAccess.installerScript(publicKeys: [key])
         let encoded = Data(key.utf8).base64EncodedString()
         // The key only ever reaches the guest shell base64-encoded, so no
         // character in it needs quoting.
@@ -23,7 +24,23 @@ import Testing
         #expect(script.contains("printf '%s\\n' \"$PW\" |"))
         #expect(!script.contains("sudo -S -p '' \"$PW\""))
         // Idempotent: a second run must not duplicate the line.
-        #expect(script.contains("grep -qxF \"$KEY\""))
+        #expect(script.contains("grep -qxF \"$k\""))
+    }
+
+    @Test func installerCarriesEveryKeyAndSplitsOnNewlinesOnly() {
+        let script = GuestAccess.installerScript(publicKeys: [key, hostKey])
+        // Both keys travel as one base64 blob, newline-separated.
+        let encoded = Data([key, hostKey].joined(separator: "\n").utf8)
+            .base64EncodedString()
+        #expect(script.contains("printf %s \(encoded) | base64 -d"))
+        #expect(!script.contains(hostKey))
+        // A key contains spaces, so the loop must not word-split on them:
+        // IFS is a bare newline for the duration and restored afterwards.
+        #expect(script.contains("oldifs=$IFS\n  IFS='\n'\n"))
+        #expect(script.contains("for k in $KEYS; do"))
+        // No pipeline around the loop — its body must be able to fail the
+        // enclosing function, which a subshell could not.
+        #expect(!script.contains("| while"))
     }
 
     @Test func remoteCommandIsOneShWrapperThatSourcesStdin() {
@@ -86,7 +103,7 @@ import Testing
         // Swift string before it reaches a guest.
         let dir = FileManager.default.temporaryDirectory
         let path = dir.appendingPathComponent("vmctl-installer-\(UUID().uuidString).sh")
-        try GuestAccess.installerScript(publicKey: key).write(to: path, atomically: true, encoding: .utf8)
+        try GuestAccess.installerScript(publicKeys: [key, hostKey]).write(to: path, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: path) }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")

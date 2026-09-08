@@ -48,6 +48,11 @@ class VmFeatures {
   /// without any display window.
   final bool serialConsole;
 
+  /// The instance has a login account of its own — one the user may have to
+  /// type at a console — so the app can show them what it is. WSL distros
+  /// have no such thing: `wsl.exe` drops straight into a shell.
+  final bool guestCredentials;
+
   const VmFeatures({
     this.wslConfig = false,
     this.quickActions = false,
@@ -59,6 +64,7 @@ class VmFeatures {
     this.templatesDeprecated = false,
     this.createVm = false,
     this.serialConsole = false,
+    this.guestCredentials = false,
   });
 }
 

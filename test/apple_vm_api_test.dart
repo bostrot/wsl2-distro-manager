@@ -68,6 +68,8 @@ void main() {
       expect(features.aiWorkspace, isTrue);
       expect(features.serialConsole, isTrue);
       expect(features.quickActions, isTrue);
+      // A VM has a login account of its own; a WSL distro does not.
+      expect(features.guestCredentials, isTrue);
     });
   });
 
@@ -641,10 +643,127 @@ void main() {
       final scriptPath = openCall.last;
       expect(scriptPath, endsWith('console.command'));
       final script = File(scriptPath).readAsStringSync();
-      expect(script, contains('/fake/vmctl'));
-      expect(script, contains('console'));
-      expect(script, contains('--name "ubuntu"'));
+      expect(script, contains("'/fake/vmctl'"));
+      // Single-quoted throughout: the VM name and the guest account are
+      // stored strings, and this file is a shell script.
+      expect(script, contains("'console' '--name' 'ubuntu'"));
       expect(script, contains(tempStore.path));
+    });
+  });
+
+  group('openTerminal', () {
+    test('a running guest gets an SSH shell as its own account', () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"running","os":"linux","user":"eric",'
+          '"ip":"192.168.64.4"}]}';
+      await api.openTerminal('ubuntu');
+
+      // The probe ran as the VM's user, not root.
+      final probe = shell.calls.firstWhere((c) => c.contains('exec'));
+      expect(probe, containsAll(['--user', 'eric', 'true']));
+
+      final openCall = shell.calls.lastWhere((c) => c.first == 'start:open');
+      final script = File(openCall.last).readAsStringSync();
+      expect(openCall.last, endsWith('shell.command'));
+      expect(script,
+          contains("'shell' '--name' 'ubuntu' '--user' 'eric'"));
+      expect(script, isNot(contains('console')));
+    });
+
+    test('a guest that refuses the key falls back to the serial console',
+        () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"running","os":"linux","user":"eric",'
+          '"ip":"192.168.64.4"}]}';
+      shell.exitCodes['exec'] = 255;
+      shell.errors['exec'] = 'eric@192.168.64.2: Permission denied (publickey).';
+
+      await api.openTerminal('ubuntu');
+
+      final openCall = shell.calls.lastWhere((c) => c.first == 'start:open');
+      expect(openCall.last, endsWith('console.command'));
+      expect(File(openCall.last).readAsStringSync(), contains('console'));
+    });
+
+    test('a macOS guest has no SSH seed, so it goes straight to the console',
+        () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"sequoia","state":"running","os":"macos",'
+          '"user":"user","ip":"192.168.64.5"}]}';
+      await api.openTerminal('sequoia');
+      expect(shell.calls.where((c) => c.contains('exec')), isEmpty);
+      expect(shell.calls.lastWhere((c) => c.first == 'start:open').last,
+          endsWith('console.command'));
+    });
+
+    test('a guest with no lease yet is not probed at all', () async {
+      // Without an address the probe can only spend vmctl's 20s lease wait
+      // and ssh's connect timeout to learn what the empty `ip` already said.
+      shell.responses['list'] =
+          '{"vms":[{"name":"ubuntu","state":"running","os":"linux","user":"eric"}]}';
+      await api.openTerminal('ubuntu');
+      expect(shell.calls.where((c) => c.contains('exec')), isEmpty);
+      expect(shell.calls.lastWhere((c) => c.first == 'start:open').last,
+          endsWith('console.command'));
+    });
+  });
+
+  group('guestCredentials', () {
+    test('parses the account, password, key and address', () async {
+      shell.responses['credentials'] = json.encode({
+        'name': 'ubuntu',
+        'user': 'eric',
+        'password': 'Abc23xyz',
+        'sshKey': '/store/id_ed25519',
+        'ip': '192.168.64.4',
+        'appliedOnNextBoot': false,
+      });
+      final credentials = await api.guestCredentials('ubuntu');
+      expect(lastCall(), containsAll(['credentials', '--name', 'ubuntu']));
+      expect(credentials.user, 'eric');
+      expect(credentials.password, 'Abc23xyz');
+      expect(credentials.sshKeyPath, '/store/id_ed25519');
+      expect(credentials.ip, '192.168.64.4');
+      expect(credentials.appliedOnNextBoot, isFalse);
+    });
+
+    test('a VM given its password just now says so', () async {
+      shell.responses['credentials'] = json.encode({
+        'user': 'eric',
+        'password': 'Abc23xyz',
+        'sshKey': '/store/id_ed25519',
+        'appliedOnNextBoot': true,
+      });
+      final credentials = await api.guestCredentials('old');
+      expect(credentials.appliedOnNextBoot, isTrue);
+      // Stopped guests have no address; the dialog must not invent one.
+      expect(credentials.ip, isNull);
+    });
+
+    test('a root-only guest reports no password rather than an empty one',
+        () async {
+      shell.responses['credentials'] =
+          '{"user":"root","sshKey":"/store/id_ed25519","appliedOnNextBoot":false}';
+      final credentials = await api.guestCredentials('root-vm');
+      expect(credentials.user, 'root');
+      expect(credentials.password, isNull);
+    });
+
+    test('unreadable helper output is an error, not a blank dialog', () async {
+      shell.responses['credentials'] = 'not json';
+      expect(
+          () => api.guestCredentials('ubuntu'),
+          throwsA(isA<AppleVmException>().having((e) => e.message, 'message',
+              contains('unreadable'))));
+    });
+
+    test('a missing VM surfaces the helper error', () async {
+      shell.exitCodes['credentials'] = 1;
+      shell.errors['credentials'] = 'No VM named "ghost".';
+      expect(
+          () => api.guestCredentials('ghost'),
+          throwsA(isA<AppleVmException>()
+              .having((e) => e.message, 'message', contains('No VM named'))));
     });
   });
 

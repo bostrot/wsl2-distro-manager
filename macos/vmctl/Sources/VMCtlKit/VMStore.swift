@@ -10,13 +10,20 @@ public struct VmctlError: Error, CustomStringConvertible {
 /// holding config, disk image, EFI variable store, runtime state and (for
 /// macOS guests) platform hardware blobs. A store-wide SSH keypair is seeded
 /// into every Linux guest via cloud-init so `exec`/`shell` (and templates
-/// made from one VM and imported as another) keep working.
+/// made from one VM and imported as another) keep working; the Mac user's own
+/// `~/.ssh` key rides along so a plain `ssh` from their Terminal works too.
 public struct VMStore {
     public let root: URL
+    /// The Mac user's own `~/.ssh`. A parameter rather than a lookup so tests
+    /// never read — let alone write — the real one.
+    public let hostSshDir: URL
     private let fm = FileManager.default
 
-    public init(root: URL) {
+    public init(root: URL, hostSshDir: URL? = nil) {
         self.root = root
+        self.hostSshDir = hostSshDir
+            ?? FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".ssh")
     }
 
     public func ensureExists() throws {
@@ -65,6 +72,73 @@ public struct VMStore {
         try ensureSshKey()
         let key = try String(contentsOf: sshPublicKeyPath(), encoding: .utf8)
         return key.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: the Mac user's own SSH key
+
+    /// The public keys `~/.ssh` is searched for, best first.
+    static let hostKeyNames = ["id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"]
+
+    /// The Mac user's own public key, generating `~/.ssh/id_ed25519` when they
+    /// have none at all.
+    ///
+    /// Seeding this alongside the store key is what makes a plain
+    /// `ssh user@<guest ip>` from the user's own Terminal work — without it the
+    /// only way into a guest was through vmctl, which is exactly the "no
+    /// obvious way to log in" the store key was never meant to solve
+    /// (bostrot/ai-tasks#60).
+    ///
+    /// Never throws: a Mac whose `~/.ssh` cannot be read or written still gets
+    /// a working VM through the store key, so this returns nil and says why on
+    /// stderr rather than failing the create.
+    public func hostSshPublicKey() -> String? {
+        if let existing = existingHostPublicKey() { return existing }
+        do {
+            try fm.createDirectory(
+                at: hostSshDir, withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700])
+            let key = hostSshDir.appendingPathComponent("id_ed25519")
+            // Refuse to touch a half-present pair: a private key with no .pub
+            // is the user's, and ssh-keygen would fail on it anyway.
+            guard !fm.fileExists(atPath: key.path) else { return nil }
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh-keygen")
+            process.arguments = [
+                "-q", "-t", "ed25519", "-N", "", "-C", "wslmanager", "-f", key.path,
+            ]
+            process.standardOutput = Pipe()
+            process.standardError = Pipe()
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+        } catch {
+            FileHandle.standardError.write(
+                Data("Could not prepare \(hostSshDir.path): \(error)\n".utf8))
+            return nil
+        }
+        return existingHostPublicKey()
+    }
+
+    private func existingHostPublicKey() -> String? {
+        for name in VMStore.hostKeyNames {
+            let path = hostSshDir.appendingPathComponent(name)
+            guard let text = try? String(contentsOf: path, encoding: .utf8) else {
+                continue
+            }
+            let key = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !key.isEmpty { return key }
+        }
+        return nil
+    }
+
+    /// Every key a guest should accept: the store's own (what `exec`/`shell`
+    /// sign in with) and the Mac user's, in that order and without duplicates.
+    public func authorizedKeys() throws -> [String] {
+        var keys = [try sshPublicKey()]
+        if let host = hostSshPublicKey(), !keys.contains(host) {
+            keys.append(host)
+        }
+        return keys
     }
 
     // MARK: config

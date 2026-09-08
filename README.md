@@ -81,6 +81,8 @@
 - [x] Create macOS guest VMs from a restore image (Apple Silicon)
 - [x] Start, stop, clone, export/import and template VMs like distros
 - [x] Run commands inside VMs over auto-provisioned SSH (cloud-init), from the GUI, the AI chat or MCP clients
+- [x] Your own `~/.ssh` key is authorized in every Linux VM (and created if you have none), so plain `ssh user@vm-ip` works too
+- [x] Every VM gets a login password you can read back from its row, for signing in at the VM's own screen
 - [x] Build with `scripts/build_macos.sh` — bundles the signed `vmctl` helper
 
 **Pro** *(one-time purchase: Microsoft Store on Windows, licence key from [wslmanager.com/buy](https://wslmanager.com/buy/) on macOS and for non-Store installs — never a subscription)*

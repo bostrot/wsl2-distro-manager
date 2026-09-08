@@ -895,5 +895,15 @@
   "deletedcontainer-text": "컨테이너 %s을(를) 삭제했습니다",
   "containerengine-text": "컨테이너 엔진",
   "containerenginehint-text": "컨테이너 화면과 AI 도구가 사용하는 엔진입니다. 자동은 Docker가 설치되어 있으면 Docker를, 없으면 Podman을 사용합니다.",
-  "automatic-text": "자동"
+  "automatic-text": "자동",
+  "vmlogindetails-text": "%s 로그인 정보",
+  "vmlogindetailstooltip-text": "로그인 정보",
+  "vmlogindetailsbody-text": "앱은 SSH 키로 로그인하므로 이 정보를 묻지 않습니다. VM 화면과 직렬 콘솔에서는 필요합니다. 로그인 프롬프트에 입력할 계정과 비밀번호입니다.",
+  "vmloginuser-text": "사용자",
+  "vmloginnopassword-text": "이 VM의 로그인 비밀번호는 앱이 보관하지 않습니다. root만 쓰는 Linux 게스트에는 필요 없고, macOS 게스트는 첫 부팅 때 설정한 계정을 사용합니다.",
+  "vmloginpending-text": "이 VM은 비밀번호를 지정할 수 있게 되기 전에 만들어졌습니다. 지금 하나가 설정되었으며 VM을 다음에 부팅할 때 적용됩니다.",
+  "vmloginsshkey-text": "SSH 키",
+  "vmloginreveal-text": "비밀번호 표시",
+  "vmloginhide-text": "비밀번호 숨기기",
+  "vminvaliduser-text": "소문자 Linux 계정 이름을 사용하세요. 영문자, 숫자, - 및 _ 를 쓸 수 있고 첫 글자는 영문자나 _ 여야 합니다."
 }

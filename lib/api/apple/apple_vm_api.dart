@@ -89,6 +89,45 @@ class GuestAuthorization {
   const GuestAuthorization({required this.user, required this.rootInstalled});
 }
 
+/// How to sign in to a guest by hand — at its own screen or over the serial
+/// console, where no SSH key can help.
+class GuestCredentials {
+  /// The account cloud-init seeded, i.e. the VM's configured user.
+  final String user;
+
+  /// Its console password, or null for a guest that takes none (root-only
+  /// VMs, macOS guests).
+  final String? password;
+
+  /// The private key `vmctl exec`/`shell` sign in with; also what a plain
+  /// `ssh -i <this> user@ip` from the user's own Terminal would use.
+  final String sshKeyPath;
+
+  /// The guest's IP while it is running, else null.
+  final String? ip;
+
+  /// True when the password was minted just now — the guest reads it on its
+  /// next boot, not this one.
+  final bool appliedOnNextBoot;
+
+  const GuestCredentials({
+    required this.user,
+    required this.sshKeyPath,
+    this.password,
+    this.ip,
+    this.appliedOnNextBoot = false,
+  });
+
+  factory GuestCredentials.fromJson(Map<String, dynamic> json) =>
+      GuestCredentials(
+        user: json['user'] as String? ?? 'root',
+        password: json['password'] as String?,
+        sshKeyPath: json['sshKey'] as String? ?? '',
+        ip: json['ip'] as String?,
+        appliedOnNextBoot: json['appliedOnNextBoot'] == true,
+      );
+}
+
 /// Raised when a `vmctl` invocation fails, carrying whatever the helper said.
 class AppleVmException implements Exception {
   final String message;
@@ -143,6 +182,7 @@ class AppleVmApi extends VmBackend {
         // Snippets are just saved scripts run inside an instance — works
         // over SSH exactly as it does over wsl.exe.
         quickActions: true,
+        guestCredentials: true,
       );
 
   /// The VM store: one directory per VM under the app's data path.
@@ -544,6 +584,24 @@ class AppleVmApi extends VmBackend {
     await _runChecked(['reseed', '--name', name]);
   }
 
+  /// What a human would type to sign in to [name] at its own screen.
+  ///
+  /// A VM created before guests had passwords gets one minted here (and its
+  /// seed rewritten), so this never answers "there is no password" — see
+  /// [GuestCredentials.appliedOnNextBoot].
+  Future<GuestCredentials> guestCredentials(String name) async {
+    final out = await _runChecked(['credentials', '--name', name]);
+    try {
+      final decoded = json.decode(out.trim().isEmpty ? '{}' : out);
+      if (decoded is! Map) {
+        throw AppleVmException('vmctl returned unreadable output: $out');
+      }
+      return GuestCredentials.fromJson(Map<String, dynamic>.from(decoded));
+    } on FormatException {
+      throw AppleVmException('vmctl returned unreadable output: $out');
+    }
+  }
+
   @override
   Future<void> runCommands(String instance, List<String> commands,
       {String? user}) async {
@@ -808,12 +866,59 @@ class AppleVmApi extends VmBackend {
     if (vm == null || !vm.running) {
       await startHeadless(distribution);
     }
+    await _openInTerminal(distribution, 'console.command',
+        ['console', '--name', distribution]);
+  }
 
-    final script = '#!/bin/bash\n'
-        'exec "${helperPath()}" --store "$storeDir" console '
-        '--name "$distribution"\n';
-    final scriptPath =
-        p.join(storeDir, distribution, 'run', 'console.command');
+  /// Open Terminal.app on an SSH session inside a running guest as [user]
+  /// (its configured account by default).
+  Future<void> openShell(String distribution, {String user = ''}) async {
+    final account = user.trim();
+    await _openInTerminal(distribution, 'shell.command', [
+      'shell',
+      '--name',
+      distribution,
+      if (account.isNotEmpty) ...['--user', account],
+    ]);
+  }
+
+  /// The terminal a user gets for a running VM: an SSH session signed in as
+  /// the VM's own account, falling back to the serial console.
+  ///
+  /// The console is a bare `login:` prompt, which is no use at all on a guest
+  /// whose password the user has never been shown (bostrot/ai-tasks#60);
+  /// [openShell] lands on a shell without asking for anything, because the
+  /// key cloud-init seeded is already there. The fallback still matters — a
+  /// guest with no sshd, no DHCP lease yet, or an ISO install that never saw
+  /// the seed has nothing to SSH to, and a console is better than an error.
+  ///
+  /// A guest with no IP is sent straight to the console rather than probed:
+  /// the probe would spend `vmctl`'s whole 20s lease wait, then ssh's connect
+  /// timeout, to learn what the empty address already said.
+  Future<void> openTerminal(String distribution) async {
+    final vm = await vmInfo(distribution);
+    final ip = vm?.ip ?? '';
+    if (vm != null && vm.running && vm.os == 'linux' && ip.isNotEmpty) {
+      final user = vm.user.trim().isEmpty ? 'root' : vm.user.trim();
+      if ((await probeGuestAccess(distribution, user: user)).ok) {
+        await openShell(distribution, user: user);
+        return;
+      }
+    }
+    await openConsole(distribution);
+  }
+
+  /// Writes a `.command` file that runs one vmctl subcommand and opens it in
+  /// Terminal. Every argument is single-quoted: a VM name and a guest account
+  /// are both stored strings the app did not necessarily choose, and this
+  /// file is a shell script.
+  Future<void> _openInTerminal(
+      String distribution, String fileName, List<String> args) async {
+    final command = [helperPath(), '--store', storeDir, ...args]
+        .map(_shSingleQuote)
+        .join(' ');
+    final script = '#!/bin/bash\nexec $command\n';
+    final scriptPath = p.join(storeDir, distribution, 'run', fileName);
     File(scriptPath)
       ..createSync(recursive: true)
       ..writeAsStringSync(script);

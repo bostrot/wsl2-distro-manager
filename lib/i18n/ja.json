@@ -895,5 +895,15 @@
   "deletedcontainer-text": "コンテナ %s を削除しました",
   "containerengine-text": "コンテナエンジン",
   "containerenginehint-text": "コンテナ画面と AI ツールが使用するエンジンです。自動では Docker がインストールされていればそれを、なければ Podman を使います。",
-  "automatic-text": "自動"
+  "automatic-text": "自動",
+  "vmlogindetails-text": "%s のログイン情報",
+  "vmlogindetailstooltip-text": "ログイン情報",
+  "vmlogindetailsbody-text": "アプリは SSH 鍵でサインインするため、これらを尋ねることはありません。VM の画面とシリアルコンソールでは必要です。ログインプロンプトに入力するアカウントとパスワードです。",
+  "vmloginuser-text": "ユーザー",
+  "vmloginnopassword-text": "このVMのログインパスワードはアプリでは保持していません。root のみの Linux ゲストには不要で、macOS ゲストは初回起動時に設定したアカウントを使います。",
+  "vmloginpending-text": "この VM はパスワードを設定できるようになる前に作成されました。現在設定されており、次回の起動時から有効になります。",
+  "vmloginsshkey-text": "SSH 鍵",
+  "vmloginreveal-text": "パスワードを表示",
+  "vmloginhide-text": "パスワードを非表示",
+  "vminvaliduser-text": "小文字の Linux アカウント名を使ってください。英字・数字・- ・_ が使え、先頭は英字か _ です。"
 }

@@ -896,5 +896,15 @@
   "deletedcontainer-text": "已刪除容器 %s",
   "containerengine-text": "容器引擎",
   "containerenginehint-text": "容器頁面與 AI 工具使用的引擎。自動會在已安裝 Docker 時使用 Docker，否則使用 Podman。",
-  "automatic-text": "自動"
+  "automatic-text": "自動",
+  "vmlogindetails-text": "%s 的登入資訊",
+  "vmlogindetailstooltip-text": "登入資訊",
+  "vmlogindetailsbody-text": "應用程式使用自己的 SSH 金鑰登入，因此從不索取這些資訊。虛擬機自帶的螢幕與序列主控台則需要：這就是在其登入提示處輸入的帳號與密碼。",
+  "vmloginuser-text": "使用者",
+  "vmloginnopassword-text": "應用程式不會為此虛擬機保存登入密碼：僅使用 root 的 Linux 客體不需要密碼，而 macOS 客體使用你在首次啟動時設定的帳號。",
+  "vmloginpending-text": "此虛擬機建立於尚無法設定密碼之前。現在已設定一組密碼，將於虛擬機下次啟動時生效。",
+  "vmloginsshkey-text": "SSH 金鑰",
+  "vmloginreveal-text": "顯示密碼",
+  "vmloginhide-text": "隱藏密碼",
+  "vminvaliduser-text": "請使用小寫的 Linux 帳號名稱：可含字母、數字、- 與 _，並以字母或 _ 開頭。"
 }

@@ -12,6 +12,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 import 'package:wsl2distromanager/dialogs/guest_access_dialog.dart';
+import 'package:wsl2distromanager/dialogs/vm_credentials_dialog.dart';
 
 /// Builder for the WSL Distro List Items. Each item is an expander with [item]
 /// as the title and [trailing] as the trailing text. [running] is a list of
@@ -166,7 +167,7 @@ class _ListItemState extends State<ListItem> {
                             // is only for bringing a stopped VM up.
                             if (api.features.serialConsole &&
                                 isRunning(widget.item, widget.running)) {
-                              openConsole();
+                              openTerminal();
                             } else {
                               startInstance();
                             }
@@ -307,6 +308,21 @@ class _ListItemState extends State<ListItem> {
 
   void _setBusy(String? action) {
     if (mounted) setState(() => busyAction = action);
+  }
+
+  /// Terminal.app on the running VM: signed in as its own account over SSH
+  /// where that works, its serial console otherwise.
+  Future<void> openTerminal() async {
+    _setBusy('console');
+    try {
+      await (api as AppleVmApi).openTerminal(widget.item);
+    } catch (error) {
+      Notify.message(
+          '${'startfailed-text'.i18n([distroLabel(widget.item)])} $error',
+          severity: InfoBarSeverity.error);
+    } finally {
+      _setBusy(null);
+    }
   }
 
   /// Attach Terminal.app to the VM's serial console, booting it headless
@@ -503,6 +519,29 @@ class Bar extends StatelessWidget {
                   ),
                 ),
               ),
+              // Only the app's own paths (snippets, the terminal button,
+              // templating) get in by key; the VM's own screen asks for an
+              // account and a password, and nothing else in the UI says what
+              // they are (bostrot/ai-tasks#60).
+              if (features.guestCredentials)
+                MergeSemantics(
+                  child: Tooltip(
+                    message: 'vmlogindetailstooltip-text'.i18n(),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Builder(builder: (credentialsContext) {
+                        return IconButton(
+                          key: ValueKey('test-listitem-credentials-${widget.item}'),
+                          icon: const Icon(FluentIcons.permissions, size: 16.0),
+                          onPressed: () => showVmCredentialsDialog(
+                              credentialsContext,
+                              api as AppleVmApi,
+                              widget.item),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
               MergeSemantics(
                 child: Tooltip(
                   message: 'openwithexplorer-text'.i18n(),
