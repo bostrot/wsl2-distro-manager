@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
@@ -106,6 +107,10 @@ void main() {
   });
 
   test('the tool surface covers the whole lifecycle', () {
+    // container_* is gated with the Containers screen; this assertion is
+    // about the whole surface, so open the gate for it.
+    LicenseManager.unreleasedFeaturesOverride = true;
+    addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
     final names =
         buildWslMcpTools(wslApi, terminalManager).map((t) => t.name).toSet();
     // v2 exposes create → configure → operate → destroy. The one-way

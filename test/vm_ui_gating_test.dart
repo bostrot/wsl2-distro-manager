@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
@@ -20,10 +21,14 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+    // Most of these assertions are about the *backend* gate; the unreleased
+    // gate is exercised on its own below, so keep it out of the way here.
+    LicenseManager.unreleasedFeaturesOverride = true;
   });
 
   tearDown(() {
     vmBackendBuilder = defaultVmBackendBuilder;
+    LicenseManager.unreleasedFeaturesOverride = null;
   });
 
   Set<String> paneKeys() => originalItems
@@ -81,6 +86,39 @@ void main() {
       expect(vmBackend().features.rootfsExport, isTrue);
       expect(vmBackend().features.rootfsImportNeedsBase, isTrue);
       expect(paneKeys(), contains("[<'/cloud'>]"));
+    });
+
+    test('Containers, Kubernetes and Cloud are hidden outside a debug run',
+        () {
+      // Each drives something this app does not own and none is finished
+      // enough to release, so all three sit behind the gate Pro rides on in
+      // a debug build — including on the backend that satisfies every other
+      // condition for them.
+      vmBackendBuilder = () => WSLApi(shell: MockShell());
+      LicenseManager.unreleasedFeaturesOverride = false;
+      final hidden = paneKeys();
+      expect(hidden, isNot(contains("[<'/containers'>]")));
+      expect(hidden, isNot(contains("[<'/kubernetes'>]")));
+      expect(hidden, isNot(contains("[<'/cloud'>]")));
+      // The shipping destinations are untouched by it.
+      expect(hidden, contains("[<'/templates'>]"));
+      expect(hidden, contains("[<'/addinstance'>]"));
+
+      LicenseManager.unreleasedFeaturesOverride = true;
+      final shown = paneKeys();
+      expect(shown, contains("[<'/containers'>]"));
+      expect(shown, contains("[<'/kubernetes'>]"));
+      expect(shown, contains("[<'/cloud'>]"));
+    });
+
+    test('the gate defaults to the same answer the Pro debug gate gives', () {
+      // Not hard-coded to false: under `flutter test` the Pro debug gate is
+      // deliberately off, and these three follow it rather than carrying a
+      // second rule of their own.
+      LicenseManager.unreleasedFeaturesOverride = null;
+      vmBackendBuilder = () => WSLApi(shell: MockShell());
+      expect(LicenseManager.unreleasedFeaturesVisible, LicenseManager().isPro);
+      expect(paneKeys(), isNot(contains("[<'/containers'>]")));
     });
 
     test('a backend without WSL features hides the WSL-only entries', () {

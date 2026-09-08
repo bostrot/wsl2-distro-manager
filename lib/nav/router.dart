@@ -12,6 +12,7 @@ import 'package:wsl2distromanager/screens/community_screen.dart';
 import 'package:wsl2distromanager/screens/snippet_editor_screen.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/screens/cloud_screen.dart';
 import 'package:wsl2distromanager/screens/containers_screen.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
@@ -108,6 +109,12 @@ final router = GoRouter(
         GoRoute(
           path: '/containers',
           name: 'containers',
+          // Registered but unreachable outside a debug run: a `redirect`
+          // rather than dropping the route, because it is re-evaluated on
+          // every navigation, while this router is a top-level `final` whose
+          // route list would be built exactly once.
+          redirect: (context, state) =>
+              LicenseManager.unreleasedFeaturesVisible ? null : '/',
           builder: (context, state) => const ContainersPage(),
         ),
 
@@ -115,6 +122,12 @@ final router = GoRouter(
         GoRoute(
           path: '/kubernetes',
           name: 'kubernetes',
+          // Registered but unreachable outside a debug run: a `redirect`
+          // rather than dropping the route, because it is re-evaluated on
+          // every navigation, while this router is a top-level `final` whose
+          // route list would be built exactly once.
+          redirect: (context, state) =>
+              LicenseManager.unreleasedFeaturesVisible ? null : '/',
           builder: (context, state) => const KubernetesPage(),
         ),
 
@@ -122,6 +135,12 @@ final router = GoRouter(
         GoRoute(
           path: '/cloud',
           name: 'cloud',
+          // Registered but unreachable outside a debug run: a `redirect`
+          // rather than dropping the route, because it is re-evaluated on
+          // every navigation, while this router is a top-level `final` whose
+          // route list would be built exactly once.
+          redirect: (context, state) =>
+              LicenseManager.unreleasedFeaturesVisible ? null : '/',
           builder: (context, state) => const CloudPage(),
         ),
 

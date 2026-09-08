@@ -20,6 +20,7 @@ import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
 import 'package:wsl2distromanager/api/distro_package.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
@@ -43,7 +44,10 @@ List<McpTool> buildWslMcpTools(
 }) {
   return [
     ..._genericTools(backend),
-    ..._containerTools(containerService ?? ContainerService()),
+    // The container_* family follows the Containers screen behind its gate:
+    // an MCP client is as much a shipped surface as the pane is.
+    if (LicenseManager.unreleasedFeaturesVisible)
+      ..._containerTools(containerService ?? ContainerService()),
     if (backend is WSLApi)
       ..._wslOnlyTools(
         backend,

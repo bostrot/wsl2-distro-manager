@@ -714,11 +714,14 @@ class SettingsPageState extends State<SettingsPage> {
           content: _buildDockerSettings(context),
         ),
         ],
+        // Settings for a destination nobody can open are just clutter.
+        if (LicenseManager.unreleasedFeaturesVisible) ...[
         const SizedBox(height: 10),
         Expander(
           header: Text('kubernetessettings-text'.i18n()),
           content: _buildKubernetesSettings(context),
         ),
+        ],
         const SizedBox(height: 10),
         Expander(
           header: _betaHeader('byok-settings-text'.i18n()),
@@ -1999,7 +2002,10 @@ class SettingsPageState extends State<SettingsPage> {
         // Which engine the Containers screen and the container_* tools drive.
         // "Automatic" is the pref simply being absent, so an install of Docker
         // after the fact is picked up without anyone revisiting this
-        // (bostrot/ai-tasks#57).
+        // (bostrot/ai-tasks#57). The rest of this section is the older Docker
+        // Hub rootfs support, which ships; only the engine pick follows
+        // Containers behind its gate.
+        if (LicenseManager.unreleasedFeaturesVisible)
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

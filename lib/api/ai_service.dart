@@ -168,6 +168,18 @@ class AiService {
   @visibleForTesting
   set toolsForTesting(List<McpTool> value) => _tools = value;
 
+  /// Named only when the container_* tools were actually registered — a
+  /// prompt that advertises tools the model cannot call earns a round of
+  /// invented tool calls and an apology.
+  String get _containerGuidance => LicenseManager.unreleasedFeaturesVisible
+      ? 'Docker and Podman containers are a separate thing from VMs and '
+          'distros, with their own tools: container_list, '
+          'container_start/stop/restart, container_logs, container_exec, '
+          'container_inspect. Use those for anything about containers, and '
+          'never wsl_* — removing a container (container_remove) is permanent '
+          'and confirm-gated like unregistering an instance.\n'
+      : '';
+
   /// System prompt: says what the assistant is and that its tools act on the
   /// user's real machine, so it uses them instead of answering from nothing
   /// (the "I don't have access to your system" reply the tools exist to fix).
@@ -176,12 +188,10 @@ class AiService {
 You are the AI assistant built into WSL Manager on macOS, a GUI for managing native virtual machines via Apple's Virtualization framework. You have tools that operate on the user's REAL VMs on this Mac. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see the VMs, wsl_run_command to run something inside a running VM (over SSH).
 Creating a Linux VM: it MUST boot from something — a blank disk boots into nothing and stops immediately. Always give vm_create_linux a boot source: pass a "catalog" id (call vm_list_images first) or an image_path/iso_path. When the user wants a usable system (a user account, a password, software installed), pick a catalog entry marked as a cloud image (e.g. "debian-13-cloud"): it boots ready to use and reachable over SSH with no manual install, so wsl_run_command and service recipes work right after vm_start. Installer ISOs (the "virt", "standard", "netinst" and Ubuntu Server entries) need the user to click through an install in the VM window first — never promise automated setup on top of one. Do NOT create a VM with no boot source and then try to start it; the tool now refuses that.
 Setting a user password or running setup only works once the VM is running AND reachable over SSH (a cloud image is; a bare installer ISO is not until installed). Installing a local service (database, storage, broker): use wsl_list_recipes then wsl_install_service against a running, reachable VM.
-Docker and Podman containers are a separate thing from VMs and distros, with their own tools: container_list, container_start/stop/restart, container_logs, container_exec, container_inspect. Use those for anything about containers, and never wsl_* — removing a container (container_remove) is permanent and confirm-gated like unregistering an instance.
-Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.'''
+${_containerGuidance}Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.'''
       : '''
 You are the AI assistant built into WSL Distro Manager, a Windows GUI for managing WSL2 Linux distributions. You have tools that operate on the user's REAL WSL installation on this machine. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see installed distros, wsl_list_catalog / wsl_list_online_distros for what can be installed, wsl_run_command to run something inside a distro.
-Docker and Podman containers are a separate thing from VMs and distros, with their own tools: container_list, container_start/stop/restart, container_logs, container_exec, container_inspect. Use those for anything about containers, and never wsl_* — removing a container (container_remove) is permanent and confirm-gated like unregistering an instance.
-Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.
+${_containerGuidance}Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.
 You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one with your tools, and mark it done with todo_set_done as soon as you finish it.''';
 
   /// How many tool round-trips one message may take before the loop stops.

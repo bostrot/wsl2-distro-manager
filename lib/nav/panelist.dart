@@ -38,6 +38,9 @@ List<NavigationPaneItem> get originalItems {
   ),
   // Containers sit next to the instances rather than inside their list: the
   // engine, not this app, owns their lifecycle (bostrot/ai-tasks#57).
+  // Unreleased, so debug runs only — see [LicenseManager
+  // .unreleasedFeaturesVisible].
+  if (LicenseManager.unreleasedFeaturesVisible)
   PaneItem(
     key: const Key('/containers'),
     icon: const Icon(FluentIcons.product_list),
@@ -49,7 +52,8 @@ List<NavigationPaneItem> get originalItems {
   ),
   // Kubernetes sits next to Containers for the same reason Containers sits
   // next to the instances: the cluster owns these, this app only drives them
-  // (bostrot/ai-tasks#61).
+  // (bostrot/ai-tasks#61). Unreleased, so debug runs only.
+  if (LicenseManager.unreleasedFeaturesVisible)
   PaneItem(
     key: const Key('/kubernetes'),
     icon: const Icon(FluentIcons.cloud),
@@ -131,7 +135,8 @@ List<NavigationPaneItem> get originalItems {
   // the running guest rather than out of its disk image (#62, reopened). The
   // gate stays because it is the capability the screen depends on, not a
   // platform check in disguise.
-  if (features.rootfsExport)
+  // Unreleased on top of that gate, so debug runs only.
+  if (features.rootfsExport && LicenseManager.unreleasedFeaturesVisible)
   PaneItem(
     key: const Key('/cloud'),
     icon: const Icon(FluentIcons.cloud_upload),

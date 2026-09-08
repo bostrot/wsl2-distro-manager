@@ -95,7 +95,7 @@ class LicenseManager extends ChangeNotifier {
   /// both sides of the gate. Unit runs carry FLUTTER_TEST in the
   /// environment; integration runs do not, but their binding is a test
   /// binding, which a `flutter run` never has.
-  static bool get _debugPro {
+  static bool get _debugBuild {
     if (!kDebugMode) return false;
     if (Platform.environment.containsKey('FLUTTER_TEST')) return false;
     try {
@@ -108,7 +108,25 @@ class LicenseManager extends ChangeNotifier {
     return true;
   }
 
-  bool get isPro => _debugPro || _storeLicensed || _keyLicensed;
+  bool get isPro => _debugBuild || _storeLicensed || _keyLicensed;
+
+  /// Whether the destinations that are not ready to ship are shown at all:
+  /// Containers, Kubernetes and Cloud.
+  ///
+  /// The same gate Pro rides on in a debug build, for the same reason from
+  /// the other side. Each of the three drives something this app does not
+  /// own — a container engine, a cluster, somebody else's servers — and each
+  /// is finished enough to develop against and not finished enough to put in
+  /// front of everyone. So they appear exactly where Pro is auto-granted, a
+  /// `flutter run`, and nowhere else.
+  ///
+  /// A static, like [storeInstallCheckOverride], because the pane list and
+  /// the router are read from plain functions with no instance to hand; and
+  /// overridable because a test has to be able to pump both sides.
+  static bool? unreleasedFeaturesOverride;
+
+  static bool get unreleasedFeaturesVisible =>
+      unreleasedFeaturesOverride ?? _debugBuild;
 
   LicensePlan get plan {
     if (_storeLicensed) return LicensePlan.store;

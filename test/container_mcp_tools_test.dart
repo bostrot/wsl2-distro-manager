@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart' show InfoBarSeverity;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -32,6 +33,9 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+    // The family rides behind the same gate the Containers screen does; these
+    // tests are about the tools themselves, so open it.
+    LicenseManager.unreleasedFeaturesOverride = true;
     shell = FakeContainerShell();
     final backend = FakeBackend();
     final tools = buildWslMcpTools(
@@ -41,6 +45,20 @@ void main() {
     );
     handlers = {for (final t in tools) t.name: t.handler};
     names = tools.map((t) => t.name).toList();
+  });
+
+  tearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+
+  test('the family is not registered while Containers is unreleased', () {
+    // An MCP client is as much a shipped surface as the nav pane, so a
+    // hidden screen must not leave its tools reachable from Claude Desktop.
+    LicenseManager.unreleasedFeaturesOverride = false;
+    final backend = FakeBackend();
+    final hidden = buildWslMcpTools(backend, WslTerminalManager(wslApi: backend))
+        .map((t) => t.name);
+    expect(hidden.where((n) => n.startsWith('container_')), isEmpty);
+    // The rest of the surface is untouched.
+    expect(hidden, contains('wsl_list_distros'));
   });
 
   test('the container family is registered on every backend', () {
