@@ -499,6 +499,27 @@ import Testing
     }
 }
 
+@Suite struct SshArgumentTests {
+    @Test func aShellSessionCarriesNoRemoteCommand() {
+        let args = VmctlCLI.sshArguments(key: "/store/id", user: "eric", ip: "10.0.0.2")
+        #expect(args.last == "eric@10.0.0.2")
+        #expect(!args.contains("--"))
+        // Only the store key is offered: a guest with Alpine's default
+        // MaxAuthTries disconnects before the right key gets a turn.
+        #expect(args.contains("IdentitiesOnly=yes"))
+        #expect(args.contains("-i"))
+        #expect(args.contains("/store/id"))
+    }
+
+    @Test func aRemoteCommandGoesAfterTheDoubleDash() {
+        let args = VmctlCLI.sshArguments(
+            key: "/store/id", user: "root", ip: "10.0.0.2", remote: ["echo", "hi"])
+        let dash = try! #require(args.firstIndex(of: "--"))
+        #expect(args[(dash - 1)] == "root@10.0.0.2")
+        #expect(Array(args[(dash + 1)...]) == ["echo", "hi"])
+    }
+}
+
 @Suite struct GuestUserTests {
     @Test func acceptsWhatUseraddWould() {
         #expect(isValidGuestUser("user"))

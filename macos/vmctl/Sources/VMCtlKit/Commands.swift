@@ -63,6 +63,38 @@ public enum VmctlCLI {
         "-o", "LogLevel=ERROR",
     ]
 
+    /// The full ssh argument vector for a session into `user@ip`, with an
+    /// optional remote command after `--`.
+    static func sshArguments(
+        key: String, user: String, ip: String, remote: [String] = []
+    ) -> [String] {
+        sshOptions + ["-i", key, "\(user)@\(ip)"]
+            + (remote.isEmpty ? [] : ["--"] + remote)
+    }
+
+    /// Replace this process with ssh instead of spawning it as a child.
+    ///
+    /// Foundation's `Process` starts its child in a process group of its own,
+    /// so ssh run from a Terminal window is never that terminal's foreground
+    /// job: the first time an interactive session touches the tty it takes
+    /// SIGTTIN and stops, leaving a window that prints nothing and answers
+    /// nothing (bostrot/ai-tasks#60 — three sessions found in state `T`).
+    /// `execv` keeps the pid, the process group and the foreground status
+    /// Terminal already granted, and ssh's exit status becomes this process's.
+    ///
+    /// Only `authorize` still spawns ssh as a child, and must: it feeds the
+    /// guest password to ssh's stdin and reads the report back off stdout.
+    static func execSsh(_ arguments: [String]) -> Int32 {
+        var argv: [UnsafeMutablePointer<CChar>?] =
+            (["ssh"] + arguments).map { strdup($0) }
+        argv.append(nil)
+        execv("/usr/bin/ssh", &argv)
+        // Reached only when execv failed and the image was never replaced.
+        FileHandle.standardError.write(Data(
+            "Could not run ssh: \(String(cString: strerror(errno)))\n".utf8))
+        return 1
+    }
+
     public static func defaultStoreRoot() -> URL {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home
@@ -557,14 +589,9 @@ public enum VmctlCLI {
         guard let ip = waitForIp(config) else {
             throw VmctlError("VM \(name) has no IP address yet (no DHCP lease).")
         }
-        let ssh = Process()
-        ssh.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        ssh.arguments = sshOptions
-            + ["-i", store.sshKeyPath().path, "\(user)@\(ip)", "--"]
-            + bag.remainder
-        try ssh.run()
-        ssh.waitUntilExit()
-        return ssh.terminationStatus
+        return execSsh(sshArguments(
+            key: store.sshKeyPath().path, user: user, ip: ip,
+            remote: bag.remainder))
     }
 
     /// Installs the store's public key in a guest that never got it from
@@ -609,12 +636,8 @@ public enum VmctlCLI {
         guard let ip = waitForIp(config) else {
             throw VmctlError("VM \(name) has no IP address yet (no DHCP lease).")
         }
-        let ssh = Process()
-        ssh.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        ssh.arguments = sshOptions + ["-i", store.sshKeyPath().path, "\(user)@\(ip)"]
-        try ssh.run()
-        ssh.waitUntilExit()
-        return ssh.terminationStatus
+        return execSsh(sshArguments(
+            key: store.sshKeyPath().path, user: user, ip: ip))
     }
 
     /// Ask a running VM's daemon to present its display window.
