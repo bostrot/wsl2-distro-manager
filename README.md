@@ -57,6 +57,11 @@
 - [x] Snippets: keep your setup commands in the app and run them on any instance
 - [x] Point the app at your own repository of rootfs images
 
+<!-- Unreleased. Containers, Kubernetes and Cloud are built but ship only in
+     debug runs (LicenseManager.unreleasedFeaturesVisible, the gate Pro rides
+     in a debug build); a release has none of them, so the README must not
+     promise them. Lift the comment together with the gate.
+
 **Docker and Podman containers**
 - [x] See every container on the machine — both engines at once — next to your instances
 - [x] Start, stop, restart, remove and tail the logs of a container without leaving the app
@@ -75,6 +80,7 @@
 - [x] Works from macOS too: a Linux VM's root filesystem is read out of the running guest, since its disk image is a bootable machine rather than something a container engine can read
 - [x] Pull it back down again as a new local instance whenever you want, leaving the server running — on macOS that restores into a copy of the VM it was deployed from, which has to still exist and be stopped, because a bare root filesystem has no kernel to boot
 - [x] See what each server costs per month, power them on and off, and delete them from the same list
+-->
 
 **Configure without editing files by hand**
 - [x] systemd, automount, default user, start command and start path per distro
