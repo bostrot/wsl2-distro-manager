@@ -12,6 +12,7 @@ import 'package:wsl2distromanager/screens/community_screen.dart';
 import 'package:wsl2distromanager/screens/snippet_editor_screen.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/screens/cloud_screen.dart';
 import 'package:wsl2distromanager/screens/containers_screen.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
@@ -115,6 +116,13 @@ final router = GoRouter(
           path: '/kubernetes',
           name: 'kubernetes',
           builder: (context, state) => const KubernetesPage(),
+        ),
+
+        /// Cloud servers at a provider (deploy an instance, pull it back)
+        GoRoute(
+          path: '/cloud',
+          name: 'cloud',
+          builder: (context, state) => const CloudPage(),
         ),
 
         /// Templates

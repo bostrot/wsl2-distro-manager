@@ -59,6 +59,28 @@ List<NavigationPaneItem> get originalItems {
       navigateGuarded('kubernetes', path: '/kubernetes');
     },
   ),
+  // Cloud sits after Kubernetes for the third time in the same argument:
+  // these machines belong to a provider, not to this app, and a deploy is
+  // the one place where a local instance crosses over (bostrot/ai-tasks#62).
+  //
+  // Gated on rootfsExport, unlike Containers and Kubernetes, because that is
+  // what deploying needs — and a Cloud screen that cannot deploy is a server
+  // list with a delete button, which is the "second control panel for
+  // somebody else's product" this app deliberately does not build. It also
+  // keeps the pane from growing a destination that cannot do its job: at a
+  // small window height the pane scrolls, and every entry past the fold is
+  // one the user has to go looking for.
+  if (features.rootfsExport)
+  PaneItem(
+    key: const Key('/cloud'),
+    icon: const Icon(FluentIcons.cloud_upload),
+    title: Text('cloud-text'.i18n()),
+    infoBadge: const BetaPaneBadge(),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      navigateGuarded('cloud', path: '/cloud');
+    },
+  ),
   PaneItem(
     key: const Key('/templates'),
     icon: const Icon(FluentIcons.file_template),

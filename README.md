@@ -69,6 +69,12 @@
 - [x] Open a workload to see its pods, tail their logs, restart a pod, roll out a restart, scale, or read the full details
 - [x] Front end only: it drives the `kubectl` you already have, and never rewrites your kubeconfig or switches your context
 
+**Deploy to the cloud** *(beta, WSL backend)*
+- [x] Push a whole instance to a brand-new Hetzner Cloud server in one step — the root filesystem is exported, uploaded and started there as a container
+- [x] The server is created for you: size, location and base image, with cloud-init installing Docker and your own SSH key authorized for `root`
+- [x] Pull it back down again as a new local instance whenever you want, leaving the server running
+- [x] See what each server costs per month, power them on and off, and delete them from the same list
+
 **Configure without editing files by hand**
 - [x] systemd, automount, default user, start command and start path per distro
 - [x] Memory, processors, swap, networking mode, DNS and the rest of `.wslconfig`

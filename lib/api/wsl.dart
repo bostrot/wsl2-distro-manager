@@ -171,6 +171,7 @@ class WSLApi extends VmBackend {
         cleanup: true,
         hostIntegration: true,
         templatesDeprecated: true,
+        rootfsExport: true,
       );
 
   /// Where `--version` / `--status` answers come from.

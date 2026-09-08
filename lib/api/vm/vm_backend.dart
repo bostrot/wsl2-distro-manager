@@ -48,6 +48,14 @@ class VmFeatures {
   /// without any display window.
   final bool serialConsole;
 
+  /// An instance exports as a root filesystem tarball rather than as a
+  /// bootable disk image. That is what makes an instance portable to
+  /// somewhere else entirely — the cloud deploy imports one straight into a
+  /// container on the server (bostrot/ai-tasks#62). The Apple backend exports
+  /// a raw disk instead, which carries a partition table and a bootloader and
+  /// is not a filesystem anything else can read.
+  final bool rootfsExport;
+
   /// The instance has a login account of its own — one the user may have to
   /// type at a console — so the app can show them what it is. WSL distros
   /// have no such thing: `wsl.exe` drops straight into a shell.
@@ -65,6 +73,7 @@ class VmFeatures {
     this.createVm = false,
     this.serialConsole = false,
     this.guestCredentials = false,
+    this.rootfsExport = false,
   });
 }
 
