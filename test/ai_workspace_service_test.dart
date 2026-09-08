@@ -147,15 +147,16 @@ void main() {
         }
       });
 
-      test('probes all three tools with one wsl call each, not two',
-          () async {
-        // 1 distro list check + 1 status call per tool = 4 total, down from
-        // up to 7 (1 + up to 2 per tool) before the status+existence checks
-        // were combined into a single shell invocation.
+      test('probes every tool with one wsl call each, not two', () async {
+        // 1 distro list check + 1 status call per tool, down from up to
+        // 1 + 2 per tool before the status+existence checks were combined
+        // into a single shell invocation. Counted off the enum so adding a
+        // tool does not silently relax the assertion.
         testShell.stdoutData = 'ai-workspace';
         await service.init();
 
-        expect(testShell.allCommands.length, 4);
+        expect(testShell.allCommands.length,
+            1 + AiWorkspaceTool.values.length);
       });
     });
 
@@ -199,7 +200,8 @@ void main() {
 
         // 1 distro list check + 1 status call per tool, exactly as a single
         // caller would produce — not doubled.
-        expect(testShell.allCommands.length, 4);
+        expect(testShell.allCommands.length,
+            1 + AiWorkspaceTool.values.length);
       });
     });
 
@@ -1168,6 +1170,67 @@ void main() {
         expect(command.contains('"'), false);
       });
 
+      // OpenCode's flag default for `--port` is 0, i.e. "pick any free
+      // port". Omitting it would leave the server on an address the card
+      // could never find, so the card's own port has to be on the command
+      // line — and, like the other two servers, the gate is the port rather
+      // than the launcher's exit code.
+      test('starting opencode pins its port and waits for it', () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        service.getState(AiWorkspaceTool.openCode)!.status =
+            ToolStatus.stopped;
+        testShell.stdoutData = '';
+        await service.start(AiWorkspaceTool.openCode);
+
+        final command = testShell.lastCommand.last;
+        // `web`, not `serve`: both start the same HTTP server but only `web`
+        // serves the browser UI "Open Dashboard" opens.
+        expect(command.contains('setsid opencode web --port 4096'), true);
+        expect(command.contains('--hostname 127.0.0.1'), true);
+        expect(command.contains('for _i in'), true);
+        expect(command.contains('/dev/tcp/127.0.0.1/4096'), true);
+        // The gate is the port, never a live process — `pgrep` is allowed
+        // only in the kill that clears the old server first.
+        expect('pgrep'.allMatches(command).length, 1);
+        expect(command.contains('pgrep -f \'[o]pencode\''), true);
+        expect(command.trimRight().endsWith('2>/dev/null; }'), true,
+            reason: 'the listening test has to be the last thing that runs');
+        // `runInShell: false` means a `"` reaches bash literally.
+        expect(command.contains('"'), false);
+      });
+
+      // The installer hardcodes `\$HOME/.opencode/bin` and offers no prefix
+      // flag, and every command here runs through a non-interactive
+      // `bash -c` that sources no rc file — so without the symlink the
+      // `cmd://opencode` existence check would answer "missing" over a
+      // perfectly good install, exactly the way the tilde-based checks used
+      // to for hermes and openclaw.
+      test('installing opencode puts the binary somewhere PATH can find it',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        await service.install(AiWorkspaceTool.openCode);
+
+        final command = testShell.lastCommand.last;
+        expect(command.startsWith('set -o pipefail; '), true,
+            reason: 'a dead curl target must not masquerade as success');
+        expect(command.contains('https://opencode.ai/install'), true);
+        // No rc-file surgery: the symlink is what puts it on PATH, and an
+        // `export PATH` line appended to `.bashrc` is never read here.
+        expect(command.contains('--no-modify-path'), true);
+        // The installer still reads `basename \$SHELL` under `set -u`, above
+        // the block that flag turns off, so an environment that reaches the
+        // distro without SHELL would abort it before the first download.
+        expect(command.contains('SHELL=\${SHELL:-/bin/bash}'), true);
+        expect(
+            command.contains(
+                'ln -sf \$HOME/.opencode/bin/opencode /usr/local/bin/opencode'),
+            true);
+      });
+
       // `pkill -f` matches the *command line* of the `bash -c` running it, and
       // the `[h]ermes` bracket only shields the pattern itself. Every command
       // here that mentions its tool a second time, unbracketed, therefore
@@ -1368,6 +1431,31 @@ void main() {
             .firstWhere((arg) => arg.contains('hermes-agent'));
         expect(removal.contains('/usr/local/bin/hermes'), true);
         expect(removal.contains('\$HOME/.local/bin/hermes'), true);
+      });
+
+      // Same failure mode the hermes launcher had: the install command adds
+      // `/usr/local/bin/opencode` itself, and leaving it behind means
+      // `command -v opencode` keeps answering "exists" over a dangling
+      // symlink, so the card reads "Installed" with Install disabled and the
+      // app cannot get itself back to a clean state.
+      test('uninstalling opencode removes the PATH symlink it created',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+
+        service.getState(AiWorkspaceTool.openCode)!.status =
+            ToolStatus.stopped;
+        testShell.allCommands.clear();
+        await service.uninstall(AiWorkspaceTool.openCode);
+
+        final removal = testShell.allCommands
+            .expand((cmd) => cmd)
+            .firstWhere((arg) => arg.contains('rm -f /usr/local/bin/opencode'));
+        expect(removal.contains('rm -rf \$HOME/.opencode'), true);
+        // Nothing interactive: an unattended uninstall has nobody to answer a
+        // confirmation prompt, which is how a third-party installer already
+        // burned a whole timeout budget in this file's history.
+        expect(removal.contains('opencode uninstall'), false);
       });
 
       test('stops running tool before uninstalling', () async {
@@ -2083,6 +2171,59 @@ void main() {
         expect(answer, 'exists');
       });
 
+      test('the opencode probe answers on its own port', () async {
+        final script = await probeScriptFor(AiWorkspaceTool.openCode);
+
+        final answer = await _runProbeScript(
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:4096 0.0.0.0:*'; }; ",
+          script,
+        );
+
+        expect(answer, 'running');
+      });
+
+      // The `cmd://opencode` half of the same probe: nothing on the port,
+      // but the binary is on PATH, so the card must keep its install rather
+      // than fall back to "Not installed".
+      test('an installed opencode with nothing listening reads as installed',
+          () async {
+        if (await _hostPortIsOpen(4096)) {
+          markTestSkipped('a real service holds 4096 on this machine, so the '
+              '/dev/tcp fallback cannot be exercised');
+          return;
+        }
+        final script = await probeScriptFor(AiWorkspaceTool.openCode);
+
+        final answer = await _runProbeScript(
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:22 0.0.0.0:*'; }; "
+          'opencode() { :; }; ',
+          script,
+        );
+
+        expect(answer, 'exists');
+      });
+
+      // `4096` is a prefix of `40960`, and a bare `grep -q 4096` also matches
+      // the `4096` that `ss -ltn` prints in its Send-Q column on every single
+      // row — so an unanchored probe would have reported this tool running
+      // against any listening socket at all.
+      test('opencode is not reported running off an unrelated socket',
+          () async {
+        if (await _hostPortIsOpen(4096)) {
+          markTestSkipped('a real service holds 4096 on this machine');
+          return;
+        }
+        final script = await probeScriptFor(AiWorkspaceTool.openCode);
+
+        final answer = await _runProbeScript(
+          "ss() { echo 'LISTEN 0 4096 127.0.0.1:40960 0.0.0.0:*'; }; "
+          'opencode() { :; }; ',
+          script,
+        );
+
+        expect(answer, 'exists');
+      });
+
       test(
           'a gateway that is neither listening nor installed reads as '
           'missing', () async {
@@ -2246,6 +2387,58 @@ void main() {
 
         final answer = await _runProbeScript(
           killStubs,
+          '$script; echo SURVIVED',
+        );
+
+        expect(answer.contains('SURVIVED'), true);
+        expect(killedBy(answer), ['killed:4242']);
+      });
+
+      // Third tool, same trap: the start command names `opencode`
+      // unbracketed three more times after the kill (`setsid opencode web`
+      // and the log path), so a `pkill -f` here would take the shell down
+      // before the server was ever launched.
+      test('the opencode start command survives its own kill pattern',
+          () async {
+        final script =
+            await lifecycleScriptFor(AiWorkspaceTool.openCode, start: true);
+
+        final answer = await _runProbeScript(
+          // A throwaway HOME: the command creates `\$HOME/.opencode` and
+          // appends to a log there, and a test has no business writing to the
+          // real one. `ss` answers so the port wait breaks on its first
+          // iteration rather than making twenty real connect attempts.
+          'HOME=\$(mktemp -d); $killStubs$noSleep'
+              'setsid() { :; }; '
+              "ss() { echo 'LISTEN 0 4096 127.0.0.1:4096 0.0.0.0:*'; }; ",
+          '$script; echo SURVIVED',
+        );
+
+        expect(answer.contains('SURVIVED'), true,
+            reason: 'the kill must not signal the shell running it');
+        expect(killedBy(answer), ['killed:4242'],
+            reason: 'only the server, never this shell or its parent');
+      });
+
+      // And the uninstall, where the unbracketed mentions are the `rm` paths
+      // — the case that left OpenClaw's uninstall removing nothing at all.
+      test('the opencode uninstall command survives its own kill pattern',
+          () async {
+        testShell.stdoutData = 'ai-workspace';
+        await service.init();
+        service.getState(AiWorkspaceTool.openCode)!.status =
+            ToolStatus.stopped;
+        testShell.stdoutData = '';
+        await service.uninstall(AiWorkspaceTool.openCode);
+        final script = testShell.allCommands
+            .expand((cmd) => cmd)
+            .lastWhere((arg) => arg.contains('rm -f /usr/local/bin/opencode'));
+
+        final answer = await _runProbeScript(
+          // Neither the real `rm` nor the real removal may run: this asserts
+          // the script survives, not that it can delete the host's files.
+          'HOME=\$(mktemp -d); ${killStubs}rm() { :; }; '
+              'opencode() { :; }; ',
           '$script; echo SURVIVED',
         );
 

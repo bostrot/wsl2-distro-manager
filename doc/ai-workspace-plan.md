@@ -10,6 +10,7 @@ AI Workspace provides lifecycle management for local AI tooling within WSL distr
 | **Hermes Agent** | 8081 | Local LLM inference engine | Shell script in distro |
 | **OpenClaw** | 8082 | AI agent framework | Shell script in distro |
 | **Open WebUI** | 8083 | Chat interface (via Docker) | Docker container |
+| **OpenCode** | 4096 | Coding agent with a browser UI (`opencode web`) | Shell script in distro |
 
 ## Architecture
 

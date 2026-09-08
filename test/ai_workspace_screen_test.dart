@@ -358,8 +358,9 @@ void main() {
     await tester.pumpWidget(_page(service));
     await tester.pump(const Duration(seconds: 1));
 
-    // All three cards start out saying the same thing.
-    expect(find.text('notinstalled-text'), findsNWidgets(3));
+    // Every card starts out saying the same thing.
+    expect(find.text('notinstalled-text'),
+        findsNWidgets(AiWorkspaceTool.values.length));
 
     await tester.tap(find.byKey(const ValueKey('test-ai-install-hermesAgent')));
     await tester.pump();
@@ -368,9 +369,10 @@ void main() {
     expect(find.byKey(const ValueKey('test-ai-installing-badge-hermesAgent')),
         findsOneWidget);
     expect(find.text('installing-text'), findsOneWidget);
-    // The card being installed no longer claims to be uninstalled; the other
-    // two still do, correctly.
-    expect(find.text('notinstalled-text'), findsNWidgets(2));
+    // The card being installed no longer claims to be uninstalled; the
+    // others still do, correctly.
+    expect(find.text('notinstalled-text'),
+        findsNWidgets(AiWorkspaceTool.values.length - 1));
 
     child.emit('Cloning hermes-agent...\n');
     await tester.pump(const Duration(seconds: 1));

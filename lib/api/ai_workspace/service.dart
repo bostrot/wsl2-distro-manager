@@ -39,10 +39,17 @@ const String _kDockerWaitLoop = 'for _i in $_kWaitIterations; do '
 const String _kWaitIterations =
     '1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20';
 
-/// Ports the two gateways bind. Referenced by their status probe, their start
-/// gate and [ToolConfig.port], so they get a name rather than three literals.
+/// Ports the long-running servers bind. Referenced by their status probe,
+/// their start gate and [ToolConfig.port], so they get a name rather than
+/// three literals.
 const int _kHermesPort = 9119;
 const int _kOpenClawPort = 18789;
+
+/// OpenCode picks a *random* free port when `--port` is omitted (its flag
+/// default is 0), so the card could never know where to look. This is the
+/// port the project's own docs use in every example, and it is passed
+/// explicitly on every start.
+const int _kOpenCodePort = 4096;
 
 /// Shell condition, true when something is accepting TCP connections on
 /// [port] inside the distro.
@@ -100,6 +107,13 @@ String _waitForPortClosed(int port) =>
 const String _kHermesPattern = '[h]ermes.*serve';
 const String _kOpenClawPattern = '[o]penclaw';
 
+/// Same idiom for OpenCode. Left broad rather than anchored on the `web`
+/// subcommand, like [_kOpenClawPattern]: the workspace distro is dedicated to
+/// these tools, so anything running `opencode` in it is this card's, and a
+/// narrower pattern would miss a helper the server left behind while the
+/// port-closed check kept waiting for it.
+const String _kOpenCodePattern = '[o]pencode';
+
 /// Kills every process whose command line matches [pattern], without killing
 /// the shell that is running the kill.
 ///
@@ -128,7 +142,7 @@ String _killByPattern(String pattern) =>
     'done 2>/dev/null; true';
 
 /// Supported AI workspace tools.
-enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi }
+enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi, openCode }
 
 /// How long an install may print nothing at all before it is abandoned.
 ///
@@ -395,6 +409,59 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
         'else echo running; fi',
     port: 8083,
     defaultInstallPath: 'docker://open-webui',
+  ),
+  AiWorkspaceTool.openCode: ToolConfig(
+    name: 'OpenCode',
+    // `--no-modify-path` keeps the installer out of the distro's shell rc
+    // files; the symlink is what actually puts the binary on PATH. It has to
+    // be there rather than in `$HOME/.opencode/bin`, because every command
+    // here runs through a *non-interactive* `bash -c` that sources nothing —
+    // the `export PATH=...` line the installer would otherwise append to
+    // `.bashrc` is never read, so `command -v opencode` (the `cmd://` check
+    // behind this card's Installed state) would answer "missing" over a
+    // perfectly good install. The installer hardcodes its own install dir and
+    // offers no prefix flag, hence the symlink rather than an env var.
+    // `hash -r` so a re-install inside the same shell does not keep a stale
+    // path cached.
+    // `SHELL` is defaulted because the installer reads `basename $SHELL`
+    // *unconditionally*, above and outside the block `--no-modify-path`
+    // turns off, and it runs under `set -u` — so on any environment that
+    // reaches the distro without that variable the installer would abort on
+    // an unbound variable before it downloaded anything.
+    installCommand: 'curl -fsSL https://opencode.ai/install '
+        '| SHELL=\${SHELL:-/bin/bash} bash -s -- --no-modify-path && '
+        'ln -sf \$HOME/.opencode/bin/opencode /usr/local/bin/opencode && '
+        'hash -r',
+    // `web`, not `serve`: both start the same HTTP server, but only `web`
+    // serves the browser interface this card's "Open Dashboard" opens.
+    // `--port` is mandatory — see [_kOpenCodePort]. `--hostname 127.0.0.1` is
+    // OpenCode's own default and is deliberately kept: the server is
+    // unauthenticated unless `OPENCODE_SERVER_PASSWORD` is set, and WSL's
+    // localhost forwarding already makes a loopback bind reachable from
+    // Windows.
+    // The browser `web` tries to open is harmless here — OpenCode swallows
+    // that failure — but it has nothing to open inside the distro.
+    // setsid + the trailing port wait for the same reasons as Hermes: the
+    // server has to survive this one-shot call, and the launcher's exit code
+    // says nothing about whether anything ever bound the port.
+    startCommand: '${_killByPattern(_kOpenCodePattern)}; '
+        'mkdir -p \$HOME/.opencode; cd \$HOME; '
+        'setsid opencode web --port $_kOpenCodePort --hostname 127.0.0.1 '
+        '</dev/null >>\$HOME/.opencode/web.log 2>&1 & '
+        'disown; ${_waitForPort(_kOpenCodePort)}'
+        '${_listeningTest(_kOpenCodePort)}',
+    // No CLI shutdown verb of its own — `opencode web` runs until it is
+    // signalled — so the kill is the whole stop, and the port-closed check is
+    // what decides the exit code.
+    stopCommand: '${_killByPattern(_kOpenCodePattern)}; '
+        '${_waitForPortClosed(_kOpenCodePort)}',
+    // A live process proves nothing — see [_listeningTest].
+    statusCheck: _listeningStatusCheck(_kOpenCodePort),
+    port: _kOpenCodePort,
+    defaultInstallPath: 'cmd://opencode',
+    // No dashboardCommand: `opencode web` *is* the dashboard, and it is
+    // already running on a port this card fixed itself, so [getUrl] is the
+    // whole answer.
   ),
 };
 
@@ -1206,6 +1273,24 @@ class AiWorkspaceService {
       uninstallCmd = '${_killByPattern(_kOpenClawPattern)}; '
           'rm -f \$HOME/.local/bin/openclaw; '
           'npm uninstall -g openclaw >/dev/null 2>&1 || true; hash -r';
+    } else if (tool == AiWorkspaceTool.openCode) {
+      // Removal by hand rather than through the CLI's own `opencode
+      // uninstall`: this file already carries the scar from a third-party
+      // installer that opened `/dev/tty` behind a `--non-interactive` flag
+      // and sat there until the timeout reaped it, and a subcommand that
+      // wants to confirm before deleting is exactly the shape that goes
+      // wrong unattended. The rm list is everything the install command
+      // created plus the state the tool writes, so the CLI has nothing to
+      // add.
+      // `/usr/local/bin/opencode` in particular must go: a leftover launcher
+      // is what kept `command -v hermes` answering "exists" over a dead
+      // install, leaving the card reading "Installed" with Install disabled.
+      // The kill has to survive its own command line: the lines below name
+      // `opencode` unbracketed.
+      uninstallCmd = '${_killByPattern(_kOpenCodePattern)}; '
+          'rm -rf \$HOME/.opencode \$HOME/.local/share/opencode '
+          '\$HOME/.cache/opencode \$HOME/.config/opencode; '
+          'rm -f /usr/local/bin/opencode; hash -r';
     } else {
       uninstallCmd = 'rm -rf ${config.defaultInstallPath}';
     }

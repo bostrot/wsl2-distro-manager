@@ -530,6 +530,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
       case AiWorkspaceTool.hermesAgent: return 'Hermes Agent';
       case AiWorkspaceTool.openClaw: return 'OpenClaw';
       case AiWorkspaceTool.openWebUi: return 'Open WebUI';
+      case AiWorkspaceTool.openCode: return 'OpenCode';
     }
   }
 
@@ -921,11 +922,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   Widget _buildToolCard(AiWorkspaceTool tool) {
     final state = _service.getState(tool);
-    final name = const {
-      AiWorkspaceTool.hermesAgent: 'Hermes Agent',
-      AiWorkspaceTool.openClaw: 'OpenClaw',
-      AiWorkspaceTool.openWebUi: 'Open WebUI',
-    }[tool]!;
+    // Through [_toolName], not a second table of its own: the card and the
+    // uninstall dialog have to agree on what the tool is called, and two
+    // hand-maintained lists of the same four names only agree by luck.
+    final name = _toolName(tool);
 
     final isChecking = _checkingTools.contains(tool);
     // The service, not this page, owns install progress: the page is rebuilt
