@@ -35,17 +35,35 @@ import 'package:wsl2distromanager/components/helpers.dart';
 typedef DashboardServerFactory = Future<HttpServer> Function(
     Handler handler, Object address, int port);
 
+/// One host interface as [WebDashboardService.lanAddresses] sees it: a name
+/// and its addresses. Deliberately narrower than `dart:io`'s NetworkInterface:
+/// that class changed its address element type between the Flutter this
+/// repository pins and the one after it, so a test fake implementing it
+/// compiles on exactly one side of the change. Nothing here needs more than
+/// these two fields.
+class HostInterface {
+  final String name;
+  final List<InternetAddress> addresses;
+  const HostInterface(this.name, this.addresses);
+}
+
 /// Enumerates the host's network interfaces; tests inject a fixed answer.
-typedef NetworkInterfaceLister = Future<List<NetworkInterface>> Function();
+typedef NetworkInterfaceLister = Future<List<HostInterface>> Function();
 
 Future<HttpServer> _defaultServerFactory(
     Handler handler, Object address, int port) {
   return io.serve(handler, address, port);
 }
 
-Future<List<NetworkInterface>> _defaultInterfaceLister() {
-  return NetworkInterface.list(
+Future<List<HostInterface>> _defaultInterfaceLister() async {
+  final interfaces = await NetworkInterface.list(
       includeLoopback: false, type: InternetAddressType.IPv4);
+  // List.from rather than a cast: on the newer SDK the elements are a
+  // subtype of InternetAddress, on the pinned one they are InternetAddress.
+  return [
+    for (final iface in interfaces)
+      HostInterface(iface.name, List<InternetAddress>.from(iface.addresses)),
+  ];
 }
 
 class WebDashboardService {
@@ -109,7 +127,7 @@ class WebDashboardService {
   /// IPv4 addresses other devices on the network can reach this host at,
   /// private ranges first so the QR code defaults to the home/office LAN.
   Future<List<String>> lanAddresses() async {
-    List<NetworkInterface> interfaces;
+    List<HostInterface> interfaces;
     try {
       interfaces = await interfaceLister();
     } catch (_) {

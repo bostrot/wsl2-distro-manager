@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -135,53 +134,11 @@ class _FakeBackend extends VmBackend {
   String instanceSizeLabel(String distribution) => '1 GB';
 }
 
-class _FakeInterface implements NetworkInterface {
-  @override
-  final String name;
-  @override
-  final List<InterfaceAddress> addresses;
-  @override
-  final int index = 0;
-
-  _FakeInterface(this.name, List<String> ips)
-      : addresses = [
-          for (final ip in ips) _FakeInterfaceAddress(InternetAddress(ip))
-        ];
-}
-
-/// `NetworkInterface.addresses` is a list of [InterfaceAddress], which has no
-/// public constructor — so the fake wraps a real [InternetAddress] and adds
-/// the two members the wider interface asks for. Everything the service reads
-/// (`type`, `isLoopback`, `isLinkLocal`, `address`) is forwarded, so the
-/// filtering under test runs against genuine address parsing rather than
-/// against answers this class made up.
-class _FakeInterfaceAddress implements InterfaceAddress {
-  _FakeInterfaceAddress(this._address);
-
-  final InternetAddress _address;
-
-  @override
-  int get prefixLength => 24;
-  @override
-  InternetAddress? get broadcast => null;
-
-  @override
-  InternetAddressType get type => _address.type;
-  @override
-  String get address => _address.address;
-  @override
-  String get host => _address.host;
-  @override
-  Uint8List get rawAddress => _address.rawAddress;
-  @override
-  bool get isLoopback => _address.isLoopback;
-  @override
-  bool get isLinkLocal => _address.isLinkLocal;
-  @override
-  bool get isMulticast => _address.isMulticast;
-  @override
-  Future<InternetAddress> reverse() => _address.reverse();
-}
+/// A fixed interface for the lister seam. A record, not a NetworkInterface:
+/// see HostInterface in the service for why the real type cannot be faked
+/// portably across the Flutter pin.
+HostInterface _fakeInterface(String name, List<String> ips) =>
+    HostInterface(name, [for (final ip in ips) InternetAddress(ip)]);
 
 void main() {
   late _FakeBackend backend;
@@ -518,10 +475,10 @@ void main() {
         () async {
       final svc = service(
         interfaces: () async => [
-          _FakeInterface('en0', ['203.0.113.7', '10.1.2.3']),
-          _FakeInterface('lo0', ['127.0.0.1']),
-          _FakeInterface('awdl0', ['169.254.10.10']),
-          _FakeInterface('en1', ['192.168.1.20']),
+          _fakeInterface('en0', ['203.0.113.7', '10.1.2.3']),
+          _fakeInterface('lo0', ['127.0.0.1']),
+          _fakeInterface('awdl0', ['169.254.10.10']),
+          _fakeInterface('en1', ['192.168.1.20']),
         ],
       );
 
