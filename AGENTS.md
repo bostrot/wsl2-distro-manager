@@ -112,6 +112,13 @@ refactor: trim over-explanatory comments
 - Do not hardcode user-facing strings
 - **README translations live in `readme/README_<lang>.md`** and must mirror `README.md`: same headings, images, links, feature bullets, `<details>` blocks, and byte-identical code blocks (commands are never translated). Editing `README.md` means editing all eight — `dart run scripts/check_readme_translations.dart` (and `test/check_readme_translations_test.dart`) fails the moment one drifts. Screenshots are checked in under `readme/images/`, so a new one is referenced as `./images/x.png` from a translation and `./readme/images/x.png` from the root README
 
+## Community catalogue (`cdn/scripts.json`)
+- GitHub Pages serves this repository's **root** at `wslmanager.bostrot.com`, so any committed file is a CDN-backed page (`cache-control: max-age=600`). That is how the app gets both `images.json` and the community catalogue — no proxy, nothing to keep running.
+- **Never build that catalogue on the client.** The Community screen used to list `scripts/` in `bostrot/wsl-scripts` and then fetch `info.yml` for each of its ~80 folders, plus a commits call each for the "updated" line: 161 sequential requests, 81 of them against `api.github.com`, where an anonymous caller gets **60 an hour shared with everyone behind the same address**. It was slow for the lucky and rate-limited for the rest.
+- `.github/workflows/community-catalogue.yml` runs `scripts/build_community_catalogue.dart` daily (04:17 UTC — outside the 08:00–20:00 commit window) and commits `cdn/scripts.json` only when it changed, with `[skip ci]`. The output carries no timestamp of its own precisely so an unchanged day produces a byte-identical file and no commit. `bostrot/wsl-scripts` can push it early with a `repository_dispatch` of type `community-scripts-updated`.
+- The generator imports **dart:io and dart:convert only**, so CI runs it with `dart-lang/setup-dart` and no `pub get`; its pure functions are covered by `test/build_community_catalogue_test.dart` the same way `check_store_listing.dart` is.
+- `CommunityScripts.list()` falls back to the old per-folder walk, and `App.getDistroLinks()` falls back to raw GitHub then the bundled asset. Keep those: an earlier n8n webhook served `200` with an **empty body**, which the app read as "no data" and silently answered from a build-time copy for days.
+
 ## Release Pipeline (`.github/workflows/releaser.yml`)
 - Triggers on push to any branch matching `lib/`, `assets/`, `windows/`, `installer/`, `LICENSE`, or `pubspec.yaml`
 - Produces: ZIP archive, MSIX, and Inno Setup `.exe`

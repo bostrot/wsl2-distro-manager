@@ -102,7 +102,7 @@ void main() {
   CommunityScripts build(_Adapter adapter) =>
       CommunityScripts(dio: Dio()..httpClientAdapter = adapter);
 
-  /// The shape the `cdn/scripts.json` workflow in `n8n/` returns.
+  /// The shape `scripts/build_community_catalogue.dart` publishes.
   String catalogueOf(Map<String, String> scripts) => jsonEncode({
         'generatedAt': '2026-09-09T18:00:00Z',
         'source': 'https://github.com/bostrot/wsl-scripts',
@@ -113,7 +113,30 @@ void main() {
         ],
       });
 
-  group('the aggregate catalogue endpoint', () {
+  group('the published catalogue', () {
+    test('a date in the file spares the commits API entirely', () async {
+      final adapter = _Adapter(
+        catalogue: jsonEncode({
+          'count': 1,
+          'scripts': [
+            {
+              'name': 'redis',
+              'info': _info,
+              'updatedAt': '2026-08-20T08:00:00Z'
+            }
+          ],
+        }),
+      );
+      final service = build(adapter);
+      final scripts = await service.list();
+      expect(scripts.single.updatedAt, DateTime.parse('2026-08-20T08:00:00Z'));
+
+      // The background pass has nothing left to look up, which is what keeps
+      // the screen off a sixty-an-hour budget.
+      await service.loadUpdatedDates(scripts);
+      expect(adapter.commitCalls, 0);
+    });
+
     test('one request replaces the listing and every info.yml', () async {
       final adapter = _Adapter(
           catalogue: catalogueOf({

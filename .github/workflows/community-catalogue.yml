@@ -1,0 +1,64 @@
+# Publishes cdn/scripts.json — the community catalogue the app reads.
+#
+# GitHub Pages serves this repository's root at wslmanager.bostrot.com, so a
+# file committed here is a CDN-backed page with no other moving parts: no
+# proxy to keep alive, nothing to be down when someone opens the Community
+# screen. The app falls back to walking bostrot/wsl-scripts itself if this
+# file ever goes missing, which is the old, slow path.
+#
+# The commit lands outside 08:00-20:00 Berlin time on purpose — 04:17 UTC is
+# 06:17 CEST, 05:17 CET — matching how this repository's history is kept.
+name: Community catalogue
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+  # So bostrot/wsl-scripts can publish the moment a script changes:
+  #   gh api repos/bostrot/wsl2-distro-manager/dispatches \
+  #     -f event_type=community-scripts-updated
+  repository_dispatch:
+    types: [community-scripts-updated]
+  push:
+    paths:
+      - 'scripts/build_community_catalogue.dart'
+      - '.github/workflows/community-catalogue.yml'
+
+concurrency:
+  group: community-catalogue
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The generator imports dart:io and dart:convert only, so it runs
+      # without `pub get` and without the Flutter toolchain.
+      - uses: dart-lang/setup-dart@v1
+
+      - name: Build the catalogue
+        env:
+          # A thousand requests an hour instead of the sixty an anonymous
+          # caller gets — which is the whole reason the per-script dates can
+          # be resolved here and not on the user's machine.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: dart scripts/build_community_catalogue.dart cdn/scripts.json
+
+      - name: Commit when it changed
+        run: |
+          if git diff --quiet -- cdn/scripts.json; then
+            echo "The catalogue is unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name 'Eric Trenkel'
+          git config user.email 'eric@bostrot.com'
+          git add cdn/scripts.json
+          # [skip ci]: this file is data, and rebuilding the app for it would
+          # republish release assets for a snippet description change.
+          git commit -m "chore(community): Refresh the script catalogue [skip ci]"
+          git push

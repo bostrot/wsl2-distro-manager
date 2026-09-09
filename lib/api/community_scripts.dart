@@ -96,9 +96,9 @@ class CommunityScripts {
   ///
   /// Eighty scripts meant eighty-one sequential requests before this — a
   /// listing, then one `info.yml` each — and the listing counted against
-  /// api.github.com's sixty-an-hour anonymous budget. The aggregate endpoint
-  /// does that walk server-side and caches it, so the screen costs one
-  /// request whoever opens it.
+  /// api.github.com's sixty-an-hour anonymous budget, as did the eighty
+  /// commit lookups behind the "updated" line. CI does that walk once, with
+  /// a token worth a thousand an hour, and publishes the answer as a page.
   ///
   /// Every failure here is deliberately silent: a CDN that is down, stale or
   /// serving something unexpected should cost latency, never the catalogue.
@@ -120,8 +120,14 @@ class CommunityScripts {
         final info = entry['info'];
         if (info is! String || info.isEmpty) continue;
         try {
-          loaded
-              .add(CommunityScript(item: QuickActionItem.fromYamlString(info)));
+          // The catalogue carries the date CI resolved, so the background
+          // pass below finds nothing left to look up — which is what keeps
+          // the screen off api.github.com entirely.
+          final updated = entry['updatedAt'];
+          loaded.add(CommunityScript(
+            item: QuickActionItem.fromYamlString(info),
+            updatedAt: updated is String ? DateTime.tryParse(updated) : null,
+          ));
         } catch (_) {
           // Same rule as the per-folder path: one unreadable manifest is
           // skipped, it does not cost the catalogue.
