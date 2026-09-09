@@ -15,6 +15,7 @@ Flutter desktop app for managing WSL distributions on Windows x64 (primary targe
 | Build release | `flutter build windows` | 3-8 min; output in `build/windows/x64/runner/Release/` |
 | MSIX package | `dart run msix:create` | Config in `pubspec.yaml` under `msix_config` |
 | Check translations | `dart run scripts/check_translations.dart` | Run before every build; CI gate |
+| Check README translations | `dart run scripts/check_readme_translations.dart` | Structural sync of `readme/README_*.md` against `README.md`; also asserted by `test/check_readme_translations_test.dart` |
 | Build macOS app | `scripts/build_macos.sh` | Builds + signs `vmctl`, then `flutter build macos`; needs full Xcode |
 | Run dev (macOS) | `VMCTL_ONLY=1 scripts/build_macos.sh` then `flutter run -d macos` | The helper step is **not optional** and `flutter run` never does it — see below |
 | vmctl Swift tests | `scripts/test_vmctl.sh` | Works with Command Line Tools only |
@@ -109,6 +110,7 @@ refactor: trim over-explanatory comments
 - JSON files in `lib/i18n/`, loaded at runtime
 - New language = add a JSON file + run `dart run scripts/check_translations.dart` to validate keys
 - Do not hardcode user-facing strings
+- **README translations live in `readme/README_<lang>.md`** and must mirror `README.md`: same headings, images, links, feature bullets, `<details>` blocks, and byte-identical code blocks (commands are never translated). Editing `README.md` means editing all eight — `dart run scripts/check_readme_translations.dart` (and `test/check_readme_translations_test.dart`) fails the moment one drifts. Screenshots are checked in under `readme/images/`, so a new one is referenced as `./images/x.png` from a translation and `./readme/images/x.png` from the root README
 
 ## Release Pipeline (`.github/workflows/releaser.yml`)
 - Triggers on push to any branch matching `lib/`, `assets/`, `windows/`, `installer/`, `LICENSE`, or `pubspec.yaml`
