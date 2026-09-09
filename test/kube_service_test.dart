@@ -25,36 +25,53 @@ String kubeConfig(List<String> names, {String? current}) => json.encode({
 String kubeList(List<Map<String, Object?>> items) =>
     json.encode({'apiVersion': 'v1', 'kind': 'List', 'items': items});
 
+/// The age a default [deployment] renders with, for tests that assert the
+/// row subtitle. A constant beside the fixture, so the two cannot drift.
+const String deploymentAge = '7d';
+
 Map<String, Object?> deployment(
   String name, {
   String namespace = 'default',
   int replicas = 3,
   int ready = 3,
   String image = 'nginx:1.25',
-  String created = '2026-09-01T10:00:00Z',
-}) =>
-    {
-      'kind': 'Deployment',
-      'metadata': {
-        'name': name,
-        'namespace': namespace,
-        'creationTimestamp': created,
+  String? created,
+}) {
+  // Relative to now, never a literal date: the screen prints this age against
+  // the wall clock, so a fixed timestamp gives an assertion on it a shelf
+  // life. The previous '2026-09-01T10:00:00Z' read as "7d" for one day and
+  // turned into "8d" at 10:00 UTC on 2026-09-09 — which the beta job, running
+  // at 07:38 UTC, passed and the main job failed, having waited four hours for
+  // a macOS runner and started at 12:11 UTC. The extra hour keeps the answer
+  // "7d" whenever in the day the job is finally picked up.
+  final timestamp = created ??
+      DateTime.now()
+          .toUtc()
+          .subtract(const Duration(days: 7, hours: 1))
+          .toIso8601String();
+  return {
+    'kind': 'Deployment',
+    'metadata': {
+      'name': name,
+      'namespace': namespace,
+      'creationTimestamp': timestamp,
+    },
+    'spec': {
+      'replicas': replicas,
+      'selector': {
+        'matchLabels': {'app': name},
       },
-      'spec': {
-        'replicas': replicas,
-        'selector': {
-          'matchLabels': {'app': name},
-        },
-        'template': {
-          'spec': {
-            'containers': [
-              {'name': name, 'image': image},
-            ],
-          },
+      'template': {
+        'spec': {
+          'containers': [
+            {'name': name, 'image': image},
+          ],
         },
       },
-      'status': {'readyReplicas': ready},
-    };
+    },
+    'status': {'readyReplicas': ready},
+  };
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -67,8 +84,8 @@ void main() {
     shell = FakeKubectlShell();
   });
 
-  KubeService service({Duration? timeout}) =>
-      KubeService(shell: shell, timeout: timeout ?? const Duration(seconds: 45));
+  KubeService service({Duration? timeout}) => KubeService(
+      shell: shell, timeout: timeout ?? const Duration(seconds: 45));
 
   /// Every command the shell has been handed, one string per call.
   List<String> ran() => shell.calls.map((call) => call.join(' ')).toList();
@@ -142,8 +159,8 @@ void main() {
       final contexts = KubeService.parseContexts(
           kubeConfig(['arn:aws:eks:eu-central-1:1234:cluster/prod']));
       expect(contexts.single.label, 'prod');
-      expect(contexts.single.name,
-          'arn:aws:eks:eu-central-1:1234:cluster/prod');
+      expect(
+          contexts.single.name, 'arn:aws:eks:eu-central-1:1234:cluster/prod');
     });
   });
 
@@ -292,8 +309,7 @@ void main() {
     test('the cluster is a flag, never a kubeconfig the app rewrites',
         () async {
       // `kubectl config use-context` would repoint the user's own terminal.
-      await service()
-          .workloads(contextName: 'prod', namespace: 'team-a');
+      await service().workloads(contextName: 'prod', namespace: 'team-a');
       final call = ran().single;
       expect(call, contains('--context=prod'));
       expect(call, contains('--namespace=team-a'));
@@ -352,10 +368,7 @@ void main() {
       shell.errors['logs'] = 'warning: config missing';
 
       final output = await service().podLogs(
-          contextName: 'prod',
-          namespace: 'team-a',
-          pod: 'api-abc',
-          lines: 50);
+          contextName: 'prod', namespace: 'team-a', pod: 'api-abc', lines: 50);
 
       expect(ran().single, contains('--all-containers=true'));
       expect(ran().single, contains('--tail=50'));
@@ -405,8 +418,8 @@ void main() {
       final api = service();
       for (final bad in ['--all', '-n', 'api;rm -rf /', '', 'a b', 'API']) {
         expect(
-            () => api.podLogs(
-                contextName: 'prod', namespace: 'team-a', pod: bad),
+            () =>
+                api.podLogs(contextName: 'prod', namespace: 'team-a', pod: bad),
             throwsA(isA<ArgumentError>()),
             reason: '"$bad" must not reach the command line');
       }
@@ -436,8 +449,7 @@ void main() {
 
     test('a context that could pass for a flag is refused', () async {
       expect(
-          () =>
-              service().workloads(contextName: '-prod', namespace: 'default'),
+          () => service().workloads(contextName: '-prod', namespace: 'default'),
           throwsA(isA<ArgumentError>()));
       expect(shell.calls, isEmpty);
     });
@@ -533,8 +545,8 @@ void main() {
     test('picks the largest unit that still has a digit', () {
       expect(formatKubeAge(now.subtract(const Duration(days: 12)), now: now),
           '12d');
-      expect(
-          formatKubeAge(now.subtract(const Duration(hours: 3)), now: now), '3h');
+      expect(formatKubeAge(now.subtract(const Duration(hours: 3)), now: now),
+          '3h');
       expect(formatKubeAge(now.subtract(const Duration(minutes: 45)), now: now),
           '45m');
       expect(formatKubeAge(now.subtract(const Duration(seconds: 9)), now: now),
@@ -547,7 +559,8 @@ void main() {
 
     test('a clock skewed ahead of the cluster does not print a negative age',
         () {
-      expect(formatKubeAge(now.add(const Duration(minutes: 5)), now: now), '0s');
+      expect(
+          formatKubeAge(now.add(const Duration(minutes: 5)), now: now), '0s');
     });
   });
 }

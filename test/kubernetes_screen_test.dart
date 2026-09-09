@@ -17,7 +17,8 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/screens/kubernetes_screen.dart';
 
 import 'fake_kubectl_shell.dart';
-import 'kube_service_test.dart' show deployment, kubeConfig, kubeList;
+import 'kube_service_test.dart'
+    show deployment, deploymentAge, kubeConfig, kubeList;
 
 /// `dialog()` reports a page view, and the real client posts to
 /// analytics.bostrot.com.
@@ -57,7 +58,8 @@ void main() {
     plausible = _MockPlausible();
     messages.clear();
     shell = FakeKubectlShell();
-    shell.responses['config view'] = kubeConfig(['dev', 'prod'], current: 'dev');
+    shell.responses['config view'] =
+        kubeConfig(['dev', 'prod'], current: 'dev');
     shell.responses['get namespaces'] = kubeList([
       {
         'metadata': {'name': 'default'}
@@ -133,8 +135,8 @@ void main() {
     expect(find.textContaining('Unauthorized'), findsOneWidget);
     // The pickers survive the failure, so the user can switch to a cluster
     // that does answer instead of being stuck on an error page.
-    expect(find.byKey(const ValueKey('test-kubernetes-context')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('test-kubernetes-context')), findsOneWidget);
   });
 
   testWidgets('an empty namespace says so', (tester) async {
@@ -153,7 +155,7 @@ void main() {
 
     expect(find.textContaining('api (healthy-text 3/3)'), findsOneWidget);
     expect(find.textContaining('worker (kubedown-text 0/2)'), findsOneWidget);
-    expect(find.text('Deployment · nginx:1.25 · 7d'), findsWidgets);
+    expect(find.text('Deployment · nginx:1.25 · $deploymentAge'), findsWidgets);
   });
 
   testWidgets('the broken workload is listed above the healthy one',
@@ -342,8 +344,8 @@ void main() {
     await openRow(tester, 'log-agent');
     expect(find.byKey(const ValueKey('test-workload-restart-log-agent')),
         findsOneWidget);
-    expect(
-        find.byKey(const ValueKey('test-workload-scale-log-agent')), findsNothing);
+    expect(find.byKey(const ValueKey('test-workload-scale-log-agent')),
+        findsNothing);
   });
 
   testWidgets('scale asks for a replica count and refuses a bad one',
@@ -361,7 +363,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // The dialog stays open with a complaint rather than sending nonsense.
-    expect(find.byKey(const ValueKey('test-dialog-validation')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('test-dialog-validation')), findsOneWidget);
     expect(ran().any((call) => call.contains('scale ')), isFalse);
 
     await tester.enterText(find.byType(TextBox).last, '5');
@@ -369,8 +372,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-        ran().any(
-            (call) => call.contains('scale deployment/api --replicas=5')),
+        ran().any((call) => call.contains('scale deployment/api --replicas=5')),
         isTrue);
   });
 
