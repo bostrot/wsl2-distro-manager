@@ -101,6 +101,25 @@ class App {
       // ignored
     }
 
+    // The CDN caches this file from GitHub; when it answers with nothing
+    // usable, read the same file at the source before falling back to a copy
+    // frozen at build time.
+    try {
+      final response = await dio.get(gitRepoRawLink);
+      if (response.statusCode != null && response.statusCode! < 300) {
+        final data = response.data;
+        final parsed = data is String ? json.decode(data) : data;
+        if (parsed is Map && parsed.isNotEmpty) {
+          final distros = parsed
+              .map((key, value) => MapEntry(key.toString(), value.toString()));
+          distroRootfsLinks = distros;
+          return distros;
+        }
+      }
+    } catch (e) {
+      // ignored
+    }
+
     // Fallback: bundled images.json in app assets.
     final local = await _getLocalDistroLinks();
     if (local.isNotEmpty) {

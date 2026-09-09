@@ -34,6 +34,18 @@ const String defaultRepoLink =
 
 const String gitRepoLink = 'https://n8n.aachen.dev/webhook/cdn/images.json';
 
+/// Where [gitRepoLink] caches from. Tried when the CDN answers with nothing
+/// usable — on 2026-09-09 it served 200 with an empty body, and every client
+/// quietly fell back to the copy bundled at build time.
+const String gitRepoRawLink =
+    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/main/images.json';
+
+/// The whole community catalogue in one response: every folder's `info.yml`
+/// already collected, so the browser makes one request where it used to make
+/// one per script. Served by the `cdn/scripts.json` workflow in `n8n/`;
+/// [gitApiScriptsLink] and [repoScripts] stay the fallback when it is down.
+String communityCatalogUrl = 'https://n8n.aachen.dev/webhook/cdn/scripts.json';
+
 String gitApiScriptsLink =
     'https://api.github.com/repos/bostrot/wsl-scripts/contents/scripts';
 

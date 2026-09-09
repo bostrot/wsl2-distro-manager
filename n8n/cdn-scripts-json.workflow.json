@@ -1,0 +1,294 @@
+{
+  "name": "cdn/scripts.json",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cdn/scripts.json",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -680,
+        0
+      ],
+      "webhookId": "b2c3d4e5-0002-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Serve the last good catalogue while it is still fresh.\n//\n// This matters more here than for images.json: without it every app that\n// opens the Community screen costs this server one api.github.com call, and\n// that endpoint allows 60 an hour to an anonymous caller. The cache is what\n// keeps one listing call serving every client for the length of the TTL.\nconst store = $getWorkflowStaticData('global');\nconst ttlMs = 10 * 60 * 1000;\nconst fresh = store.body && store.fetchedAt && (Date.now() - store.fetchedAt) < ttlMs;\nreturn [{ json: {\n  hit: Boolean(fresh),\n  body: fresh ? JSON.parse(store.body) : null,\n  cache: 'hit',\n} }];\n"
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000002",
+      "name": "Serve from cache?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.hit }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000003",
+      "name": "Fresh?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "cache-control",
+                "value": "public, max-age=300"
+              },
+              {
+                "name": "x-cdn-cache",
+                "value": "={{ $json.cache }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000004",
+      "name": "Respond (cached)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/repos/bostrot/wsl-scripts/contents/scripts",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000005",
+      "name": "List script folders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -20,
+        140
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// One item per script folder, so the next node fetches all of them in\n// parallel instead of the app walking them one at a time.\n//\n// A failed listing is not fatal while something is cached: the assemble node\n// downstream falls back to it, so a GitHub blip costs freshness, not the\n// screen.\nconst listing = $input.first().json;\nconst rows = Array.isArray(listing) ? listing : (listing.data ?? []);\nif (!Array.isArray(rows) || rows.length === 0) {\n  return [{ json: { name: null, listingFailed: true } }];\n}\nreturn rows\n  .filter((row) => row && row.type === 'dir' && row.name)\n  .map((row) => ({ json: {\n    name: row.name,\n    url: `https://raw.githubusercontent.com/bostrot/wsl-scripts/main/scripts/${row.name}/info.yml`,\n  } }));\n"
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000006",
+      "name": "One item per folder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 200
+            }
+          }
+        }
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000007",
+      "name": "Fetch info.yml",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        140
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Assemble one document out of the per-folder fetches.\n//\n// Shape is deliberately close to what the app already builds for itself:\n// `scripts[].info` is the info.yml text verbatim, so the client keeps using\n// its own YAML parser and this endpoint never becomes a second definition of\n// what a snippet is. A folder whose info.yml is missing or unreadable is\n// dropped, exactly as the app drops it today \u2014 one bad entry must not cost\n// the whole catalogue.\nconst store = $getWorkflowStaticData('global');\nconst items = $input.all();\n\nconst scripts = [];\nfor (const item of items) {\n  const j = item.json;\n  if (!j || !j.name || j.listingFailed) continue;\n  const body = typeof j.data === 'string' ? j.data : (typeof j.body === 'string' ? j.body : null);\n  if (!body || j.error !== undefined) continue;\n  if (!body.includes('name:')) continue;   // an HTML 404 page is not a manifest\n  scripts.push({ name: j.name, info: body });\n}\n\nif (scripts.length > 0) {\n  const body = {\n    generatedAt: new Date().toISOString(),\n    source: 'https://github.com/bostrot/wsl-scripts',\n    count: scripts.length,\n    scripts,\n  };\n  store.body = JSON.stringify(body);\n  store.fetchedAt = Date.now();\n  return [{ json: { body, cache: 'miss' } }];\n}\n\n// Nothing readable came back. Anything previously good beats an empty list.\nif (store.body) {\n  return [{ json: { body: JSON.parse(store.body), cache: 'stale' } }];\n}\nthrow new Error('the wsl-scripts catalogue is unavailable upstream and nothing is cached yet');\n"
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000008",
+      "name": "Assemble + cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "cache-control",
+                "value": "public, max-age=300"
+              },
+              {
+                "name": "x-cdn-cache",
+                "value": "={{ $json.cache }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "b2c3d4e5-0002-4000-8000-000000000009",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        140
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Serve from cache?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serve from cache?": {
+      "main": [
+        [
+          {
+            "node": "Fresh?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fresh?": {
+      "main": [
+        [
+          {
+            "node": "Respond (cached)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "List script folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List script folders": {
+      "main": [
+        [
+          {
+            "node": "One item per folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per folder": {
+      "main": [
+        [
+          {
+            "node": "Fetch info.yml",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch info.yml": {
+      "main": [
+        [
+          {
+            "node": "Assemble + cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble + cache": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

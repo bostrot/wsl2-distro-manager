@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/components/constants.dart';
@@ -24,7 +26,10 @@ class CommunityScript {
   List<String> get distros {
     final raw = item.distro;
     if (raw is List) {
-      return raw.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+      return raw
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
     final single = raw?.toString().trim() ?? '';
     return single.isEmpty ? [] : [single];
@@ -56,6 +61,12 @@ class CommunityScripts {
     if (!force && _cache.isNotEmpty) return _cache;
     if (force) _cache = [];
 
+    final aggregate = await _listFromCatalogue();
+    if (aggregate != null) {
+      _cache = aggregate;
+      return _cache;
+    }
+
     final listing = await _dio.get(gitApiScriptsLink);
     final folders = (listing.data as List)
         .map((e) => e['name'].toString())
@@ -78,6 +89,49 @@ class CommunityScripts {
     }
     _cache = loaded;
     return _cache;
+  }
+
+  /// The catalogue in a single request, or null when that route did not work
+  /// and the per-folder walk should be used instead.
+  ///
+  /// Eighty scripts meant eighty-one sequential requests before this — a
+  /// listing, then one `info.yml` each — and the listing counted against
+  /// api.github.com's sixty-an-hour anonymous budget. The aggregate endpoint
+  /// does that walk server-side and caches it, so the screen costs one
+  /// request whoever opens it.
+  ///
+  /// Every failure here is deliberately silent: a CDN that is down, stale or
+  /// serving something unexpected should cost latency, never the catalogue.
+  Future<List<CommunityScript>?> _listFromCatalogue() async {
+    try {
+      final response = await _dio.get(
+        communityCatalogUrl,
+        options: Options(receiveTimeout: const Duration(seconds: 10)),
+      );
+      final data = response.data;
+      final payload = data is String ? jsonDecode(data) : data;
+      if (payload is! Map) return null;
+      final entries = payload['scripts'];
+      if (entries is! List || entries.isEmpty) return null;
+
+      final loaded = <CommunityScript>[];
+      for (final entry in entries) {
+        if (entry is! Map) continue;
+        final info = entry['info'];
+        if (info is! String || info.isEmpty) continue;
+        try {
+          loaded
+              .add(CommunityScript(item: QuickActionItem.fromYamlString(info)));
+        } catch (_) {
+          // Same rule as the per-folder path: one unreadable manifest is
+          // skipped, it does not cost the catalogue.
+          continue;
+        }
+      }
+      return loaded.isEmpty ? null : loaded;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Fills in [CommunityScript.updatedAt] for [scripts], newest commit
@@ -125,7 +179,8 @@ class CommunityScripts {
 
   /// Downloads [script]'s body and saves it as a local snippet.
   Future<void> install(CommunityScript script) async {
-    final response = await _dio.get('$repoScripts${script.name}/script.noshell');
+    final response =
+        await _dio.get('$repoScripts${script.name}/script.noshell');
     script.item.content = response.data.toString();
     QuickAction.addToPrefs(script.item);
   }

@@ -18,11 +18,22 @@ const String _info = 'name: redis\n'
 const String _broken = 'this is not: valid: yaml: at all\n';
 
 class _Adapter implements HttpClientAdapter {
-  _Adapter({this.names = const ['redis'], this.brokenFor = const {}});
+  _Adapter({
+    this.names = const ['redis'],
+    this.brokenFor = const {},
+    this.catalogue,
+  });
   final List<String> names;
   final Set<String> brokenFor;
+
+  /// Body the aggregate CDN endpoint answers with. Null means it is not
+  /// serving anything usable, which is how the per-folder fallback is
+  /// exercised — and how every test written before that endpoint existed
+  /// keeps testing what it used to.
+  final String? catalogue;
   int commitCalls = 0;
   int listingCalls = 0;
+  int catalogueCalls = 0;
   bool failCommits = false;
 
   @override
@@ -45,12 +56,23 @@ class _Adapter implements HttpClientAdapter {
             Headers.contentTypeHeader: [Headers.jsonContentType]
           });
     }
+    if (path.contains('/webhook/cdn/scripts.json')) {
+      catalogueCalls++;
+      if (catalogue == null) return ResponseBody.fromString('nope', 503);
+      return ResponseBody.fromString(catalogue!, 200, headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType]
+      });
+    }
     if (path.contains('api.github.com')) {
       listingCalls++;
       return ResponseBody.fromString(
-          jsonEncode([for (final n in names) {'name': n}]), 200, headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType]
-      });
+          jsonEncode([
+            for (final n in names) {'name': n}
+          ]),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType]
+          });
     }
     if (path.endsWith('info.yml')) {
       final name = names.firstWhere((n) => path.contains('/$n/'));
@@ -80,6 +102,70 @@ void main() {
   CommunityScripts build(_Adapter adapter) =>
       CommunityScripts(dio: Dio()..httpClientAdapter = adapter);
 
+  /// The shape the `cdn/scripts.json` workflow in `n8n/` returns.
+  String catalogueOf(Map<String, String> scripts) => jsonEncode({
+        'generatedAt': '2026-09-09T18:00:00Z',
+        'source': 'https://github.com/bostrot/wsl-scripts',
+        'count': scripts.length,
+        'scripts': [
+          for (final entry in scripts.entries)
+            {'name': entry.key, 'info': entry.value},
+        ],
+      });
+
+  group('the aggregate catalogue endpoint', () {
+    test('one request replaces the listing and every info.yml', () async {
+      final adapter = _Adapter(
+          catalogue: catalogueOf({
+        'redis': _info,
+        'mysql': _info.replaceAll('redis', 'mysql'),
+      }));
+      final scripts = await build(adapter).list();
+
+      expect(scripts.map((s) => s.name), ['redis', 'mysql']);
+      expect(adapter.catalogueCalls, 1);
+      // The point of the endpoint: neither the folder listing nor any
+      // per-script fetch happens at all.
+      expect(adapter.listingCalls, 0);
+    });
+
+    test('a manifest it cannot parse is skipped, not fatal', () async {
+      final adapter = _Adapter(
+          catalogue: catalogueOf({
+        'redis': _info,
+        'broken': _broken,
+      }));
+      expect((await build(adapter).list()).map((s) => s.name), ['redis']);
+    });
+
+    test('an endpoint that is down falls back to walking the folders',
+        () async {
+      final adapter = _Adapter(names: ['redis', 'mysql']);
+      final scripts = await build(adapter).list();
+
+      expect(adapter.catalogueCalls, 1, reason: 'it is tried first');
+      expect(adapter.listingCalls, 1, reason: 'and then the walk takes over');
+      expect(scripts.map((s) => s.name), ['redis', 'mysql']);
+    });
+
+    test('an empty or unexpected body falls back rather than showing nothing',
+        () async {
+      for (final body in [
+        jsonEncode({'scripts': []}),
+        jsonEncode({'count': 0}),
+        jsonEncode(['not', 'a', 'map']),
+        'plain text',
+      ]) {
+        CommunityScripts.clearCache();
+        final adapter = _Adapter(names: ['redis'], catalogue: body);
+        final scripts = await build(adapter).list();
+        expect(scripts.map((s) => s.name), ['redis'],
+            reason: 'fell back for body: $body');
+        expect(adapter.listingCalls, 1, reason: 'for body: $body');
+      }
+    });
+  });
+
   test('a distro list in info.yml is exposed as a flat list', () async {
     final scripts = await build(_Adapter()).list();
     expect(scripts.single.distros, ['Debian', 'Alpine']);
@@ -103,8 +189,7 @@ void main() {
     expect(scripts.map((s) => s.name), ['redis', 'mysql']);
   });
 
-  test('update dates are fetched once and then read from the cache',
-      () async {
+  test('update dates are fetched once and then read from the cache', () async {
     final adapter = _Adapter();
     final service = build(adapter);
     final scripts = await service.list();
