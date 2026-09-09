@@ -151,6 +151,58 @@ void main() {
       expect(body['model'], 'gpt-4o');
     });
 
+    test('the system prompt names the read-only families only while they are '
+        'registered', () async {
+      // A prompt that advertises tools the model cannot call earns a round of
+      // invented tool calls and an apology (bostrot/ai-tasks#67), so the
+      // guidance rides the same gate the tools do.
+      Future<String> promptWith(bool gateOpen) async {
+        LicenseManager.unreleasedFeaturesOverride = gateOpen;
+        addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+        final ai = AiService();
+        LicenseManager.storeInstallCheckOverride = () => true;
+        await LicenseManager().init();
+        ai.setByokApiKey('sk-test');
+        ai.setByokModel('gpt-4o');
+        await ai.init();
+        ai.clearHistory();
+        final adapter = _RecordingAdapter((options) => ResponseBody.fromString(
+              json.encode({
+                'choices': [
+                  {
+                    'message': {'content': 'ok'}
+                  }
+                ]
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: [Headers.jsonContentType],
+              },
+            ));
+        ai.dioForTesting.httpClientAdapter = adapter;
+        await ai.sendMessage('hello');
+        final body = json.decode(adapter.requests.last.data as String)
+            as Map<String, dynamic>;
+        final messages = body['messages'] as List;
+        return messages
+            .whereType<Map>()
+            .firstWhere((m) => m['role'] == 'system')['content'] as String;
+      }
+
+      final open = await promptWith(true);
+      expect(open, contains('kube_pod_logs'));
+      expect(open, contains('cloud_servers'));
+      expect(open, contains('container_disk_usage'));
+      // The read-only promise is in the prompt too, so the model says "open
+      // the Kubernetes screen" rather than hunting for a tool that scales.
+      expect(open, contains('READ-ONLY'));
+
+      final closed = await promptWith(false);
+      expect(closed, isNot(contains('kube_')));
+      expect(closed, isNot(contains('cloud_servers')));
+      expect(closed, isNot(contains('container_')));
+    });
+
     test('a request failure keeps the user message so retry can re-run it',
         () async {
       final ai = AiService();

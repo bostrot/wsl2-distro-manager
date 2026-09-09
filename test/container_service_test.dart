@@ -321,4 +321,78 @@ void main() {
     expect(call.join(' '), contains('docker'));
     expect(call.join(' '), contains('start'));
   });
+
+  // Read-only host inspection (bostrot/ai-tasks#67).
+  group('read-only inspection', () {
+    test('stats never streams', () async {
+      // Without --no-stream `docker stats` never exits, so this would hit the
+      // broker's timeout on every call instead of answering.
+      shell.responses['docker stats'] = 'web\t2.5%';
+      await service().stats(ContainerEngine.docker);
+      expect(shell.calls.single, contains('--no-stream'));
+    });
+
+    test('stats for one container puts the ref after the flags', () async {
+      shell.responses['docker stats'] = 'web\t2.5%';
+      await service().stats(ContainerEngine.docker, ref: 'web');
+      expect(shell.calls.single.last, 'web');
+    });
+
+    test('a ref that could pass for a flag is refused', () async {
+      await expectLater(
+          service().stats(ContainerEngine.docker, ref: '--format={{.X}}'),
+          throwsArgumentError);
+      await expectLater(
+          service().processes(ContainerEngine.docker, '-a'),
+          throwsArgumentError);
+      expect(shell.calls, isEmpty);
+    });
+
+    test('images, volumes, networks and disk usage each run their own read',
+        () async {
+      final api = service();
+      shell.responses['docker images'] = 'nginx:latest\ta1';
+      shell.responses['docker volume'] = 'pgdata\tlocal';
+      shell.responses['docker network'] = 'bridge\tbridge\tlocal';
+      shell.responses['docker system'] = 'TYPE';
+      expect(await api.images(ContainerEngine.docker), contains('nginx'));
+      expect(await api.volumes(ContainerEngine.docker), contains('pgdata'));
+      expect(await api.networks(ContainerEngine.docker), contains('bridge'));
+      expect(await api.diskUsage(ContainerEngine.docker), contains('TYPE'));
+      // Nothing in the family can prune, remove or build.
+      expect(
+          shell.calls.map((c) => c.join(' ')),
+          everyElement(allOf(isNot(contains('prune')), isNot(contains(' rm ')),
+              isNot(contains('build')))));
+    });
+
+    test("a refusing daemon surfaces the engine's own words", () async {
+      shell.exitCodes['docker images'] = 1;
+      shell.errors['docker images'] = 'Cannot connect to the Docker daemon';
+      await expectLater(
+          service().images(ContainerEngine.docker),
+          throwsA(isA<ContainerException>().having((e) => e.message, 'message',
+              contains('Cannot connect to the Docker daemon'))));
+    });
+  });
+
+  group('logs options', () {
+    test('since and timestamps are engine flags, and the ref stays last',
+        () async {
+      shell.responses['docker logs'] = 'line';
+      await service().logs(ContainerEngine.docker, 'web',
+          since: '15m', timestamps: true);
+      final call = shell.calls.single;
+      expect(call, contains('--since=15m'));
+      expect(call, contains('--timestamps'));
+      expect(call.last, 'web');
+    });
+
+    test('a since that is not a duration never reaches the engine', () async {
+      await expectLater(
+          service().logs(ContainerEngine.docker, 'web', since: '2026-09-01'),
+          throwsArgumentError);
+      expect(shell.calls, isEmpty);
+    });
+  });
 }

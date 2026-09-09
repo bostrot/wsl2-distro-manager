@@ -36,10 +36,37 @@ const String kubeConfigPathPrefKey = 'KubeConfigPath';
 /// name, so it can never collide with a real one.
 const String kubeAllNamespaces = '*';
 
+/// Namespace value standing for "pass no namespace flag at all", which is
+/// what a cluster-scoped read (`get nodes`) needs: neither `--namespace` nor
+/// `--all-namespaces` is legal there. The empty string is not a legal
+/// namespace either, so this collides with nothing.
+const String kubeNoNamespace = '';
+
 /// Object names, namespaces and container names, as Kubernetes itself
 /// defines them (RFC 1123). Because it cannot start with `-`, a crafted name
 /// also cannot arrive as another flag on the command line.
 final RegExp _namePattern = RegExp(r'^[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?$');
+
+/// Resource kinds the way `kubectl get` takes them: `pods`, `svc`,
+/// `deployments.apps`, `ingresses.networking.k8s.io`. Letters, digits, dots
+/// and dashes only, never leading with a dash, so a kind read off a tool
+/// argument cannot arrive as another flag.
+final RegExp _kindPattern = RegExp(r'^[a-zA-Z][a-zA-Z0-9.\-]{0,252}$');
+
+/// Label selectors (`app=web,tier=front`, `app!=web`). One whitespace-free
+/// token that cannot lead with a dash: every selector kubectl takes on a
+/// command line already looks like this, and the spaces an `env in (a, b)`
+/// form would need are exactly the part worth refusing.
+final RegExp _selectorPattern = RegExp(r'^[^\s\-][^\s]*$');
+
+/// Durations the way kubectl's `--since` writes them: `30s`, `15m`, `2h`.
+final RegExp _durationPattern = RegExp(r'^[0-9]{1,6}[smh]$');
+
+/// Output formats a generic read may ask for. An allowlist rather than a
+/// pattern because `--output` also takes `jsonpath=…` and `go-template=…`,
+/// which are a scripting language reached through a flag — far more surface
+/// than "show me the object" needs.
+const Set<String> kubeOutputFormats = {'wide', 'json', 'yaml', 'name'};
 
 /// Context names are far looser than object names — a real EKS context is
 /// `arn:aws:eks:eu-central-1:1234:cluster/prod` and a GKE one is
@@ -172,7 +199,7 @@ class KubeService {
   }) async {
     final result = await _run([
       ..._contextArgs(contextName),
-      ..._namespaceArgs(namespace),
+      ..._readNamespaceArgs(namespace),
       'get',
       WorkloadKind.values.map((kind) => kind.plural).join(','),
       '--output=json',
@@ -198,7 +225,7 @@ class KubeService {
     if (selector.isEmpty) return const [];
     final result = await _run([
       ..._contextArgs(contextName),
-      ..._namespaceArgs(workload.namespace),
+      ..._readNamespaceArgs(workload.namespace),
       'get',
       'pods',
       '--selector=$selector',
@@ -210,27 +237,51 @@ class KubeService {
     return parsePods(result.stdout);
   }
 
-  /// The last [lines] of a pod's log, every container included.
+  /// The last [lines] of a pod's log.
   ///
-  /// `--all-containers` rather than a container picker: a pod with a sidecar
-  /// otherwise answers "a container name must be specified", which is an
-  /// error about the tool rather than about the app being debugged.
+  /// [container] empty means `--all-containers`, rather than a container
+  /// picker: a pod with a sidecar otherwise answers "a container name must be
+  /// specified", which is an error about the tool rather than about the app
+  /// being debugged. Naming one is still worth having when the sidecar is the
+  /// noisy half.
+  ///
+  /// [previous] reads the log of the *last terminated* container, which is
+  /// the only place the reason for a CrashLoopBackOff is written — the
+  /// running container is a fresh one that has not failed yet.
+  ///
+  /// [since] bounds the window (`5m`, `2h`) so "what happened since the
+  /// deploy" does not mean reading a day of log.
   Future<String> podLogs({
     required String contextName,
     required String namespace,
     required String pod,
     int lines = 300,
+    String container = '',
+    bool previous = false,
+    String since = '',
+    bool timestamps = false,
   }) async {
     _checkName(pod, 'pod');
     if (lines <= 0) {
       throw ArgumentError.value(lines, 'lines', 'must be greater than zero');
     }
+    if (container.isNotEmpty) _checkName(container, 'container');
+    if (since.isNotEmpty && !_durationPattern.hasMatch(since)) {
+      throw ArgumentError.value(
+          since, 'since', 'must be a duration like 30s, 15m or 2h');
+    }
     final result = await _run([
       ..._contextArgs(contextName),
-      ..._namespaceArgs(namespace),
+      ..._readNamespaceArgs(namespace),
       'logs',
       pod,
-      '--all-containers=true',
+      if (container.isEmpty)
+        '--all-containers=true'
+      else
+        '--container=$container',
+      if (previous) '--previous=true',
+      if (since.isNotEmpty) '--since=$since',
+      if (timestamps) '--timestamps=true',
       '--tail=$lines',
     ]);
     if (result.exitCode != 0) {
@@ -320,7 +371,7 @@ class KubeService {
     _checkName(workload.name, 'workload');
     final result = await _run([
       ..._contextArgs(contextName),
-      ..._namespaceArgs(workload.namespace),
+      ..._readNamespaceArgs(workload.namespace),
       'describe',
       workload.kind.ref(workload.name),
     ]);
@@ -328,6 +379,171 @@ class KubeService {
       throw KubeException(_failureText(result, 'describe'));
     }
     return result.stdout.trimRight();
+  }
+
+  // ---------------------------------------------------------------------
+  // Read-only cluster inspection (bostrot/ai-tasks#67).
+  //
+  // The screen only ever needed workloads, their pods and their logs. An
+  // agent debugging a cluster needs the rest of what someone would type at a
+  // terminal — events, Services, Ingresses, ConfigMap *names*, node
+  // pressure — and needs it without ever being able to change anything. So
+  // the verb is hardcoded in every method below (`get`, `describe`, `top`)
+  // and only the noun comes from the caller: there is no argument shape here
+  // that reaches `apply`, `delete` or `edit`.
+  // ---------------------------------------------------------------------
+
+  /// Pods of one namespace, optionally narrowed by a label [selector].
+  ///
+  /// Unlike [pods] this is not tied to a workload: "what is not Running in
+  /// this namespace" is the first question asked about a cluster, and it has
+  /// no workload to hang off yet.
+  Future<List<KubePod>> podsInNamespace({
+    required String contextName,
+    required String namespace,
+    String selector = '',
+  }) async {
+    if (selector.isNotEmpty && !_selectorPattern.hasMatch(selector)) {
+      throw ArgumentError.value(selector, 'selector', 'not a label selector');
+    }
+    final result = await _run([
+      ..._contextArgs(contextName),
+      ..._readNamespaceArgs(namespace),
+      'get',
+      'pods',
+      if (selector.isNotEmpty) '--selector=$selector',
+      '--output=json',
+    ]);
+    if (result.exitCode != 0) {
+      throw KubeException(_failureText(result, 'get pods'));
+    }
+    return parsePods(result.stdout);
+  }
+
+  /// `kubectl get <kind>` for any resource, rendered in [output] format.
+  ///
+  /// The generic reader: Services, Ingresses, PVCs, CRDs and everything else
+  /// this app will never grow a screen for. [namespace] takes
+  /// [kubeAllNamespaces] for a whole-cluster read and [kubeNoNamespace] for a
+  /// cluster-scoped kind such as `nodes`, which rejects both namespace flags.
+  Future<String> getResource({
+    required String contextName,
+    required String namespace,
+    required String kind,
+    String name = '',
+    String selector = '',
+    String output = 'wide',
+  }) async {
+    _checkKind(kind);
+    if (name.isNotEmpty) _checkName(name, 'name');
+    if (selector.isNotEmpty && !_selectorPattern.hasMatch(selector)) {
+      throw ArgumentError.value(selector, 'selector', 'not a label selector');
+    }
+    if (!kubeOutputFormats.contains(output)) {
+      throw ArgumentError.value(output, 'output',
+          'must be one of ${kubeOutputFormats.join(", ")}');
+    }
+    final result = await _run([
+      ..._contextArgs(contextName),
+      ..._readNamespaceArgs(namespace),
+      'get',
+      kind,
+      if (name.isNotEmpty) name,
+      if (selector.isNotEmpty) '--selector=$selector',
+      '--output=$output',
+    ]);
+    if (result.exitCode != 0) {
+      throw KubeException(_failureText(result, 'get $kind'));
+    }
+    return result.stdout.trimRight();
+  }
+
+  /// `kubectl describe <kind>/<name>` for any resource.
+  ///
+  /// [describe] does this for a [KubeWorkload]; this is the same thing for a
+  /// pod, a node or a Service, where the Events section at the bottom is
+  /// usually the whole answer ("0/3 nodes are available: insufficient cpu").
+  Future<String> describeResource({
+    required String contextName,
+    required String namespace,
+    required String kind,
+    required String name,
+  }) async {
+    _checkKind(kind);
+    _checkName(name, 'name');
+    final result = await _run([
+      ..._contextArgs(contextName),
+      ..._readNamespaceArgs(namespace),
+      'describe',
+      kind,
+      name,
+    ]);
+    if (result.exitCode != 0) {
+      throw KubeException(_failureText(result, 'describe $kind/$name'));
+    }
+    return result.stdout.trimRight();
+  }
+
+  /// Recent events of a namespace, oldest first the way `kubectl get events`
+  /// sorts them, so the tail is what just happened.
+  ///
+  /// [warningsOnly] drops the Normal ones — a busy namespace prints a Normal
+  /// event for every pull, start and scale, and the Warnings are the reason
+  /// anyone opened this.
+  Future<String> events({
+    required String contextName,
+    required String namespace,
+    bool warningsOnly = false,
+  }) async {
+    final result = await _run([
+      ..._contextArgs(contextName),
+      ..._readNamespaceArgs(namespace),
+      'get',
+      'events',
+      '--sort-by=.lastTimestamp',
+      if (warningsOnly) '--field-selector=type=Warning',
+      '--output=wide',
+    ]);
+    if (result.exitCode != 0) {
+      throw KubeException(_failureText(result, 'get events'));
+    }
+    return result.stdout.trimRight();
+  }
+
+  /// CPU and memory actually being used, from `kubectl top`.
+  ///
+  /// Needs metrics-server in the cluster, which plenty of clusters do not
+  /// run — that failure comes back with kubectl's own wording rather than
+  /// being papered over, because "install metrics-server" is the answer and
+  /// nothing this app does can substitute for it.
+  Future<String> top({
+    required String contextName,
+    required String namespace,
+    bool nodes = false,
+    String selector = '',
+  }) async {
+    if (selector.isNotEmpty && !_selectorPattern.hasMatch(selector)) {
+      throw ArgumentError.value(selector, 'selector', 'not a label selector');
+    }
+    final result = await _run([
+      ..._contextArgs(contextName),
+      // `top nodes` is cluster-scoped and rejects a namespace flag.
+      if (!nodes) ..._readNamespaceArgs(namespace),
+      'top',
+      nodes ? 'nodes' : 'pods',
+      if (!nodes && selector.isNotEmpty) '--selector=$selector',
+    ]);
+    if (result.exitCode != 0) {
+      throw KubeException(
+          _failureText(result, 'top ${nodes ? "nodes" : "pods"}'));
+    }
+    return result.stdout.trimRight();
+  }
+
+  void _checkKind(String value) {
+    if (!_kindPattern.hasMatch(value)) {
+      throw ArgumentError.value(value, 'kind', 'not a valid resource kind');
+    }
   }
 
   List<String> _contextArgs(String contextName) {
@@ -339,6 +555,23 @@ class KubeService {
     if (namespace == kubeAllNamespaces) return ['--all-namespaces'];
     _checkName(namespace, 'namespace');
     return ['--namespace=$namespace'];
+  }
+
+  /// [_namespaceArgs] plus the [kubeNoNamespace] case, for the reads alone.
+  ///
+  /// Deliberately not folded into [_namespaceArgs]: the three mutating
+  /// methods ([restart], [scale], [deletePod]) keep that one, and there an
+  /// empty namespace has to stay the error it has always been. A workload
+  /// whose object came back without `metadata.namespace` would otherwise
+  /// fall through to the context's own namespace and delete a same-named pod
+  /// in the wrong one — silently, which is the worst way for it to happen.
+  /// A read landing in the wrong namespace shows the user the wrong list;
+  /// a delete landing there is not recoverable.
+  List<String> _readNamespaceArgs(String namespace) {
+    // A cluster-scoped read takes neither flag, and leaving both off is also
+    // what makes kubectl fall back to the context's own namespace.
+    if (namespace == kubeNoNamespace) return const [];
+    return _namespaceArgs(namespace);
   }
 
   void _checkName(String value, String what) {

@@ -170,4 +170,127 @@ void main() {
     await handlers['container_start']!({'container': 'web'});
     expect(shell.calls.last, ['podman', 'start', 'web']);
   });
+
+  // The read-only half of the family (bostrot/ai-tasks#67): everything a
+  // person would type at a terminal to work out why a container is unhappy,
+  // and nothing that could change the host.
+  group('read-only host inspection', () {
+    test('the read-only tools are registered', () {
+      expect(
+          names,
+          containsAll([
+            'container_images',
+            'container_volumes',
+            'container_networks',
+            'container_stats',
+            'container_processes',
+            'container_disk_usage',
+          ]));
+    });
+
+    test('container_images asks for the four columns worth reading', () async {
+      shell.responses['docker images'] = 'nginx:latest\ta1\t142MB\t2 days ago';
+      final out = await handlers['container_images']!({});
+      expect(out, contains('nginx:latest'));
+      expect(shell.calls.last.first, 'docker');
+      expect(shell.calls.last, contains('images'));
+    });
+
+    test('container_volumes and container_networks read, never prune',
+        () async {
+      shell.responses['docker volume'] = 'pgdata\tlocal';
+      shell.responses['docker network'] = 'bridge\tbridge\tlocal';
+      expect(await handlers['container_volumes']!({}), contains('pgdata'));
+      expect(await handlers['container_networks']!({}), contains('bridge'));
+      expect(shell.calls.map((c) => c.join(' ')),
+          everyElement(isNot(contains('prune'))));
+    });
+
+    test('container_stats never streams, which would hit the timeout instead '
+        'of answering', () async {
+      shell.responses['docker stats'] = 'web\t2.5%\t40MiB / 2GiB\t1kB\t0B';
+      final out = await handlers['container_stats']!({});
+      expect(out, contains('2.5%'));
+      expect(shell.calls.last, contains('--no-stream'));
+    });
+
+    test('container_stats can sample one container', () async {
+      shell.responses['docker stats'] = 'web\t2.5%';
+      await handlers['container_stats']!({'container': 'web'});
+      expect(shell.calls.last.last, 'web');
+    });
+
+    test('container_processes works on an image with no shell', () async {
+      // `top` asks the host, so unlike container_exec it does not need a
+      // shell inside the image — which is the whole reason it exists.
+      shell.responses['docker top'] = 'UID   PID   CMD\nroot  1     nginx';
+      final out =
+          await handlers['container_processes']!({'container': 'web'});
+      expect(out, contains('nginx'));
+      expect(shell.calls.last, ['docker', 'top', 'web']);
+    });
+
+    test('container_disk_usage reports what a prune would reclaim without '
+        'reclaiming it', () async {
+      shell.responses['docker system'] = 'TYPE   TOTAL  RECLAIMABLE';
+      final out = await handlers['container_disk_usage']!({});
+      expect(out, contains('RECLAIMABLE'));
+      expect(shell.calls.last, ['docker', 'system', 'df']);
+    });
+
+    test('an empty answer is a sentence, not a blank', () async {
+      shell.responses['docker images'] = '';
+      expect(await handlers['container_images']!({}),
+          'No images on this host.');
+    });
+  });
+
+  group('container_logs filtering', () {
+    setUp(() {
+      shell.responses['docker logs'] = [
+        'listening on :8080',
+        'ERROR upstream timeout',
+        '  at proxy.go:41',
+        'served 200',
+      ].join('\n');
+    });
+
+    test('since and timestamps are flags on the engine, not filtering here',
+        () async {
+      await handlers['container_logs']!(
+          {'container': 'web', 'since': '15m', 'timestamps': true});
+      expect(shell.calls.last, contains('--since=15m'));
+      expect(shell.calls.last, contains('--timestamps'));
+      // The container ref stays last, after every flag.
+      expect(shell.calls.last.last, 'web');
+    });
+
+    test('a since that is not a duration never reaches the engine', () async {
+      await expectLater(
+          handlers['container_logs']!(
+              {'container': 'web', 'since': 'last tuesday'}),
+          throwsArgumentError);
+    });
+
+    test('contains narrows the log and says how much it dropped', () async {
+      final out = await handlers['container_logs']!(
+          {'container': 'web', 'contains': 'error'});
+      expect(out, startsWith('1 of 4 lines matched "error":'));
+      expect(out, contains('upstream timeout'));
+      expect(out, isNot(contains('served 200')));
+    });
+
+    test('context_lines keeps the frame under the match', () async {
+      final out = await handlers['container_logs']!(
+          {'container': 'web', 'contains': 'ERROR', 'context_lines': 1});
+      expect(out, contains('at proxy.go:41'));
+      expect(out, contains('listening on :8080'));
+    });
+
+    test('an unfiltered log is untouched', () async {
+      final out = await handlers['container_logs']!({'container': 'web'});
+      expect(out, contains('listening on :8080'));
+      expect(out, contains('served 200'));
+    });
+  });
 }

@@ -73,6 +73,7 @@
 - [x] Deployments, StatefulSets and DaemonSets with health at a glance, filtered by name, namespace or image
 - [x] Open a workload to see its pods, tail their logs, restart a pod, roll out a restart, scale, or read the full details
 - [x] Front end only: it drives the `kubectl` you already have, and never rewrites your kubeconfig or switches your context
+- [x] The AI chat and the MCP server can read your clusters too — workloads, pods, events, resource usage and searchable pod logs — and only read them: nothing there can restart, scale or delete anything
 
 **Deploy to the cloud** *(beta)*
 - [x] Push a whole instance to a brand-new Hetzner Cloud server in one step — the root filesystem is exported, uploaded and started there as a container

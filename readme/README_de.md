@@ -75,6 +75,7 @@
 - [x] Deployments, StatefulSets und DaemonSets mit Zustand auf einen Blick, gefiltert nach Name, Namespace oder Image
 - [x] Ein Workload öffnen, seine Pods sehen, deren Logs verfolgen, einen Pod neu starten, einen Rollout-Restart auslösen, skalieren oder die vollen Details lesen
 - [x] Nur eine Oberfläche: sie steuert das vorhandene `kubectl`, schreibt Ihre kubeconfig nie um und wechselt nie Ihren Kontext
+- [x] Auch der KI-Chat und der MCP-Server lesen Ihre Cluster — Workloads, Pods, Ereignisse, Ressourcenverbrauch und durchsuchbare Pod-Logs — und lesen sie nur: nichts davon kann etwas neu starten, skalieren oder löschen
 
 **In die Cloud ausrollen** *(Beta)*
 - [x] Eine ganze Instanz in einem Schritt auf einen brandneuen Hetzner-Cloud-Server bringen — das Root-Dateisystem wird exportiert, hochgeladen und dort als Container gestartet

@@ -37,6 +37,25 @@ const String _psTemplate = '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.State}}'
 /// name from arriving as another flag on the command line.
 final RegExp _refPattern = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$');
 
+/// Durations as the engines' `--since` writes them: `30s`, `15m`, `2h`.
+final RegExp _durationPattern = RegExp(r'^[0-9]{1,6}[smh]$');
+
+/// `images --format`: repository:tag, id, size and age, the four columns
+/// anyone reads when asking what is taking up the disk.
+const String _imagesTemplate =
+    '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedSince}}';
+
+/// `volume ls --format`. Podman's `{{.Driver}}` and `{{.Name}}` match
+/// Docker's, which is why one template drives both.
+const String _volumesTemplate = '{{.Name}}\t{{.Driver}}';
+
+/// `network ls --format`.
+const String _networksTemplate = '{{.Name}}\t{{.Driver}}\t{{.Scope}}';
+
+/// `stats --format`: what a container is actually costing right now.
+const String _statsTemplate = '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}'
+    '\t{{.NetIO}}\t{{.BlockIO}}';
+
 /// Drives `docker`/`podman` on the host.
 class ContainerService {
   /// Every engine command goes through the broker rather than `Process.run`.
@@ -212,13 +231,29 @@ class ContainerService {
   }
 
   /// The last [lines] of a container's log.
+  ///
+  /// [since] bounds the window to a duration (`5m`, `2h`) so "what happened
+  /// since I restarted it" is not a day of log, and [timestamps] prefixes
+  /// each line with the engine's own clock — the only way to line a container
+  /// log up against anything else that happened.
   Future<String> logs(ContainerEngine engine, String ref,
-      {int lines = 200}) async {
+      {int lines = 200, String since = '', bool timestamps = false}) async {
     _checkRef(ref);
     if (lines <= 0) {
       throw ArgumentError.value(lines, 'lines', 'must be greater than zero');
     }
-    final result = await _run(engine, ['logs', '--tail', '$lines', ref]);
+    if (since.isNotEmpty && !_durationPattern.hasMatch(since)) {
+      throw ArgumentError.value(
+          since, 'since', 'must be a duration like 30s, 15m or 2h');
+    }
+    final result = await _run(engine, [
+      'logs',
+      '--tail',
+      '$lines',
+      if (since.isNotEmpty) '--since=$since',
+      if (timestamps) '--timestamps',
+      ref,
+    ]);
     if (result.exitCode != 0) {
       throw ContainerException(_failureText(engine, result, 'logs $ref'));
     }
@@ -256,6 +291,89 @@ class ContainerService {
         await _run(engine, ['inspect', ref]);
     if (result.exitCode != 0) {
       throw ContainerException(_failureText(engine, result, 'inspect $ref'));
+    }
+    return result.stdout.trim();
+  }
+
+  // ---------------------------------------------------------------------
+  // Read-only host inspection (bostrot/ai-tasks#67).
+  //
+  // The screen only needed containers; someone debugging needs the rest of
+  // what the engine knows. Each of these hardcodes a read subcommand and
+  // takes at most a container ref, so none of them can prune, remove or
+  // build anything — `system df` reports what `system prune` would reclaim
+  // without being able to reclaim it.
+  // ---------------------------------------------------------------------
+
+  /// Images on the host, newest first the way the engines list them.
+  Future<String> images(ContainerEngine engine) async {
+    final result = await _run(
+        engine, ['images', '--format', _imagesTemplate]);
+    if (result.exitCode != 0) {
+      throw ContainerException(_failureText(engine, result, 'images'));
+    }
+    return result.stdout.trim();
+  }
+
+  /// Named volumes. The answer to "where did this database's data go" when a
+  /// container was recreated and the data survived — or did not.
+  Future<String> volumes(ContainerEngine engine) async {
+    final result =
+        await _run(engine, ['volume', 'ls', '--format', _volumesTemplate]);
+    if (result.exitCode != 0) {
+      throw ContainerException(_failureText(engine, result, 'volume ls'));
+    }
+    return result.stdout.trim();
+  }
+
+  /// Networks, which is how "these two containers cannot see each other" gets
+  /// answered.
+  Future<String> networks(ContainerEngine engine) async {
+    final result =
+        await _run(engine, ['network', 'ls', '--format', _networksTemplate]);
+    if (result.exitCode != 0) {
+      throw ContainerException(_failureText(engine, result, 'network ls'));
+    }
+    return result.stdout.trim();
+  }
+
+  /// A one-shot CPU/memory/IO sample.
+  ///
+  /// `--no-stream` is not optional here: without it `docker stats` never
+  /// exits and the command would run into the broker's timeout every time.
+  Future<String> stats(ContainerEngine engine, {String ref = ''}) async {
+    if (ref.isNotEmpty) _checkRef(ref);
+    final result = await _run(engine, [
+      'stats',
+      '--no-stream',
+      '--format',
+      _statsTemplate,
+      if (ref.isNotEmpty) ref,
+    ]);
+    if (result.exitCode != 0) {
+      throw ContainerException(_failureText(engine, result, 'stats'));
+    }
+    return result.stdout.trim();
+  }
+
+  /// The processes running inside a container, as the *host* sees them —
+  /// which is why this works on a container with no shell, where
+  /// [exec] with `ps` cannot.
+  Future<String> processes(ContainerEngine engine, String ref) async {
+    _checkRef(ref);
+    final result = await _run(engine, ['top', ref]);
+    if (result.exitCode != 0) {
+      throw ContainerException(_failureText(engine, result, 'top $ref'));
+    }
+    return result.stdout.trim();
+  }
+
+  /// What images, containers, volumes and the build cache are costing on
+  /// disk, and how much of it is reclaimable.
+  Future<String> diskUsage(ContainerEngine engine) async {
+    final result = await _run(engine, ['system', 'df']);
+    if (result.exitCode != 0) {
+      throw ContainerException(_failureText(engine, result, 'system df'));
     }
     return result.stdout.trim();
   }

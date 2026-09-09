@@ -117,7 +117,8 @@ void main() {
     // operations (unregister, container_remove) are confirm-gated rather than
     // hidden — see the dedicated group below. The container_* family rides
     // along on every backend: the engine belongs to the host, not to WSL
-    // (bostrot/ai-tasks#57).
+    // (bostrot/ai-tasks#57). The kube_* and cloud_* families ride along for
+    // the same reason and are read-only throughout (bostrot/ai-tasks#67).
     expect(names, {
       'container_list',
       'container_engines',
@@ -128,6 +129,23 @@ void main() {
       'container_logs',
       'container_exec',
       'container_inspect',
+      'container_images',
+      'container_volumes',
+      'container_networks',
+      'container_stats',
+      'container_processes',
+      'container_disk_usage',
+      'kube_contexts',
+      'kube_namespaces',
+      'kube_workloads',
+      'kube_pods',
+      'kube_pod_logs',
+      'kube_describe',
+      'kube_get',
+      'kube_events',
+      'kube_top',
+      'cloud_servers',
+      'cloud_server_info',
       'wsl_list_distros',
       'wsl_distro_info',
       'wsl_status',

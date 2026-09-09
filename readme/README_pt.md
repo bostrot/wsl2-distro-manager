@@ -74,6 +74,7 @@
 - [x] Deployments, StatefulSets e DaemonSets com a saúde num relance, filtrados por nome, namespace ou imagem
 - [x] Abra uma carga de trabalho para ver seus pods, acompanhar os logs, reiniciar um pod, disparar um rollout restart, escalar ou ler todos os detalhes
 - [x] Apenas interface: ele opera o `kubectl` que você já tem e nunca reescreve seu kubeconfig nem troca seu contexto
+- [x] O chat de IA e o servidor MCP também leem seus clusters — cargas de trabalho, pods, eventos, uso de recursos e logs de pods pesquisáveis — e só leem: nada ali consegue reiniciar, escalar ou excluir
 
 **Implantar na nuvem** *(beta)*
 - [x] Envie uma instância inteira para um servidor novo na Hetzner Cloud em um único passo — o sistema de arquivos raiz é exportado, enviado e iniciado lá como contêiner

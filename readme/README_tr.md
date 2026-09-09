@@ -74,6 +74,7 @@
 - [x] Deployment, StatefulSet ve DaemonSet'ler tek bakışta sağlık durumuyla, ada, ad alanına veya imaja göre filtrelenmiş halde
 - [x] Bir iş yükünü açıp pod'larını görün, günlüklerini izleyin, bir pod'u yeniden başlatın, rollout restart yapın, ölçeklendirin veya tüm ayrıntıları okuyun
 - [x] Yalnızca ön yüz: zaten kurulu olan `kubectl` komutunuzu kullanır, kubeconfig'inizi asla yeniden yazmaz ve bağlamınızı değiştirmez
+- [x] Yapay zekâ sohbeti ve MCP sunucusu da kümelerinizi okur — iş yükleri, podlar, olaylar, kaynak kullanımı ve aranabilir pod günlükleri — ve yalnızca okur: hiçbiri yeniden başlatamaz, ölçekleyemez veya silemez
 
 **Buluta dağıtın** *(beta)*
 - [x] Bütün bir örneği tek adımda yepyeni bir Hetzner Cloud sunucusuna gönderin — kök dosya sistemi dışa aktarılır, yüklenir ve orada kapsayıcı olarak başlatılır

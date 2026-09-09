@@ -74,6 +74,7 @@
 - [x] Deploymentek, StatefulSetek és DaemonSetek állapota egy pillantásra, névre, névtérre vagy képfájlra szűrve
 - [x] Nyiss meg egy munkaterhelést, hogy lásd a podjait, kövesd a naplóikat, újraindíts egy podot, indíts gördülő újraindítást, skálázz vagy elolvasd a teljes részleteket
 - [x] Csak felület: a már meglévő `kubectl` parancsodat vezérli, sosem írja át a kubeconfigodat és nem vált kontextust
+- [x] Az MI-csevegés és az MCP-kiszolgáló is olvassa a fürtjeidet — munkaterhelések, podok, események, erőforrás-használat és kereshető pod-naplók —, de csak olvassa: semmi sem indíthat újra, méretezhet át vagy törölhet
 
 **Telepítés a felhőbe** *(béta)*
 - [x] Told fel egy teljes példányt egy vadonatúj Hetzner Cloud kiszolgálóra egyetlen lépésben — a gyökérfájlrendszer exportálódik, feltöltődik és konténerként indul el ott

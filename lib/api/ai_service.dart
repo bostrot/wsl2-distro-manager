@@ -168,16 +168,33 @@ class AiService {
   @visibleForTesting
   set toolsForTesting(List<McpTool> value) => _tools = value;
 
-  /// Named only when the container_* tools were actually registered — a
-  /// prompt that advertises tools the model cannot call earns a round of
-  /// invented tool calls and an apology.
+  /// Named only when the container_*, kube_* and cloud_* tools were actually
+  /// registered — a prompt that advertises tools the model cannot call earns a
+  /// round of invented tool calls and an apology.
   String get _containerGuidance => LicenseManager.unreleasedFeaturesVisible
       ? 'Docker and Podman containers are a separate thing from VMs and '
           'distros, with their own tools: container_list, '
           'container_start/stop/restart, container_logs, container_exec, '
-          'container_inspect. Use those for anything about containers, and '
-          'never wsl_* — removing a container (container_remove) is permanent '
-          'and confirm-gated like unregistering an instance.\n'
+          'container_inspect, and the read-only container_images, '
+          'container_volumes, container_networks, container_stats, '
+          'container_processes and container_disk_usage. Use those for '
+          'anything about containers, and never wsl_* — removing a container '
+          '(container_remove) is permanent and confirm-gated like '
+          'unregistering an instance.\n'
+          'Kubernetes clusters from the user\'s kubeconfig have kube_* tools, '
+          'and they are READ-ONLY on purpose: kube_contexts, kube_namespaces, '
+          'kube_workloads, kube_pods, kube_pod_logs, kube_describe, kube_get, '
+          'kube_events, kube_top. You cannot restart, scale or delete '
+          'anything in a cluster — when that is what the user needs, say so '
+          'and point them at the Kubernetes screen. Debugging order that '
+          'works: kube_workloads with unhealthy_only, then kube_pods with '
+          'problems_only, then kube_describe on the failing pod for its '
+          'Events, then kube_pod_logs with previous: true for a '
+          'CrashLoopBackOff. Search logs with the contains/pattern arguments '
+          'instead of pulling thousands of lines back.\n'
+          'Cloud servers have cloud_servers and cloud_server_info, also '
+          'read-only — creating and deleting servers is done on the Cloud '
+          'screen because both cost money.\n'
       : '';
 
   /// System prompt: says what the assistant is and that its tools act on the

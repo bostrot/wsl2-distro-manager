@@ -563,4 +563,164 @@ void main() {
           formatKubeAge(now.add(const Duration(minutes: 5)), now: now), '0s');
     });
   });
+
+  // The read-only surface the kube_* MCP family sits on
+  // (bostrot/ai-tasks#67). What is worth testing here is the argv: every one
+  // of these carries a hardcoded read verb, and the assertions below are what
+  // stops a later edit from letting a caller's string choose it.
+  group('read-only inspection', () {
+    test('getResource reads a kind in the format asked for', () async {
+      shell.responses['get ingress'] = 'NAME';
+      await service().getResource(
+          contextName: 'prod',
+          namespace: 'team-a',
+          kind: 'ingress',
+          output: 'json');
+      final call = ran().single;
+      expect(call, contains('get'));
+      expect(call, contains('--output=json'));
+      expect(call, contains('--namespace=team-a'));
+    });
+
+    test('the empty-namespace shortcut is read-only: a mutating call still '
+        'refuses it', () async {
+      // Folding kubeNoNamespace into the shared namespace helper would let a
+      // workload whose object came back without metadata.namespace fall
+      // through to the context's own namespace and delete a same-named pod
+      // in the wrong one.
+      await expectLater(
+          service()
+              .deletePod(contextName: 'prod', namespace: '', pod: 'web-1'),
+          throwsArgumentError);
+      expect(ran(), isEmpty);
+    });
+
+    test('a cluster-scoped read passes neither namespace flag', () async {
+      shell.responses['get nodes'] = 'NAME';
+      await service().getResource(
+          contextName: 'prod', namespace: kubeNoNamespace, kind: 'nodes');
+      expect(ran().single, isNot(contains('--namespace')));
+      expect(ran().single, isNot(contains('--all-namespaces')));
+    });
+
+    test('an output format outside the allowlist is refused', () async {
+      // `--output` also takes jsonpath= and go-template=, which is a
+      // scripting language reached through a flag.
+      await expectLater(
+          service().getResource(
+              contextName: 'prod',
+              namespace: 'team-a',
+              kind: 'pods',
+              output: 'jsonpath={.items[*].spec}'),
+          throwsArgumentError);
+      expect(ran(), isEmpty);
+    });
+
+    test('a kind that could pass for a flag never reaches kubectl', () async {
+      await expectLater(
+          service().getResource(
+              contextName: 'prod', namespace: 'team-a', kind: '-o=json'),
+          throwsArgumentError);
+      expect(ran(), isEmpty);
+    });
+
+    test('a selector with whitespace is refused', () async {
+      await expectLater(
+          service().podsInNamespace(
+              contextName: 'prod',
+              namespace: 'team-a',
+              selector: 'env in (a, b)'),
+          throwsArgumentError);
+      expect(ran(), isEmpty);
+    });
+
+    test('podsInNamespace lists the namespace rather than one workload',
+        () async {
+      shell.responses['get pods'] = kubeList([]);
+      await service()
+          .podsInNamespace(contextName: 'prod', namespace: 'team-a');
+      expect(ran().single, isNot(contains('--selector')));
+    });
+
+    test('events are sorted oldest first and can be narrowed to warnings',
+        () async {
+      shell.responses['get events'] = 'LAST SEEN';
+      await service().events(
+          contextName: 'prod', namespace: 'team-a', warningsOnly: true);
+      expect(ran().single, contains('--sort-by=.lastTimestamp'));
+      expect(ran().single, contains('--field-selector=type=Warning'));
+    });
+
+    test('top nodes is cluster-scoped, top pods is not', () async {
+      shell.responses['top'] = 'NAME';
+      final api = service();
+      await api.top(contextName: 'prod', namespace: 'team-a', nodes: true);
+      expect(ran().single, isNot(contains('--namespace')));
+      shell.calls.clear();
+      await api.top(contextName: 'prod', namespace: 'team-a');
+      expect(ran().single, contains('--namespace=team-a'));
+    });
+
+    test('describeResource describes any kind', () async {
+      shell.responses['describe'] = 'Name: web-1';
+      await service().describeResource(
+          contextName: 'prod',
+          namespace: 'team-a',
+          kind: 'pod',
+          name: 'web-1');
+      expect(ran().single, contains('describe'));
+      expect(ran().single, endsWith('web-1'));
+    });
+  });
+
+  group('podLogs options', () {
+    test('a named container replaces --all-containers', () async {
+      shell.responses['logs'] = 'line';
+      await service().podLogs(
+          contextName: 'prod',
+          namespace: 'team-a',
+          pod: 'web-1',
+          container: 'sidecar');
+      expect(ran().single, contains('--container=sidecar'));
+      expect(ran().single, isNot(contains('--all-containers')));
+    });
+
+    test('previous and since are passed through', () async {
+      shell.responses['logs'] = 'line';
+      await service().podLogs(
+          contextName: 'prod',
+          namespace: 'team-a',
+          pod: 'web-1',
+          previous: true,
+          since: '2h',
+          timestamps: true);
+      final call = ran().single;
+      expect(call, contains('--previous=true'));
+      expect(call, contains('--since=2h'));
+      expect(call, contains('--timestamps=true'));
+    });
+
+    test('a since that is not a duration is refused before the call',
+        () async {
+      await expectLater(
+          service().podLogs(
+              contextName: 'prod',
+              namespace: 'team-a',
+              pod: 'web-1',
+              since: '; rm -rf /'),
+          throwsArgumentError);
+      expect(ran(), isEmpty);
+    });
+
+    test('a container name that could pass for a flag is refused', () async {
+      await expectLater(
+          service().podLogs(
+              contextName: 'prod',
+              namespace: 'team-a',
+              pod: 'web-1',
+              container: '--previous'),
+          throwsArgumentError);
+      expect(ran(), isEmpty);
+    });
+  });
 }

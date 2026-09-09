@@ -8,18 +8,32 @@
 // registered everywhere: a Docker/Podman engine belongs to the host, not to
 // the backend driving its instances (bostrot/ai-tasks#57).
 //
+// The kube_* and cloud_* families (bostrot/ai-tasks#67) carry the same idea
+// one step out, and are deliberately READ-ONLY: they answer questions about a
+// cluster or a cloud account without being able to change either. The line is
+// drawn at what the app *owns* — instances and containers on this machine are
+// the user's own and are managed here; a production cluster and a billed
+// server are not, so restarting a Deployment or deleting a server stays on
+// its screen behind a confirmation a person clicks.
+//
 // The one-way operations are gated instead of hidden: unregistering needs an
 // explicit confirm flag and points at the export tool first, so an agent can
 // provision and tear down instances without a human clicking through the GUI
 // — but never deletes one on a whim.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:wsl2distromanager/api/app.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
+import 'package:wsl2distromanager/api/cloud/cloud_models.dart';
+import 'package:wsl2distromanager/api/cloud/cloud_provider.dart';
+import 'package:wsl2distromanager/api/cloud/hetzner_provider.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
+import 'package:wsl2distromanager/api/kubernetes/kube_models.dart';
+import 'package:wsl2distromanager/api/kubernetes/kube_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
 import 'package:wsl2distromanager/api/distro_package.dart';
@@ -41,13 +55,19 @@ List<McpTool> buildWslMcpTools(
   App? app,
   DistroPackager? packager,
   ContainerService? containerService,
+  KubeService? kubeService,
+  CloudProvider? Function()? cloudProvider,
 }) {
   return [
     ..._genericTools(backend),
-    // The container_* family follows the Containers screen behind its gate:
-    // an MCP client is as much a shipped surface as the pane is.
-    if (LicenseManager.unreleasedFeaturesVisible)
+    // The container_*, kube_* and cloud_* families follow their screens
+    // behind the same gate: an MCP client is as much a shipped surface as the
+    // pane is.
+    if (LicenseManager.unreleasedFeaturesVisible) ...[
       ..._containerTools(containerService ?? ContainerService()),
+      ..._kubeTools(kubeService ?? KubeService()),
+      ..._cloudTools(cloudProvider ?? _configuredCloudProvider),
+    ],
     if (backend is WSLApi)
       ..._wslOnlyTools(
         backend,
@@ -59,6 +79,15 @@ List<McpTool> buildWslMcpTools(
     if (backend is AppleVmApi) ..._appleVmTools(backend),
     ..._terminalTools(terminalManager),
   ];
+}
+
+/// The provider built from the token the user stored, or null when they have
+/// connected no cloud account. Read on every call rather than cached: the
+/// token is typed into the Cloud screen while the app is already running.
+CloudProvider? _configuredCloudProvider() {
+  final id = activeCloudProviderId();
+  final token = cloudToken(id);
+  return token.isEmpty ? null : buildCloudProvider(id, token);
 }
 
 /// Tools that make sense for every backend: they only use the shared
@@ -1785,9 +1814,118 @@ List<McpTool> _containerTools(ContainerService service) {
         return 'Removed $container.';
       },
     ),
+    // Read-only host inspection (bostrot/ai-tasks#67). Everything below
+    // answers a question and changes nothing: an agent can say what is
+    // filling the disk, it cannot prune it.
+    McpTool(
+      name: 'container_images',
+      description:
+          'List images on this host with their tag, id, size and age. This is '
+          'what a container runs, as opposed to container_list which is what '
+          'is running.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {'engine': engineProperty},
+      },
+      handler: (args) async {
+        final out = await service.images(await resolveEngine(args));
+        return out.isEmpty ? 'No images on this host.' : out;
+      },
+    ),
+    McpTool(
+      name: 'container_volumes',
+      description:
+          'List named volumes. Where a container that was recreated kept its '
+          "data — or did not, which is the answer when a database came back "
+          'empty.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {'engine': engineProperty},
+      },
+      handler: (args) async {
+        final out = await service.volumes(await resolveEngine(args));
+        return out.isEmpty ? 'No volumes.' : out;
+      },
+    ),
+    McpTool(
+      name: 'container_networks',
+      description:
+          'List networks. Two containers that cannot reach each other are '
+          'usually on different networks, and this is where that shows.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {'engine': engineProperty},
+      },
+      handler: (args) async {
+        final out = await service.networks(await resolveEngine(args));
+        return out.isEmpty ? 'No networks.' : out;
+      },
+    ),
+    McpTool(
+      name: 'container_stats',
+      description:
+          'A one-shot CPU, memory, network and disk-IO sample for running '
+          'containers, or for one of them. This is a snapshot, not a stream — '
+          'call it again for a second reading.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': {
+            'type': 'string',
+            'description': 'One container. Omit for every running container.',
+          },
+          'engine': engineProperty,
+        },
+      },
+      handler: (args) async {
+        final out = await service.stats(
+          await resolveEngine(args),
+          ref: ((args['container'] as String?) ?? '').trim(),
+        );
+        return out.isEmpty ? 'No running containers to sample.' : out;
+      },
+    ),
+    McpTool(
+      name: 'container_processes',
+      description:
+          'The processes running inside a container, as the host sees them. '
+          'Unlike container_exec this needs no shell in the image, so it also '
+          'works on a distroless or scratch container.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'container': containerProperty,
+          'engine': engineProperty,
+        },
+        'required': ['container'],
+      },
+      handler: (args) async {
+        final out = await service.processes(
+            await resolveEngine(args), _requireString(args, 'container'));
+        return out.isEmpty ? 'The container reported no processes.' : out;
+      },
+    ),
+    McpTool(
+      name: 'container_disk_usage',
+      description:
+          'What images, containers, volumes and the build cache cost on disk, '
+          'and how much of that is reclaimable. Reports only — reclaiming it '
+          'is a prune the user runs themselves.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {'engine': engineProperty},
+      },
+      handler: (args) async {
+        final out = await service.diskUsage(await resolveEngine(args));
+        return out.isEmpty ? 'The engine reported no disk usage.' : out;
+      },
+    ),
     McpTool(
       name: 'container_logs',
-      description: 'Tail a container log.',
+      description:
+          'Tail a container log, optionally narrowed to the lines that '
+          'matter. Use contains/pattern to search rather than pulling '
+          'thousands of lines back, and since to bound the window.',
       inputSchema: const {
         'type': 'object',
         'properties': {
@@ -1795,8 +1933,19 @@ List<McpTool> _containerTools(ContainerService service) {
           'engine': engineProperty,
           'lines': {
             'type': 'integer',
-            'description': 'How many trailing lines to return. Default 200.',
+            'description': 'How many trailing lines to fetch before '
+                'filtering. Default 200.',
           },
+          'since': {
+            'type': 'string',
+            'description':
+                'Only lines newer than this duration: 30s, 15m, 2h.',
+          },
+          'timestamps': {
+            'type': 'boolean',
+            'description': "Prefix each line with the engine's own clock.",
+          },
+          ..._logFilterProperties,
         },
         'required': ['container'],
       },
@@ -1807,8 +1956,11 @@ List<McpTool> _containerTools(ContainerService service) {
           await resolveEngine(args),
           container,
           lines: lines is int && lines > 0 ? lines : 200,
+          since: ((args['since'] as String?) ?? '').trim(),
+          timestamps: args['timestamps'] == true,
         );
-        return output.isEmpty ? '$container has logged nothing.' : output;
+        if (output.isEmpty) return '$container has logged nothing.';
+        return _filterLogText(output, args);
       },
     ),
     McpTool(
@@ -1857,12 +2009,645 @@ List<McpTool> _containerTools(ContainerService service) {
   ];
 }
 
+/// Kubernetes tools. Read-only, every one of them (bostrot/ai-tasks#67).
+///
+/// The screen can restart, scale and delete pods; this family deliberately
+/// cannot. An agent that can read a cluster is a debugging tool that helps on
+/// a bad afternoon; an agent that can roll a production Deployment because it
+/// misread a log is a different product, and nobody asked for that one. Every
+/// handler below reaches [KubeService] methods whose verb is hardcoded to
+/// `get`, `describe`, `logs` or `top`.
+///
+/// Registered behind the same gate as the Kubernetes screen, for the reason
+/// the container family is: an MCP client is as much a shipped surface as the
+/// nav pane.
+///
+/// `context` is optional everywhere and resolves to the kubeconfig's current
+/// context, so the common case — one cluster, the one already selected —
+/// takes no argument at all. `namespace` omitted means the context's own
+/// namespace, which is what `kubectl` alone would do; `all` crosses every
+/// namespace.
+List<McpTool> _kubeTools(KubeService service) {
+  /// The context to run against, as the whole [KubeContext] — the caller that
+  /// only wants its name takes `.name`. Resolving to the object rather than
+  /// the string is what keeps kube_namespaces down to one `config view`: it
+  /// needs the context's default namespace, and reading that back would
+  /// otherwise mean a second read of the kubeconfig.
+  Future<KubeContext> resolveContext(Map<String, dynamic> args) async {
+    final requested = (args['context'] as String?)?.trim();
+    final contexts = await service.contexts();
+    if (contexts.isEmpty) {
+      throw ArgumentError('No cluster is configured: the kubeconfig has no '
+          'contexts. Call kube_contexts once one is added.');
+    }
+    if (requested != null && requested.isNotEmpty) {
+      return contexts.firstWhere(
+        (c) => c.name == requested,
+        // A context this app has not seen is still worth trying: the
+        // kubeconfig may have changed under a cached read, and kubectl gives
+        // the better error for a name that really is not there.
+        orElse: () => KubeContext(name: requested),
+      );
+    }
+    return contexts.firstWhere((c) => c.isCurrent, orElse: () => contexts.first);
+  }
+
+  Future<String> resolveContextName(Map<String, dynamic> args) async =>
+      (await resolveContext(args)).name;
+
+  String resolveNamespace(Map<String, dynamic> args) {
+    final value = (args['namespace'] as String?)?.trim() ?? '';
+    if (value == 'all' || value == kubeAllNamespaces) return kubeAllNamespaces;
+    return value;
+  }
+
+  /// "kubectl is not installed" is an answer, not a failure — the same shape
+  /// container_list uses for a host with no engine.
+  Future<String> guarded(Future<String> Function() body) async {
+    if (!await service.isInstalled()) return KubeService.noKubectlMessage;
+    return body();
+  }
+
+  const contextProperty = {
+    'type': 'string',
+    'description': 'Cluster context from the kubeconfig, as listed by '
+        'kube_contexts. Defaults to the current context.',
+  };
+  const namespaceProperty = {
+    'type': 'string',
+    'description': "Namespace to read. Omit for the context's own namespace, "
+        'or pass "all" for every namespace.',
+  };
+  const selectorProperty = {
+    'type': 'string',
+    'description': 'Label selector, e.g. "app=web,tier=frontend". No spaces.',
+  };
+
+  return [
+    McpTool(
+      name: 'kube_contexts',
+      description:
+          'List the Kubernetes clusters in the kubeconfig, with the cluster '
+          'each points at and which one is current. Start here when the user '
+          'has more than one cluster. Read-only, and the one call that still '
+          'answers when every cluster is unreachable.',
+      inputSchema: const {'type': 'object', 'properties': {}},
+      handler: (_) async => guarded(() async {
+        final contexts = await service.contexts();
+        if (contexts.isEmpty) {
+          return 'The kubeconfig has no contexts.';
+        }
+        return contexts
+            .map((c) => '${c.name}${c.isCurrent ? " (current)" : ""} — '
+                'cluster ${c.cluster.isEmpty ? "?" : c.cluster}, '
+                'namespace ${c.defaultNamespace}')
+            .join('\n');
+      }),
+    ),
+    McpTool(
+      name: 'kube_namespaces',
+      description: 'List the namespaces of a cluster. A cluster that will not '
+          'let this account enumerate namespaces answers with the one the '
+          'context defaults to, which is usually the only one that matters.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {'context': contextProperty},
+      },
+      handler: (args) async => guarded(() async {
+        final names = await service.namespaces(await resolveContext(args));
+        return names.isEmpty ? 'No namespaces.' : names.join('\n');
+      }),
+    ),
+    McpTool(
+      name: 'kube_workloads',
+      description:
+          'List Deployments, StatefulSets and DaemonSets with their ready/'
+          'desired replicas, health, images and age. Unhealthy ones come '
+          'first. This is the "what is broken in this namespace" call.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'context': contextProperty,
+          'namespace': namespaceProperty,
+          'name_contains': {
+            'type': 'string',
+            'description': 'Only workloads whose name contains this text.',
+          },
+          'unhealthy_only': {
+            'type': 'boolean',
+            'description': 'Only workloads that are down or degraded. '
+                'Workloads deliberately scaled to zero are not unhealthy and '
+                'are excluded too.',
+          },
+        },
+      },
+      handler: (args) async => guarded(() async {
+        final workloads = await service.workloads(
+          contextName: await resolveContextName(args),
+          namespace: resolveNamespace(args),
+        );
+        final needle =
+            ((args['name_contains'] as String?) ?? '').trim().toLowerCase();
+        final unhealthyOnly = args['unhealthy_only'] == true;
+        final matching = workloads.where((w) {
+          if (needle.isNotEmpty && !w.name.toLowerCase().contains(needle)) {
+            return false;
+          }
+          if (unhealthyOnly &&
+              w.health != WorkloadHealth.down &&
+              w.health != WorkloadHealth.degraded) {
+            return false;
+          }
+          return true;
+        }).toList()
+          ..sort((a, b) {
+            final rank =
+                a.health.attentionRank.compareTo(b.health.attentionRank);
+            return rank != 0 ? rank : a.name.compareTo(b.name);
+          });
+        if (matching.isEmpty) {
+          return unhealthyOnly
+              ? 'Every workload is healthy.'
+              : 'No workloads matched.';
+        }
+        return matching
+            .map((w) => '${w.kind.label} ${w.namespace}/${w.name} '
+                '${w.readiness} ${w.health.name}'
+                '${w.images.isEmpty ? "" : " — ${w.images.join(", ")}"}'
+                '${formatKubeAge(w.created).isEmpty ? "" : " (${formatKubeAge(w.created)})"}')
+            .join('\n');
+      }),
+    ),
+    McpTool(
+      name: 'kube_pods',
+      description:
+          'List pods with their phase, ready containers, restart count, node '
+          'and age. Use problems_only to go straight to what is not Running '
+          '— a crash-looping pod is found by its restart count.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'context': contextProperty,
+          'namespace': namespaceProperty,
+          'selector': selectorProperty,
+          'name_contains': {
+            'type': 'string',
+            'description': 'Only pods whose name contains this text.',
+          },
+          'problems_only': {
+            'type': 'boolean',
+            'description': 'Only pods that are not Running with every '
+                'container ready, or that have restarted at least once.',
+          },
+        },
+      },
+      handler: (args) async => guarded(() async {
+        final pods = await service.podsInNamespace(
+          contextName: await resolveContextName(args),
+          namespace: resolveNamespace(args),
+          selector: ((args['selector'] as String?) ?? '').trim(),
+        );
+        final needle =
+            ((args['name_contains'] as String?) ?? '').trim().toLowerCase();
+        final problemsOnly = args['problems_only'] == true;
+        final matching = pods.where((p) {
+          if (needle.isNotEmpty && !p.name.toLowerCase().contains(needle)) {
+            return false;
+          }
+          if (problemsOnly && p.isRunning && p.restarts == 0) return false;
+          return true;
+        }).toList();
+        if (matching.isEmpty) {
+          return problemsOnly ? 'Every pod is healthy.' : 'No pods matched.';
+        }
+        return matching
+            .map((p) => '${p.name} ${p.phase} ${p.readiness} '
+                'restarts=${p.restarts}'
+                '${p.node.isEmpty ? "" : " node=${p.node}"}'
+                '${formatKubeAge(p.created).isEmpty ? "" : " (${formatKubeAge(p.created)})"}')
+            .join('\n');
+      }),
+    ),
+    McpTool(
+      name: 'kube_pod_logs',
+      description:
+          "Read a pod's log, optionally narrowed to the lines that matter. "
+          'Set previous to true for a CrashLoopBackOff: the reason it died is '
+          'in the previous container\'s log, never in the fresh one. Use '
+          'contains/pattern to search rather than pulling thousands of lines.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'context': contextProperty,
+          'namespace': namespaceProperty,
+          'pod': {
+            'type': 'string',
+            'description': 'Pod name, as listed by kube_pods.',
+          },
+          'container': {
+            'type': 'string',
+            'description': 'One container of the pod. Omit for all of them.',
+          },
+          'previous': {
+            'type': 'boolean',
+            'description': 'Read the log of the last terminated container '
+                'instead of the running one. This is where a crash loop says '
+                'why it crashed.',
+          },
+          'since': {
+            'type': 'string',
+            'description': 'Only lines newer than this duration: 30s, 15m, '
+                '2h.',
+          },
+          'timestamps': {
+            'type': 'boolean',
+            'description': "Prefix each line with the engine's own clock.",
+          },
+          'lines': {
+            'type': 'integer',
+            'description': 'Trailing lines to fetch before filtering. '
+                'Default 300.',
+          },
+          ..._logFilterProperties,
+        },
+        'required': ['pod'],
+      },
+      handler: (args) async => guarded(() async {
+        final lines = args['lines'];
+        final log = await service.podLogs(
+          contextName: await resolveContextName(args),
+          namespace: resolveNamespace(args),
+          pod: _requireString(args, 'pod'),
+          lines: lines is int && lines > 0 ? lines : 300,
+          container: ((args['container'] as String?) ?? '').trim(),
+          previous: args['previous'] == true,
+          since: ((args['since'] as String?) ?? '').trim(),
+          timestamps: args['timestamps'] == true,
+        );
+        if (log.trim().isEmpty) {
+          return 'The pod has logged nothing in that window.';
+        }
+        return _filterLogText(log, args);
+      }),
+    ),
+    McpTool(
+      name: 'kube_describe',
+      description:
+          'kubectl describe for any resource — pod, deployment, node, '
+          'service, ingress, pvc. The Events section at the bottom is usually '
+          'the whole answer ("0/3 nodes are available: insufficient cpu", '
+          '"ImagePullBackOff").',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'context': contextProperty,
+          'namespace': namespaceProperty,
+          'kind': {
+            'type': 'string',
+            'description': 'Resource kind: pod, deployment, statefulset, '
+                'node, service, ingress, pvc, or any CRD kind.',
+          },
+          'name': {
+            'type': 'string',
+            'description': 'Name of the resource.',
+          },
+        },
+        'required': ['kind', 'name'],
+      },
+      handler: (args) async => guarded(() async {
+        final out = await service.describeResource(
+          contextName: await resolveContextName(args),
+          namespace: resolveNamespace(args),
+          kind: _requireString(args, 'kind'),
+          name: _requireString(args, 'name'),
+        );
+        return out.isEmpty ? 'kubectl described nothing.' : out;
+      }),
+    ),
+    McpTool(
+      name: 'kube_get',
+      description:
+          'kubectl get for any resource kind, read-only. Use it for anything '
+          'the other tools do not cover: services, ingresses, configmaps, '
+          'secrets (names only — never ask for their values), pvcs, nodes, '
+          'jobs, cronjobs, CRDs. Output "wide" is a table, "json"/"yaml" the '
+          'full object, "name" just the names.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'context': contextProperty,
+          'namespace': namespaceProperty,
+          'kind': {
+            'type': 'string',
+            'description': 'Resource kind as kubectl takes it: pods, svc, '
+                'ingress, nodes, deployments.apps, and so on.',
+          },
+          'name': {
+            'type': 'string',
+            'description': 'One named resource. Omit for all of them.',
+          },
+          'selector': selectorProperty,
+          'output': {
+            'type': 'string',
+            'enum': ['wide', 'json', 'yaml', 'name'],
+            'description': 'Output format. Defaults to wide.',
+          },
+        },
+        'required': ['kind'],
+      },
+      handler: (args) async => guarded(() async {
+        final output = ((args['output'] as String?) ?? '').trim();
+        final out = await service.getResource(
+          contextName: await resolveContextName(args),
+          namespace: resolveNamespace(args),
+          kind: _requireString(args, 'kind'),
+          name: ((args['name'] as String?) ?? '').trim(),
+          selector: ((args['selector'] as String?) ?? '').trim(),
+          output: output.isEmpty ? 'wide' : output,
+        );
+        return out.isEmpty ? 'No resources of that kind.' : out;
+      }),
+    ),
+    McpTool(
+      name: 'kube_events',
+      description:
+          'Recent cluster events for a namespace, oldest first — so the tail '
+          'is what just happened. Set warnings_only to skip the Normal ones a '
+          'busy namespace prints for every pull and start.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'context': contextProperty,
+          'namespace': namespaceProperty,
+          'warnings_only': {
+            'type': 'boolean',
+            'description': 'Only Warning events.',
+          },
+        },
+      },
+      handler: (args) async => guarded(() async {
+        final out = await service.events(
+          contextName: await resolveContextName(args),
+          namespace: resolveNamespace(args),
+          warningsOnly: args['warnings_only'] == true,
+        );
+        if (out.isEmpty) {
+          return args['warnings_only'] == true
+              ? 'No warning events.'
+              : 'No events.';
+        }
+        return out;
+      }),
+    ),
+    McpTool(
+      name: 'kube_top',
+      description:
+          'CPU and memory actually in use, per pod or per node. Needs '
+          'metrics-server in the cluster; when it is missing the cluster says '
+          "so and there is nothing this app can do about it.",
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'context': contextProperty,
+          'namespace': namespaceProperty,
+          'selector': selectorProperty,
+          'nodes': {
+            'type': 'boolean',
+            'description': 'Report nodes instead of pods. Node usage is '
+                'cluster-wide and ignores the namespace.',
+          },
+        },
+      },
+      handler: (args) async => guarded(() async {
+        final out = await service.top(
+          contextName: await resolveContextName(args),
+          namespace: resolveNamespace(args),
+          nodes: args['nodes'] == true,
+          selector: ((args['selector'] as String?) ?? '').trim(),
+        );
+        return out.isEmpty ? 'No usage reported.' : out;
+      }),
+    ),
+  ];
+}
+
+/// Cloud tools. Read-only (bostrot/ai-tasks#67).
+///
+/// Creating and deleting servers stays on the Cloud screen, behind its own
+/// confirmations: a create is a recurring bill and a delete destroys a disk,
+/// and neither is something to reach through a chat turn. What an agent gets
+/// is the part that answers questions — what is running, where, and what it
+/// costs — including the "forgot to delete it" server that is the expensive
+/// mistake this feature can cause.
+///
+/// [resolve] is called per invocation rather than at registration, because
+/// the token is typed into the Cloud screen while the app runs: a provider
+/// built once at startup would stay null for the whole session.
+List<McpTool> _cloudTools(CloudProvider? Function() resolve) {
+  /// The configured provider, or a sentence saying what to do instead.
+  CloudProvider requireProvider() {
+    final provider = resolve();
+    if (provider == null) {
+      throw ArgumentError('No cloud account is connected. Open the Cloud '
+          'screen and paste an API token first.');
+    }
+    return provider;
+  }
+
+  String describe(CloudServer server) {
+    final parts = <String>[
+      server.name,
+      server.state.name,
+      if (server.address.isNotEmpty) server.address,
+      if (server.serverType.isNotEmpty) server.serverType,
+      if (server.location.isNotEmpty) server.location,
+      if (server.monthlyPrice.isNotEmpty)
+        '${server.monthlyPrice} ${server.currency}/mo'.trim(),
+    ];
+    final deployed = server.deployedInstance;
+    return '${parts.join(" · ")}'
+        '${deployed == null ? "" : " — running deployed instance $deployed"}';
+  }
+
+  return [
+    McpTool(
+      name: 'cloud_servers',
+      description:
+          'List the servers in the connected cloud account with their state, '
+          'address, type, location and monthly price. Servers this app '
+          'deployed name the instance running on them. Read-only: creating '
+          'and deleting servers is done on the Cloud screen.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'running_only': {
+            'type': 'boolean',
+            'description': 'Only servers that are running.',
+          },
+        },
+      },
+      handler: (args) async {
+        final servers = await requireProvider().listServers();
+        final matching = args['running_only'] == true
+            ? servers
+                .where((s) => s.state == CloudServerState.running)
+                .toList()
+            : servers;
+        if (matching.isEmpty) {
+          return args['running_only'] == true
+              ? 'No servers are running.'
+              : 'The account has no servers.';
+        }
+        return matching.map(describe).join('\n');
+      },
+    ),
+    McpTool(
+      name: 'cloud_server_info',
+      description:
+          'One cloud server as the provider currently reports it, including '
+          'its labels. Use it to check whether a server has finished booting.',
+      inputSchema: const {
+        'type': 'object',
+        'properties': {
+          'server': {
+            'type': 'string',
+            'description': 'Server name or provider id, as listed by '
+                'cloud_servers.',
+          },
+        },
+        'required': ['server'],
+      },
+      handler: (args) async {
+        final wanted = _requireString(args, 'server').trim();
+        final provider = requireProvider();
+        // Matched against the list rather than passed straight to getServer:
+        // the provider addresses servers by id and a person says the name.
+        final servers = await provider.listServers();
+        final match = servers.where((s) => s.id == wanted).followedBy(
+            servers.where(
+                (s) => s.name.toLowerCase() == wanted.toLowerCase()));
+        if (match.isEmpty) {
+          return 'No server called "$wanted". Call cloud_servers for the '
+              'ones this account has.';
+        }
+        final server = await provider.getServer(match.first.id);
+        final labels = server.labels.entries
+            .map((e) => '${e.key}=${e.value}')
+            .join(', ');
+        return [
+          describe(server),
+          'id: ${server.id}',
+          if (server.ipv4.isNotEmpty) 'ipv4: ${server.ipv4}',
+          if (server.ipv6.isNotEmpty) 'ipv6: ${server.ipv6}',
+          if (server.image.isNotEmpty) 'image: ${server.image}',
+          if (labels.isNotEmpty) 'labels: $labels',
+        ].join('\n');
+      },
+    ),
+  ];
+}
+
 String _requireString(Map<String, dynamic> args, String key) {
   final value = args[key] as String?;
   if (value == null || value.trim().isEmpty) {
     throw ArgumentError('$key is required');
   }
   return value;
+}
+
+/// The schema fragment every log tool shares, so `contains`, `pattern`,
+/// `ignore_case` and `context_lines` mean the same thing whether the log came
+/// from a pod or from a container.
+const Map<String, dynamic> _logFilterProperties = {
+  'contains': {
+    'type': 'string',
+    'description': 'Keep only lines containing this text. Case-insensitive '
+        'unless ignore_case is false.',
+  },
+  'pattern': {
+    'type': 'string',
+    'description': 'Keep only lines matching this regular expression. '
+        'Combines with contains (a line must satisfy both).',
+  },
+  'ignore_case': {
+    'type': 'boolean',
+    'description': 'Match case-insensitively. Defaults to true.',
+  },
+  'context_lines': {
+    'type': 'integer',
+    'description': 'Also return this many lines either side of a match, the '
+        'way grep -C does — a stack trace matches on its first line and is '
+        'useless without the frames under it. Default 0, max 20.',
+  },
+};
+
+/// Reduce a fetched log to the lines worth reading.
+///
+/// Filtering happens here, on text already in hand, rather than by handing a
+/// pattern to a remote `grep`: neither kubectl nor the container engines have
+/// a filter of their own, and pushing a user-supplied pattern through a
+/// remote shell is precisely what the argv-only discipline in this app exists
+/// to avoid. Nothing else in the file has to know a log was narrowed.
+///
+/// The header line ("12 of 3400 lines matched …") is not decoration: without
+/// it a model reading four lines cannot tell a quiet service from a filter
+/// that threw away everything interesting.
+String _filterLogText(String log, Map<String, dynamic> args) {
+  final contains = (args['contains'] as String?)?.trim() ?? '';
+  final patternText = (args['pattern'] as String?)?.trim() ?? '';
+  if (contains.isEmpty && patternText.isEmpty) return log;
+
+  final ignoreCase = args['ignore_case'] != false;
+  RegExp? pattern;
+  if (patternText.isNotEmpty) {
+    try {
+      pattern = RegExp(patternText, caseSensitive: !ignoreCase);
+    } on FormatException catch (e) {
+      throw ArgumentError('pattern is not a valid regular expression: '
+          '${e.message}');
+    }
+  }
+  final needle = ignoreCase ? contains.toLowerCase() : contains;
+
+  final lines = const LineSplitter().convert(log);
+  final matches = <int>[];
+  for (var i = 0; i < lines.length; i++) {
+    if (needle.isNotEmpty) {
+      final haystack = ignoreCase ? lines[i].toLowerCase() : lines[i];
+      if (!haystack.contains(needle)) continue;
+    }
+    if (pattern != null && !pattern.hasMatch(lines[i])) continue;
+    matches.add(i);
+  }
+
+  final what = [
+    if (contains.isNotEmpty) '"$contains"',
+    if (patternText.isNotEmpty) '/$patternText/',
+  ].join(' and ');
+  if (matches.isEmpty) {
+    return 'No line of ${lines.length} matched $what.';
+  }
+
+  final raw = args['context_lines'];
+  final context = raw is int && raw > 0 ? (raw > 20 ? 20 : raw) : 0;
+  final buffer = StringBuffer(
+      '${matches.length} of ${lines.length} lines matched $what:\n');
+  var previous = -1;
+  for (final index in matches) {
+    final from = index - context < 0 ? 0 : index - context;
+    final to = index + context >= lines.length
+        ? lines.length - 1
+        : index + context;
+    for (var i = from; i <= to; i++) {
+      if (i <= previous) continue;
+      // A gap between two context windows would otherwise read as one
+      // continuous log, which is how a wrong conclusion gets drawn.
+      if (previous >= 0 && i > previous + 1) buffer.writeln('--');
+      buffer.writeln(lines[i]);
+      previous = i;
+    }
+  }
+  return buffer.toString().trimRight();
 }
 
 /// Success gets the verb's own output (or [okMessage] when it printed
