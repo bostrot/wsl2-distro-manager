@@ -187,9 +187,18 @@ jobs:
             # very version cannot be moved with it: a stale checksum fails
             # every `brew install --cask bostrot/tap/wsl-manager`, whereas
             # leaving the dmg alone only costs this build its release asset.
+            #
+            # An empty CASK_VERSION counts as "advertises this version". It
+            # means the read failed — the same expired token that makes the
+            # tap unwritable — so the one thing known is that the cask cannot
+            # be corrected, and what it points at is a guess. Guessing "some
+            # other version" is what published a checksum nothing served on
+            # 2026-09-09: the read 401'd, this test compared "" against
+            # "2.0.2", found them different and clobbered the dmg the cask
+            # was in fact advertising.
             if [ "$HAS_TAP_TOKEN" = "true" ] && [ "$TAP_WRITABLE" != "true" ] \
-               && [ "$CASK_VERSION" = "$VERSION" ]; then
-              echo "::warning::The cask advertises $VERSION and the tap is unwritable; leaving $TAG's dmg alone."
+               && { [ -z "$CASK_VERSION" ] || [ "$CASK_VERSION" = "$VERSION" ]; }; then
+              echo "::warning::The tap is unwritable and its cask advertises ${CASK_VERSION:-a version this build could not read}; leaving $TAG's dmg alone."
               exit 0
             fi
           fi

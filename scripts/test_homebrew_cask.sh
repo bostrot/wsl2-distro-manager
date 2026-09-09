@@ -171,6 +171,14 @@ ok   "attach still refuses to clobber with an unsigned build"
   || fail "a signed build waits when the cask points here and the tap is stuck"
 ok   "attach leaves the dmg the stale cask advertises alone"
 
+# The case that actually happened: the token expired, so the tap is
+# unwritable *and* the cask could not be read. Unknown must be treated as
+# "might be this version" — guessing otherwise republished the dmg and left
+# the cask advertising a checksum nothing served.
+[ "$(attach "$DMGS" true true false "")" = skipped ] \
+  || fail "an unreadable cask is treated as if it advertised this version"
+ok   "attach holds back when the tap read failed and the cask version is unknown"
+
 [ "$(attach "$DMGS" true true false 2.0.1)" = uploaded ] \
   || fail "an unwritable tap whose cask points at an older release blocks nothing"
 ok   "attach clobbers when the cask points at an older version"
