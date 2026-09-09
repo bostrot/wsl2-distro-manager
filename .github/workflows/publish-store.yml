@@ -7,6 +7,23 @@ on:
         description: Release tag to publish (e.g. v1.11.0)
         required: true
         type: string
+      mode:
+        description: >-
+          publish = real publish. dry-run = create a submission, write the
+          pricing, read it back, report, delete; nothing is uploaded or
+          committed. Use dry-run after any change to store/pricing.json.
+        required: false
+        default: publish
+        type: choice
+        options: [publish, dry-run]
+      pricing_file:
+        description: >-
+          Pricing to state instead of echoing the clone's (e.g.
+          store/pricing.json). Empty = the clone must round-trip on its own,
+          which fails on Pricing Version 2 products by design.
+        required: false
+        default: ""
+        type: string
   release:
     types: [published, created]
 
@@ -37,7 +54,10 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: scripts/publish_store.sh
+          sparse-checkout: |
+            scripts/publish_store.sh
+            scripts/store_pricing.jq
+            store/pricing.json
           sparse-checkout-cone-mode: false
 
       - name: Download release asset
@@ -47,17 +67,20 @@ jobs:
           file: wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix
           target: ${{ github.workspace }}/pkg/wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix
 
-      # The legacy submission API cannot express market-group pricing: it
-      # reports the base price as "Base" and a publish through it turns the
-      # app Free everywhere (2026-09-07/08). The script refuses in that case
-      # — expect this job to fail while the Store pricing is set by market
-      # groups; update the package by hand in Partner Center then.
+      # The legacy submission API cannot read "Pricing Version 2" pricing
+      # (prices set in the Partner Center UI): it reports the base price as
+      # "Base", and a publish that echoes it turns the app Free everywhere
+      # (2026-09-07/08). Without pricing_file the script refuses in that
+      # case. With pricing_file it states store/pricing.json instead; prove
+      # that with mode=dry-run before pointing a release at it.
       - name: Publish to Store
         env:
           STORE_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
           STORE_CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
           STORE_CLIENT_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
           STORE_APP_ID: ${{ secrets.STORE_APP_ID }}
+          PRICING_FILE: ${{ inputs.pricing_file }}
+          DRY_RUN: ${{ inputs.mode == 'dry-run' && '1' || '0' }}
         run: |
           scripts/publish_store.sh \
             "pkg/wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix"
