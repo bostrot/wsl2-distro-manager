@@ -47,11 +47,11 @@ jobs:
           file: wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix
           target: ${{ github.workspace }}/pkg/wsl2-distro-manager-${{ steps.resolve.outputs.tag }}-unsigned.msix
 
-      # Not isaacrlevin/windows-store-action: it PUTs the cloned submission
-      # back whole, pricing included, and Partner Center reports this app's
-      # base price as the unset placeholder "Base", which the API refuses on
-      # write. The script makes the same calls and never sends pricing, so
-      # the prices stay whatever Partner Center already has.
+      # The legacy submission API cannot express market-group pricing: it
+      # reports the base price as "Base" and a publish through it turns the
+      # app Free everywhere (2026-09-07/08). The script refuses in that case
+      # — expect this job to fail while the Store pricing is set by market
+      # groups; update the package by hand in Partner Center then.
       - name: Publish to Store
         env:
           STORE_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}

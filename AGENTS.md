@@ -114,6 +114,7 @@ refactor: trim over-explanatory comments
 - Triggers on push to any branch matching `lib/`, `assets/`, `windows/`, `installer/`, `LICENSE`, or `pubspec.yaml`
 - Produces: ZIP archive, MSIX, and Inno Setup `.exe`
 - On `main` only: creates a GitHub release with tag, then triggers winget/scoop/store publish workflows
+- **`publish-store.yml` refuses while Store pricing is set by market groups.** The legacy submission API it uses reports such pricing as `priceId: "Base"` and cannot round-trip it; a publish through it made the app Free in all 240 markets on 2026-09-07/08 (`scripts/publish_store.sh` used to strip the id and PUT anyway). Now the script exits 1 on `"Base"` and never deletes a pending submission — expect that job red after a release, and update the MSIX by hand in Partner Center (pricing is untouched there). Details in the script header.
 - Nightly artifacts uploaded on every run regardless of branch
 
 ## Navigation
