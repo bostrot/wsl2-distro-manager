@@ -64,6 +64,9 @@ jobs:
       - name: Run vmctl tests
         run: ./scripts/test_vmctl.sh
 
+      - name: Run Homebrew cask checks
+        run: ./scripts/test_homebrew_cask.sh
+
       # Developer ID signing and notarization run when the four secrets
       # below exist; without them the build is ad-hoc signed (runs locally
       # and via right-click → Open, but Gatekeeper refuses it on first open).
@@ -144,6 +147,20 @@ jobs:
             wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg
             wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip
 
+      # Ask the tap what it serves *before* anything on the release moves.
+      # A signed rebuild replaces the dmg under a tag the published cask may
+      # already point at, and once that happens a cask the workflow cannot
+      # rewrite is a cask no download matches — which is how an expired
+      # HOMEBREW_TAP_TOKEN broke `brew install` for 2.0.2
+      # (bostrot/ai-tasks#63). Never fatal: the answer only decides whether
+      # the attach step below is allowed to clobber.
+      - name: Check the Homebrew tap (main only)
+        id: tap
+        if: github.ref == 'refs/heads/main' && env.HAS_TAP_TOKEN == 'true'
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: ./scripts/update_homebrew_cask.sh check >> "$GITHUB_OUTPUT"
+
       # The Windows releaser creates the GitHub release on main; this only
       # attaches the mac artifacts to it once it exists. Best effort: on a
       # race (release not created yet) the nightly artifacts above still
@@ -153,15 +170,28 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_WRITABLE: ${{ steps.tap.outputs.writable }}
+          CASK_VERSION: ${{ steps.tap.outputs.cask_version }}
         run: |
-          TAG="v${{ steps.get_version.outputs.version }}"
-          # An ad-hoc build must never replace a signed, notarized asset that
-          # is already on the release (2.0.0 was signed by hand). Only a
-          # signed build, or a release with no mac assets yet, gets uploaded.
-          if [ "$HAS_SIGNING" != "true" ] && gh release view "$TAG" --json assets \
-               --jq '.assets[].name' 2>/dev/null | grep -q -- '-macos.dmg$'; then
-            echo "$TAG already carries a macOS dmg and this build is unsigned; not clobbering."
-            exit 0
+          VERSION="${{ steps.get_version.outputs.version }}"
+          TAG="v$VERSION"
+          if gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null \
+               | grep -q -- '-macos.dmg$'; then
+            # An ad-hoc build must never replace a signed, notarized asset
+            # that is already on the release (2.0.0 was signed by hand).
+            if [ "$HAS_SIGNING" != "true" ]; then
+              echo "$TAG already carries a macOS dmg and this build is unsigned; not clobbering."
+              exit 0
+            fi
+            # A signed one must not either while the cask advertising this
+            # very version cannot be moved with it: a stale checksum fails
+            # every `brew install --cask bostrot/tap/wsl-manager`, whereas
+            # leaving the dmg alone only costs this build its release asset.
+            if [ "$HAS_TAP_TOKEN" = "true" ] && [ "$TAP_WRITABLE" != "true" ] \
+               && [ "$CASK_VERSION" = "$VERSION" ]; then
+              echo "::warning::The cask advertises $VERSION and the tap is unwritable; leaving $TAG's dmg alone."
+              exit 0
+            fi
           fi
           for i in 1 2 3 4 5; do
             if gh release upload "$TAG" \
@@ -194,26 +224,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          # A secret pasted with a trailing newline yields an Authorization
-          # header Go's http client rejects outright ("invalid header field
-          # value"), which reads like a broken token rather than a stray
-          # byte. A token never contains whitespace, so strip it.
-          TAP_TOKEN=$(printf '%s' "$TAP_TOKEN" | tr -d '[:space:]')
-          if [ -z "$TAP_TOKEN" ]; then
-            echo "::error::HOMEBREW_TAP_TOKEN is empty once whitespace is stripped."
-            exit 1
-          fi
-
           TAG="v$VERSION"
-          TAP="bostrot/homebrew-tap"
-          CASK="Casks/wsl-manager.rb"
           DMG="wsl2-distro-manager-v$VERSION-macos.dmg"
 
           # Hash what the release actually serves rather than the file just
-          # built: the attach step above deliberately leaves a signed asset
-          # in place instead of clobbering it with an ad-hoc one, so the two
-          # are not always the same bytes. A cask whose sha256 does not match
-          # the download fails for every user with a checksum error.
+          # built: the attach step above deliberately leaves an asset in
+          # place instead of clobbering it, so the two are not always the
+          # same bytes. A cask whose sha256 does not match the download
+          # fails for every user with a checksum error.
           if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
                --pattern "$DMG" --dir "$RUNNER_TEMP" --clobber; then
             echo "::notice::$TAG carries no $DMG; leaving the cask alone."
@@ -230,30 +248,4 @@ jobs:
             exit 0
           fi
 
-          SHA=$(shasum -a 256 "$RUNNER_TEMP/$DMG" | awk '{print $1}')
-
-          GH_TOKEN="$TAP_TOKEN" gh api "repos/$TAP/contents/$CASK" \
-            -H "Accept: application/vnd.github.raw" > cask.rb
-          BLOB=$(GH_TOKEN="$TAP_TOKEN" gh api "repos/$TAP/contents/$CASK" --jq .sha)
-
-          if grep -q "  version \"$VERSION\"" cask.rb \
-             && grep -q "  sha256 \"$SHA\"" cask.rb; then
-            echo "::notice::Cask is already at $VERSION with this checksum."
-            exit 0
-          fi
-
-          sed -i '' -E "s|^  version \".*\"$|  version \"$VERSION\"|" cask.rb
-          sed -i '' -E "s|^  sha256 \".*\"$|  sha256 \"$SHA\"|" cask.rb
-
-          # A silent no-op here would publish a cask pointing at the new
-          # version with the old checksum.
-          grep -q "  version \"$VERSION\"" cask.rb \
-            || { echo "::error::version line not updated"; exit 1; }
-          grep -q "  sha256 \"$SHA\"" cask.rb \
-            || { echo "::error::sha256 line not updated"; exit 1; }
-
-          GH_TOKEN="$TAP_TOKEN" gh api --method PUT "repos/$TAP/contents/$CASK" \
-            -f message="wsl-manager $VERSION" \
-            -f sha="$BLOB" \
-            -f content="$(base64 < cask.rb | tr -d '\n')" --silent
-          echo "::notice::Cask updated to $VERSION ($SHA)."
+          ./scripts/update_homebrew_cask.sh update "$VERSION" "$RUNNER_TEMP/$DMG"
