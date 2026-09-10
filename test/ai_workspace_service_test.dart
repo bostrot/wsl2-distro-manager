@@ -67,6 +67,27 @@ Future<bool> _hostPortIsOpen(int port) async {
   }
 }
 
+/// A runtime shaped like the macOS backend: the workspace lives in its own VM
+/// with an address of its own, and shares no loopback with the machine
+/// running the app. Built on the WSL plumbing so [TestShell] still sees the
+/// commands it understands — what is under test here is the addressing, not
+/// how the script gets in.
+class _RemoteGuestRuntime extends WslWorkspaceRuntime {
+  _RemoteGuestRuntime({this.ip = '192.168.64.7'});
+
+  /// Null models a guest that is up but has no DHCP lease yet.
+  final String? ip;
+
+  @override
+  Future<String?> serviceHost() async => ip;
+
+  @override
+  String get bindAddress => '0.0.0.0';
+
+  @override
+  String get hostName => 'macOS';
+}
+
 void main() {
   group('AiWorkspaceService', () {
     late TestShell testShell;
@@ -2020,6 +2041,165 @@ void main() {
 
         expect(url, 'http://localhost:8083');
         expect(callCount, greaterThanOrEqualTo(3));
+      });
+
+      // The dashboard is dialled from the machine running the app, and only
+      // WSL relays this machine's loopback into the workspace. On the macOS
+      // backend the workspace is a VM on its own network, so `localhost` is
+      // the Mac and nothing is serving there — which is how a healthy,
+      // listening OpenCode card came to read "Dashboard URL not reachable
+      // from Windows: http://localhost:4096" (bostrot/ai-tasks#70).
+      group('on a backend whose workspace has its own address', () {
+        test('the static port URL is dialled at the guest, not this machine',
+            () async {
+          final dialled = <String>[];
+          final remote = AiWorkspaceService(
+            broker: broker,
+            runtime: _RemoteGuestRuntime(),
+            reachabilityChecker: (url) async {
+              dialled.add(url);
+              return true;
+            },
+          );
+          testShell.stdoutData = 'ai-workspace';
+          await remote.init();
+          remote.getState(AiWorkspaceTool.openWebUi)!.status =
+              ToolStatus.running;
+
+          final url = await remote.getDashboardUrl(AiWorkspaceTool.openWebUi);
+
+          expect(url, 'http://192.168.64.7:8083');
+          // The probe has to dial what the browser will open, or it proves
+          // nothing about the URL that is handed back.
+          expect(dialled, ['http://192.168.64.7:8083']);
+        });
+
+        // OpenClaw's URL carries the gateway token as a fragment, and a
+        // dashboard opened without it shows "unauthorized: gateway token
+        // missing" — so re-pointing the host must not touch anything else.
+        test('a printed URL keeps its path and token fragment', () async {
+          final remote = AiWorkspaceService(
+            broker: broker,
+            runtime: _RemoteGuestRuntime(),
+            reachabilityChecker: (_) async => true,
+          );
+          testShell.stdoutData = 'ai-workspace';
+          await remote.init();
+          remote.getState(AiWorkspaceTool.openClaw)!.status =
+              ToolStatus.running;
+          testShell.stdoutData =
+              'http://127.0.0.1:18789/pair/xyz\nGATEWAY_TOKEN:sekrit';
+
+          final url = await remote.getDashboardUrl(AiWorkspaceTool.openClaw);
+
+          expect(url, 'http://192.168.64.7:18789/pair/xyz#token=sekrit');
+        });
+
+        // A tool that binds the guest's loopback is reachable from nowhere
+        // but the guest, however right the address is.
+        test('a tool that picks its bind address binds every interface',
+            () async {
+          final remote = AiWorkspaceService(
+            broker: broker,
+            runtime: _RemoteGuestRuntime(),
+            reachabilityChecker: (_) async => true,
+          );
+          testShell.stdoutData = 'ai-workspace';
+          await remote.init();
+          remote.getState(AiWorkspaceTool.openCode)!.status =
+              ToolStatus.stopped;
+          testShell.stdoutData = '';
+
+          await remote.start(AiWorkspaceTool.openCode);
+
+          final command = testShell.lastCommand.last;
+          expect(command.contains('--hostname 0.0.0.0'), true);
+          // The placeholder is an implementation detail of the config; it
+          // must never survive into the shell.
+          expect(command.contains(kBindAddressToken), false);
+        });
+
+        test('a guest with no address yet says so instead of dialling',
+            () async {
+          var dials = 0;
+          final remote = AiWorkspaceService(
+            broker: broker,
+            runtime: _RemoteGuestRuntime(ip: null),
+            reachabilityChecker: (_) async {
+              dials++;
+              return true;
+            },
+          );
+          testShell.stdoutData = 'ai-workspace';
+          await remote.init();
+          final state = remote.getState(AiWorkspaceTool.openWebUi)!
+            ..status = ToolStatus.running;
+
+          expect(
+              await remote.getDashboardUrl(AiWorkspaceTool.openWebUi), isNull);
+          expect(state.errorMessage, contains('no network address'));
+          expect(dials, 0);
+        });
+
+        // "not reachable from Windows: http://localhost:4096" on a Mac named
+        // the wrong machine and the wrong address; both have to be the ones
+        // actually involved.
+        test('an unreachable dashboard is reported against the real address',
+            () async {
+          final remote = AiWorkspaceService(
+            broker: broker,
+            runtime: _RemoteGuestRuntime(),
+            reachabilityChecker: (_) async => false,
+          );
+          testShell.stdoutData = 'ai-workspace';
+          await remote.init();
+          final state = remote.getState(AiWorkspaceTool.openWebUi)!
+            ..status = ToolStatus.running;
+
+          expect(
+              await remote.getDashboardUrl(AiWorkspaceTool.openWebUi), isNull);
+          expect(state.errorMessage, contains('macOS'));
+          expect(state.errorMessage, contains('http://192.168.64.7:8083'));
+          expect(state.errorMessage, isNot(contains('Windows')));
+          expect(state.errorMessage, isNot(contains('localhost')));
+        });
+      });
+
+      group('withServiceHost', () {
+        test('leaves a URL alone when the service host is a loopback name',
+            () {
+          // WSL: the printed address already is the one to dial, so nothing
+          // churns under the user.
+          expect(
+            AiWorkspaceService.withServiceHost(
+                'http://127.0.0.1:18789/pair/xyz', 'localhost'),
+            'http://127.0.0.1:18789/pair/xyz',
+          );
+        });
+
+        test('leaves a URL that already names a routable host alone', () {
+          expect(
+            AiWorkspaceService.withServiceHost(
+                'http://10.0.0.4:8083', '192.168.64.7'),
+            'http://10.0.0.4:8083',
+          );
+        });
+
+        test('re-points every spelling of the environment loopback', () {
+          for (final url in [
+            'http://localhost:8083',
+            'http://127.0.0.1:8083',
+            'http://127.0.1.1:8083',
+          ]) {
+            expect(AiWorkspaceService.withServiceHost(url, '192.168.64.7'),
+                'http://192.168.64.7:8083');
+          }
+        });
+
+        test('passes through output that is not a URL at all', () {
+          expect(AiWorkspaceService.withServiceHost('not a url', '10.0.0.4'),
+              'not a url');
+        });
       });
     });
 

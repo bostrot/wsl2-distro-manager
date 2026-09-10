@@ -141,6 +141,17 @@ String _killByPattern(String pattern) =>
     '[ \$_p = \$\$ ] || [ \$_p = \$PPID ] || kill \$_p; '
     'done 2>/dev/null; true';
 
+/// Stands in for [WorkspaceRuntime.bindAddress] inside a tool command, and is
+/// substituted in [AiWorkspaceService._req] — the one place every command
+/// passes through.
+///
+/// Which address a tool must bind is a property of the *backend*, not of the
+/// tool: under WSL the loopback relay makes 127.0.0.1 reachable from Windows,
+/// while the macOS workspace is a VM whose loopback is its own. The configs
+/// below are built once at load, before any backend is known, so the answer
+/// cannot be baked into them.
+const String kBindAddressToken = '@BIND_ADDRESS@';
+
 /// Supported AI workspace tools.
 enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi, openCode }
 
@@ -434,11 +445,14 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
         'hash -r',
     // `web`, not `serve`: both start the same HTTP server, but only `web`
     // serves the browser interface this card's "Open Dashboard" opens.
-    // `--port` is mandatory — see [_kOpenCodePort]. `--hostname 127.0.0.1` is
-    // OpenCode's own default and is deliberately kept: the server is
-    // unauthenticated unless `OPENCODE_SERVER_PASSWORD` is set, and WSL's
-    // localhost forwarding already makes a loopback bind reachable from
-    // Windows.
+    // `--port` is mandatory — see [_kOpenCodePort]. The hostname comes from
+    // the backend ([kBindAddressToken]): the server is unauthenticated unless
+    // `OPENCODE_SERVER_PASSWORD` is set, so it stays on the loopback wherever
+    // that is enough — under WSL it is, because localhost forwarding reaches
+    // a loopback bind from Windows. The macOS workspace is a VM with no such
+    // relay, so there the same bind served nobody but the guest and the card
+    // reported the dashboard unreachable; it binds every interface instead,
+    // which behind macOS' vmnet NAT means the host and the guest.
     // The browser `web` tries to open is harmless here — OpenCode swallows
     // that failure — but it has nothing to open inside the distro.
     // setsid + the trailing port wait for the same reasons as Hermes: the
@@ -446,7 +460,8 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     // says nothing about whether anything ever bound the port.
     startCommand: '${_killByPattern(_kOpenCodePattern)}; '
         'mkdir -p \$HOME/.opencode; cd \$HOME; '
-        'setsid opencode web --port $_kOpenCodePort --hostname 127.0.0.1 '
+        'setsid opencode web --port $_kOpenCodePort '
+        '--hostname $kBindAddressToken '
         '</dev/null >>\$HOME/.opencode/web.log 2>&1 & '
         'disown; ${_waitForPort(_kOpenCodePort)}'
         '${_listeningTest(_kOpenCodePort)}',
@@ -705,7 +720,10 @@ class AiWorkspaceService {
   /// One-shot root command in the workspace environment, built by the active
   /// [WorkspaceRuntime].
   ExecutionRequest _req(String shellCommand, {Duration? timeout}) =>
-      _runtime.script(shellCommand, timeout: timeout);
+      _runtime.script(
+        shellCommand.replaceAll(kBindAddressToken, _runtime.bindAddress),
+        timeout: timeout,
+      );
 
   /// Installs docker.io on first use — the base Ubuntu image has no Docker.
   Future<void> _ensureDockerReady() async {
@@ -1463,6 +1481,10 @@ class AiWorkspaceService {
 
   /// Static port URL, no WSL call. Only valid for tools without a
   /// [ToolConfig.dashboardCommand] — use [getDashboardUrl] for the rest.
+  ///
+  /// The host is the environment's own loopback, which is the address the
+  /// service actually listens on; [getDashboardUrl] is what turns that into
+  /// something this machine can dial.
   String? getUrl(AiWorkspaceTool tool) {
     final state = _toolStates[tool];
     if (state == null || state.status != ToolStatus.running) {
@@ -1470,6 +1492,31 @@ class AiWorkspaceService {
     }
 
     return 'http://localhost:${state.port}';
+  }
+
+  /// Hosts that mean "the machine this URL was printed on".
+  ///
+  /// Every tool here prints one — and [getUrl] builds one — because that is
+  /// what they bound. It is the right answer only when the environment shares
+  /// a loopback with this app.
+  static bool _isLoopbackHost(String host) =>
+      host == 'localhost' ||
+      host == '::1' ||
+      host.startsWith('127.');
+
+  /// Re-points a loopback [url] at [host], leaving port, path and fragment —
+  /// OpenClaw's `#token=` among them — alone.
+  ///
+  /// A URL that already names a routable host is left as it is, and so is
+  /// every URL when [host] is itself a loopback name: under WSL the printed
+  /// address is already the one to dial, and swapping `127.0.0.1` for
+  /// `localhost` there would only churn what the user sees.
+  static String withServiceHost(String url, String host) {
+    if (_isLoopbackHost(host)) return url;
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return url;
+    if (!_isLoopbackHost(uri.host)) return url;
+    return uri.replace(host: host).toString();
   }
 
   /// Starts the dashboard server if the tool needs one, then waits until
@@ -1493,12 +1540,25 @@ class AiWorkspaceService {
           : 'No dashboard URL from: ${config.dashboardCommand}';
       return null;
     }
-    if (!await _waitUntilReachable(url)) {
-      state.errorMessage = 'Dashboard URL not reachable from Windows: $url';
+    // The URL the tool printed names the loopback it bound, which is this
+    // machine's loopback only under WSL. On a backend that runs the workspace
+    // in its own VM it has to be re-pointed at the guest, and there is no
+    // address to re-point it at until the guest has a lease.
+    final host = await _runtime.serviceHost();
+    if (host == null) {
+      state.errorMessage =
+          'No address for ${_runtime.target} yet — the workspace has no '
+          'network address to reach ${config.name} on';
+      return null;
+    }
+    final hostUrl = withServiceHost(url, host);
+    if (!await _waitUntilReachable(hostUrl)) {
+      state.errorMessage =
+          'Dashboard URL not reachable from ${_runtime.hostName}: $hostUrl';
       return null;
     }
     state.errorMessage = null;
-    return url;
+    return hostUrl;
   }
 
   Future<String?> _runDashboardCommand(

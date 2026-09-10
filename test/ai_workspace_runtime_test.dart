@@ -120,6 +120,14 @@ void main() {
         () {
       expect(runtime.keepAlive(), isNotNull);
     });
+
+    // WSL relays Windows' loopback into the distro's, so there is nothing to
+    // look up and no reason to widen a bind.
+    test('services are dialled on the host\'s own loopback', () async {
+      expect(await runtime.serviceHost(), 'localhost');
+      expect(runtime.bindAddress, '127.0.0.1');
+      expect(runtime.hostName, 'Windows');
+    });
   });
 
   group('Apple runtime', () {
@@ -144,6 +152,30 @@ void main() {
 
     test('a running VM keeps its own services, so no held session', () {
       expect(buildRuntime(FakeVmctlShell()).keepAlive(), isNull);
+    });
+
+    // A VM on macOS' vmnet NAT shares no loopback with the Mac: a dashboard
+    // is only reachable at the guest's own address, and only if it bound
+    // something other than the guest's loopback. Getting this wrong is what
+    // put "not reachable from Windows: http://localhost:4096" on a healthy
+    // OpenCode card (bostrot/ai-tasks#70).
+    test('services are dialled at the guest address, not the Mac\'s loopback',
+        () async {
+      final shell = FakeVmctlShell();
+      shell.responses['ip'] = '{"ip":"192.168.64.7"}';
+      final runtime = buildRuntime(shell);
+
+      expect(await runtime.serviceHost(), '192.168.64.7');
+      expect(runtime.bindAddress, '0.0.0.0');
+      expect(runtime.hostName, 'macOS');
+    });
+
+    test('a guest with no lease yet offers no service host', () async {
+      final shell = FakeVmctlShell();
+      // What `vmctl ip` answers between boot and DHCP.
+      shell.responses['ip'] = '{"ip":""}';
+
+      expect(await buildRuntime(shell).serviceHost(), isNull);
     });
 
     test('a running VM that never answers is repaired, not abandoned',
