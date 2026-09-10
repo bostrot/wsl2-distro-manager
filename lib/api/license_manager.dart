@@ -11,11 +11,19 @@
 // is validated once against the licence service and then cached, so the app
 // keeps working offline.
 //
+// A key comes with seats — one for Pro — and the service hands them to
+// installs, newest activation first. Every request names this install with a
+// random id made here (see [_deviceId]) and says whether the user typed the
+// key in or the app is re-checking it in the background; a re-check from an
+// install that lost its seat comes back invalid, which is how a key shared
+// between two PCs keeps bouncing between them.
+//
 // Neither path is protection. The repo is open source; both are a nudge.
 
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:ffi/ffi.dart';
@@ -217,8 +225,12 @@ class LicenseManager extends ChangeNotifier {
   }
 
   /// Validates [key] against the licence service and, if it checks out,
-  /// stores it as this install's entitlement.
-  Future<LicenseActivation> activate(String key) async {
+  /// stores it as this install's entitlement. A typed-in key takes a seat,
+  /// displacing the install that has held one the longest if none is free.
+  Future<LicenseActivation> activate(String key) =>
+      _check(key, action: 'activate');
+
+  Future<LicenseActivation> _check(String key, {required String action}) async {
     final trimmed = key.trim().toUpperCase();
     if (trimmed.isEmpty) return LicenseActivation.invalid;
 
@@ -226,7 +238,11 @@ class LicenseManager extends ChangeNotifier {
     try {
       response = await _dio.get(
         licenseValidateUrl,
-        queryParameters: {'license': trimmed},
+        queryParameters: {
+          'license': trimmed,
+          'device': await _deviceId(),
+          'action': action,
+        },
         options: Options(
           // The service answers 200 for both verdicts; anything else is a
           // transport problem, not a rejection.
@@ -266,11 +282,15 @@ class LicenseManager extends ChangeNotifier {
 
   /// Re-checks the stored key. A rejection drops the entitlement; an
   /// unreachable service leaves it exactly as it was.
+  ///
+  /// Sent as a re-check, not an activation, so it never takes a seat from
+  /// another install: if this one has lost its seat, the answer is invalid
+  /// and Pro switches off here until the user enters the key again.
   Future<LicenseActivation> revalidate() async {
     final key = _licenseKey;
     if (key == null) return LicenseActivation.invalid;
 
-    final result = await activate(key);
+    final result = await _check(key, action: 'revalidate');
     if (result == LicenseActivation.invalid) {
       await prefs.setBool('WebLicenseValid', false);
       _loadStoredLicense();
@@ -280,6 +300,8 @@ class LicenseManager extends ChangeNotifier {
   }
 
   /// Forgets the stored licence — "sign out" for a machine being handed on.
+  /// The install id goes too, so the next owner is a new device to the
+  /// service.
   Future<void> clearLicense() async {
     for (final key in [
       'WebLicenseKey',
@@ -288,11 +310,36 @@ class LicenseManager extends ChangeNotifier {
       'WebLicenseEmail',
       'WebLicenseSeats',
       'WebLicenseCheckedAt',
+      'WebLicenseDevice',
     ]) {
       await prefs.remove(key);
     }
     _loadStoredLicense();
     notifyListeners();
+  }
+
+  /// Names this install to the licence service so a seat can follow it.
+  ///
+  /// A random id, made here the first time it is needed and kept in prefs —
+  /// not a machine GUID, serial or MAC, so nothing that identifies the
+  /// hardware or its owner leaves the PC. Wiping prefs or reinstalling makes
+  /// a fresh one, and a fresh one simply activates, the same as a new PC.
+  Future<String> _deviceId() async {
+    final stored = prefs.getString('WebLicenseDevice');
+    if (stored != null && stored.isNotEmpty) return stored;
+    final id = _randomUuid();
+    await prefs.setString('WebLicenseDevice', id);
+    return id;
+  }
+
+  /// A version-4 UUID from the platform's secure random source.
+  static String _randomUuid() {
+    final bytes = List<int>.generate(16, (_) => Random.secure().nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
   }
 
   bool _detectStoreInstall() {
