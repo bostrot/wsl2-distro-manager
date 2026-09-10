@@ -746,6 +746,8 @@
   "vmisoplaceholder-text": "ダウンロードするインストーラーを選ぶか、ローカルのISOパスを入力",
   "vmopenconsole-text": "ターミナルでシリアルコンソールを開く",
   "vmshowdisplay-text": "画面を表示",
+  "vmgreeting-text": "VM ターミナルのあいさつ",
+  "vmgreeting-info-text": "VM のターミナルやログインプロンプトを開くたびに fastfetch でシステム概要を表示します。ゲスト内に小さなプロファイルスクリプトを設置し、fastfetch がない場合はゲスト自身のパッケージマネージャーで取得します。",
   "vmdiskinuse-text": "VMが実行中のためディスクをマウントできません — 代わりにVMフォルダを開きます。",
   "vmdisknotmountable-text": "macOSはこのディスクのファイルシステムを読めません（Linuxディスクは通常ext4）— 代わりにVMフォルダを開きます。",
   "vmejectbeforestart-text": "このVMのディスクはFinderでマウントされています。先に取り出してからVMを起動してください。",

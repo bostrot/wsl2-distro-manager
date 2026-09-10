@@ -746,6 +746,8 @@
   "vmisoplaceholder-text": "Válassz letöltendő telepítőt, vagy adj meg helyi ISO-útvonalat",
   "vmopenconsole-text": "Soros konzol megnyitása a Terminalban",
   "vmshowdisplay-text": "Képernyő megjelenítése",
+  "vmgreeting-text": "VM-terminál üdvözlés",
+  "vmgreeting-info-text": "Rendszerösszegzést mutat a fastfetch segítségével, valahányszor egy VM-terminál vagy annak bejelentkezési képernyője megnyílik. Egy kis profilszkriptet telepít a vendégbe, és hiány esetén a vendég saját csomagkezelőjével tölti le a fastfetchet.",
   "vmdiskinuse-text": "A VM fut, ezért a lemeze nem csatolható — helyette a VM mappája nyílik meg.",
   "vmdisknotmountable-text": "A macOS nem tudja olvasni a lemez fájlrendszerét (a Linux-lemezek általában ext4) — helyette a VM mappája nyílik meg.",
   "vmejectbeforestart-text": "A VM lemeze csatolva van a Finderben. Előbb add ki, majd indítsd a VM-et.",

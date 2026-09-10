@@ -747,6 +747,8 @@
   "vmisoplaceholder-text": "Installer zum Herunterladen wählen oder lokalen ISO-Pfad eingeben",
   "vmopenconsole-text": "Serielle Konsole im Terminal öffnen",
   "vmshowdisplay-text": "Bildschirm anzeigen",
+  "vmgreeting-text": "Begrüßung im VM-Terminal",
+  "vmgreeting-info-text": "Zeigt beim Öffnen eines VM-Terminals oder seiner Anmeldeaufforderung eine Systemübersicht mit fastfetch. Installiert ein kleines Profilskript im Gast und holt fastfetch bei Bedarf über dessen eigene Paketverwaltung.",
   "vmdiskinuse-text": "Die VM läuft, ihre Festplatte kann daher nicht eingebunden werden — stattdessen wird der VM-Ordner geöffnet.",
   "vmdisknotmountable-text": "macOS kann das Dateisystem dieser Festplatte nicht lesen (Linux-Festplatten sind meist ext4) — stattdessen wird der VM-Ordner geöffnet.",
   "vmejectbeforestart-text": "Die Festplatte dieser VM ist im Finder eingebunden. Erst auswerfen, dann die VM starten.",

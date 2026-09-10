@@ -747,6 +747,8 @@
   "vmisoplaceholder-text": "选择要下载的安装镜像，或输入本地 ISO 路径",
   "vmopenconsole-text": "在终端中打开串行控制台",
   "vmshowdisplay-text": "显示屏幕",
+  "vmgreeting-text": "虚拟机终端问候",
+  "vmgreeting-info-text": "每次打开虚拟机终端或其登录提示时，使用 fastfetch 显示系统概要。会在客户机中安装一个小的 profile 脚本，并在缺少 fastfetch 时通过客户机自身的包管理器获取。",
   "vmdiskinuse-text": "虚拟机正在运行，无法挂载其磁盘 — 改为打开虚拟机文件夹。",
   "vmdisknotmountable-text": "macOS 无法读取此磁盘的文件系统（Linux 磁盘通常为 ext4）— 改为打开虚拟机文件夹。",
   "vmejectbeforestart-text": "此虚拟机的磁盘已在 Finder 中挂载。请先推出，再启动虚拟机。",

@@ -391,6 +391,7 @@ const List<String> distroPrefKeyPrefixes = [
   'UserCmds_',
   'GroupCmds_',
   'TurnkeyFirstStart_',
+  'GuestGreeting_',
   'quickSettingsMeta_',
   'mount_vhd_',
 ];

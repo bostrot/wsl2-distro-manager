@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:localization/localization.dart';
 import 'package:path/path.dart' as p;
+import 'package:wsl2distromanager/api/apple/guest_greeting.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
 import 'package:wsl2distromanager/api/safe_paths.dart';
 import 'package:wsl2distromanager/api/shell.dart';
@@ -915,11 +916,86 @@ class AppleVmApi extends VmBackend {
     if (vm != null && vm.running && vm.os == 'linux' && ip.isNotEmpty) {
       final user = vm.user.trim().isEmpty ? 'root' : vm.user.trim();
       if ((await probeGuestAccess(distribution, user: user)).ok) {
+        // Before the session, not after: the snippet has to be in place for
+        // the login shell ssh is about to start to read it.
+        await ensureGuestGreeting(distribution, user: user);
         await openShell(distribution, user: user);
         return;
       }
     }
     await openConsole(distribution);
+  }
+
+  /// Put the system-summary banner in [instance] if it is not there already.
+  ///
+  /// Cheap after the first call: the installed version is remembered per VM,
+  /// so a terminal that has been opened before costs nothing. Failure is
+  /// swallowed on purpose — a banner is decoration, and a guest that will not
+  /// take it must still hand the user their shell.
+  ///
+  /// Returns whether the snippet was (re)installed by this call.
+  Future<bool> ensureGuestGreeting(String instance, {String user = ''}) async {
+    if (!greetingEnabled) return false;
+    if (prefs.getInt(GuestGreeting.prefKey(instance)) ==
+        GuestGreeting.version) {
+      return false;
+    }
+    try {
+      final result = await execCommand(
+        instance,
+        GuestGreeting.installCommand(),
+        user: user.trim().isEmpty ? 'root' : user.trim(),
+        timeout: const Duration(seconds: 30),
+      );
+      if (result.exitCode != 0) {
+        logDebug(
+            'Guest greeting not installed in $instance: ${result.stderr}',
+            StackTrace.current,
+            null);
+        return false;
+      }
+      await prefs.setInt(GuestGreeting.prefKey(instance), GuestGreeting.version);
+      return true;
+    } catch (error, stack) {
+      logDebug(error, stack, null);
+      return false;
+    }
+  }
+
+  /// Whether VM terminals greet the user with a system summary. Unset means
+  /// on: it is the default the setting can be turned off from.
+  bool get greetingEnabled =>
+      prefs.getBool(GuestGreeting.enabledPrefKey) ?? true;
+
+  /// Install the greeting as soon as a just-started guest answers SSH.
+  ///
+  /// The start button opens a display window whose login prompt is the
+  /// guest's own, so nothing the host prints can reach it; the snippet has to
+  /// already be in the guest. Callers leave this unawaited — a start must not
+  /// wait on a banner — and a VM that never becomes reachable simply keeps
+  /// the plain prompt it had.
+  Future<void> primeGuestGreeting(String instance) async {
+    if (!greetingEnabled) return;
+    if (prefs.getInt(GuestGreeting.prefKey(instance)) ==
+        GuestGreeting.version) {
+      return;
+    }
+    try {
+      final vm = await vmInfo(instance);
+      if (vm == null || vm.os != 'linux') return;
+      final user = vm.user.trim().isEmpty ? 'root' : vm.user.trim();
+      final deadline = DateTime.now().add(guestReadyTimeout);
+      while (true) {
+        if ((await probeGuestAccess(instance, user: user)).ok) {
+          await ensureGuestGreeting(instance, user: user);
+          return;
+        }
+        if (!DateTime.now().isBefore(deadline)) return;
+        await Future.delayed(guestReadyPollInterval);
+      }
+    } catch (error, stack) {
+      logDebug(error, stack, null);
+    }
   }
 
   /// Writes a `.command` file that runs one vmctl subcommand and opens it in

@@ -746,6 +746,8 @@
   "vmisoplaceholder-text": "다운로드할 설치 프로그램을 선택하거나 로컬 ISO 경로를 입력하세요",
   "vmopenconsole-text": "터미널에서 시리얼 콘솔 열기",
   "vmshowdisplay-text": "화면 표시",
+  "vmgreeting-text": "VM 터미널 인사말",
+  "vmgreeting-info-text": "VM 터미널이나 로그인 프롬프트를 열 때마다 fastfetch로 시스템 요약을 표시합니다. 게스트에 작은 프로필 스크립트를 설치하고, fastfetch가 없으면 게스트의 패키지 관리자로 내려받습니다.",
   "vmdiskinuse-text": "VM이 실행 중이어서 디스크를 마운트할 수 없습니다. 대신 VM 폴더를 엽니다.",
   "vmdisknotmountable-text": "macOS가 이 디스크의 파일 시스템을 읽을 수 없습니다 (Linux 디스크는 보통 ext4입니다). 대신 VM 폴더를 엽니다.",
   "vmejectbeforestart-text": "이 VM의 디스크가 Finder에 마운트되어 있습니다. 먼저 추출한 뒤 VM을 시작하세요.",

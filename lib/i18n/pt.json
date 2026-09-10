@@ -748,6 +748,8 @@
   "vmisoplaceholder-text": "Escolha um instalador para baixar ou insira um caminho ISO local",
   "vmopenconsole-text": "Abrir console serial no Terminal",
   "vmshowdisplay-text": "Mostrar tela",
+  "vmgreeting-text": "Saudação do terminal da VM",
+  "vmgreeting-info-text": "Mostra um resumo do sistema com o fastfetch sempre que um terminal da VM ou o seu ecrã de início de sessão abre. Instala um pequeno script de perfil no convidado e obtém o fastfetch através do gestor de pacotes do próprio convidado quando este falta.",
   "vmdiskinuse-text": "A VM está em execução, então seu disco não pode ser montado — abrindo a pasta da VM em vez disso.",
   "vmdisknotmountable-text": "O macOS não consegue ler o sistema de arquivos deste disco (discos Linux geralmente são ext4) — abrindo a pasta da VM em vez disso.",
   "vmejectbeforestart-text": "O disco desta VM está montado no Finder. Ejete-o primeiro e depois inicie a VM.",

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/apple/guest_greeting.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
 import 'package:wsl2distromanager/api/kubernetes/kube_service.dart';
@@ -107,6 +108,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _modelsLoading = false;
   bool _aiTestBusy = false;
   bool _useRemoteWsl = false;
+  bool _vmGreeting = true;
   bool _mcpEnabled = false;
   bool _mcpTokenVisible = false;
   bool _tunnelStarting = false;
@@ -352,6 +354,7 @@ class SettingsPageState extends State<SettingsPage> {
           TextEditingController(text: dataPath);
     }
     _useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
+    _vmGreeting = prefs.getBool(GuestGreeting.enabledPrefKey) ?? true;
     String? remoteTarget = prefs.getString('RemoteWSLTarget');
     if (remoteTarget != null && remoteTarget.trim().isNotEmpty) {
       _remoteWslTargetController.text = remoteTarget;
@@ -954,6 +957,30 @@ class SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        // A VM terminal's banner is the guest's own profile, so this only
+        // means anything where the app drives VMs.
+        if (isAppleHost)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'vmgreeting-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(
+                children: [
+                  ToggleSwitch(
+                    key: const ValueKey('test-vm-greeting-toggle'),
+                    checked: _vmGreeting,
+                    onChanged: (value) {
+                      setState(() => _vmGreeting = value);
+                      prefs.setBool(GuestGreeting.enabledPrefKey, value);
+                    },
+                  ),
+                  const SizedBox(width: 10.0),
+                  Expanded(child: Text('vmgreeting-info-text'.i18n())),
+                ],
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

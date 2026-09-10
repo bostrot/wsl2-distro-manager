@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/templates.dart';
@@ -395,6 +397,14 @@ class _ListItemState extends State<ListItem> {
       // and the catch below could never run against a fire-and-forget call.
       await api.start(widget.item,
           startPath: startPath, startUser: startName, startCmd: startCmd);
+      // A VM started from here shows the guest's own login prompt in its
+      // display window, so the terminal greeting has to be inside the guest
+      // by the time someone signs in. Deliberately not awaited: it waits for
+      // the guest to answer SSH, which a start button must not.
+      final backend = api;
+      if (backend is AppleVmApi) {
+        unawaited(backend.primeGuestGreeting(widget.item));
+      }
       Notify.message('${widget.item} ${'started-text'.i18n()}.',
           severity: InfoBarSeverity.success,
           duration: const Duration(seconds: 3));

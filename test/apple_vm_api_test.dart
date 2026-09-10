@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/apple/guest_greeting.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
@@ -708,6 +709,110 @@ void main() {
       expect(shell.calls.where((c) => c.contains('exec')), isEmpty);
       expect(shell.calls.lastWhere((c) => c.first == 'start:open').last,
           endsWith('console.command'));
+    });
+  });
+
+  group('guest greeting', () {
+    const running =
+        '{"vms":[{"name":"ubuntu","state":"running","os":"linux","user":"eric",'
+        '"ip":"192.168.64.4"}]}';
+
+    /// The exec that carries the profile snippet, as opposed to the probe.
+    List<List<String>> installs() => shell.calls
+        .where((c) => c.contains('exec') && c.last.contains(GuestGreeting.path))
+        .toList();
+
+    test('the terminal button seeds the snippet before opening the shell',
+        () async {
+      shell.responses['list'] = running;
+      await api.openTerminal('ubuntu');
+
+      expect(installs(), hasLength(1));
+      // As the account the session is about to use, not root: that is the
+      // one cloud-init gave passwordless sudo.
+      expect(installs().single, containsAll(['--user', 'eric']));
+
+      final installIndex = shell.calls.indexOf(installs().single);
+      final openIndex =
+          shell.calls.indexWhere((c) => c.first == 'start:open');
+      expect(installIndex, lessThan(openIndex),
+          reason: 'the login shell ssh starts has to find the snippet there');
+      expect(prefs.getInt(GuestGreeting.prefKey('ubuntu')),
+          GuestGreeting.version);
+    });
+
+    test('a VM that already has this version is not touched again', () async {
+      shell.responses['list'] = running;
+      await prefs.setInt(GuestGreeting.prefKey('ubuntu'), GuestGreeting.version);
+      await api.openTerminal('ubuntu');
+      expect(installs(), isEmpty);
+    });
+
+    test('an older version is replaced', () async {
+      shell.responses['list'] = running;
+      await prefs.setInt(
+          GuestGreeting.prefKey('ubuntu'), GuestGreeting.version - 1);
+      expect(await api.ensureGuestGreeting('ubuntu', user: 'eric'), isTrue);
+      expect(prefs.getInt(GuestGreeting.prefKey('ubuntu')),
+          GuestGreeting.version);
+    });
+
+    test('the setting turns it off', () async {
+      shell.responses['list'] = running;
+      await prefs.setBool(GuestGreeting.enabledPrefKey, false);
+      await api.openTerminal('ubuntu');
+      expect(installs(), isEmpty);
+      // The terminal itself is unaffected.
+      expect(shell.calls.lastWhere((c) => c.first == 'start:open').last,
+          endsWith('shell.command'));
+    });
+
+    test('a guest that refuses the write still gets its terminal', () async {
+      shell.responses['list'] = running;
+      // The probe and the install share the `exec` subcommand, so the probe
+      // answers first and the install after it.
+      shell.exitCodeQueue['exec'] = [0, 1];
+      shell.errors['exec'] = 'wslmanager: no way to write /etc/profile.d';
+
+      await api.openTerminal('ubuntu');
+
+      expect(installs(), hasLength(1));
+      expect(prefs.getInt(GuestGreeting.prefKey('ubuntu')), isNull,
+          reason: 'a failed install must be retried, not remembered');
+      expect(shell.calls.lastWhere((c) => c.first == 'start:open').last,
+          endsWith('shell.command'));
+    });
+
+    test('a refused install reports itself instead of throwing', () async {
+      shell.exitCodes['exec'] = 1;
+      shell.errors['exec'] = 'wslmanager: no way to write /etc/profile.d';
+      expect(await api.ensureGuestGreeting('ubuntu', user: 'eric'), isFalse);
+      expect(prefs.getInt(GuestGreeting.prefKey('ubuntu')), isNull);
+    });
+
+    test('priming after a start waits for the guest, then installs', () async {
+      shell.responses['list'] = running;
+      await api.primeGuestGreeting('ubuntu');
+      expect(installs(), hasLength(1));
+      expect(prefs.getInt(GuestGreeting.prefKey('ubuntu')),
+          GuestGreeting.version);
+    });
+
+    test('priming an unreachable guest gives up quietly', () async {
+      shell.responses['list'] = running;
+      shell.exitCodes['exec'] = 255;
+      shell.errors['exec'] = 'Connection refused';
+      await api.primeGuestGreeting('ubuntu');
+      expect(installs(), isEmpty);
+      expect(prefs.getInt(GuestGreeting.prefKey('ubuntu')), isNull);
+    });
+
+    test('a macOS guest has no profile to seed', () async {
+      shell.responses['list'] =
+          '{"vms":[{"name":"sequoia","state":"running","os":"macos",'
+          '"user":"user","ip":"192.168.64.5"}]}';
+      await api.primeGuestGreeting('sequoia');
+      expect(shell.calls.where((c) => c.contains('exec')), isEmpty);
     });
   });
 

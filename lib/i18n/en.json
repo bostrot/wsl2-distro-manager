@@ -746,6 +746,8 @@
   "vmisoplaceholder-text": "Choose an installer to download, or enter a local ISO path",
   "vmopenconsole-text": "Open serial console in Terminal",
   "vmshowdisplay-text": "Show screen",
+  "vmgreeting-text": "VM terminal greeting",
+  "vmgreeting-info-text": "Show a system summary with fastfetch whenever a VM terminal or its login prompt opens. Installs a small profile script in the guest and fetches fastfetch through the guest's own package manager when it is missing.",
   "vmdiskinuse-text": "The VM is running, so its disk cannot be mounted — opening the VM folder instead.",
   "vmdisknotmountable-text": "macOS cannot read this disk's filesystem (Linux disks are usually ext4) — opening the VM folder instead.",
   "vmejectbeforestart-text": "This VM's disk is mounted in Finder. Eject it first, then start the VM.",

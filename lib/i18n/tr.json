@@ -746,6 +746,8 @@
   "vmisoplaceholder-text": "İndirilecek bir kurulum medyası seçin veya yerel ISO yolu girin",
   "vmopenconsole-text": "Seri konsolu Terminal'de aç",
   "vmshowdisplay-text": "Ekranı göster",
+  "vmgreeting-text": "VM terminali karşılaması",
+  "vmgreeting-info-text": "Bir VM terminali ya da oturum açma istemi her açıldığında fastfetch ile bir sistem özeti gösterir. Konuk sisteme küçük bir profil betiği kurar ve fastfetch yoksa konuğun kendi paket yöneticisiyle indirir.",
   "vmdiskinuse-text": "Sanal makine çalışıyor, bu yüzden diski bağlanamaz — bunun yerine VM klasörü açılıyor.",
   "vmdisknotmountable-text": "macOS bu diskin dosya sistemini okuyamıyor (Linux diskleri genellikle ext4) — bunun yerine VM klasörü açılıyor.",
   "vmejectbeforestart-text": "Bu sanal makinenin diski Finder'da bağlı. Önce çıkarın, sonra VM'yi başlatın.",
