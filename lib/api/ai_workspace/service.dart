@@ -2,7 +2,8 @@
 // runs inside the dedicated [kAiWorkspaceDistro] Ubuntu distro.
 
 import 'dart:async';
-import 'dart:io' show Process;
+import 'dart:io'
+    show InternetAddress, Process, ServerSocket, SocketException;
 
 import 'package:dio/dio.dart';
 import 'package:localization/localization.dart';
@@ -140,17 +141,6 @@ String _killByPattern(String pattern) =>
     'for _p in \$(pgrep -f \'$pattern\'); do '
     '[ \$_p = \$\$ ] || [ \$_p = \$PPID ] || kill \$_p; '
     'done 2>/dev/null; true';
-
-/// Stands in for [WorkspaceRuntime.bindAddress] inside a tool command, and is
-/// substituted in [AiWorkspaceService._req] — the one place every command
-/// passes through.
-///
-/// Which address a tool must bind is a property of the *backend*, not of the
-/// tool: under WSL the loopback relay makes 127.0.0.1 reachable from Windows,
-/// while the macOS workspace is a VM whose loopback is its own. The configs
-/// below are built once at load, before any backend is known, so the answer
-/// cannot be baked into them.
-const String kBindAddressToken = '@BIND_ADDRESS@';
 
 /// Supported AI workspace tools.
 enum AiWorkspaceTool { hermesAgent, openClaw, openWebUi, openCode }
@@ -358,12 +348,40 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     name: 'OpenClaw',
     installCommand:
         'curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard --no-prompt',
-    // `gateway install --force` first leaves the service unable to bind, so
-    // plain restart is what runs. The wait is on the port, not the process:
-    // the gateway exists for seconds before it ever listens, and stays alive
-    // after a bind that failed outright.
-    startCommand: 'openclaw gateway restart >/dev/null 2>&1; '
-        '${_waitForPort(_kOpenClawPort)}${_listeningTest(_kOpenClawPort)}',
+    // The gateway runs in a session of its own, like Hermes and OpenCode, not
+    // as the systemd user unit `openclaw gateway restart` restarts. The
+    // install is `--no-onboard`, so that unit never exists. On a fresh macOS
+    // guest restart had nothing to restart and every Start failed
+    // (bostrot/ai-tasks#70; 2026.9.4 says "Service unit not found"). A user
+    // unit would also die with the SSH session, because root has no linger.
+    // `gateway stop` goes first so a unit that *does* exist (an onboarded WSL
+    // distro) lets go of the port instead of racing this one for it.
+    // `gateway.mode local` is the one setting the gateway refuses to start
+    // without, and `config set` writes the file when onboarding never did.
+    // An auth block nobody configured gets a token persisted in it. Without
+    // one, 2026.9.4 generates a runtime-only token that changes with every
+    // restart and is written nowhere, so [dashboardCommand] finds no token
+    // and the Control UI says "gateway token missing". The token is a letter
+    // plus hex so `config set` can never parse it as a JSON5 number. Auth that
+    // already exists, from onboarding or the user, is left as it is.
+    // No `--bind` and no `--auth`: the config stays in charge, and with none
+    // the gateway binds loopback, which is where every backend reaches it.
+    // The wait is on the port, not the process: the gateway exists for
+    // seconds before it ever listens, and stays alive after a bind that
+    // failed outright.
+    startCommand: 'openclaw gateway stop >/dev/null 2>&1; '
+        '${_killByPattern(_kOpenClawPattern)}; '
+        '${_waitForPortClosed(_kOpenClawPort)}; '
+        'mkdir -p \$HOME/.openclaw; '
+        'openclaw config set gateway.mode local >/dev/null 2>&1; '
+        'openclaw config get gateway.auth >/dev/null 2>&1 || { '
+        'openclaw config set gateway.auth.mode token >/dev/null 2>&1; '
+        'openclaw config set gateway.auth.token '
+        't\$(od -An -N24 -tx1 /dev/urandom | tr -d \' \\n\') '
+        '>/dev/null 2>&1; }; '
+        'setsid openclaw gateway run --port $_kOpenClawPort </dev/null '
+        '>>\$HOME/.openclaw/gateway.log 2>&1 & '
+        'disown; ${_waitForPort(_kOpenClawPort)}${_listeningTest(_kOpenClawPort)}',
     // The port-closed check, not the exit code, is what says it stopped.
     stopCommand: 'openclaw gateway stop >/dev/null 2>&1; '
         '${_killByPattern(_kOpenClawPattern)}; '
@@ -445,14 +463,12 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
         'hash -r',
     // `web`, not `serve`: both start the same HTTP server, but only `web`
     // serves the browser interface this card's "Open Dashboard" opens.
-    // `--port` is mandatory — see [_kOpenCodePort]. The hostname comes from
-    // the backend ([kBindAddressToken]): the server is unauthenticated unless
-    // `OPENCODE_SERVER_PASSWORD` is set, so it stays on the loopback wherever
-    // that is enough — under WSL it is, because localhost forwarding reaches
-    // a loopback bind from Windows. The macOS workspace is a VM with no such
-    // relay, so there the same bind served nobody but the guest and the card
-    // reported the dashboard unreachable; it binds every interface instead,
-    // which behind macOS' vmnet NAT means the host and the guest.
+    // `--port` is mandatory — see [_kOpenCodePort]. `--hostname 127.0.0.1` is
+    // OpenCode's own default and is deliberately kept on every backend: the
+    // server is unauthenticated unless `OPENCODE_SERVER_PASSWORD` is set.
+    // WSL's localhost relay reaches a loopback bind from Windows, and on
+    // macOS [AiWorkspaceService.getDashboardUrl] forwards the port instead
+    // (bostrot/ai-tasks#70 tried binding 0.0.0.0 there first).
     // The browser `web` tries to open is harmless here — OpenCode swallows
     // that failure — but it has nothing to open inside the distro.
     // setsid + the trailing port wait for the same reasons as Hermes: the
@@ -460,8 +476,7 @@ final Map<AiWorkspaceTool, ToolConfig> _toolConfigs = {
     // says nothing about whether anything ever bound the port.
     startCommand: '${_killByPattern(_kOpenCodePattern)}; '
         'mkdir -p \$HOME/.opencode; cd \$HOME; '
-        'setsid opencode web --port $_kOpenCodePort '
-        '--hostname $kBindAddressToken '
+        'setsid opencode web --port $_kOpenCodePort --hostname 127.0.0.1 '
         '</dev/null >>\$HOME/.opencode/web.log 2>&1 & '
         'disown; ${_waitForPort(_kOpenCodePort)}'
         '${_listeningTest(_kOpenCodePort)}',
@@ -567,6 +582,52 @@ Future<bool> _defaultReachabilityCheck(String url) async {
   }
 }
 
+/// Picks the port on this machine a port forward listens on, given the port
+/// inside the workspace. Injectable so tests never bind a real socket.
+typedef LocalPortPicker = Future<int> Function(int preferred);
+
+/// [preferred] when it is free, so a dashboard keeps the port its docs name,
+/// otherwise whatever the OS hands out. Another process can still take the
+/// port between this probe closing and ssh binding it; vmctl's
+/// `ExitOnForwardFailure` turns that into a forward that ends, loudly, rather
+/// than one that silently serves nothing.
+Future<int> _defaultPickLocalPort(int preferred) async {
+  for (final port in [preferred, 0]) {
+    try {
+      final probe =
+          await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
+      final picked = probe.port;
+      await probe.close();
+      return picked;
+    } on SocketException {
+      // Taken; the OS-assigned port is next.
+    }
+  }
+  throw const SocketException('No free local port for the forward');
+}
+
+/// One running port forward out of the workspace. See
+/// [WorkspaceRuntime.portForward].
+class _PortForward {
+  _PortForward(this.process, this.remotePort, this.localPort);
+
+  final Process process;
+  final int remotePort;
+  final int localPort;
+  bool exited = false;
+
+  /// The last of what the forward wrote to stderr, which is where ssh says
+  /// why a forward failed.
+  String stderrTail = '';
+
+  /// [url] re-pointed at this forward's local end. Path and fragment are
+  /// kept, OpenClaw's `#token=` among them. The host becomes `127.0.0.1`
+  /// rather than `localhost`, because the forward listens on IPv4 only and
+  /// `localhost` may resolve to `::1` first.
+  String localUrl(String url) =>
+      Uri.parse(url).replace(host: '127.0.0.1', port: localPort).toString();
+}
+
 /// Service for managing AI workspace tools.
 class AiWorkspaceService {
   final ExecutionBroker _broker;
@@ -611,6 +672,14 @@ class AiWorkspaceService {
   // already dead by the time "open dashboard" runs.
   Process? _keepAlive;
 
+  // Port forwards out of a workspace that shares no loopback with this
+  // machine, keyed by the port inside it. Held here for the same reason as
+  // [_keepAlive]: the dashboard tab keeps using one long after the call that
+  // opened it has returned.
+  final Map<int, _PortForward> _forwards = {};
+  final Map<int, Future<_PortForward>> _openingForwards = {};
+  final LocalPortPicker _pickLocalPort;
+
   /// How long an install may go silent before it is abandoned, and its
   /// absolute ceiling. Injectable so tests can exercise both without waiting
   /// out the real budgets.
@@ -623,9 +692,11 @@ class AiWorkspaceService {
     DashboardReachabilityChecker? reachabilityChecker,
     Duration? installSilenceTimeout,
     Duration? installMaxDuration,
+    LocalPortPicker? localPortPicker,
   })  : _broker = broker,
         _runtime = runtime ?? workspaceRuntimeBuilder(),
         _isReachable = reachabilityChecker ?? _defaultReachabilityCheck,
+        _pickLocalPort = localPortPicker ?? _defaultPickLocalPort,
         _installSilenceTimeout =
             installSilenceTimeout ?? _kInstallSilenceTimeout,
         _installMaxDuration = installMaxDuration ?? _kInstallMaxDuration;
@@ -678,10 +749,15 @@ class AiWorkspaceService {
     }
   }
 
-  /// Releases the held session. The distro is then free to shut down.
+  /// Releases the held session and every port forward. The distro is then
+  /// free to shut down.
   void dispose() {
     _keepAlive?.kill();
     _keepAlive = null;
+    for (final forward in _forwards.values) {
+      forward.process.kill();
+    }
+    _forwards.clear();
   }
 
   // -----------------------------------------------------------------------
@@ -720,10 +796,7 @@ class AiWorkspaceService {
   /// One-shot root command in the workspace environment, built by the active
   /// [WorkspaceRuntime].
   ExecutionRequest _req(String shellCommand, {Duration? timeout}) =>
-      _runtime.script(
-        shellCommand.replaceAll(kBindAddressToken, _runtime.bindAddress),
-        timeout: timeout,
-      );
+      _runtime.script(shellCommand, timeout: timeout);
 
   /// Installs docker.io on first use — the base Ubuntu image has no Docker.
   Future<void> _ensureDockerReady() async {
@@ -1504,19 +1577,61 @@ class AiWorkspaceService {
       host == '::1' ||
       host.startsWith('127.');
 
-  /// Re-points a loopback [url] at [host], leaving port, path and fragment —
-  /// OpenClaw's `#token=` among them — alone.
-  ///
-  /// A URL that already names a routable host is left as it is, and so is
-  /// every URL when [host] is itself a loopback name: under WSL the printed
-  /// address is already the one to dial, and swapping `127.0.0.1` for
-  /// `localhost` there would only churn what the user sees.
-  static String withServiceHost(String url, String host) {
-    if (_isLoopbackHost(host)) return url;
+  /// The forward that carries [url]'s port out of the workspace, opened on
+  /// first use. Null when [url] is dialable from here as it is: under WSL,
+  /// or when it already names a routable host.
+  Future<_PortForward?> _forwardFor(String url) async {
+    if (_runtime.sharesLoopback) return null;
     final uri = Uri.tryParse(url);
-    if (uri == null || uri.host.isEmpty) return url;
-    if (!_isLoopbackHost(uri.host)) return url;
-    return uri.replace(host: host).toString();
+    if (uri == null || uri.host.isEmpty || !_isLoopbackHost(uri.host)) {
+      return null;
+    }
+    return _ensureForward(uri.port);
+  }
+
+  /// The live forward for [remotePort], opening one when there is none.
+  ///
+  /// One per port, reused across dashboard opens, because the browser tab
+  /// keeps using it long after "Open Dashboard" returned. A forward whose
+  /// guest went away exits on its own (vmctl's keep-alives see to that),
+  /// and the next call opens a fresh one. Calls that overlap while one is
+  /// still opening share it; otherwise the first forward would be orphaned,
+  /// holding its port with nothing left to kill it.
+  Future<_PortForward> _ensureForward(int remotePort) {
+    final existing = _forwards[remotePort];
+    if (existing != null && !existing.exited) return Future.value(existing);
+    // A block body on purpose: `remove` returns the future stored here, and
+    // whenComplete waits on whatever its callback returns. An arrow would
+    // make this future wait on itself.
+    return _openingForwards[remotePort] ??=
+        _openForward(remotePort).whenComplete(() {
+      _openingForwards.remove(remotePort);
+    });
+  }
+
+  Future<_PortForward> _openForward(int remotePort) async {
+    final localPort = await _pickLocalPort(remotePort);
+    final process = await _broker.startPersistent(_runtime.portForward(
+      remotePort: remotePort,
+      localPort: localPort,
+    ));
+    final forward = _PortForward(process, remotePort, localPort);
+    _forwards[remotePort] = forward;
+    // ssh prints nothing on stdout, but an undrained pipe can still stall
+    // it. stderr is kept: it is the only place a failed forward says why.
+    process.stdout.listen((_) {}, onError: (Object _) {});
+    process.stderr.listen(
+      (data) => forward.stderrTail = _appendTail(
+          forward.stderrTail, ExecutionBroker.decodeWslOutput(data)),
+      onError: (Object _) {},
+    );
+    unawaited(process.exitCode.then((_) {
+      forward.exited = true;
+      if (identical(_forwards[remotePort], forward)) {
+        _forwards.remove(remotePort);
+      }
+    }));
+    return forward;
   }
 
   /// Starts the dashboard server if the tool needs one, then waits until
@@ -1541,24 +1656,39 @@ class AiWorkspaceService {
       return null;
     }
     // The URL the tool printed names the loopback it bound, which is this
-    // machine's loopback only under WSL. On a backend that runs the workspace
-    // in its own VM it has to be re-pointed at the guest, and there is no
-    // address to re-point it at until the guest has a lease.
-    final host = await _runtime.serviceHost();
-    if (host == null) {
-      state.errorMessage =
-          'No address for ${_runtime.target} yet — the workspace has no '
-          'network address to reach ${config.name} on';
+    // machine's loopback only under WSL. Anywhere else it has to be carried
+    // out of the workspace first.
+    final _PortForward? forward;
+    try {
+      forward = await _forwardFor(url);
+    } catch (e) {
+      state.errorMessage = 'Could not forward ${config.name} from '
+          '${_runtime.target} to ${_runtime.hostName}: $e';
       return null;
     }
-    final hostUrl = withServiceHost(url, host);
-    if (!await _waitUntilReachable(hostUrl)) {
-      state.errorMessage =
-          'Dashboard URL not reachable from ${_runtime.hostName}: $hostUrl';
+    final hostUrl = forward?.localUrl(url) ?? url;
+    if (!await _waitUntilReachable(hostUrl,
+        hopeless: () => forward?.exited ?? false)) {
+      state.errorMessage = _unreachableMessage(hostUrl, forward);
       return null;
     }
     state.errorMessage = null;
     return hostUrl;
+  }
+
+  /// What the card says when [url] never answered. A forward that died on
+  /// the way is the likelier story, and ssh's own words are the useful part
+  /// of it: a taken port, no lease, a refused key.
+  String _unreachableMessage(String url, _PortForward? forward) {
+    final base = 'Dashboard URL not reachable from ${_runtime.hostName}: $url';
+    if (forward == null) return base;
+    final via = '$base (forwarded from port ${forward.remotePort} in '
+        '${_runtime.target})';
+    if (!forward.exited) return via;
+    final why = forward.stderrTail.trim();
+    return why.isEmpty
+        ? '$via; the forward ended'
+        : '$via; the forward ended: $why';
   }
 
   Future<String?> _runDashboardCommand(
@@ -1609,15 +1739,18 @@ class AiWorkspaceService {
     );
   }
 
-  /// Polls [url] until something actually answers, or [timeout] elapses.
+  /// Polls [url] until something actually answers, or [timeout] elapses, or
+  /// [hopeless] says nothing ever will (the forward carrying it has died).
   Future<bool> _waitUntilReachable(
     String url, {
     Duration timeout = const Duration(seconds: 10),
+    bool Function()? hopeless,
   }) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
       if (await _isReachable(url)) return true;
       if (DateTime.now().isAfter(deadline)) return false;
+      if (hopeless != null && hopeless()) return false;
       await Future.delayed(const Duration(milliseconds: 500));
     }
   }

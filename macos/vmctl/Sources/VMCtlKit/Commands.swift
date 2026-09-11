@@ -72,6 +72,50 @@ public enum VmctlCLI {
             + (remote.isEmpty ? [] : ["--"] + remote)
     }
 
+    /// The ssh argument vector for `forward`: this Mac's `127.0.0.1:localPort`
+    /// carried to `127.0.0.1:remotePort` inside the guest.
+    ///
+    /// Both ends are loopback. A guest service keeps the bind it chose, so a
+    /// dashboard with no authentication of its own (OpenCode's) is never put
+    /// on vmnet, and the browser sees a loopback origin. That origin is what
+    /// OpenClaw's Control UI insists on before it will pair over plain HTTP
+    /// (bostrot/ai-tasks#70).
+    ///
+    /// The remote command reads stdin until EOF instead of `-N`: the session
+    /// then lasts exactly as long as whoever holds our stdin pipe. When the app
+    /// quits, even uncleanly, the pipe closes and the forward goes with it,
+    /// rather than an orphaned ssh holding the Mac's port until the next
+    /// reboot.
+    static func forwardArguments(
+        key: String, user: String, ip: String, localPort: Int, remotePort: Int
+    ) -> [String] {
+        sshOptions + [
+            // Without the forward this session is pointless; die rather than
+            // idle on with the local port taken by someone else.
+            "-o", "ExitOnForwardFailure=yes",
+            // A stopped guest or a lapsed lease has to end the session, so
+            // the app notices the forward is gone and opens a fresh one.
+            "-o", "ServerAliveInterval=5",
+            "-o", "ServerAliveCountMax=3",
+            "-L", "127.0.0.1:\(localPort):127.0.0.1:\(remotePort)",
+            "-i", key, "\(user)@\(ip)",
+            "--", "cat >/dev/null",
+        ]
+    }
+
+    /// Reads a TCP port option, `def` when absent. A port outside 1-65535
+    /// would reach ssh as a forward spec it rejects with a far vaguer message.
+    static func tcpPort(_ bag: ArgumentBag, _ key: String, default def: Int?) throws -> Int {
+        guard let raw = bag.options[key] else {
+            if let def { return def }
+            throw VmctlError("Missing required option --\(key)")
+        }
+        guard let port = Int(raw), (1...65535).contains(port) else {
+            throw VmctlError("--\(key) must be a TCP port (1-65535), got \(raw)")
+        }
+        return port
+    }
+
     /// Replace this process with ssh instead of spawning it as a child.
     ///
     /// Foundation's `Process` starts its child in a process group of its own,
@@ -142,6 +186,8 @@ public enum VmctlCLI {
                 try importVm(store, rest)
             case "exec":
                 return try exec(store, rest)
+            case "forward":
+                return try forward(store, rest)
             case "authorize":
                 try authorize(store, rest)
             case "credentials":
@@ -183,6 +229,10 @@ public enum VmctlCLI {
       export --name N --output PATH         Copy the raw disk image out
       import --name N --input PATH          New VM from a raw disk image
       exec --name N [--user U] -- CMD...    Run a command in the guest (SSH)
+      forward --name N --port P [--local-port L] [--user U]
+                                            Carry the guest's 127.0.0.1:P to
+                                            this Mac's 127.0.0.1:L (default P)
+                                            until stdin closes (SSH)
       authorize --name N [--user U]         Install the store's SSH key in a
                                             guest via password login; reads
                                             the password from
@@ -592,6 +642,26 @@ public enum VmctlCLI {
         return execSsh(sshArguments(
             key: store.sshKeyPath().path, user: user, ip: ip,
             remote: bag.remainder))
+    }
+
+    /// Long-running: holds a port forward into the guest open until stdin
+    /// closes or the guest goes away. See `forwardArguments`.
+    static func forward(_ store: VMStore, _ rest: [String]) throws -> Int32 {
+        let bag = ArgumentBag(rest, flagNames: [])
+        let name = try bag.require("name")
+        let remotePort = try tcpPort(bag, "port", default: nil)
+        let localPort = try tcpPort(bag, "local-port", default: remotePort)
+        let config = try store.loadConfig(name)
+        guard store.isRunning(name) else {
+            throw VmctlError("VM \(name) is not running.")
+        }
+        let user = bag.options["user"] ?? config.user
+        guard let ip = waitForIp(config) else {
+            throw VmctlError("VM \(name) has no IP address yet (no DHCP lease).")
+        }
+        return execSsh(forwardArguments(
+            key: store.sshKeyPath().path, user: user, ip: ip,
+            localPort: localPort, remotePort: remotePort))
     }
 
     /// Installs the store's public key in a guest that never got it from

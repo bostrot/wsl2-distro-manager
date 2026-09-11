@@ -1,5 +1,5 @@
 import 'dart:async' show Timer;
-import 'dart:io' show Process, Socket;
+import 'dart:io' show Process, ProcessException, ProcessStartMode, Socket;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:localization/localization.dart';
@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_workspace/runtime.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
+import 'package:wsl2distromanager/api/execution/models.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
@@ -68,24 +69,67 @@ Future<bool> _hostPortIsOpen(int port) async {
 }
 
 /// A runtime shaped like the macOS backend: the workspace lives in its own VM
-/// with an address of its own, and shares no loopback with the machine
-/// running the app. Built on the WSL plumbing so [TestShell] still sees the
-/// commands it understands — what is under test here is the addressing, not
-/// how the script gets in.
+/// and shares no loopback with the machine running the app, so every port is
+/// reached through a forward. Built on the WSL plumbing so [TestShell] still
+/// sees the commands it understands — what is under test here is the
+/// forwarding, not how the script gets in.
 class _RemoteGuestRuntime extends WslWorkspaceRuntime {
-  _RemoteGuestRuntime({this.ip = '192.168.64.7'});
-
-  /// Null models a guest that is up but has no DHCP lease yet.
-  final String? ip;
-
   @override
-  Future<String?> serviceHost() async => ip;
-
-  @override
-  String get bindAddress => '0.0.0.0';
+  bool get sharesLoopback => false;
 
   @override
   String get hostName => 'macOS';
+
+  @override
+  ExecutionRequest portForward({
+    required int remotePort,
+    required int localPort,
+  }) =>
+      ExecutionRequest(command: 'vmctl', arguments: [
+        'forward',
+        '--port',
+        '$remotePort',
+        '--local-port',
+        '$localPort',
+      ]);
+}
+
+/// [TestShell], except that a `forward` gets a child that stays up until the
+/// test ends it, the way `vmctl forward` does. Everything else answers as
+/// usual.
+class _ForwardingShell extends TestShell {
+  final List<ControlledProcess> forwards = [];
+  final List<List<String>> forwardCommands = [];
+
+  /// Makes starting a forward throw, as a missing helper binary would.
+  bool refuseForward = false;
+
+  @override
+  Future<Process> start(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    bool includeParentEnvironment = true,
+    ProcessStartMode mode = ProcessStartMode.inheritStdio,
+    bool runInShell = false,
+  }) async {
+    if (!arguments.contains('forward')) {
+      return super.start(executable, arguments,
+          workingDirectory: workingDirectory,
+          environment: environment,
+          includeParentEnvironment: includeParentEnvironment,
+          mode: mode,
+          runInShell: runInShell);
+    }
+    if (refuseForward) {
+      throw ProcessException(executable, arguments, 'No such file');
+    }
+    forwardCommands.add([executable, ...arguments]);
+    final process = ControlledProcess();
+    forwards.add(process);
+    return process;
+  }
 }
 
 void main() {
@@ -1176,7 +1220,12 @@ void main() {
             reason: 'the listening test has to be the last thing that runs');
       });
 
-      test('starting openclaw waits for its port', () async {
+      // `--no-onboard` never creates the systemd unit `gateway restart`
+      // restarts, so on a fresh macOS guest Start failed every time
+      // (bostrot/ai-tasks#70). The gateway is run directly instead, after
+      // the one setting it refuses to start without.
+      test('starting openclaw runs the gateway itself and waits for its port',
+          () async {
         testShell.stdoutData = 'ai-workspace';
         await service.init();
 
@@ -1185,7 +1234,15 @@ void main() {
         await service.start(AiWorkspaceTool.openClaw);
 
         final command = testShell.lastCommand.last;
-        expect(command.contains('openclaw gateway restart'), true);
+        expect(command.contains('gateway restart'), false);
+        expect(
+            command.contains('setsid openclaw gateway run --port 18789'), true);
+        expect(command.indexOf('openclaw config set gateway.mode local'),
+            lessThan(command.indexOf('gateway run')));
+        // Bind and auth stay the config's call: an onboarded distro may have
+        // chosen its own, and loopback is the default either way.
+        expect(command.contains('--bind'), false);
+        expect(command.contains('--auth'), false);
         expect(command.contains('for _i in'), true);
         expect(command.contains(r':18789([^0-9]|$)'), true);
         expect(command.contains('"'), false);
@@ -2048,157 +2105,191 @@ void main() {
       // backend the workspace is a VM on its own network, so `localhost` is
       // the Mac and nothing is serving there — which is how a healthy,
       // listening OpenCode card came to read "Dashboard URL not reachable
-      // from Windows: http://localhost:4096" (bostrot/ai-tasks#70).
-      group('on a backend whose workspace has its own address', () {
-        test('the static port URL is dialled at the guest, not this machine',
+      // from Windows: http://localhost:4096" (bostrot/ai-tasks#70). The port
+      // is forwarded out instead, and the URL re-pointed at the local end.
+      group('on a backend that shares no loopback with this machine', () {
+        late _ForwardingShell shell;
+        late ExecutionBroker remoteBroker;
+
+        setUp(() {
+          shell = _ForwardingShell();
+          remoteBroker = ExecutionBroker(shell: shell);
+        });
+
+        /// A service on the remote runtime with [tool] already running.
+        Future<AiWorkspaceService> runningRemote(
+          AiWorkspaceTool tool, {
+          DashboardReachabilityChecker? reachable,
+          LocalPortPicker? pick,
+        }) async {
+          final remote = AiWorkspaceService(
+            broker: remoteBroker,
+            runtime: _RemoteGuestRuntime(),
+            reachabilityChecker: reachable ?? (_) async => true,
+            localPortPicker: pick ?? (preferred) async => preferred,
+          );
+          addTearDown(remote.dispose);
+          shell.stdoutData = 'ai-workspace';
+          await remote.init();
+          remote.getState(tool)!.status = ToolStatus.running;
+          shell.stdoutData = '';
+          return remote;
+        }
+
+        test('the dashboard port is forwarded and dialled on this machine',
             () async {
           final dialled = <String>[];
-          final remote = AiWorkspaceService(
-            broker: broker,
-            runtime: _RemoteGuestRuntime(),
-            reachabilityChecker: (url) async {
-              dialled.add(url);
-              return true;
-            },
-          );
-          testShell.stdoutData = 'ai-workspace';
-          await remote.init();
-          remote.getState(AiWorkspaceTool.openWebUi)!.status =
-              ToolStatus.running;
+          final remote = await runningRemote(AiWorkspaceTool.openWebUi,
+              reachable: (url) async {
+            dialled.add(url);
+            return true;
+          });
 
           final url = await remote.getDashboardUrl(AiWorkspaceTool.openWebUi);
 
-          expect(url, 'http://192.168.64.7:8083');
+          // `127.0.0.1`, not `localhost`: the forward listens on IPv4 only.
+          expect(url, 'http://127.0.0.1:8083');
           // The probe has to dial what the browser will open, or it proves
           // nothing about the URL that is handed back.
-          expect(dialled, ['http://192.168.64.7:8083']);
+          expect(dialled, ['http://127.0.0.1:8083']);
+          expect(shell.forwardCommands.single,
+              containsAllInOrder(['--port', '8083', '--local-port', '8083']));
+        });
+
+        // Someone else on the Mac may already hold the dashboard's port —
+        // an OpenCode of their own on 4096, say. Only the local end moves.
+        test('a taken local port moves the forward, not the workspace port',
+            () async {
+          final remote = await runningRemote(AiWorkspaceTool.openCode,
+              pick: (_) async => 50123);
+
+          final url = await remote.getDashboardUrl(AiWorkspaceTool.openCode);
+
+          expect(url, 'http://127.0.0.1:50123');
+          expect(shell.forwardCommands.single,
+              containsAllInOrder(['--port', '4096', '--local-port', '50123']));
         });
 
         // OpenClaw's URL carries the gateway token as a fragment, and a
         // dashboard opened without it shows "unauthorized: gateway token
-        // missing" — so re-pointing the host must not touch anything else.
+        // missing" — so moving the port must not touch anything else.
         test('a printed URL keeps its path and token fragment', () async {
-          final remote = AiWorkspaceService(
-            broker: broker,
-            runtime: _RemoteGuestRuntime(),
-            reachabilityChecker: (_) async => true,
-          );
-          testShell.stdoutData = 'ai-workspace';
-          await remote.init();
-          remote.getState(AiWorkspaceTool.openClaw)!.status =
-              ToolStatus.running;
-          testShell.stdoutData =
+          final remote = await runningRemote(AiWorkspaceTool.openClaw,
+              pick: (_) async => 51000);
+          shell.stdoutData =
               'http://127.0.0.1:18789/pair/xyz\nGATEWAY_TOKEN:sekrit';
 
           final url = await remote.getDashboardUrl(AiWorkspaceTool.openClaw);
 
-          expect(url, 'http://192.168.64.7:18789/pair/xyz#token=sekrit');
+          expect(url, 'http://127.0.0.1:51000/pair/xyz#token=sekrit');
+          expect(shell.forwardCommands.single,
+              containsAllInOrder(['--port', '18789']));
         });
 
-        // A tool that binds the guest's loopback is reachable from nowhere
-        // but the guest, however right the address is.
-        test('a tool that picks its bind address binds every interface',
+        // The browser tab keeps using the forward after the call returns, so
+        // a second open must not start a second ssh for the same port.
+        test('one forward serves every open of the same dashboard', () async {
+          final remote = await runningRemote(AiWorkspaceTool.openCode);
+
+          await remote.getDashboardUrl(AiWorkspaceTool.openCode);
+          await remote.getDashboardUrl(AiWorkspaceTool.openCode);
+
+          expect(shell.forwardCommands, hasLength(1));
+        });
+
+        // A double-click opens twice before the first forward exists. Two
+        // forwards would orphan one: untracked, holding a port, never killed.
+        test('overlapping opens share the forward still being opened',
             () async {
-          final remote = AiWorkspaceService(
-            broker: broker,
-            runtime: _RemoteGuestRuntime(),
-            reachabilityChecker: (_) async => true,
-          );
-          testShell.stdoutData = 'ai-workspace';
-          await remote.init();
-          remote.getState(AiWorkspaceTool.openCode)!.status =
-              ToolStatus.stopped;
-          testShell.stdoutData = '';
+          final remote = await runningRemote(AiWorkspaceTool.openCode);
 
-          await remote.start(AiWorkspaceTool.openCode);
+          final urls = await Future.wait([
+            remote.getDashboardUrl(AiWorkspaceTool.openCode),
+            remote.getDashboardUrl(AiWorkspaceTool.openCode),
+          ]);
 
-          final command = testShell.lastCommand.last;
-          expect(command.contains('--hostname 0.0.0.0'), true);
-          // The placeholder is an implementation detail of the config; it
-          // must never survive into the shell.
-          expect(command.contains(kBindAddressToken), false);
+          expect(urls, ['http://127.0.0.1:4096', 'http://127.0.0.1:4096']);
+          expect(shell.forwardCommands, hasLength(1));
         });
 
-        test('a guest with no address yet says so instead of dialling',
+        // A guest that rebooted takes the old session with it; the next open
+        // has to notice and dial again rather than hand out a dead port.
+        test('a forward that ended is replaced on the next open', () async {
+          final remote = await runningRemote(AiWorkspaceTool.openCode);
+          await remote.getDashboardUrl(AiWorkspaceTool.openCode);
+
+          shell.forwards.single.exit(255);
+          await pumpEventQueue();
+          final url = await remote.getDashboardUrl(AiWorkspaceTool.openCode);
+
+          expect(url, 'http://127.0.0.1:4096');
+          expect(shell.forwardCommands, hasLength(2));
+        });
+
+        // ssh is the only one who knows why a forward failed — a taken port,
+        // no lease, a refused key — so its words go on the card, and a dead
+        // forward is not polled for the full reachability budget.
+        test('a forward that dies says why, and is not waited out', () async {
+          final remote = await runningRemote(AiWorkspaceTool.openWebUi,
+              reachable: (_) async {
+            shell.forwards.last
+              ..emitError('bind [127.0.0.1]:8083: Address already in use\n')
+              ..exit(255);
+            return false;
+          });
+          final state = remote.getState(AiWorkspaceTool.openWebUi)!;
+
+          final clock = Stopwatch()..start();
+          final url = await remote.getDashboardUrl(AiWorkspaceTool.openWebUi);
+
+          expect(url, isNull);
+          expect(state.errorMessage, contains('macOS'));
+          expect(state.errorMessage, contains('http://127.0.0.1:8083'));
+          expect(state.errorMessage, contains('Address already in use'));
+          expect(state.errorMessage, isNot(contains('Windows')));
+          expect(clock.elapsed, lessThan(const Duration(seconds: 5)));
+        });
+
+        test('a forward that cannot even start is reported, not dialled',
             () async {
           var dials = 0;
-          final remote = AiWorkspaceService(
-            broker: broker,
-            runtime: _RemoteGuestRuntime(ip: null),
-            reachabilityChecker: (_) async {
-              dials++;
-              return true;
-            },
-          );
-          testShell.stdoutData = 'ai-workspace';
-          await remote.init();
-          final state = remote.getState(AiWorkspaceTool.openWebUi)!
-            ..status = ToolStatus.running;
+          final remote = await runningRemote(AiWorkspaceTool.openWebUi,
+              reachable: (_) async {
+            dials++;
+            return true;
+          });
+          shell.refuseForward = true;
+          final state = remote.getState(AiWorkspaceTool.openWebUi)!;
 
           expect(
               await remote.getDashboardUrl(AiWorkspaceTool.openWebUi), isNull);
-          expect(state.errorMessage, contains('no network address'));
+          expect(state.errorMessage, contains('Could not forward Open WebUI'));
           expect(dials, 0);
         });
 
-        // "not reachable from Windows: http://localhost:4096" on a Mac named
-        // the wrong machine and the wrong address; both have to be the ones
-        // actually involved.
-        test('an unreachable dashboard is reported against the real address',
-            () async {
-          final remote = AiWorkspaceService(
-            broker: broker,
-            runtime: _RemoteGuestRuntime(),
-            reachabilityChecker: (_) async => false,
-          );
-          testShell.stdoutData = 'ai-workspace';
-          await remote.init();
-          final state = remote.getState(AiWorkspaceTool.openWebUi)!
-            ..status = ToolStatus.running;
+        test('dispose closes every forward', () async {
+          final remote = await runningRemote(AiWorkspaceTool.openWebUi);
+          await remote.getDashboardUrl(AiWorkspaceTool.openWebUi);
 
-          expect(
-              await remote.getDashboardUrl(AiWorkspaceTool.openWebUi), isNull);
-          expect(state.errorMessage, contains('macOS'));
-          expect(state.errorMessage, contains('http://192.168.64.7:8083'));
-          expect(state.errorMessage, isNot(contains('Windows')));
-          expect(state.errorMessage, isNot(contains('localhost')));
-        });
-      });
+          remote.dispose();
 
-      group('withServiceHost', () {
-        test('leaves a URL alone when the service host is a loopback name',
-            () {
-          // WSL: the printed address already is the one to dial, so nothing
-          // churns under the user.
-          expect(
-            AiWorkspaceService.withServiceHost(
-                'http://127.0.0.1:18789/pair/xyz', 'localhost'),
-            'http://127.0.0.1:18789/pair/xyz',
-          );
+          expect(shell.forwards.single.killCount, 1);
         });
 
-        test('leaves a URL that already names a routable host alone', () {
-          expect(
-            AiWorkspaceService.withServiceHost(
-                'http://10.0.0.4:8083', '192.168.64.7'),
-            'http://10.0.0.4:8083',
-          );
-        });
+        // Binding every interface was the first fix for #70. It exposed
+        // OpenCode's unauthenticated server on vmnet and still missed a
+        // server started before the change. The forward reaches the
+        // loopback, so the loopback bind stays.
+        test('opencode keeps its loopback bind on this backend too', () async {
+          final remote = await runningRemote(AiWorkspaceTool.openCode);
+          remote.getState(AiWorkspaceTool.openCode)!.status =
+              ToolStatus.stopped;
 
-        test('re-points every spelling of the environment loopback', () {
-          for (final url in [
-            'http://localhost:8083',
-            'http://127.0.0.1:8083',
-            'http://127.0.1.1:8083',
-          ]) {
-            expect(AiWorkspaceService.withServiceHost(url, '192.168.64.7'),
-                'http://192.168.64.7:8083');
-          }
-        });
+          await remote.start(AiWorkspaceTool.openCode);
 
-        test('passes through output that is not a URL at all', () {
-          expect(AiWorkspaceService.withServiceHost('not a url', '10.0.0.4'),
-              'not a url');
+          final command = shell.lastCommand.last;
+          expect(command.contains('--hostname 127.0.0.1'), true);
+          expect(command.contains('0.0.0.0'), false);
         });
       });
     });
@@ -2559,6 +2650,95 @@ void main() {
 
         expect(answer.contains('SURVIVED'), true);
         expect(killedBy(answer), ['killed:4242']);
+      });
+
+      /// Runs the openclaw start command under real bash. [authConfigured]
+      /// is what `openclaw config get gateway.auth` answers. Returns the
+      /// script's output with the `openclaw`/`setsid` calls it made at the
+      /// end, in order.
+      Future<String> runOpenClawStart({required bool authConfigured}) async {
+        final script =
+            await lifecycleScriptFor(AiWorkspaceTool.openClaw, start: true);
+        return _runProbeScript(
+          // A throwaway HOME for the log and the call record. The port only
+          // "listens" once setsid has launched something, so both the
+          // wait-for-closed before the launch and the wait-for-open after it
+          // are exercised for real. setsid runs in the background (`&`), so
+          // the waits need real, if short, sleeps to see it land.
+          'HOME=\$(mktemp -d); $killStubs'
+              'sleep() { command sleep 0.05; }; '
+              'openclaw() { echo "openclaw \$*" >> \$HOME/calls; '
+              '[ "\$1 \$2 \$3" != "config get gateway.auth" ] '
+              '|| ${authConfigured ? 'true' : 'false'}; }; '
+              'setsid() { echo "setsid \$*" >> \$HOME/calls; }; '
+              'ss() { grep -q setsid \$HOME/calls 2>/dev/null && '
+              "echo 'LISTEN 0 4096 127.0.0.1:18789 0.0.0.0:*'; }; ",
+          '$script && echo STARTED; echo SURVIVED; cat \$HOME/calls',
+        );
+      }
+
+      List<String> callsIn(String answer) => answer
+          .split('\n')
+          .where((line) =>
+              line.startsWith('openclaw ') || line.startsWith('setsid '))
+          .toList();
+
+      // The start names `openclaw` unbracketed several times around its
+      // kill, so it needs the same guard as the others. It also has an
+      // order: an onboarded unit has to let go of the port before this
+      // gateway binds it, and the config has to be written before the
+      // gateway reads it.
+      test(
+          'the openclaw start command survives its own kill, configures the '
+          'gateway with a persisted token, then runs it', () async {
+        if (await _hostPortIsOpen(18789)) {
+          markTestSkipped('a real service holds 18789 on this machine, so the '
+              'port waits cannot be exercised');
+          return;
+        }
+
+        final answer = await runOpenClawStart(authConfigured: false);
+
+        expect(answer.contains('SURVIVED'), true,
+            reason: 'the kill must not signal the shell running it');
+        expect(answer.contains('STARTED'), true,
+            reason: 'the port came up, so the start has to report success');
+        expect(killedBy(answer), ['killed:4242']);
+        final calls = callsIn(answer);
+        expect(calls, hasLength(6));
+        expect(calls.sublist(0, 4), [
+          'openclaw gateway stop',
+          'openclaw config set gateway.mode local',
+          'openclaw config get gateway.auth',
+          'openclaw config set gateway.auth.mode token',
+        ]);
+        // Persisted, so dashboardCommand can read it back and it survives a
+        // restart; random, so no two workspaces share one. 48 hex digits
+        // behind a letter, which JSON5 cannot read as a number.
+        expect(
+            calls[4],
+            matches(RegExp(
+                r'^openclaw config set gateway\.auth\.token t[0-9a-f]{48}$')));
+        expect(calls[5], 'setsid openclaw gateway run --port 18789');
+      });
+
+      // Onboarding, or the user, may have chosen password auth or a token of
+      // their own; a Start button must not overwrite either.
+      test('the openclaw start command leaves configured auth alone', () async {
+        if (await _hostPortIsOpen(18789)) {
+          markTestSkipped('a real service holds 18789 on this machine');
+          return;
+        }
+
+        final answer = await runOpenClawStart(authConfigured: true);
+
+        expect(answer.contains('STARTED'), true);
+        expect(callsIn(answer), [
+          'openclaw gateway stop',
+          'openclaw config set gateway.mode local',
+          'openclaw config get gateway.auth',
+          'setsid openclaw gateway run --port 18789',
+        ]);
       });
 
       test('the hermes stop command survives its own kill pattern', () async {

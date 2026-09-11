@@ -27,19 +27,23 @@ abstract class WorkspaceRuntime {
   /// distro down once its last session exits).
   ExecutionRequest? keepAlive();
 
-  /// The host the machine running this app must dial to reach a TCP service
-  /// listening *inside* the environment, or null when the environment has no
-  /// address to offer yet.
+  /// Whether a service bound to the environment's loopback already answers on
+  /// this machine's loopback, at the same port.
   ///
-  /// Under WSL that is the host's own loopback — the relay makes it so — but
-  /// a backend that runs the workspace in its own VM shares no loopback with
-  /// the host at all, so the answer has to be looked up rather than assumed.
-  Future<String?> serviceHost();
+  /// Every tool here binds 127.0.0.1 inside the environment. Under WSL the
+  /// relay makes that Windows' localhost too. A backend that runs the
+  /// workspace in a VM of its own shares no loopback with the host, so each
+  /// port needs a [portForward] to be reached at all.
+  bool get sharesLoopback;
 
-  /// The address a tool must bind inside the environment for [serviceHost] to
-  /// reach it. Substituted into the tool commands, so a tool that takes a
-  /// `--hostname` does not have to guess the backend.
-  String get bindAddress;
+  /// Long-running command that carries `127.0.0.1:remotePort` inside the
+  /// environment to `127.0.0.1:localPort` on this machine. It runs until it
+  /// is killed or its stdin closes. Only asked for when [sharesLoopback] is
+  /// false.
+  ExecutionRequest portForward({
+    required int remotePort,
+    required int localPort,
+  });
 
   /// The machine running this app, named for error messages — the dashboard
   /// that "is not reachable" is not reachable from here.
@@ -95,13 +99,16 @@ class WslWorkspaceRuntime extends WorkspaceRuntime {
       );
 
   // WSL relays Windows' loopback into the distro's, so a service bound to
-  // 127.0.0.1 in there answers on Windows' own localhost. Nothing to look
-  // up, and no reason to widen the bind.
+  // 127.0.0.1 in there answers on Windows' own localhost. Nothing to forward.
   @override
-  Future<String?> serviceHost() async => 'localhost';
+  bool get sharesLoopback => true;
 
   @override
-  String get bindAddress => '127.0.0.1';
+  ExecutionRequest portForward({
+    required int remotePort,
+    required int localPort,
+  }) =>
+      throw UnsupportedError('WSL relays the loopback itself');
 
   @override
   String get hostName => 'Windows';
@@ -182,24 +189,44 @@ class AppleWorkspaceRuntime extends WorkspaceRuntime {
   @override
   ExecutionRequest? keepAlive() => null;
 
-  /// The guest is a VM on macOS' own vmnet NAT with no loopback forwarding of
-  /// any kind: the Mac's `localhost` is the Mac. A dashboard running in here
-  /// is only ever reachable at the guest's own address, and there is none
-  /// until DHCP has answered.
+  /// The guest is a VM on macOS' own vmnet NAT with no loopback relay of any
+  /// kind: the Mac's `localhost` is the Mac. That is what made "Dashboard URL
+  /// not reachable from Windows: http://localhost:4096" the standing answer
+  /// for a perfectly healthy OpenCode on macOS (bostrot/ai-tasks#70).
   ///
-  /// This is what made "Dashboard URL not reachable from Windows:
-  /// http://localhost:4096" the standing answer for a perfectly healthy
-  /// OpenCode on macOS — the port was listening, just not on this machine.
+  /// Dialling the guest's own address instead was tried and is not enough.
+  /// It needs every tool to bind all interfaces, which puts OpenCode's
+  /// unauthenticated server on vmnet. It also misses any server started
+  /// before the bind changed. And OpenClaw's Control UI refuses to pair over
+  /// plain HTTP from a non-loopback origin whatever the token. So ports are
+  /// forwarded over the SSH connection the runtime already uses, loopback
+  /// to loopback.
   @override
-  Future<String?> serviceHost() => _api.guestIp(vmName);
+  bool get sharesLoopback => false;
 
-  /// ...and the right address is still not enough: a service bound to the
-  /// guest's loopback is reachable from nowhere but the guest. Tools that
-  /// choose their own bind address are pointed at every interface instead.
-  /// The guest sits behind macOS' NAT, so "every interface" is the host and
-  /// the guest, not the LAN.
+  /// `vmctl forward`, as root like every other call into the guest: that is
+  /// the account the store key is known to reach.
   @override
-  String get bindAddress => '0.0.0.0';
+  ExecutionRequest portForward({
+    required int remotePort,
+    required int localPort,
+  }) =>
+      ExecutionRequest(
+        command: _api.helperPath(),
+        arguments: [
+          '--store',
+          _api.storeDir,
+          'forward',
+          '--name',
+          vmName,
+          '--user',
+          'root',
+          '--port',
+          '$remotePort',
+          '--local-port',
+          '$localPort',
+        ],
+      );
 
   @override
   String get hostName => 'macOS';

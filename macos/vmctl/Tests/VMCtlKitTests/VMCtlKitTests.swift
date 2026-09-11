@@ -518,6 +518,49 @@ import Testing
         #expect(args[(dash - 1)] == "root@10.0.0.2")
         #expect(Array(args[(dash + 1)...]) == ["echo", "hi"])
     }
+
+    // bostrot/ai-tasks#70: the AI Workspace dashboards bind the guest's
+    // loopback, which the Mac cannot dial; the forward is how it gets there.
+    @Test func aForwardJoinsBothLoopbacks() {
+        let args = VmctlCLI.forwardArguments(
+            key: "/store/id", user: "root", ip: "192.168.64.7",
+            localPort: 50123, remotePort: 4096)
+        let spec = try! #require(args.firstIndex(of: "-L"))
+        // Loopback on the Mac side too: a forward bound to every interface
+        // would hand an unauthenticated dashboard to the whole LAN.
+        #expect(args[spec + 1] == "127.0.0.1:50123:127.0.0.1:4096")
+        #expect(args.contains("ExitOnForwardFailure=yes"))
+        #expect(args.contains("IdentitiesOnly=yes"))
+        let dash = try! #require(args.firstIndex(of: "--"))
+        #expect(args[dash - 1] == "root@192.168.64.7")
+    }
+
+    @Test func aForwardEndsWithItsStdin() {
+        let args = VmctlCLI.forwardArguments(
+            key: "/store/id", user: "root", ip: "10.0.0.2",
+            localPort: 18789, remotePort: 18789)
+        // `-N` would outlive the app that opened it; a remote reader of stdin
+        // ends the session when the app's pipe closes.
+        #expect(!args.contains("-N"))
+        #expect(args.last == "cat >/dev/null")
+    }
+
+    @Test func aForwardPortMustBeATcpPort() throws {
+        let given = ArgumentBag(["--port", "4096"], flagNames: [])
+        #expect(try VmctlCLI.tcpPort(given, "port", default: nil) == 4096)
+        // The local port defaults to the remote one.
+        #expect(try VmctlCLI.tcpPort(given, "local-port", default: 4096) == 4096)
+
+        for bad in ["0", "65536", "-1", "http"] {
+            let bag = ArgumentBag(["--port", bad], flagNames: [])
+            #expect(throws: VmctlError.self) {
+                try VmctlCLI.tcpPort(bag, "port", default: nil)
+            }
+        }
+        #expect(throws: VmctlError.self) {
+            try VmctlCLI.tcpPort(ArgumentBag([], flagNames: []), "port", default: nil)
+        }
+    }
 }
 
 @Suite struct GuestUserTests {
