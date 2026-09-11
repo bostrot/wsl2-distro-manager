@@ -798,6 +798,21 @@ class AiWorkspaceService {
   ExecutionRequest _req(String shellCommand, {Duration? timeout}) =>
       _runtime.script(shellCommand, timeout: timeout);
 
+  /// Runs [shellCommand] in the workspace environment and hands back its
+  /// result, provisioning the environment first if it is not ready.
+  ///
+  /// The entry point for everything that needs the workspace but is not a
+  /// tool lifecycle action — [AiWorkspaceConfigService] reads and writes the
+  /// tools' config files through it, so the runtime, the root user and the
+  /// distro check stay in one place.
+  Future<ExecutionResult> runInWorkspace(
+    String shellCommand, {
+    Duration? timeout,
+  }) async {
+    await ensureDistro();
+    return _broker.run(_req(shellCommand, timeout: timeout));
+  }
+
   /// Installs docker.io on first use — the base Ubuntu image has no Docker.
   Future<void> _ensureDockerReady() async {
     if (_dockerReady) return;

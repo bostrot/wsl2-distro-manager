@@ -10,6 +10,7 @@ import 'package:system_theme/system_theme.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/app_window.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
@@ -167,10 +168,26 @@ void main() async {
   // Only WSL auto-provisions its environment; a VM-backed workspace needs a
   // running guest the user brings, so it is initialised lazily when the
   // screen opens rather than probed at startup.
+  final aiWorkspaceConfigService =
+      AiWorkspaceConfigService(workspace: aiWorkspaceService);
   if (LicenseManager().isPro &&
       vmBackend().features.aiWorkspace &&
       !isAppleHost) {
     unawaited(aiWorkspaceService.ensureInitialized());
+    // The tools describe their own settings, and what they describe changes
+    // with every release they install, so the schemas are pulled here rather
+    // than shipped with the app. Not awaited: the dialog joins this same run
+    // if it opens first.
+    //
+    // Chained onto the memoized init rather than started beside it: a schema
+    // pull runs a command *inside* the workspace, and starting it in parallel
+    // would have two callers find the environment missing at once and
+    // provision it twice. `onError` only skips the pull — the init's own
+    // failure still surfaces through the call above.
+    unawaited(aiWorkspaceService.ensureInitialized().then(
+      (_) => aiWorkspaceConfigService.ensureSchemas(),
+      onError: (_) {},
+    ));
   }
 
   // Error logging
@@ -192,15 +209,21 @@ void main() async {
   runApp(WSLManager(
     executionBroker: executionBroker,
     aiWorkspaceService: aiWorkspaceService,
+    aiWorkspaceConfigService: aiWorkspaceConfigService,
   ));
 }
 
 class WSLManager extends StatelessWidget {
   final ExecutionBroker? executionBroker;
   final AiWorkspaceService? aiWorkspaceService;
+  final AiWorkspaceConfigService? aiWorkspaceConfigService;
 
-  const WSLManager({Key? key, this.executionBroker, this.aiWorkspaceService})
-      : super(key: key);
+  const WSLManager({
+    Key? key,
+    this.executionBroker,
+    this.aiWorkspaceService,
+    this.aiWorkspaceConfigService,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -208,6 +231,8 @@ class WSLManager extends StatelessWidget {
     final broker = executionBroker ?? ExecutionBroker(shell: ProcessShell());
     final workspaceService =
         aiWorkspaceService ?? AiWorkspaceService(broker: broker);
+    final workspaceConfigService = aiWorkspaceConfigService ??
+        AiWorkspaceConfigService(workspace: workspaceService);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -220,6 +245,9 @@ class WSLManager extends StatelessWidget {
           create: (_) => workspaceService,
           // Releases the held WSL session so the distro can shut down.
           dispose: (_, service) => service.dispose(),
+        ),
+        Provider<AiWorkspaceConfigService>.value(
+          value: workspaceConfigService,
         ),
       ],
       builder: (context, _) {

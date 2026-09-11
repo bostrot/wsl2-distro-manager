@@ -7,6 +7,7 @@ import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
@@ -17,10 +18,11 @@ import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/nav/router.dart';
+import 'package:wsl2distromanager/screens/ai_workspace_config_dialog.dart';
 
 /// The five things a card can be asked to do, for per-action busy state
 /// (audit PS-15).
-enum _CardAction { install, start, stop, dashboard, uninstall }
+enum _CardAction { install, start, stop, dashboard, configure, uninstall }
 
 /// How often a tool still reporting [ToolStatus.starting] is re-probed.
 /// Open WebUI's migrations take ~2 minutes, so this runs a good few times;
@@ -42,6 +44,7 @@ class AiWorkspacePage extends StatefulWidget {
 
 class _AiWorkspacePageState extends State<AiWorkspacePage> {
   late final AiWorkspaceService _service;
+  late final AiWorkspaceConfigService _configService;
   final SandboxService _sandbox = SandboxService();
   List<String> _sandboxes = [];
   // Gates only the distro check, not the page — cards render immediately.
@@ -83,6 +86,7 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     super.initState();
     // Shared instance from main.dart — startup already began these checks.
     _service = context.read<AiWorkspaceService>();
+    _configService = context.read<AiWorkspaceConfigService>();
     _sandboxes = _sandbox.list();
     // Creation is app-global (it survives leaving this page); repaint the
     // section whenever its stage moves, including from "running" to done.
@@ -393,6 +397,43 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
           _busyAction.remove(tool);
         });
       }
+    }
+  }
+
+  /// Opens the dynamic settings form for [tool] (bostrot/ai-tasks#72).
+  ///
+  /// The fields come from whatever the tool itself described this session, so
+  /// this page needs to know nothing about them — only which tool was asked
+  /// for and what it is called.
+  Future<void> _handleConfigure(AiWorkspaceTool tool) async {
+    setState(() {
+      _busyTools.add(tool);
+      _busyAction[tool] = _CardAction.configure;
+    });
+    bool? saved;
+    try {
+      saved = await showAiWorkspaceConfigDialog(
+        context: context,
+        configService: _configService,
+        tool: tool,
+        toolName: _toolName(tool),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busyTools.remove(tool);
+          _busyAction.remove(tool);
+        });
+      }
+    }
+
+    // Every tool here reads its configuration when it starts, so a change
+    // saved against a running one changes nothing until it is restarted.
+    if (saved == true &&
+        mounted &&
+        _service.getState(tool)?.status == ToolStatus.running) {
+      Notify.message(
+          'ai-workspace-config-restart-hint-text'.i18n([_toolName(tool)]));
     }
   }
 
@@ -1138,6 +1179,23 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
                             (state?.status == ToolStatus.running ||
                                 state?.status == ToolStatus.starting))
                         ? () => _handleStop(tool)
+                        : null,
+                  ),
+                ],
+                // Only once something is installed: a tool that is not
+                // there has no configuration to read, and its schema is the
+                // one thing this dialog cannot infer from nothing.
+                if (state?.status != ToolStatus.notInstalled &&
+                    state?.status != ToolStatus.error &&
+                    _configService.canConfigure(tool)) ...[
+                  const SizedBox(width: 8),
+                  BusyButton(
+                    key: ValueKey('test-ai-configure-${tool.name}'),
+                    label: 'ai-workspace-configure-text'.i18n(),
+                    busy: _busyAction[tool] == _CardAction.configure,
+                    minWidth: 72.0,
+                    onPressed: (!isBusy && !isChecking)
+                        ? () => _handleConfigure(tool)
                         : null,
                   ),
                 ],

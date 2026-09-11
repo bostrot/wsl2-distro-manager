@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/runtime.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
@@ -19,10 +20,19 @@ import 'mocks.dart';
 /// before a single assertion runs.
 const Size _kSurface = Size(1400, 1000);
 
-/// Mounts the page with [service] behind the Provider it reads in initState.
+/// Mounts the page with [service] behind the Providers it reads in initState.
+///
+/// The config service is built on the same workspace, and its schema pull is
+/// never started here: the page only asks for one when the user opens the
+/// configuration dialog.
 Widget _page(AiWorkspaceService service) {
-  return Provider<AiWorkspaceService>.value(
-    value: service,
+  return MultiProvider(
+    providers: [
+      Provider<AiWorkspaceService>.value(value: service),
+      Provider<AiWorkspaceConfigService>.value(
+        value: AiWorkspaceConfigService(workspace: service),
+      ),
+    ],
     child: const FluentApp(home: ScaffoldPage(content: AiWorkspacePage())),
   );
 }
@@ -441,6 +451,25 @@ void main() {
         findsNothing,
         reason: 'an installed tool must not carry an Install/Installed button');
     expect(find.text('installed-text'), findsNothing);
+  });
+
+  // The settings live in the tool's own config file, which only exists once
+  // the tool does — an uninstalled card has nothing to read and no schema to
+  // read it with (bostrot/ai-tasks#72).
+  testWidgets('Configure appears once a tool is installed', (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.stopped);
+    service.getState(AiWorkspaceTool.openCode)!.status =
+        ToolStatus.notInstalled;
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byKey(const ValueKey('test-ai-configure-hermesAgent')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('test-ai-configure-openCode')),
+        findsNothing);
   });
 
   testWidgets('on a running tool the dashboard is primary and Stop is not',
