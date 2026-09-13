@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/store_acquisition.dart';
 import 'package:wsl2distromanager/api/updater.dart' show compareVersions;
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
@@ -25,6 +27,7 @@ void main() {
   tearDown(() {
     LicenseManager.storeInstallCheckOverride = null;
     LicenseManager.storeFreeFromOverride = null;
+    LicenseManager.storeAcquisitionOverride = null;
   });
 
   /// A moment safely either side of any flip these tests schedule.
@@ -311,6 +314,7 @@ void main() {
       String? lastRanVersion,
       bool alreadyGranted = false,
       DateTime? now,
+      DateTime? acquiredAt,
     }) =>
         storeGrandfathers(
           packaged: packaged,
@@ -318,6 +322,7 @@ void main() {
           freeFrom: freeFrom,
           lastRanVersion: lastRanVersion,
           alreadyGranted: alreadyGranted,
+          acquiredAt: acquiredAt,
         );
 
     test('an unpackaged build is never grandfathered', () {
@@ -361,6 +366,59 @@ void main() {
       expect(decide(freeFrom: flip, now: after, lastRanVersion: null), false);
     });
 
+    test("the Store's acquisition date outranks every local clue", () {
+      final flip = DateTime.utc(2026, 10);
+      final after = DateTime.utc(2026, 11);
+
+      // Bought in 2024, reinstalled on a fresh PC: nothing local, but the
+      // Store remembers.
+      expect(
+          decide(
+              freeFrom: flip,
+              now: after,
+              lastRanVersion: null,
+              acquiredAt: DateTime.utc(2024, 3, 1)),
+          true);
+      // Downloaded for nothing after the flip — even next to a version
+      // preference that claims a paid-era build.
+      expect(
+          decide(
+              freeFrom: flip,
+              now: after,
+              lastRanVersion: '2.1.0',
+              acquiredAt: DateTime.utc(2026, 10, 2)),
+          false);
+      // The flip instant itself is the first free download.
+      expect(
+          decide(freeFrom: flip, now: after, acquiredAt: flip), false);
+      expect(
+          decide(
+              freeFrom: flip,
+              now: after,
+              acquiredAt: flip.subtract(const Duration(seconds: 1))),
+          true);
+    });
+
+    test("the Store's date changes nothing outside the free era", () {
+      final flip = DateTime.utc(2026, 10);
+      final late = DateTime.utc(2027);
+
+      // Not a Store copy: the Store has no say.
+      expect(decide(packaged: false, acquiredAt: DateTime.utc(2024)), false);
+      // Already granted: never re-judged, whatever the Store says now.
+      expect(
+          decide(
+              freeFrom: flip, now: late, alreadyGranted: true, acquiredAt: late),
+          true);
+      // Before the flip every Store copy was paid for.
+      expect(
+          decide(
+              freeFrom: flip,
+              now: flip.subtract(const Duration(days: 1)),
+              acquiredAt: late),
+          true);
+    });
+
     test('a build that predates the freemium release judges nobody', () {
       currentVersion = '1.0.0';
 
@@ -379,6 +437,176 @@ void main() {
               lastRanVersion: '1.0.0',
               alreadyGranted: true),
           true);
+    });
+  });
+
+  group('restoreFromStore', () {
+    late String realVersion;
+    int asked = 0;
+
+    /// A flip safely in the past, with a purchase before it and a free
+    /// download after it.
+    final flip = DateTime.utc(2010);
+    final bought = DateTime.utc(2009, 6, 1);
+    final downloaded = DateTime.utc(2011, 2, 1);
+
+    /// A Store copy after the flip with nothing local to prove a purchase:
+    /// the reinstall case.
+    setUp(() async {
+      realVersion = currentVersion;
+      currentVersion = stampedVersion;
+      asked = 0;
+      LicenseManager.storeInstallCheckOverride = () => true;
+      LicenseManager.storeFreeFromOverride = flip;
+    });
+
+    tearDown(() => currentVersion = realVersion);
+
+    /// Lets a lookup that init() started in the background finish: it
+    /// awaits the preferences and the Store in turn.
+    Future<void> settle() => pumpEventQueue();
+
+    void storeSays(StoreAcquisition? answer) {
+      LicenseManager.storeAcquisitionOverride = () async {
+        asked++;
+        return answer;
+      };
+    }
+
+    test('a copy the Store says was bought before the flip is restored',
+        () async {
+      storeSays(StoreAcquisition(acquiredAt: bought));
+      await LicenseManager().init();
+      // init() asks in the background; wait for that answer to land.
+      await settle();
+
+      expect(asked, 1);
+      expect(LicenseManager().isPro, true);
+      expect(LicenseManager().plan, LicensePlan.store);
+      expect(prefs.getBool(storeGrandfatheredPref), true,
+          reason: 'written down, so the Store is never needed again');
+    });
+
+    test('a copy the Store says was downloaded for nothing stays Free',
+        () async {
+      storeSays(StoreAcquisition(acquiredAt: downloaded));
+      await LicenseManager().init();
+      await settle();
+
+      expect(asked, 1);
+      expect(LicenseManager().isPro, false);
+      expect(prefs.getBool(storeGrandfatheredPref), isNull);
+    });
+
+    test('a Store that does not answer changes nothing', () async {
+      // Signed out of the Store, or no runner: the local rule's verdict
+      // stands, and nothing is written down as if it were an answer.
+      storeSays(const StoreAcquisition(error: 'not-in-collection'));
+      await LicenseManager().init();
+      await settle();
+      expect(LicenseManager().isPro, false);
+
+      storeSays(null);
+      expect(await LicenseManager().restoreFromStore(force: true), false);
+      expect(LicenseManager().isPro, false);
+      expect(prefs.getBool(storeGrandfatheredPref), isNull);
+    });
+
+    test('a trial is not a purchase', () async {
+      storeSays(StoreAcquisition(acquiredAt: bought, isTrial: true));
+
+      expect(await LicenseManager().restoreFromStore(force: true), false);
+      expect(LicenseManager().isPro, false);
+    });
+
+    test('the Store is asked once a day, not on every start', () async {
+      storeSays(const StoreAcquisition(error: 'not-in-collection'));
+      await LicenseManager().init();
+      await settle();
+      await LicenseManager().init();
+      await settle();
+      expect(asked, 1);
+
+      // Unless the user asks — the licence screen's "Check again".
+      await LicenseManager().restoreFromStore(force: true);
+      expect(asked, 2);
+
+      // A copy unlocked by a website key has nothing to gain: not asked.
+      prefs.setString('WebLicenseKey', 'AAAA-BBBB');
+      prefs.setBool('WebLicenseValid', true);
+      prefs.setInt(
+          'WebLicenseCheckedAt', DateTime.now().millisecondsSinceEpoch);
+      prefs.remove(storeAcquisitionCheckedPref);
+      await LicenseManager().init();
+      await settle();
+      expect(asked, 2);
+      await LicenseManager().clearLicense();
+
+      // A day later it is due again on its own.
+      prefs.setInt(
+          storeAcquisitionCheckedPref,
+          DateTime.now()
+              .subtract(LicenseManager.storeProbeEvery +
+                  const Duration(minutes: 1))
+              .millisecondsSinceEpoch);
+      await LicenseManager().init();
+      await settle();
+      expect(asked, 3);
+    });
+
+    test('a lookup already in flight is joined, not repeated', () async {
+      // "Check again" pressed while the start-up probe is still out: one
+      // Store call, one answer, both callers see it.
+      final answer = Completer<StoreAcquisition?>();
+      LicenseManager.storeAcquisitionOverride = () {
+        asked++;
+        return answer.future;
+      };
+      await LicenseManager().init();
+      await settle();
+      final forced = LicenseManager().restoreFromStore(force: true);
+      await settle();
+      expect(asked, 1);
+
+      answer.complete(StoreAcquisition(acquiredAt: bought));
+      expect(await forced, true);
+      expect(LicenseManager().isPro, true);
+
+      // Once answered, a forced ask goes to the Store again... except that
+      // there is nothing left to ask.
+      expect(await LicenseManager().restoreFromStore(force: true), true);
+      expect(asked, 1);
+    });
+
+    test('the Store is not asked when there is no question', () async {
+      storeSays(StoreAcquisition(acquiredAt: bought));
+
+      // A portable build: no package, nothing to restore.
+      LicenseManager.storeInstallCheckOverride = () => false;
+      await LicenseManager().init();
+      await LicenseManager().restoreFromStore(force: true);
+      expect(asked, 0);
+      expect(LicenseManager().isPro, false);
+
+      // Before the flip package identity is the licence; the Store's date
+      // would only say the same thing.
+      LicenseManager.storeInstallCheckOverride = () => true;
+      LicenseManager.storeFreeFromOverride = future;
+      await LicenseManager().init();
+      await LicenseManager().restoreFromStore(force: true);
+      expect(asked, 0);
+      expect(LicenseManager().isPro, true);
+
+      // Already Pro through the local rule: nothing to ask either. (The
+      // previous block wrote the sticky flag; drop it so the version clue
+      // is what grants here.)
+      LicenseManager.storeFreeFromOverride = flip;
+      prefs.remove(storeGrandfatheredPref);
+      prefs.setString('version', '2.1.0');
+      await LicenseManager().init();
+      await LicenseManager().restoreFromStore(force: true);
+      expect(asked, 0);
+      expect(LicenseManager().isPro, true);
     });
   });
 

@@ -4,9 +4,11 @@ import 'package:plausible_analytics/plausible_analytics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/purchase_routes.dart';
+import 'package:wsl2distromanager/api/store_acquisition.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/screens/license_screen.dart';
 
 /// The License page renders one card per purchase route this host offers, and
@@ -72,6 +74,8 @@ void main() {
   tearDown(() async {
     plausible = realPlausible;
     LicenseManager.storeInstallCheckOverride = null;
+    LicenseManager.storeFreeFromOverride = null;
+    LicenseManager.storeAcquisitionOverride = null;
     LicenseManager.httpOverride = null;
     await LicenseManager().clearLicense();
   });
@@ -267,6 +271,57 @@ void main() {
         find.text(activateDetailKeyFor(apple: false, storeSellsPro: false)),
         findsOneWidget);
     expect(find.text(activateDetailKeyFor(apple: false)), findsNothing);
+  });
+
+  testWidgets('"Check again" asks the Store whether this copy was bought',
+      (tester) async {
+    // The reinstall case: a Store copy on a fresh PC, nothing local to show
+    // for the purchase, and the user pressing the one button there is. The
+    // screen has to ask the Store then and there — not wait for the daily
+    // background check — and report what it said.
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // The screen reports the outcome through the app-wide infobar, which
+    // nothing has wired up in a test; record what it would have said.
+    final notified = <String>[];
+    Notify();
+    Notify.message = (msg,
+        {duration,
+        severity = InfoBarSeverity.info,
+        loading = false,
+        useWidget = false,
+        leadingIcon = true,
+        dynamic widget}) {
+      notified.add(msg);
+    };
+
+    var asked = 0;
+    LicenseManager.storeInstallCheckOverride = () => true;
+    LicenseManager.storeFreeFromOverride = DateTime.utc(2010);
+    LicenseManager.storeAcquisitionOverride = () async {
+      asked++;
+      return StoreAcquisition(acquiredAt: DateTime.utc(2009, 6, 1));
+    };
+    // The daily check already ran and got nothing — a signed-out Store,
+    // say — so only a forced lookup can find the purchase.
+    await prefs.setInt(
+        storeAcquisitionCheckedPref, DateTime.now().millisecondsSinceEpoch);
+    await LicenseManager().init();
+    expect(LicenseManager().isPro, false);
+
+    await tester.pumpWidget(_page(appleHost: false, storeSellsPro: false));
+    await tester.pumpAndSettle();
+    expect(asked, 0);
+
+    await tester.tap(find.byKey(const ValueKey('test-license-recheck')));
+    await tester.pumpAndSettle();
+
+    expect(asked, 1);
+    expect(LicenseManager().isPro, true);
+    expect(notified, ['restore-found-text']);
+    // Sold nothing any more: the key box and the buy cards are gone.
+    expect(find.byKey(const ValueKey('test-license-key-field')), findsNothing);
   });
 
   testWidgets('a licensed install is sold nothing and asked for no key',

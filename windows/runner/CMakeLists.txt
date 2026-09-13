@@ -9,6 +9,7 @@ project(runner LANGUAGES CXX)
 add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
   "main.cpp"
+  "store_channel.cpp"
   "symlink_relaunch.cpp"
   "utils.cpp"
   "win32_window.cpp"
@@ -35,6 +36,10 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+# C++/WinRT (store_channel.cpp) resolves its activation and error plumbing
+# through the umbrella library; the DLLs behind it ship with every Windows
+# 10 and later, so nothing here needs delay-loading.
+target_link_libraries(${BINARY_NAME} PRIVATE "windowsapp.lib")
 
 # Delay-load the Flutter engine so that wWinMain runs before the DLL has to
 # be found. When the app is started through a symlink (e.g. the launcher

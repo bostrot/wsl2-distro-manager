@@ -10,7 +10,9 @@
 // Windows is bought the same way it is on the Mac. Every Store install that
 // predates the flip keeps Pro for good: [storeGrandfathers] decides that
 // once, and the answer is written down rather than re-derived, so it cannot
-// be lost to a later release.
+// be lost to a later release. When nothing local proves the purchase — a
+// buyer reinstalling on a fresh PC — the Store's own record of when the app
+// was acquired is asked for through the runner ([restoreFromStore]).
 //
 // macOS: there is no Store and no package identity, so Pro is bought on
 // wslmanager.com and arrives as a licence key — typed in, or handed over by
@@ -39,9 +41,11 @@ import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:win32/win32.dart';
 // compareVersions only; the grandfather rule reads the version this install
 // last ran, and there is no second implementation of that ordering.
+import 'package:wsl2distromanager/api/store_acquisition.dart';
 import 'package:wsl2distromanager/api/updater.dart' show compareVersions;
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
+import 'package:wsl2distromanager/components/logging.dart';
 
 enum LicensePlan { none, store, pro, commercial }
 
@@ -65,6 +69,10 @@ const int _appModelErrorNoPackage = 15700;
 /// Where the answer to [storeGrandfathers] is kept once it has been earned.
 const String storeGrandfatheredPref = 'StoreProGrandfathered';
 
+/// When the Store was last asked for its acquisition record, in
+/// milliseconds since the epoch — see [LicenseManager.restoreFromStore].
+const String storeAcquisitionCheckedPref = 'StoreAcquisitionCheckedAt';
+
 /// Reads [storeFreeFromUtc] — an ISO-8601 instant, or null when no price
 /// change is scheduled.
 ///
@@ -72,22 +80,16 @@ const String storeGrandfatheredPref = 'StoreProGrandfathered';
 /// is. Left to `DateTime.parse` it would be taken as the *reader's* local
 /// time, and a listing that goes free at one instant would be matched by an
 /// app that flips at a different one in every time zone.
-DateTime? parseFlipInstant(String? iso) {
-  if (iso == null || iso.trim().isEmpty) return null;
-  final parsed = DateTime.tryParse(iso.trim());
-  if (parsed == null) return null;
-  if (parsed.isUtc) return parsed;
-  return DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour,
-      parsed.minute, parsed.second, parsed.millisecond);
-}
+DateTime? parseFlipInstant(String? iso) => parseUtcInstant(iso);
 
 /// Whether a Store install carries Pro on its own, with no licence key.
 ///
 /// Pure, and the whole of the freemium rule. [packaged] is MSIX package
-/// identity, [freeFrom] the instant the listing stops selling Pro, and
-/// [lastRanVersion] the version this install last started — which, on the
-/// run that decides this, is still the *previous* one (see the note in
-/// nav/init.dart).
+/// identity, [freeFrom] the instant the listing stops selling Pro,
+/// [acquiredAt] when the Store says this user acquired the app (null when
+/// it has not been asked or did not say), and [lastRanVersion] the version
+/// this install last started — which, on the run that decides this, is
+/// still the *previous* one (see the note in nav/init.dart).
 ///
 /// The cases, in the order they are asked:
 ///
@@ -97,6 +99,11 @@ DateTime? parseFlipInstant(String? iso) {
 ///  * No flip scheduled. The listing still sells the app, so every Store
 ///    install was paid for — today's behaviour, unchanged.
 ///  * Before the flip. Same thing: this copy was bought while it cost money.
+///  * The Store says when the app entered this user's collection. That is
+///    the purchase for anything acquired while the listing cost money, and
+///    it survives a reinstall — the one clue a fresh PC still has. It is
+///    only ever asked for once the local clues below have said no (see
+///    [LicenseManager.restoreFromStore]), so a local yes is never revisited.
 ///  * After the flip, but this install last ran a build from before the
 ///    freemium era. It cannot be a free download — free downloads only exist
 ///    from [storeFreemiumVersion] onwards — so it was bought. Only a build
@@ -108,11 +115,13 @@ bool storeGrandfathers({
   required DateTime? freeFrom,
   required String? lastRanVersion,
   required bool alreadyGranted,
+  DateTime? acquiredAt,
 }) {
   if (!packaged) return false;
   if (alreadyGranted) return true;
   if (freeFrom == null) return true;
   if (now.isBefore(freeFrom)) return true;
+  if (acquiredAt != null) return acquiredAt.isBefore(freeFrom);
   if (lastRanVersion == null) return false;
   // A build that cannot name its own version is in no position to judge
   // anyone else's. `currentVersion` is stamped in by the release workflow
@@ -174,6 +183,25 @@ class LicenseManager extends ChangeNotifier {
   /// Test seam for the licence service. Reset to null in tearDown.
   @visibleForTesting
   static Dio? httpOverride;
+
+  /// Test seam for the Store's acquisition record: stands in for the runner
+  /// channel, which has nothing on the other end outside a Windows build.
+  /// Reset to null in tearDown.
+  @visibleForTesting
+  static Future<StoreAcquisition?> Function()? storeAcquisitionOverride;
+
+  /// How often a Store copy that is not Pro asks the Store whether it should
+  /// be. Once a day is plenty: the answer only changes when the user signs
+  /// in to the Store with the account that bought the app, and the licence
+  /// screen's "Check again" asks straight away regardless.
+  static const Duration storeProbeEvery = Duration(days: 1);
+
+  static final StoreAcquisitionProbe _storeProbe = StoreAcquisitionProbe();
+
+  /// The Store lookup in flight, if any: a second caller — the licence
+  /// screen's "Check again" landing while the start-up probe is still out —
+  /// waits for that answer instead of asking twice.
+  Future<bool>? _storeRestoreInFlight;
 
   /// Test seam for [storeFreeFromUtc]: a non-null value wins over the
   /// constant. Production leaves it null, where the constant decides — and
@@ -272,16 +300,86 @@ class LicenseManager extends ChangeNotifier {
     if (_licenseKey != null && _isStale) {
       unawaited(revalidate());
     }
+
+    // A Store copy that the local evidence did not recognise as bought may
+    // still be one — reinstalled on a fresh PC, say. The Store's answer goes
+    // to the network, so it is asked in the background and Pro switches on
+    // when it arrives rather than holding up startup.
+    unawaited(restoreFromStore());
+  }
+
+  /// Whether there is anything to ask the Store: a Store copy, after the
+  /// flip, that is not Pro by any other means. A copy unlocked by a website
+  /// key has nothing to gain from the answer.
+  bool get _storeQuestionOpen =>
+      _storePackaged && !_storeLicensed && !_keyLicensed && !storeSellsPro;
+
+  /// Whether the last time the Store was asked is long enough ago.
+  bool get _storeProbeDue {
+    final checked = prefs.getInt(storeAcquisitionCheckedPref);
+    if (checked == null) return true;
+    final at = DateTime.fromMillisecondsSinceEpoch(checked);
+    return DateTime.now().difference(at) > storeProbeEvery;
+  }
+
+  /// Asks the Store when this user acquired the app and, if that was while
+  /// the listing still cost money, grants Pro and records it for good.
+  ///
+  /// The one piece of evidence that survives a reinstall: nothing local is
+  /// left on a fresh PC, but the Store's collection still says when the app
+  /// was bought. It needs the PC signed in to the Store with the account
+  /// that bought it; otherwise the Store reports nothing and this changes
+  /// nothing — the app keeps whatever the local rule decided.
+  ///
+  /// Returns whether Pro is on afterwards. Only asks when there is a
+  /// question to ask (a Store copy, not Pro, after the flip), and — unless
+  /// [force] — at most every [storeProbeEvery]; the licence screen's "Check
+  /// again" forces it, since that is the user asking. A lookup already in
+  /// flight is joined rather than repeated.
+  Future<bool> restoreFromStore({bool force = false}) {
+    if (!_storeQuestionOpen) return Future.value(_storeLicensed);
+    final inFlight = _storeRestoreInFlight;
+    if (inFlight != null) return inFlight;
+    if (!force && !_storeProbeDue) return Future.value(false);
+
+    final lookup = _askStore();
+    _storeRestoreInFlight = lookup;
+    return lookup.whenComplete(() => _storeRestoreInFlight = null);
+  }
+
+  Future<bool> _askStore() async {
+    // Written before asking, so a runner that never answers is not asked
+    // again on every single start.
+    await prefs.setInt(
+        storeAcquisitionCheckedPref, DateTime.now().millisecondsSinceEpoch);
+
+    final acquisition = await (storeAcquisitionOverride?.call() ??
+        _storeProbe.query());
+    // Into the log file, not just the debug console: this is the line a
+    // support request from a reinstalled Store copy turns on. Asked at most
+    // once a day, so it cannot flood anything — and a log that cannot be
+    // written must not cost anyone the answer.
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      try {
+        logInfo('Store acquisition: $acquisition\n');
+      } catch (_) {}
+    }
+    if (acquisition == null || !acquisition.isKnown) return false;
+
+    await _resolveStoreEntitlement(acquiredAt: acquisition.acquiredAt);
+    if (_storeLicensed) notifyListeners();
+    return _storeLicensed;
   }
 
   /// Settles whether this Store install carries Pro on its own, and writes
-  /// the answer down the first time it does.
+  /// the answer down the first time it does. With [acquiredAt], the Store's
+  /// own record joins the evidence (see [restoreFromStore]).
   ///
   /// Recorded rather than recomputed because the evidence is perishable: the
   /// version this install last ran is overwritten on every start, and the
   /// flip instant passes. A copy that was bought has to keep Pro long after
   /// both have gone.
-  Future<void> _resolveStoreEntitlement() async {
+  Future<void> _resolveStoreEntitlement({DateTime? acquiredAt}) async {
     final granted = prefs.getBool(storeGrandfatheredPref) ?? false;
     _storeLicensed = storeGrandfathers(
       packaged: _storePackaged,
@@ -289,6 +387,7 @@ class LicenseManager extends ChangeNotifier {
       freeFrom: storeFreeFrom,
       lastRanVersion: prefs.getString('version'),
       alreadyGranted: granted,
+      acquiredAt: acquiredAt,
     );
     if (_storeLicensed && !granted) {
       await prefs.setBool(storeGrandfatheredPref, true);

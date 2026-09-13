@@ -90,41 +90,69 @@ Note the ordering dependency this creates: `LicenseManager.init()` runs in
 `main()` and reads `version` *before* `initRoot()` overwrites it. There is a
 comment at both ends saying so.
 
-### Where it leaks
+### Where it leaks, and what closes the gap
 
 **A legacy buyer who reinstalls on a new PC after the flip.** No preferences,
-no stored flag, nothing local to go on — they land on Free. This is the one
-real gap, and it is small (a minority event among a population that is itself
-finite and shrinking), but it hits paying customers, so it needs an answer:
+no stored flag, nothing local to go on — the rule above lands them on Free.
+This is the one real gap, and it is small (a minority event among a
+population that is itself finite and shrinking), but it hits paying
+customers, so it has an answer that does not depend on anything local:
 
-- *Now:* the licence screen's "Get help" link, and a key issued by hand
-  through the same n8n licence service the website uses. The free-era copy
-  (`win-activate-free-detail-text`, `restore-notfound-free-text`) says so in
-  as many words, in all ten languages.
-- *Later, if the volume justifies it:* see "The Store can actually answer
-  this" below.
+**The Store's own record.** Every SKU in a user's Store collection carries
+the date it was acquired — `StoreSku.CollectionData.AcquiredDate` in
+`Windows.Services.Store`, a documented, typed property, not the JSON blob in
+`ExtendedJsonData` — and for a copy bought while the listing cost money that
+date is the purchase. It is the Store's answer to "did this user pay?", it
+survives a reinstall and a new PC, and it is client-side only: no Azure AD
+app and no backend, unlike the REST collection API, which needs both.
+
+`Windows.Services.Store` is WinRT and only works with package identity, so
+the lookup lives in the runner: `windows/runner/store_channel.cpp` answers
+the `com.bostrot.wsl2distromanager/store` method channel by creating the
+`StoreContext`, tying it to the top-level window (`IInitializeWithWindow`;
+a Win32 process has no CoreWindow), and reading the acquisition date of the
+SKU the user owns off `GetStoreProductForCurrentAppAsync`. The Store call
+goes to the network, so it runs on its own thread and the reply is posted
+back to the platform thread, which is the only one the messenger may be
+used from. `lib/api/store_acquisition.dart` reads the answer;
+`LicenseManager.restoreFromStore` feeds it to `storeGrandfathers()`, which
+takes the Store's word over the last-ran-version clue, and writes
+`StoreProGrandfathered` when it says "bought". It is only asked once the
+local clues have said no: a copy the local rule already recognised is never
+revisited, and neither is one unlocked by a website key.
+
+When it is asked:
+
+- On every start of a Store copy that is not Pro after the flip, in the
+  background, at most once a day (`StoreAcquisitionCheckedAt`). Pro
+  switches on when the answer arrives; startup never waits for it. A "no"
+  is asked again the next day on purpose: the collection is the signed-in
+  account's, and the buyer may sign in tomorrow.
+- Straight away, and waited for, when the user presses "Check again" on the
+  licence screen — joining the start-up lookup if that is still out.
+
+It needs the PC signed in to the Store with the account that bought the app.
+Signed out, the Store reports the app as not in the collection and the app
+keeps whatever the local rule decided; the free-era copy
+(`win-activate-free-detail-text`, `restore-notfound-free-text`) says to sign
+in and check again, in all ten languages, with "Get help" — and a key issued
+by hand through the same n8n licence service the website uses — as the
+fallback for whoever that does not reach.
+
+Two edges remain. A purchase made on the flip day *before* the listing
+actually went free (between 00:00 and about 11:30 UTC on 2026-09-13, when
+the 2.2.0 submission cleared certification) is dated after
+`storeFreeFromUtc`, so on a reinstall the Store's answer is "free download";
+the copy that was installed at the time is still recognised by the version
+it last ran. And a user who was never signed in to the Store — which the
+Store itself requires for a paid download, so this is a signed-out-since
+case — gets no answer until they sign in. Both go through "Get help".
 
 **Someone who edits the preferences file to fake an old version.** Yes. The
 repo is open source and the README says so; neither the package-identity check
-nor the licence key is protection, and this is not either. It is a nudge.
-
-### The Store can actually answer this — at a price
-
-`StoreContext.GetStoreProductForCurrentAppAsync()` returns a `StoreProduct`
-whose `ExtendedJsonData` contains `Sku.CollectionData`, and that carries
-`acquiredDate`, `skuType` ("Full" vs "Trial"), `status` and `orderId`. An
-acquisition dated before the flip is a purchase; one after it is a free
-download. It is undocumented-but-load-bearing JSON rather than a real API, and
-it needs the user signed into the Store, but it is client-side only — no Azure
-AD app, no backend, unlike the REST collection API, which needs both.
-
-The cost is that `Windows.Services.Store` is WinRT: reaching it from this app
-means a C++/WinRT call in `windows/runner` (a `StoreContext` from a Win32
-process also has to be initialised with the window handle via
-`IInitializeWithWindow`) behind a method channel or FFI export. That is real
-work, it cannot be built or tested from the macOS dev host, and it is only
-needed for the reinstall case. Hence: not now, documented here, worth doing if
-support requests show up.
+nor the licence key is protection, and this is not either. It is a nudge. The
+Store lookup does not close it: a faked version grants locally, and the
+Store is only asked when the local rule says no.
 
 ## What else changes in the app
 
@@ -241,6 +269,14 @@ version they last ran.
    appearing in that breakdown, which is itself the confirmation that the new
    build is the one people are running.
 
+5. **The reinstall case.** Shipped after 2.2.0: the runner asks the Store
+   for the acquisition date (see "Where it leaks" above). It can only be
+   built and exercised on Windows — `flutter build windows`, then run the
+   built exe under the Store package's identity with
+   `Invoke-CommandInDesktopPackage -PackageFamilyName
+   9891PhantomDevs.WSL2Manager_<hash> -AppId <AppId> -Command <exe>` to see
+   what the Store answers for the signed-in account.
+
 ### Rolling back
 
 Set `storeFreeFromUtc` back to null, ship, and run **Publish to Microsoft
@@ -255,4 +291,6 @@ window is the cost of changing your mind.
 - [Set app pricing and availability](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/price-and-availability) — Free as a base price, scheduled price changes, visibility options
 - [Manage app submissions](https://learn.microsoft.com/en-us/windows/uwp/monetize/manage-app-submissions) — `priceId: "Free"` in the submission API
 - [Determining a previous purchase after going freemium](https://learn.microsoft.com/en-us/answers/questions/557066/in-case-i-changed-my-app-from-paid-to-freemium-how.html) — `ExtendedJsonData` / `CollectionData.acquiredDate`
+- [StoreCollectionData.AcquiredDate](https://learn.microsoft.com/en-us/uwp/api/windows.services.store.storecollectiondata.acquireddate) — the typed acquisition date on a SKU the user owns
+- [Windows.Services.Store in desktop apps](https://learn.microsoft.com/en-us/windows/uwp/monetize/in-app-purchases-and-trials#desktop-apps) — `IInitializeWithWindow` for a `StoreContext` in a Win32 process
 - [Remove an app from the Store](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/remove-an-app-and-add-on) — existing customers keep an app that is no longer offered

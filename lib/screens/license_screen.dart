@@ -116,11 +116,18 @@ class _LicenseScreenState extends State<LicenseScreen> {
     }
   }
 
-  Future<void> _loadStatus() async {
+  /// Re-reads the entitlement. With [askStore], also asks the Store when
+  /// this user acquired the app — the only evidence a reinstalled Store copy
+  /// has — and waits for the answer, so "Check again" reports what the
+  /// Store said rather than what it said a day ago.
+  Future<void> _loadStatus({bool askStore = false}) async {
     setState(() {
       _isLoading = true;
     });
     await LicenseManager().init();
+    if (askStore) {
+      await LicenseManager().restoreFromStore(force: true);
+    }
     if (!mounted) return;
     setState(() {
       _isLoading = false;
@@ -241,7 +248,7 @@ class _LicenseScreenState extends State<LicenseScreen> {
         Button(
           key: const ValueKey('test-license-recheck'),
           onPressed: () async {
-            await _loadStatus();
+            await _loadStatus(askStore: true);
             if (!mounted) return;
             Notify.message(
                 LicenseManager().isPro
