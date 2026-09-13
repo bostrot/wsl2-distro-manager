@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/api/deep_link.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/purchase_routes.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -36,6 +37,11 @@ class _LicenseScreenState extends State<LicenseScreen> {
   @override
   void initState() {
     super.initState();
+    // Reported like every other screen's. This one was the exception, which
+    // left the number of people who reach the paywall — the denominator for
+    // every conversion question about it — unknowable.
+    plausible.event(page: 'license');
+
     // Defer init to avoid setState during build (LicenseManager ChangeNotifier
     // triggers Provider rebuilds that cascade into this widget's build phase)
     SchedulerBinding.instance.addPostFrameCallback((_) => _loadStatus());
@@ -105,6 +111,14 @@ class _LicenseScreenState extends State<LicenseScreen> {
   }
 
   Future<void> _openBuyPage(PurchaseRoute route) async {
+    // Before the launch, not after: the Store and the website are counted
+    // the same way whether or not the handover works, and a throw below
+    // must not lose the click.
+    plausible.event(name: 'license_buy_clicked', props: {
+      'route': route.id.name,
+      'host': _isApple ? 'macos' : 'windows',
+    });
+
     // No canLaunchUrl gate: on Windows it reports false for perfectly
     // launchable https URLs, which silently disabled the one thing this
     // screen asks the user to do (audit PS-07).

@@ -4,12 +4,21 @@ const String title = 'WSL Distro Manager by Bostrot';
 
 /// Where macOS users buy Pro. No Microsoft Store on the Mac, so the licence
 /// is sold on the website and comes back as a key.
-const String macBuyUrl = "https://wslmanager.com/buy";
+///
+/// The `utm_` pair is what tells the website's analytics that a visit came
+/// from the app rather than from someone clicking "Pricing" on the site:
+/// without it every arrival on /buy/ looked the same, and the app's share of
+/// that traffic — and of the drop-off after it — could not be read off at
+/// all. Source says it was the app, medium which build it came from, so
+/// Windows and macOS users can be told apart in the same report.
+const String macBuyUrl =
+    "https://wslmanager.com/buy/?platform=macos&utm_source=app&utm_medium=macos";
 
 /// Where Windows users buy Pro without going through the Microsoft Store.
 /// Same shop and the same kind of key as the Mac licence; the `platform`
 /// hint lets the page show the Windows price, and is ignored if it cannot.
-const String windowsBuyUrl = "https://wslmanager.com/buy?platform=windows";
+const String windowsBuyUrl =
+    "https://wslmanager.com/buy/?platform=windows&utm_source=app&utm_medium=windows";
 
 /// Turns a licence key into an entitlement. Answers
 /// `{"valid": true, "plan": "pro", ...}` or `{"valid": false, ...}`.

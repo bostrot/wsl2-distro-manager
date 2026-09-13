@@ -65,6 +65,45 @@ void main() {
     });
   });
 
+  group('where the website route points', () {
+    Uri directUrlFor({required bool apple}) => Uri.parse(
+        purchaseRoutesFor(apple: apple)
+            .firstWhere((r) => r.id == PurchaseRouteId.direct)
+            .url);
+
+    test('both quote the price for the host they were opened from', () {
+      // Windows is $14.99 on the website and macOS $19.99. The page defaults
+      // to Windows and otherwise sniffs the browser, so the OS has to be
+      // named in the link rather than left to be guessed.
+      expect(directUrlFor(apple: true).queryParameters['platform'], 'macos');
+      expect(
+          directUrlFor(apple: false).queryParameters['platform'], 'windows');
+    });
+
+    test('both are tagged as coming from the app', () {
+      // Untagged, an arrival on /buy/ from the app is indistinguishable from
+      // someone clicking "Pricing" on the website, so the app's own share of
+      // that traffic cannot be told apart from the site's.
+      for (final apple in [true, false]) {
+        final url = directUrlFor(apple: apple);
+        expect(url.queryParameters['utm_source'], 'app',
+            reason: 'apple host: $apple');
+        expect(url.queryParameters['utm_medium'], apple ? 'macos' : 'windows');
+      }
+    });
+
+    test('both ask for the canonical /buy/ path over https', () {
+      // The site exports every route as `<route>/index.html` and answers
+      // `/buy` with a redirect; asking for the slash saves the hop.
+      for (final apple in [true, false]) {
+        final url = directUrlFor(apple: apple);
+        expect(url.scheme, 'https');
+        expect(url.host, 'wslmanager.com');
+        expect(url.path, '/buy/');
+      }
+    });
+  });
+
   group('copy keys', () {
     test('every key a route names has an English string', () {
       // A missing key renders as the raw key in the UI rather than failing,
