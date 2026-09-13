@@ -291,7 +291,7 @@ class UpdateService {
       updateChannelFor(
         windows: Platform.isWindows,
         macos: Platform.isMacOS,
-        packaged: LicenseManager().isStoreLicensed,
+        packaged: LicenseManager().isStorePackaged,
       );
 
   /// Whether this build may replace itself. False on the Store, where the

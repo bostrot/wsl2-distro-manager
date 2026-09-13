@@ -46,8 +46,13 @@ class _RecordingPlausible implements Plausible {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Widget _page({bool? appleHost}) => FluentApp(
-    home: ScaffoldPage(content: LicenseScreen(appleHost: appleHost)));
+// [storeSellsPro] defaults to the paid era, where the Windows layout has two
+// buy cards; the free-era tests pass false, and one passes null to check the
+// screen follows the shipped constant when nothing is decided for it.
+Widget _page({bool? appleHost, bool? storeSellsPro = true}) => FluentApp(
+    home: ScaffoldPage(
+        content: LicenseScreen(
+            appleHost: appleHost, storeSellsPro: storeSellsPro)));
 
 void main() {
   late _RecordingPlausible analytics;
@@ -201,9 +206,76 @@ void main() {
     }
   });
 
+  testWidgets('left undecided, the screen follows the shipped flip instant',
+      (tester) async {
+    // Nothing passed for storeSellsPro means LicenseManager.storeSellsPro,
+    // which reads storeFreeFromUtc — and that instant has passed, so a
+    // Windows build shows the single website card and no Store button.
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_page(appleHost: false, storeSellsPro: null));
+    await tester.pumpAndSettle();
+
+    final store = purchaseRoutesFor(apple: false).first;
+    expect(find.text(store.buttonKey), findsNothing);
+    final only = purchaseRoutesFor(apple: false, storeSellsPro: false).single;
+    expect(find.text(only.buttonKey), findsOneWidget);
+    // One card, so only the lead CTA's key is on screen.
+    expect(find.byKey(const ValueKey('test-license-web-buy-button')),
+        findsNothing);
+  });
+
+  testWidgets('a free Store listing leaves Windows one card, the website one',
+      (tester) async {
+    // The Store card would open a listing that no longer sells Pro, so it
+    // goes — and the website card is promoted into the lead, keys and all.
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_page(appleHost: false, storeSellsPro: false));
+    await tester.pumpAndSettle();
+
+    final store = purchaseRoutesFor(apple: false).first;
+    expect(find.text(store.buttonKey), findsNothing);
+    expect(find.text(store.priceKey), findsNothing);
+
+    final only =
+        purchaseRoutesFor(apple: false, storeSellsPro: false).single;
+    expect(find.text(only.buttonKey), findsOneWidget);
+    expect(find.text(only.priceKey), findsOneWidget);
+    // The lead CTA keeps the key the rest of the suite looks for, whichever
+    // route happens to be leading.
+    expect(find.byKey(const ValueKey('test-license-store-button')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('test-license-web-buy-button')),
+        findsNothing);
+  });
+
+  testWidgets('a free Store listing points a legacy buyer at the key box',
+      (tester) async {
+    // The paid-era blurb promises that a Store copy unlocks itself, which is
+    // exactly what has stopped being true for the person reading it.
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_page(appleHost: false, storeSellsPro: false));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('test-license-key-field')), findsOneWidget);
+    expect(
+        find.text(activateDetailKeyFor(apple: false, storeSellsPro: false)),
+        findsOneWidget);
+    expect(find.text(activateDetailKeyFor(apple: false)), findsNothing);
+  });
+
   testWidgets('a licensed install is sold nothing and asked for no key',
       (tester) async {
     LicenseManager.storeInstallCheckOverride = () => true;
+    // A Store copy from before the flip.
+    LicenseManager.storeFreeFromOverride =
+        DateTime.now().toUtc().add(const Duration(days: 1));
+    addTearDown(() => LicenseManager.storeFreeFromOverride = null);
     await LicenseManager().init();
 
     await tester.binding.setSurfaceSize(_kSurface);

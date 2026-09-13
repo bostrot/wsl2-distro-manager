@@ -69,10 +69,17 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     LicenseManager.storeInstallCheckOverride = () => false;
+    // A Store copy here is a paid-era one: hold the flip in the future so
+    // package identity alone is Pro.
+    LicenseManager.storeFreeFromOverride =
+        DateTime.now().toUtc().add(const Duration(days: 1));
     await LicenseManager().init();
   });
 
-  tearDown(() => LicenseManager.storeInstallCheckOverride = null);
+  tearDown(() {
+    LicenseManager.storeInstallCheckOverride = null;
+    LicenseManager.storeFreeFromOverride = null;
+  });
 
   group('SandboxService', () {
     test('tracks sandbox names in prefs', () {

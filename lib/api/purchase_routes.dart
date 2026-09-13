@@ -1,9 +1,13 @@
 // The ways a user can buy Pro, and which of them a given host offers.
 //
-// Windows has two: the Microsoft Store listing the app has always had, and —
-// for buyers who would rather not go through the Store at all — the same
-// website shop the Mac uses, which sells a licence key instead. macOS has
-// only the website, since there is no Store to sell through.
+// Windows has had two: the Microsoft Store listing the app has always had,
+// and — for buyers who would rather not go through the Store at all — the
+// same website shop the Mac uses, which sells a licence key instead. macOS
+// has only the website, since there is no Store to sell through.
+//
+// Once the Store listing goes free it sells nothing, and Windows is left
+// with the website too: the same single card the Mac shows, at the Windows
+// price. Nothing sends a buyer to a Store page that cannot take their money.
 //
 // The copy lives here as i18n keys rather than strings so the screen stays a
 // plain renderer and the route set itself is testable without a UI.
@@ -46,7 +50,15 @@ class PurchaseRoute {
 ///
 /// [apple] is `isAppleHost`, passed in rather than read here so the whole
 /// set is testable from a Windows *or* a Mac test host.
-List<PurchaseRoute> purchaseRoutesFor({required bool apple}) {
+///
+/// [storeSellsPro] is `LicenseManager.storeSellsPro` — false once the Store
+/// listing has gone free. It is about the listing, not about this install,
+/// so a portable build loses the Store card at the same moment a packaged
+/// one does: neither can buy Pro there any more.
+List<PurchaseRoute> purchaseRoutesFor({
+  required bool apple,
+  bool storeSellsPro = true,
+}) {
   const direct = PurchaseRoute(
     id: PurchaseRouteId.direct,
     url: macBuyUrl,
@@ -59,6 +71,22 @@ List<PurchaseRoute> purchaseRoutesFor({required bool apple}) {
   );
 
   if (apple) return const [direct];
+
+  if (!storeSellsPro) {
+    // The Windows price, in the Mac's copy: with the Store gone this is the
+    // only way to buy, so it is no longer "the alternative" and must not be
+    // headed as one.
+    return const [
+      PurchaseRoute(
+        id: PurchaseRouteId.direct,
+        url: windowsBuyUrl,
+        titleKey: 'store-buy-title',
+        detailKey: 'web-buy-detail-text',
+        priceKey: 'win-web-price-text',
+        buttonKey: 'web-buy-btn',
+      ),
+    ];
+  }
 
   return const [
     PurchaseRoute(
@@ -84,5 +112,23 @@ List<PurchaseRoute> purchaseRoutesFor({required bool apple}) {
 
 /// The i18n key for the licence-key entry blurb. Only the Mac hands the key
 /// over automatically after checkout, so only the Mac's copy says so.
-String activateDetailKeyFor({required bool apple}) =>
-    apple ? 'activate-detail-text' : 'win-activate-detail-text';
+///
+/// The Windows copy also has to stop claiming that a Store copy unlocks
+/// itself once that is only true of the ones bought before the listing went
+/// free — anyone reading this text is not entitled, so for them it is
+/// simply wrong, and it is where they are told what to do instead.
+String activateDetailKeyFor({required bool apple, bool storeSellsPro = true}) {
+  if (apple) return 'activate-detail-text';
+  return storeSellsPro
+      ? 'win-activate-detail-text'
+      : 'win-activate-free-detail-text';
+}
+
+/// The i18n key for "we looked and found nothing" after a re-check.
+///
+/// While the Store sells Pro, not finding it means the user is on the wrong
+/// build and the copy says so. Once it is free that advice would send them
+/// to a download that grants nothing, so the free-era copy points at the
+/// licence key instead.
+String restoreNotFoundKeyFor({required bool storeSellsPro}) =>
+    storeSellsPro ? 'restore-notfound-text' : 'restore-notfound-free-text';

@@ -14,7 +14,8 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:provider/provider.dart';
 
 class LicenseScreen extends StatefulWidget {
-  const LicenseScreen({Key? key, this.appleHost}) : super(key: key);
+  const LicenseScreen({Key? key, this.appleHost, this.storeSellsPro})
+      : super(key: key);
 
   /// Test seam. Which host's purchase routes to render; defaults to this
   /// machine's. Only tests pass it — the Windows layout has two buy cards
@@ -22,12 +23,28 @@ class LicenseScreen extends StatefulWidget {
   @visibleForTesting
   final bool? appleHost;
 
+  /// Test seam. Whether the Store listing still sells Pro; defaults to what
+  /// [LicenseManager.storeSellsPro] says, which is "yes" only until the
+  /// scheduled flip has happened.
+  @visibleForTesting
+  final bool? storeSellsPro;
+
   @override
   State<LicenseScreen> createState() => _LicenseScreenState();
 }
 
 class _LicenseScreenState extends State<LicenseScreen> {
   bool get _isApple => widget.appleHost ?? isAppleHost;
+
+  /// The ways this host can buy Pro today.
+  List<PurchaseRoute> get _routes =>
+      purchaseRoutesFor(apple: _isApple, storeSellsPro: _storeSellsPro);
+
+  /// Whether the Microsoft Store listing still sells Pro. Read once per
+  /// build rather than per widget so every part of the screen tells the
+  /// same story on the day the listing flips.
+  bool get _storeSellsPro =>
+      widget.storeSellsPro ?? LicenseManager.storeSellsPro;
 
   bool _isLoading = false;
   bool _isActivating = false;
@@ -168,12 +185,13 @@ class _LicenseScreenState extends State<LicenseScreen> {
                             ),
                           ] else ...[
                             // Not Pro: lead with the pitch, status after.
-                            // Windows offers two routes — the Store, and the
-                            // website for buyers who would rather skip it —
-                            // so this is a list, not a single card.
-                            for (final route
-                                in purchaseRoutesFor(apple: _isApple)) ...[
-                              _buildBuySection(route),
+                            // Windows offers two routes while the Store sells
+                            // Pro — the Store, and the website for buyers who
+                            // would rather skip it — so this is a list, not a
+                            // single card.
+                            for (final entry in _routes.asMap().entries) ...[
+                              _buildBuySection(entry.value,
+                                  leading: entry.key == 0),
                               const SizedBox(height: 20),
                             ],
                             // Key entry belongs on every host now: a licence
@@ -228,7 +246,8 @@ class _LicenseScreenState extends State<LicenseScreen> {
             Notify.message(
                 LicenseManager().isPro
                     ? 'restore-found-text'.i18n()
-                    : 'restore-notfound-text'.i18n(),
+                    : restoreNotFoundKeyFor(storeSellsPro: _storeSellsPro)
+                        .i18n(),
                 severity: LicenseManager().isPro
                     ? InfoBarSeverity.success
                     : InfoBarSeverity.warning);
@@ -377,14 +396,16 @@ class _LicenseScreenState extends State<LicenseScreen> {
     );
   }
 
-  /// One purchase route as a card. The Store card leads on Windows and the
-  /// website card follows it; on the Mac the website card is the only one.
-  Widget _buildBuySection(PurchaseRoute route) {
+  /// One purchase route as a card. The Store card leads on Windows while the
+  /// Store still sells Pro and the website card follows it; everywhere else
+  /// the website card is the only one, and leads.
+  ///
+  /// [leading] is whether this is the first card on the screen. The first
+  /// card keeps the original test keys whichever route it happens to be, so
+  /// what the rest of the suite looks for is always the CTA the screen leads
+  /// with.
+  Widget _buildBuySection(PurchaseRoute route, {required bool leading}) {
     final isStore = route.id == PurchaseRouteId.store;
-    // The Store card keeps the original keys: it is still the primary CTA on
-    // Windows, and on the Mac the sole website card inherits them, so what
-    // existing tests look for is always the card the screen leads with.
-    final leadingCta = isStore || _isApple;
     return Card(
       padding: const EdgeInsets.all(20),
       borderRadius: BorderRadius.circular(10),
@@ -406,16 +427,15 @@ class _LicenseScreenState extends State<LicenseScreen> {
           // a Store page shows the buyer's own currency.
           Text(
             route.priceKey.i18n(),
-            key: ValueKey(leadingCta
-                ? 'test-license-price'
-                : 'test-license-web-price'),
+            key: ValueKey(
+                leading ? 'test-license-price' : 'test-license-web-price'),
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              key: ValueKey(leadingCta
+              key: ValueKey(leading
                   ? 'test-license-store-button'
                   : 'test-license-web-buy-button'),
               onPressed: () => _openBuyPage(route),
@@ -457,7 +477,9 @@ class _LicenseScreenState extends State<LicenseScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            activateDetailKeyFor(apple: _isApple).i18n(),
+            activateDetailKeyFor(
+                    apple: _isApple, storeSellsPro: _storeSellsPro)
+                .i18n(),
             style: TextStyle(fontSize: 13, color: secondaryTextColor(context)),
           ),
           const SizedBox(height: 12),

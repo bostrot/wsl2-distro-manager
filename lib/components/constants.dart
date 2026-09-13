@@ -27,6 +27,38 @@ const String licenseValidateUrl =
 const String windowsStoreUrl = "https://www.microsoft.com/store/"
     "productId/9NWS9K95NMJB";
 
+/// When the Microsoft Store listing stops selling Pro, as an ISO-8601 UTC
+/// instant — the moment the listing's base price becomes Free.
+///
+/// Null would mean "not scheduled", and while it was null nothing about the
+/// app changed: a Store install was a paid copy, so package identity alone
+/// kept granting Pro exactly as it always had. Set, the app flips with the
+/// listing, without a server and without waiting for anyone to update
+/// first — see doc/microsoft-store-freemium.md for the order of operations.
+///
+/// The instant only has to be no later than the moment the listing actually
+/// goes free. Every build that carries it reaches a Store install together
+/// with the price change, so an earlier instant costs nothing; a later one
+/// would hand Pro to free downloads made in between.
+///
+/// Everything before that instant is a purchase; everything after it is a
+/// free download. That single fact is what lets the two be told apart later.
+// Nullable on purpose: null is the rollback (see doc/microsoft-store-freemium.md).
+// ignore: unnecessary_nullable_for_final_variable_declarations
+const String? storeFreeFromUtc = '2026-09-13T00:00:00Z';
+
+/// The first release whose Store build stops treating package identity as a
+/// licence — the one that ships [storeFreeFromUtc].
+///
+/// An install that last ran something older than this has only ever run a
+/// build from the paid era, so whoever is sitting at it bought the app. It
+/// is the fallback for copies that update for the first time *after* the
+/// flip and so never got the chance to record [storeFreeFromUtc] passing.
+/// The last paid-era release was 2.1.0; this has to be newer than that and
+/// no newer than the version in pubspec.yaml, or the shipped build declines
+/// to judge (see storeGrandfathers).
+const String storeFreemiumVersion = '2.2.0';
+
 /// Opens the Store app straight on the review pane for this product.
 const String storeReviewUrl =
     "ms-windows-store://review?ProductId=9NWS9K95NMJB";

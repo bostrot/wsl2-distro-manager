@@ -105,7 +105,7 @@
 - [x] Every VM gets a login password you can read back from its row, for signing in at the VM's own screen
 - [x] Build with `scripts/build_macos.sh` — bundles the signed `vmctl` helper
 
-**Pro** *(one-time purchase: Microsoft Store on Windows, licence key from [wslmanager.com/buy](https://wslmanager.com/buy/) on macOS and for non-Store installs — never a subscription)*
+**Pro** *(one-time purchase: a licence key from [wslmanager.com/buy](https://wslmanager.com/buy/), on Windows and macOS alike — never a subscription)*
 - [x] **AI Workspace** — run Hermes Agent, OpenClaw, Open WebUI and OpenCode in a dedicated, isolated WSL distro
 - [x] **AI assistant with tools** — the built-in chat can actually *operate* your WSL: it lists and inspects distros, runs commands, edits config, creates snippets, mounts disks and packages distros through the same tools the MCP server exposes
 - [x] **Sandboxed AI** — spin up a throwaway Ubuntu distro and give an AI chat access to *only* the inside of that sandbox

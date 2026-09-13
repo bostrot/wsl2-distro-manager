@@ -22,7 +22,14 @@ initRoot(NotifyMessage statusMsg) async {
   Notify();
   Notify.message = statusMsg;
 
-  // First start with this version
+  // First start with this version.
+  //
+  // Read before it is overwritten below — and, more to the point, read here
+  // rather than anywhere earlier in startup: LicenseManager.init() runs in
+  // main() before this, and the Store grandfather rule needs the version of
+  // the *previous* run to tell a copy bought in the paid era from a free
+  // download (see storeGrandfathers). Moving this write earlier would erase
+  // that evidence.
   String? version = prefs.getString('version');
   String? lastChangelogVersion = prefs.getString('LastChangelogVersion');
 

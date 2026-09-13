@@ -39,12 +39,17 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     // Not Pro by default; tests that need it flip the override and re-init.
+    // The Store copies these tests stand up are paid-era ones, so the flip
+    // is held in the future: package identity alone is Pro here.
     LicenseManager.storeInstallCheckOverride = () => false;
+    LicenseManager.storeFreeFromOverride =
+        DateTime.now().toUtc().add(const Duration(days: 1));
     await LicenseManager().init();
   });
 
   tearDown(() {
     LicenseManager.storeInstallCheckOverride = null;
+    LicenseManager.storeFreeFromOverride = null;
   });
 
   group('AiService BYOK configuration', () {

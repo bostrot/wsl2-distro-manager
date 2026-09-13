@@ -15,9 +15,11 @@ const int _instancesBeforeAskingAgain = 5;
 /// Ask for a Store rating once the app has actually proven useful.
 ///
 /// Only Store installs are asked: the review page is part of the Store
-/// listing, so a GitHub build would be sent somewhere it cannot post.
+/// listing, so a GitHub build would be sent somewhere it cannot post. Where
+/// the build came from, not whether it has Pro — a free Store copy can post
+/// a review just as well as a paid one.
 Future<void> maybeShowRatingPrompt() async {
-  if (!LicenseManager().isStoreLicensed) return;
+  if (!LicenseManager().isStorePackaged) return;
   if (prefs.getBool('RatingPromptDone') ?? false) return;
 
   final created = prefs.getInt('InstancesCreated') ?? 0;

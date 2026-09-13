@@ -1,9 +1,16 @@
 // Pro entitlement, from one of two places depending on where the app came
 // from.
 //
-// Windows: the app is a one-time Microsoft Store purchase and being installed
-// from the Store *is* the licence, detected via MSIX package identity. The
-// portable GitHub build runs unpackaged and stays free.
+// Windows: the app has been a one-time Microsoft Store purchase, and being
+// installed from the Store *is* the licence, detected via MSIX package
+// identity. The portable GitHub build runs unpackaged and stays free.
+//
+// That equation only holds while the listing costs money. When it stops —
+// see [storeFreeFromUtc] — a Store install is just a download, and Pro on
+// Windows is bought the same way it is on the Mac. Every Store install that
+// predates the flip keeps Pro for good: [storeGrandfathers] decides that
+// once, and the answer is written down rather than re-derived, so it cannot
+// be lost to a later release.
 //
 // macOS: there is no Store and no package identity, so Pro is bought on
 // wslmanager.com and arrives as a licence key — typed in, or handed over by
@@ -30,6 +37,9 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:win32/win32.dart';
+// compareVersions only; the grandfather rule reads the version this install
+// last ran, and there is no second implementation of that ordering.
+import 'package:wsl2distromanager/api/updater.dart' show compareVersions;
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -52,6 +62,67 @@ enum LicenseActivation {
 /// (APPMODEL_ERROR_NO_PACKAGE) — not exported by package:win32.
 const int _appModelErrorNoPackage = 15700;
 
+/// Where the answer to [storeGrandfathers] is kept once it has been earned.
+const String storeGrandfatheredPref = 'StoreProGrandfathered';
+
+/// Reads [storeFreeFromUtc] — an ISO-8601 instant, or null when no price
+/// change is scheduled.
+///
+/// Anything without a zone is read as UTC, which is what the constant says it
+/// is. Left to `DateTime.parse` it would be taken as the *reader's* local
+/// time, and a listing that goes free at one instant would be matched by an
+/// app that flips at a different one in every time zone.
+DateTime? parseFlipInstant(String? iso) {
+  if (iso == null || iso.trim().isEmpty) return null;
+  final parsed = DateTime.tryParse(iso.trim());
+  if (parsed == null) return null;
+  if (parsed.isUtc) return parsed;
+  return DateTime.utc(parsed.year, parsed.month, parsed.day, parsed.hour,
+      parsed.minute, parsed.second, parsed.millisecond);
+}
+
+/// Whether a Store install carries Pro on its own, with no licence key.
+///
+/// Pure, and the whole of the freemium rule. [packaged] is MSIX package
+/// identity, [freeFrom] the instant the listing stops selling Pro, and
+/// [lastRanVersion] the version this install last started — which, on the
+/// run that decides this, is still the *previous* one (see the note in
+/// nav/init.dart).
+///
+/// The cases, in the order they are asked:
+///
+///  * Not a Store install. Nothing to grandfather; Pro comes from a key.
+///  * Already granted. Decided on an earlier run and never revisited: a
+///    buyer must not lose Pro because a later release changed its mind.
+///  * No flip scheduled. The listing still sells the app, so every Store
+///    install was paid for — today's behaviour, unchanged.
+///  * Before the flip. Same thing: this copy was bought while it cost money.
+///  * After the flip, but this install last ran a build from before the
+///    freemium era. It cannot be a free download — free downloads only exist
+///    from [storeFreemiumVersion] onwards — so it was bought. Only a build
+///    that knows its own version may answer this one.
+///  * Anything else: a free Store copy.
+bool storeGrandfathers({
+  required bool packaged,
+  required DateTime now,
+  required DateTime? freeFrom,
+  required String? lastRanVersion,
+  required bool alreadyGranted,
+}) {
+  if (!packaged) return false;
+  if (alreadyGranted) return true;
+  if (freeFrom == null) return true;
+  if (now.isBefore(freeFrom)) return true;
+  if (lastRanVersion == null) return false;
+  // A build that cannot name its own version is in no position to judge
+  // anyone else's. `currentVersion` is stamped in by the release workflow
+  // and an unstamped build reports 1.0.0 — under which the second start of
+  // a brand-new free install looks exactly like a copy from the paid era,
+  // and every free download would be granted Pro.
+  if (compareVersions(currentVersion, storeFreemiumVersion) < 0) return false;
+  return compareVersions(lastRanVersion, storeFreemiumVersion) < 0;
+}
+
 class LicenseManager extends ChangeNotifier {
   static final LicenseManager _instance = LicenseManager._internal();
   factory LicenseManager() => _instance;
@@ -65,6 +136,7 @@ class LicenseManager extends ChangeNotifier {
   /// reached at all. Past this, the key has to check in again.
   static const Duration offlineGrace = Duration(days: 60);
 
+  bool _storePackaged = false;
   bool _storeLicensed = false;
   String? _licenseKey;
   String? _licenseEmail;
@@ -73,6 +145,13 @@ class LicenseManager extends ChangeNotifier {
   bool _keyLicensed = false;
 
   /// Whether this process runs as a Store-installed (MSIX-packaged) app.
+  ///
+  /// Where the build came from, not what it is entitled to — the Store
+  /// updates it and its reviews live on the listing whether or not it has
+  /// Pro. [isStoreLicensed] is the entitlement.
+  bool get isStorePackaged => _storePackaged;
+
+  /// Whether being a Store install is, by itself, unlocking Pro here.
   bool get isStoreLicensed => _storeLicensed;
 
   /// Whether a licence key bought on the website is unlocking Pro.
@@ -95,6 +174,27 @@ class LicenseManager extends ChangeNotifier {
   /// Test seam for the licence service. Reset to null in tearDown.
   @visibleForTesting
   static Dio? httpOverride;
+
+  /// Test seam for [storeFreeFromUtc]: a non-null value wins over the
+  /// constant. Production leaves it null, where the constant decides — and
+  /// while that is null too, nothing about the Store path changes. Reset to
+  /// null in tearDown.
+  @visibleForTesting
+  static DateTime? storeFreeFromOverride;
+
+  /// The instant the Store listing stops selling Pro, or null while no such
+  /// change is scheduled.
+  static DateTime? get storeFreeFrom =>
+      storeFreeFromOverride ?? parseFlipInstant(storeFreeFromUtc);
+
+  /// Whether the Microsoft Store listing still sells Pro.
+  ///
+  /// Read by the licence screen as well: once the listing is free there is
+  /// nothing to send a buyer to the Store for, on any Windows build.
+  static bool get storeSellsPro {
+    final freeFrom = storeFreeFrom;
+    return freeFrom == null || DateTime.now().toUtc().isBefore(freeFrom);
+  }
 
   Dio get _dio => httpOverride ?? Dio();
 
@@ -143,7 +243,8 @@ class LicenseManager extends ChangeNotifier {
   }
 
   Future<void> init() async {
-    _storeLicensed = _detectStoreInstall();
+    _storePackaged = _detectStoreInstall();
+    await _resolveStoreEntitlement();
     _loadStoredLicense();
 
     // Cleanup of prefs from the retired subscription and legacy-claim
@@ -170,6 +271,27 @@ class LicenseManager extends ChangeNotifier {
     // refunded licence should still stop working eventually.
     if (_licenseKey != null && _isStale) {
       unawaited(revalidate());
+    }
+  }
+
+  /// Settles whether this Store install carries Pro on its own, and writes
+  /// the answer down the first time it does.
+  ///
+  /// Recorded rather than recomputed because the evidence is perishable: the
+  /// version this install last ran is overwritten on every start, and the
+  /// flip instant passes. A copy that was bought has to keep Pro long after
+  /// both have gone.
+  Future<void> _resolveStoreEntitlement() async {
+    final granted = prefs.getBool(storeGrandfatheredPref) ?? false;
+    _storeLicensed = storeGrandfathers(
+      packaged: _storePackaged,
+      now: DateTime.now().toUtc(),
+      freeFrom: storeFreeFrom,
+      lastRanVersion: prefs.getString('version'),
+      alreadyGranted: granted,
+    );
+    if (_storeLicensed && !granted) {
+      await prefs.setBool(storeGrandfatheredPref, true);
     }
   }
 
@@ -302,6 +424,10 @@ class LicenseManager extends ChangeNotifier {
   /// Forgets the stored licence — "sign out" for a machine being handed on.
   /// The install id goes too, so the next owner is a new device to the
   /// service.
+  ///
+  /// [storeGrandfatheredPref] deliberately stays: it is not this licence, it
+  /// is the record that this Store copy was bought, and once dropped there
+  /// is no way to work it out again.
   Future<void> clearLicense() async {
     for (final key in [
       'WebLicenseKey',
