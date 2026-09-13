@@ -18,11 +18,14 @@ on:
         options: [publish, dry-run]
       pricing_file:
         description: >-
-          Pricing to state instead of echoing the clone's (e.g.
-          store/pricing.json). Empty = the clone must round-trip on its own,
-          which fails on Pricing Version 2 products by design.
+          Pricing to state instead of echoing the clone's. The default is
+          what a release publishes: store/pricing.json, which makes the
+          listing free. store/pricing-paid.json puts the paid tiers back
+          (see doc/microsoft-store-freemium.md). Empty = the clone must
+          round-trip on its own, which fails on Pricing Version 2 products by
+          design.
         required: false
-        default: ""
+        default: store/pricing.json
         type: string
   release:
     types: [published, created]
@@ -58,6 +61,7 @@ jobs:
             scripts/publish_store.sh
             scripts/store_pricing.jq
             store/pricing.json
+            store/pricing-paid.json
           sparse-checkout-cone-mode: false
 
       - name: Download release asset
@@ -71,15 +75,18 @@ jobs:
       # (prices set in the Partner Center UI): it reports the base price as
       # "Base", and a publish that echoes it turns the app Free everywhere
       # (2026-09-07/08). Without pricing_file the script refuses in that
-      # case. With pricing_file it states store/pricing.json instead; prove
-      # that with mode=dry-run before pointing a release at it.
+      # case. With pricing_file it states the file instead; prove any change
+      # to it with mode=dry-run before pointing a release at it. A release
+      # — the Releaser's dispatch, or a release event — always states
+      # store/pricing.json, so the listing's price lives in git, not in
+      # whatever the clone happens to say.
       - name: Publish to Store
         env:
           STORE_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
           STORE_CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
           STORE_CLIENT_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
           STORE_APP_ID: ${{ secrets.STORE_APP_ID }}
-          PRICING_FILE: ${{ inputs.pricing_file }}
+          PRICING_FILE: ${{ github.event_name == 'release' && 'store/pricing.json' || inputs.pricing_file }}
           DRY_RUN: ${{ inputs.mode == 'dry-run' && '1' || '0' }}
         run: |
           scripts/publish_store.sh \

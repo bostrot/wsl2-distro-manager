@@ -118,8 +118,15 @@ if [ -n "${PRICING_FILE:-}" ]; then
   # file is silent about (see store_pricing.jq).
   [ -f "$PRICING_FILE" ] || { echo "No such pricing file: $PRICING_FILE" >&2; exit 1; }
   WANT_PRICE_ID=$(jq -r '.priceId // empty' "$PRICING_FILE")
-  [[ "$WANT_PRICE_ID" =~ ^Tier[0-9]+$ ]] \
-    || { echo "$PRICING_FILE: priceId must be a Tier id, got \"$WANT_PRICE_ID\"" >&2; exit 1; }
+  # "Free" is allowed, and only here: what went wrong in September was a Free
+  # nobody asked for, produced by sending a pricing object with no base tier
+  # at all. A file that says "Free" in as many words is the opposite of that,
+  # and it is how the listing is free on purpose (store/pricing.json says so;
+  # the paid tiers wait in store/pricing-paid.json — see
+  # doc/microsoft-store-freemium.md). Everything else — "Base", empty,
+  # anything unrecognised — is still refused.
+  [[ "$WANT_PRICE_ID" =~ ^Tier[0-9]+$ || "$WANT_PRICE_ID" = "Free" ]] \
+    || { echo "$PRICING_FILE: priceId must be a Tier id or Free, got \"$WANT_PRICE_ID\"" >&2; exit 1; }
   echo "Pricing from $PRICING_FILE: base $WANT_PRICE_ID, $(jq '.marketSpecificPricings | length' "$PRICING_FILE") market overrides (clone reported \"${PRICE_ID:-<none>}\")."
   PRICED=$(jq --from-file "$(dirname "$0")/store_pricing.jq" \
              --argjson pricing "$(jq -c . "$PRICING_FILE")" <<<"$SUBMISSION")
