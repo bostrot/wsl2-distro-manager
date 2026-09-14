@@ -118,6 +118,24 @@ List<NavigationPaneItem> get originalItems {
       showMountDialog();
     },
   ),
+  // Playbooks: an instance's state as code — packages, users, files,
+  // services, commands — applied to an instance that already exists, as
+  // often as needed, or an Ansible playbook run inside it. Gated on
+  // quickActions because that is the capability it rests on: scripted
+  // commands run inside an instance, which both backends offer — but not
+  // over remote WSL, whose SSH wrapper caps an inline command at a couple
+  // of KB while every step here ships a base64 script several KB long
+  // (bostrot/ai-tasks#78).
+  if (features.quickActions && !vmBackend().isRemote)
+  PaneItem(
+    key: const Key('/playbooks'),
+    icon: const Icon(FluentIcons.build_definition),
+    title: Text('playbooks-text'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      navigateGuarded('playbooks', path: '/playbooks');
+    },
+  ),
   // Cloud goes last, and that placement is the whole argument for where it
   // belongs. It shares its subject with Containers and Kubernetes — machines
   // this app does not own — but it is also the newest and the most

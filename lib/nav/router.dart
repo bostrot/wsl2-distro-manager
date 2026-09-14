@@ -25,6 +25,8 @@ import 'package:wsl2distromanager/screens/license_screen.dart';
 import 'package:wsl2distromanager/screens/package_screen.dart';
 import 'package:wsl2distromanager/screens/settings_screen.dart';
 import 'package:wsl2distromanager/screens/template_screen.dart';
+import 'package:wsl2distromanager/api/provisioning.dart';
+import 'package:wsl2distromanager/screens/provisioning_screen.dart';
 
 /// Go to the route called [name], asking the current screen first when it is
 /// holding unsaved edits (audit ST-01).
@@ -105,6 +107,34 @@ final router = GoRouter(
           path: '/community',
           name: 'community',
           builder: (context, state) => const CommunityPage(),
+        ),
+
+        /// Playbooks: an instance's state as code, applied to existing
+        /// instances (bostrot/ai-tasks#78)
+        GoRoute(
+          path: '/playbooks',
+          name: 'playbooks',
+          builder: (context, state) => const PlaybooksPage(),
+        ),
+
+        /// Playbook editor — a step into one playbook, so a push.
+        GoRoute(
+          path: '/playbooks/edit',
+          name: 'playbook-editor',
+          builder: (context, state) =>
+              PlaybookEditorPage(existing: state.extra as Playbook?),
+        ),
+
+        /// Applying a playbook to an instance — pushed from the list. The
+        /// playbook rides in `extra`, which a restored or hand-typed route
+        /// does not carry: back to the list then, not a red screen.
+        GoRoute(
+          path: '/playbooks/apply',
+          name: 'playbook-apply',
+          redirect: (context, state) =>
+              state.extra is Playbook ? null : '/playbooks',
+          builder: (context, state) =>
+              PlaybookApplyPage(playbook: state.extra as Playbook),
         ),
 
         /// Containers (Docker / Podman on the host)
