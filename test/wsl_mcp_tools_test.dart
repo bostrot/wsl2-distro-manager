@@ -394,4 +394,78 @@ void main() {
       expect(terminalManager.sessions, isEmpty);
     });
   });
+  group('recording declarations (ai-tasks#77)', () {
+    test('the tools that change an instance declare how they are recorded,'
+        ' read-only ones do not', () {
+      LicenseManager.unreleasedFeaturesOverride = true;
+      addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+      final tools = buildWslMcpTools(wslApi, terminalManager);
+      final recorded =
+          tools.where((t) => t.recording != null).map((t) => t.name).toSet();
+
+      expect(
+          recorded,
+          containsAll({
+            'wsl_unregister_distro',
+            'wsl_run_command',
+            'wsl_install_service',
+            'wsl_install_distro',
+            'wsl_import_distro',
+            'wsl_import_in_place',
+            'wsl_install_package',
+            'wsl_set_wsl_conf',
+            'wsl_set_wslconfig',
+            'wsl_set_default_user',
+            'wsl_set_default_distro',
+            'wsl_set_version',
+            'wsl_copy_to',
+            'wsl_move_distro',
+            'wsl_resize_distro',
+            'wsl_compact_disk',
+            'wsl_mount_disk',
+            'wsl_unmount_disk',
+            'wsl_terminal_send',
+            'container_start',
+            'container_stop',
+            'container_restart',
+            'container_remove',
+            'container_exec',
+          }));
+      // Looking is not a change; nor is a stop, which the next boot undoes;
+      // nor are the snippet tools, whose product is the record itself.
+      for (final name in recorded) {
+        expect(
+            name,
+            isNot(matches(RegExp(r'^(wsl_list_|wsl_get_|kube_|'
+                r'cloud_|wsl_status|wsl_distro_info|wsl_stop_distro|'
+                r'wsl_shutdown|wsl_.*snippet|wsl_terminal_(start|read|list|'
+                r'close|signal)|container_(list|engines|logs|inspect|images|'
+                r'volumes|networks|stats|processes|disk_usage))'))));
+      }
+    });
+
+    test('every declared target or shell argument exists on its tool', () {
+      LicenseManager.unreleasedFeaturesOverride = true;
+      addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+      for (final t in buildWslMcpTools(wslApi, terminalManager)) {
+        final recording = t.recording;
+        if (recording == null) continue;
+        final properties =
+            (t.inputSchema['properties'] as Map).keys.cast<String>().toSet();
+        for (final key in [recording.target, recording.shell]) {
+          if (key == null) continue;
+          expect(properties, contains(key),
+              reason: '${t.name} records "$key", which it has no argument for');
+        }
+      }
+    });
+
+    test('a shell command tool records exactly the command it ran', () {
+      final run = tool('wsl_run_command');
+      expect(run.recording?.target, 'distro');
+      expect(run.recording?.shell, 'command');
+      // A mount point's `name` is not an instance.
+      expect(tool('wsl_mount_disk').recording?.target, isNull);
+    });
+  });
 }

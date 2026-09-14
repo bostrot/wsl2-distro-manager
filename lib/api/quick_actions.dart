@@ -127,6 +127,19 @@ class QuickAction {
     prefs.setStringList('quickSettingsContents', quickSettingsContents);
   }
 
+  /// The saved snippet names, in list order — the titles list as stored, so
+  /// no YAML is parsed; enough for "does this name exist" and "pick a free
+  /// name", which is what callers on a build path or a save path need.
+  List<String> names() => prefs.getStringList('quickSettingsTitles') ?? [];
+
+  /// The snippet called [name], or null once it is gone.
+  QuickActionItem? byName(String name) {
+    for (final item in getFromPrefs()) {
+      if (item.name == name) return item;
+    }
+    return null;
+  }
+
   List<QuickActionItem> getFromPrefs() {
     List<QuickActionItem> quickActions = [];
     // Get lists

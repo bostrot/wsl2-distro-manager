@@ -12,12 +12,14 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:wsl2distromanager/api/ai_run_recorder.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/todo_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
+import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/api/todo_store.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -197,6 +199,14 @@ class AiService {
           'screen because both cost money.\n'
       : '';
 
+  /// Told to the model so it does not file a duplicate with wsl_create_snippet
+  /// when the user asks for a record of what it did (ai-tasks#77).
+  static const String _recordingGuidance =
+      'When a turn of yours creates, changes or removes an instance, the app '
+      'saves the tool calls of that turn as a snippet on the Snippets screen '
+      'and links it from the chat, so the user can review, re-run and share '
+      'it — you do not need to create that snippet yourself.';
+
   /// System prompt: says what the assistant is and that its tools act on the
   /// user's real machine, so it uses them instead of answering from nothing
   /// (the "I don't have access to your system" reply the tools exist to fix).
@@ -205,10 +215,10 @@ class AiService {
 You are the AI assistant built into WSL Manager on macOS, a GUI for managing native virtual machines via Apple's Virtualization framework. You have tools that operate on the user's REAL VMs on this Mac. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see the VMs, wsl_run_command to run something inside a running VM (over SSH).
 Creating a Linux VM: it MUST boot from something — a blank disk boots into nothing and stops immediately. Always give vm_create_linux a boot source: pass a "catalog" id (call vm_list_images first) or an image_path/iso_path. When the user wants a usable system (a user account, a password, software installed), pick a catalog entry marked as a cloud image (e.g. "debian-13-cloud"): it boots ready to use and reachable over SSH with no manual install, so wsl_run_command and service recipes work right after vm_start. Installer ISOs (the "virt", "standard", "netinst" and Ubuntu Server entries) need the user to click through an install in the VM window first — never promise automated setup on top of one. Do NOT create a VM with no boot source and then try to start it; the tool now refuses that.
 Setting a user password or running setup only works once the VM is running AND reachable over SSH (a cloud image is; a bare installer ISO is not until installed). Installing a local service (database, storage, broker): use wsl_list_recipes then wsl_install_service against a running, reachable VM.
-${_containerGuidance}Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.'''
+${_containerGuidance}Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. $_recordingGuidance Keep answers concise and in the user's language.'''
       : '''
 You are the AI assistant built into WSL Distro Manager, a Windows GUI for managing WSL2 Linux distributions. You have tools that operate on the user's REAL WSL installation on this machine. Use them to answer questions and carry out tasks rather than guessing or claiming you lack access — e.g. call wsl_list_distros to see installed distros, wsl_list_catalog / wsl_list_online_distros for what can be installed, wsl_run_command to run something inside a distro.
-${_containerGuidance}Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. Keep answers concise and in the user's language.
+${_containerGuidance}Prefer read-only tools to inspect state before acting. Destructive actions (wsl_unregister_distro) need explicit user intent and their confirm flag. After you run a command or change something, say briefly what you did. $_recordingGuidance Keep answers concise and in the user's language.
 You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). When the user asks you to work through their tasks, read the list, do each one with your tools, and mark it done with todo_set_done as soon as you finish it.''';
 
   /// How many tool round-trips one message may take before the loop stops.
@@ -321,9 +331,14 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       // Roll back any partial tool notes added mid-run, but KEEP the user's
       // message: the panel shows a retry that re-runs it (retryLast). The
       // history ends on the user turn, so a retry starts clean without
-      // making the user retype the question.
+      // making the user retype the question. A `snippet` note stays, and so
+      // does everything before it: the run changed an instance before it
+      // failed, and the user most needs the link to that record when the
+      // reply that would have described it never came (only user and
+      // assistant turns reach the provider, so the retry is unaffected).
       while (_conversationHistory.isNotEmpty &&
-          _conversationHistory.last.role != 'user') {
+          _conversationHistory.last.role != 'user' &&
+          _conversationHistory.last.role != 'snippet') {
         _conversationHistory.removeLast();
       }
       _saveConversation();
@@ -331,43 +346,42 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     }
   }
 
-  /// Records a tool call in the transcript as a compact note (UI only — these
-  /// are never replayed to the provider), and pings [onUpdate] so the panel
-  /// can show it live.
-  void _noteTool(List<AiMessage> transcript, void Function()? persist,
-      String label, void Function()? onUpdate) {
+  /// Appends one entry to the transcript mid-run and pings [onUpdate] so the
+  /// panel can show it live. The `tool` and `snippet` roles are UI-only
+  /// notes, never replayed to the provider ([capTranscript] drops them).
+  void _note(List<AiMessage> transcript, void Function()? persist, String role,
+      String content, void Function()? onUpdate) {
     transcript.add(AiMessage(
-      role: 'tool',
-      content: label,
+      role: role,
+      content: content,
       timestamp: DateTime.now(),
     ));
     persist?.call();
     onUpdate?.call();
   }
+
+  /// A compact `ran <tool>` note.
+  void _noteTool(List<AiMessage> transcript, void Function()? persist,
+          String label, void Function()? onUpdate) =>
+      _note(transcript, persist, 'tool', label, onUpdate);
 
   void _noteAssistant(List<AiMessage> transcript, void Function()? persist,
       String text, void Function()? onUpdate) {
     if (text.trim().isEmpty) return;
-    transcript.add(AiMessage(
-      role: 'assistant',
-      content: text.trim(),
-      timestamp: DateTime.now(),
-    ));
-    persist?.call();
-    onUpdate?.call();
+    _note(transcript, persist, 'assistant', text.trim(), onUpdate);
   }
 
-  /// Executes one tool by name and returns its output (or an error string the
-  /// model can read and recover from), capped in size.
-  Future<String> _executeTool(
-      List<McpTool> toolList, String name, Map<String, dynamic> args) async {
-    McpTool? tool;
+  static McpTool? _findTool(List<McpTool> toolList, String name) {
     for (final t in toolList) {
-      if (t.name == name) {
-        tool = t;
-        break;
-      }
+      if (t.name == name) return t;
     }
+    return null;
+  }
+
+  /// Executes [tool] and returns its output (or an error string the model
+  /// can read and recover from), capped in size.
+  Future<String> _executeTool(
+      McpTool? tool, String name, Map<String, dynamic> args) async {
     if (tool == null) return 'Error: unknown tool "$name".';
     String out;
     try {
@@ -411,18 +425,51 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
     String? systemPrompt,
     void Function()? persist,
     CancelSignal? cancel,
+    bool recordRun = true,
   }) async {
     _runTokens = 0;
     runStatus.value = null;
+    // [recordRun]: the main chat files instance-changing runs as a snippet
+    // (ai-tasks#77); the sandbox chat passes false.
+    final recorder =
+        recordRun ? AiRunRecorder(request: _lastUserMessage(transcript)) : null;
     try {
       return await _runByokAgent(transcript, toolList,
           onUpdate: onUpdate,
           persist: persist,
           cancel: cancel,
-          systemPrompt: systemPrompt ?? _systemPrompt);
+          systemPrompt: systemPrompt ?? _systemPrompt,
+          recorder: recorder);
     } finally {
       runStatus.value = null;
       streamingText.value = '';
+      // Whatever ended the run — answer, Cancel or a failed request — the
+      // instance-changing calls already happened; file them.
+      if (recorder != null) _fileRun(recorder, transcript, persist, onUpdate);
+    }
+  }
+
+  static String _lastUserMessage(List<AiMessage> transcript) {
+    for (final m in transcript.reversed) {
+      if (m.role == 'user') return m.content;
+    }
+    return '';
+  }
+
+  /// Saves the run's record as a snippet (ai-tasks#77) and leaves a
+  /// `snippet` note carrying its name in the transcript, which the panel
+  /// renders as a link to the editor.
+  void _fileRun(AiRunRecorder recorder, List<AiMessage> transcript,
+      void Function()? persist, void Function()? onUpdate) {
+    final QuickActionItem? item;
+    try {
+      item = recorder.save();
+    } catch (e) {
+      if (kDebugMode) debugPrint('Recording the AI run failed: $e');
+      return;
+    }
+    if (item != null) {
+      _note(transcript, persist, 'snippet', item.name, onUpdate);
     }
   }
 
@@ -629,7 +676,8 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       {void Function()? onUpdate,
       void Function()? persist,
       CancelSignal? cancel,
-      required String systemPrompt}) async {
+      required String systemPrompt,
+      AiRunRecorder? recorder}) async {
     final messages = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemPrompt},
       ..._historyMessages(transcript),
@@ -703,7 +751,9 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
         }
         cancel?.throwIfCancelled();
         _noteTool(transcript, persist, name, onUpdate);
-        final result = await _executeTool(toolList, name, parsedArgs);
+        final tool = _findTool(toolList, name);
+        final result = await _executeTool(tool, name, parsedArgs);
+        if (tool != null) recorder?.record(tool, parsedArgs, result);
         messages.add({
           'role': 'tool',
           'tool_call_id': call['id'],

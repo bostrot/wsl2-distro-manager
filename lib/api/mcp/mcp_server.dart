@@ -6,6 +6,32 @@
 
 const String mcpProtocolVersion = '2025-06-18';
 
+/// How a call of one tool goes into the record of an AI chat run — the
+/// snippet the run is saved as when it created or changed an instance
+/// (lib/api/ai_run_recorder.dart, ai-tasks#77).
+///
+/// Declared on the tool, next to the arguments it names, rather than kept
+/// as a list of tool names somewhere else that has to be remembered when a
+/// tool is added. A tool with no [McpTool.recording] is read-only as far as
+/// the record is concerned.
+class ToolRecording {
+  const ToolRecording({this.target, this.shell, this.supporting = false});
+
+  /// The argument naming the instance the call acts on (`distro`, `name`,
+  /// `container`), or null when the call has none (`.wslconfig`, a disk
+  /// mount).
+  final String? target;
+
+  /// The argument holding a shell command that ran inside the instance —
+  /// the snippet carries it verbatim, so Run replays it.
+  final String? shell;
+
+  /// True for a call worth recording only next to others: starting a VM
+  /// belongs in the record of a create-and-set-up run, but a run that only
+  /// started one has changed nothing worth a snippet.
+  final bool supporting;
+}
+
 /// A single tool exposed to MCP clients.
 class McpTool {
   final String name;
@@ -13,11 +39,16 @@ class McpTool {
   final Map<String, dynamic> inputSchema;
   final Future<String> Function(Map<String, dynamic> arguments) handler;
 
+  /// Set when the tool creates, changes or removes an instance; see
+  /// [ToolRecording]. Null for read-only tools.
+  final ToolRecording? recording;
+
   const McpTool({
     required this.name,
     required this.description,
     required this.inputSchema,
     required this.handler,
+    this.recording,
   });
 }
 

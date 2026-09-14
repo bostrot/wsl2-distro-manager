@@ -427,7 +427,11 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   Future<String> _completeFromHistory(
       {void Function()? onUpdate, CancelSignal? cancel}) async {
     try {
+      // A throwaway sandbox is neither a VM being created nor one being
+      // edited, so its commands are not filed as a snippet the Snippets
+      // screen would offer to run in a real instance (ai-tasks#77).
       final reply = await _ai.runAgentOn(_history, _tools,
+          recordRun: false,
           onUpdate: onUpdate,
           systemPrompt: _systemPrompt,
           persist: _persist,

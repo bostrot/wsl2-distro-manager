@@ -14,6 +14,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
 import 'package:wsl2distromanager/api/todo_store.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -220,6 +221,10 @@ class _AiChatPanelState extends State<AiChatPanel> {
       });
     } on CancelledException {
       // The user pressed Cancel — the run is already unwound and reported.
+      // Cancel bumped the generation before the run's last note (the snippet
+      // a changed instance was filed as) landed, so its repaint was dropped;
+      // paint once more.
+      if (mounted) setState(() {});
       return;
     } catch (e) {
       if (!mounted || generation != _requestGeneration) return;
@@ -743,29 +748,72 @@ class _AiChatPanelState extends State<AiChatPanel> {
     );
   }
 
+  TextStyle get _noteStyle => TextStyle(
+        fontSize: 11,
+        fontStyle: FontStyle.italic,
+        color: secondaryTextColor(context),
+      );
+
+  /// A compact note under the assistant's avatar column — not a chat bubble
+  /// — for what happened on the machine mid-run.
+  Widget _noteChip(IconData icon, Widget body, {Key? key}) => Padding(
+        key: key,
+        padding: const EdgeInsets.only(bottom: 8, left: 36),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(icon, size: 11, color: secondaryTextColor(context)),
+            ),
+            const SizedBox(width: 6),
+            Flexible(child: body),
+          ],
+        ),
+      );
+
+  /// The note left after a run that changed an instance: which snippet holds
+  /// its record, with a link into the editor (ai-tasks#77). Checked by name
+  /// on every build — against the stored title list, no YAML — so the note
+  /// follows a delete made in the editor since: then it says so and the link
+  /// goes.
+  Widget _buildSnippetNote(String name) {
+    final exists = QuickAction().names().contains(name);
+    return _noteChip(
+      FluentIcons.code,
+      exists
+          ? Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              children: [
+                Text('ai-run-snippet-saved-text'.i18n([name]),
+                    style: _noteStyle),
+                HyperlinkButton(
+                  onPressed: () async {
+                    final item = QuickAction().byName(name);
+                    if (item != null) {
+                      await router.pushNamed('snippet', extra: item);
+                    }
+                    if (mounted) setState(() {});
+                  },
+                  child: Text('ai-run-snippet-open-text'.i18n(),
+                      style: const TextStyle(fontSize: 11)),
+                ),
+              ],
+            )
+          : Text('ai-run-snippet-missing-text'.i18n([name]), style: _noteStyle),
+      key: ValueKey('test-aichat-snippet-$name'),
+    );
+  }
+
   Widget _buildMessageBubble(AiMessage msg) {
+    if (msg.role == 'snippet') return _buildSnippetNote(msg.content);
     // A tool note: a compact "ran <tool>" chip, not a chat bubble, so the
     // user can see what the assistant actually did on their machine.
     if (msg.role == 'tool') {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 8, left: 36),
-        child: Row(
-          children: [
-            Icon(FluentIcons.processing,
-                size: 11, color: secondaryTextColor(context)),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                'ai-ran-tool-text'.i18n([msg.content]),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontStyle: FontStyle.italic,
-                  color: secondaryTextColor(context),
-                ),
-              ),
-            ),
-          ],
-        ),
+      return _noteChip(
+        FluentIcons.processing,
+        Text('ai-ran-tool-text'.i18n([msg.content]), style: _noteStyle),
       );
     }
     final isUser = msg.role == 'user';

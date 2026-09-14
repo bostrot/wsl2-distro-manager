@@ -184,6 +184,7 @@ List<McpTool> _genericTools(VmBackend backend) {
     ),
     McpTool(
       name: 'wsl_unregister_distro',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'PERMANENTLY delete a distro and its disk (wsl --unregister). '
           'Unrecoverable — take a backup with wsl_export_distro first. '
@@ -347,6 +348,7 @@ List<McpTool> _genericTools(VmBackend backend) {
     ),
     McpTool(
       name: 'wsl_run_command',
+      recording: const ToolRecording(target: 'distro', shell: 'command'),
       description:
           'Run a shell command inside a named instance (WSL distro, or VM '
           'on macOS) and return its output. Starts a stopped WSL distro '
@@ -447,6 +449,7 @@ List<McpTool> _genericTools(VmBackend backend) {
     ),
     McpTool(
       name: 'wsl_install_service',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Install a service recipe (see wsl_list_recipes) into an instance: '
           'ensures Docker is present, runs the service container, and returns '
@@ -556,6 +559,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_install_distro',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Install a distro from the online catalog (wsl --install). Use '
           'wsl_list_online_distros for the accepted names. Runs headless '
@@ -578,6 +582,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_import_distro',
+      recording: const ToolRecording(target: 'name'),
       description:
           'Create a distro from a rootfs tarball (wsl --import). The tarball '
           'can be a local path or an http(s) URL, which is downloaded first. '
@@ -632,6 +637,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_import_in_place',
+      recording: const ToolRecording(target: 'name'),
       description:
           'Register an existing .vhdx as a distro where it lies '
           '(wsl --import-in-place). Nothing is copied.',
@@ -704,6 +710,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_install_package',
+      recording: const ToolRecording(target: 'name'),
       description:
           'Install a .wsl package (wsl --install --from-file). Unlike '
           'wsl_import_distro this honours the package\'s wsl-distribution.conf '
@@ -764,6 +771,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_set_wsl_conf',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Set one key in a distro\'s /etc/wsl.conf, preserving everything '
           'else in the file — e.g. section "boot" key "command" to autostart '
@@ -831,6 +839,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_set_wslconfig',
+      recording: const ToolRecording(),
       description:
           'Set one key in the global .wslconfig (memory, processors, swap, '
           'networkingMode, ...). The key is placed in the section WSL reads '
@@ -865,6 +874,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_set_default_user',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Set the default login user of a distro '
           '(wsl --manage --set-default-user). Needs WSL 2.5+.',
@@ -891,6 +901,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_set_default_distro',
+      recording: const ToolRecording(target: 'distro'),
       description: 'Make a distro the default one (wsl --set-default).',
       inputSchema: const {
         'type': 'object',
@@ -910,6 +921,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_set_version',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Convert a distro between WSL 1 and WSL 2 (wsl --set-version). '
           'Converts the whole disk — can take minutes.',
@@ -940,6 +952,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_copy_to',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Copy one file from Windows into a distro. Starts the distro and '
           'creates the target directory if needed. Single files only.',
@@ -1024,6 +1037,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_move_distro',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Move a distro\'s storage to another directory '
           '(wsl --manage --move). Copies the whole disk — can take a long '
@@ -1051,6 +1065,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_resize_distro',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Grow a distro\'s virtual disk (wsl --manage --resize). Size like '
           '512GB or 1TB, whole numbers only. Stop WSL first (wsl_shutdown). '
@@ -1078,6 +1093,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_compact_disk',
+      recording: const ToolRecording(target: 'distro'),
       description:
           'Compact a distro\'s virtual disk so freed space returns to '
           'Windows (diskpart, not a wsl.exe flag). Stops the distro first; '
@@ -1102,6 +1118,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_mount_disk',
+      recording: const ToolRecording(),
       description:
           'Mount a physical disk or partition into WSL (wsl --mount). '
           'Needs administrator rights, which Windows prompts for.',
@@ -1150,6 +1167,7 @@ List<McpTool> _wslOnlyTools(
     ),
     McpTool(
       name: 'wsl_unmount_disk',
+      recording: const ToolRecording(),
       description:
           'Unmount a disk previously mounted into WSL (wsl --unmount).',
       inputSchema: const {
@@ -1225,6 +1243,7 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
     ),
     McpTool(
       name: 'vm_create_linux',
+      recording: const ToolRecording(target: 'name'),
       description:
           'Create a new Linux VM (Apple Virtualization framework). A Linux VM '
           'MUST have something to boot from — a blank disk boots into nothing '
@@ -1313,6 +1332,7 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
     ),
     McpTool(
       name: 'vm_create_macos',
+      recording: const ToolRecording(target: 'name'),
       description:
           'Create a macOS guest VM (Apple Silicon only). Installs from a '
           'local .ipsw restore image, or downloads the latest supported one '
@@ -1346,6 +1366,7 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
     ),
     McpTool(
       name: 'vm_start',
+      recording: const ToolRecording(target: 'name', supporting: true),
       description:
           'Start a VM. Headless by default; set gui to open its display '
           'window on the host.',
@@ -1392,6 +1413,7 @@ List<McpTool> _appleVmTools(AppleVmApi api) {
     ),
     McpTool(
       name: 'vm_import_image',
+      recording: const ToolRecording(target: 'name'),
       description:
           'Create a VM from an existing raw disk image (e.g. an exported '
           'template). The image is copied into the VM store.',
@@ -1457,6 +1479,7 @@ List<McpTool> _terminalTools(WslTerminalManager terminalManager) {
     ),
     McpTool(
       name: 'wsl_terminal_send',
+      recording: const ToolRecording(),
       description:
           'Send a line of input to an open terminal session (as if typed '
           'and followed by Enter), then wait and return any output '
@@ -1729,6 +1752,7 @@ List<McpTool> _containerTools(ContainerService service) {
     ),
     McpTool(
       name: 'container_start',
+      recording: const ToolRecording(target: 'container'),
       description: 'Start a stopped container.',
       inputSchema: const {
         'type': 'object',
@@ -1746,6 +1770,7 @@ List<McpTool> _containerTools(ContainerService service) {
     ),
     McpTool(
       name: 'container_stop',
+      recording: const ToolRecording(target: 'container'),
       description: 'Stop a running container.',
       inputSchema: const {
         'type': 'object',
@@ -1763,6 +1788,7 @@ List<McpTool> _containerTools(ContainerService service) {
     ),
     McpTool(
       name: 'container_restart',
+      recording: const ToolRecording(target: 'container'),
       description: 'Restart a container, running or not.',
       inputSchema: const {
         'type': 'object',
@@ -1780,6 +1806,7 @@ List<McpTool> _containerTools(ContainerService service) {
     ),
     McpTool(
       name: 'container_remove',
+      recording: const ToolRecording(target: 'container'),
       description:
           'PERMANENTLY delete a container and its writable layer. Anything '
           'not in a volume is lost. Refuses to run unless confirm is true.',
@@ -1965,6 +1992,7 @@ List<McpTool> _containerTools(ContainerService service) {
     ),
     McpTool(
       name: 'container_exec',
+      recording: const ToolRecording(target: 'container'),
       description:
           'Run a shell command inside a RUNNING container and return its '
           'output. The container needs a shell on its PATH.',

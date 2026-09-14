@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
+import 'package:wsl2distromanager/api/quick_actions.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
@@ -29,6 +30,15 @@ class _RecordingAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
 }
+
+/// A complete (non-streamed) chat completion body.
+ResponseBody jsonBody(Map<String, dynamic> body) => ResponseBody.fromString(
+      json.encode(body),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
 
 void main() {
   setUpAll(() async {
@@ -380,14 +390,6 @@ void main() {
       );
     });
 
-    ResponseBody _json(Map<String, dynamic> body) => ResponseBody.fromString(
-          json.encode(body),
-          200,
-          headers: {
-            Headers.contentTypeHeader: [Headers.jsonContentType],
-          },
-        );
-
     test('BYOK: a tool call runs, its result is fed back, answer returns',
         () async {
       final ai = AiService();
@@ -403,7 +405,7 @@ void main() {
         call++;
         if (call == 1) {
           // First turn: ask to call the tool.
-          return _json({
+          return jsonBody({
             'choices': [
               {
                 'message': {
@@ -430,7 +432,7 @@ void main() {
         expect(
             msgs.any((m) => m['role'] == 'tool' && m['content'] == 'echoed:hi'),
             true);
-        return _json({
+        return jsonBody({
           'choices': [
             {
               'message': {'role': 'assistant', 'content': 'done: hi'}
@@ -616,7 +618,7 @@ void main() {
       await ai.init();
       ai.clearHistory();
 
-      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((_) => _json({
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((_) => jsonBody({
             'choices': [
               {
                 'message': {'role': 'assistant', 'content': 'plain answer'}
@@ -625,6 +627,208 @@ void main() {
           }));
 
       expect(await ai.sendMessage('hi'), 'plain answer');
+    });
+  });
+  group('AiService records instance-changing runs as a snippet', () {
+    McpTool fakeTool(String name, {ToolRecording? recording}) => McpTool(
+          name: name,
+          description: name,
+          inputSchema: const {'type': 'object', 'properties': {}},
+          handler: (args) async => 'ok from $name',
+          recording: recording,
+        );
+
+    Map<String, dynamic> toolCallTurn(List<Map<String, String>> calls) => {
+          'choices': [
+            {
+              'message': {
+                'role': 'assistant',
+                'content': null,
+                'tool_calls': [
+                  for (var i = 0; i < calls.length; i++)
+                    {
+                      'id': 'c$i',
+                      'type': 'function',
+                      'function': {
+                        'name': calls[i]['name'],
+                        'arguments': calls[i]['args'],
+                      },
+                    }
+                ],
+              }
+            }
+          ]
+        };
+
+    Future<AiService> proService(List<McpTool> tools) async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting = tools;
+      await ai.init();
+      ai.clearHistory();
+      return ai;
+    }
+
+    test(
+        'a run that created and set up an instance is filed as a snippet '
+        'and noted in the transcript', () async {
+      final ai = await proService([
+        fakeTool('wsl_list_distros'),
+        fakeTool('vm_create_linux',
+            recording: const ToolRecording(target: 'name')),
+        fakeTool('wsl_run_command',
+            recording: const ToolRecording(target: 'distro', shell: 'command')),
+      ]);
+
+      var call = 0;
+      final adapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          return jsonBody(toolCallTurn([
+            {'name': 'wsl_list_distros', 'args': '{}'},
+            {'name': 'vm_create_linux', 'args': '{"name":"dev","cpus":2}'},
+            {
+              'name': 'wsl_run_command',
+              'args': '{"distro":"dev","command":"apt-get install -y nginx"}'
+            },
+          ]));
+        }
+        // The note is UI-only: the second request must not carry it.
+        final body =
+            json.decode(options.data as String) as Map<String, dynamic>;
+        final roles = (body['messages'] as List).map((m) => m['role']);
+        expect(roles, isNot(contains('snippet')));
+        return jsonBody({
+          'choices': [
+            {
+              'message': {'role': 'assistant', 'content': 'dev is ready'}
+            }
+          ]
+        });
+      });
+      ai.dioForTesting.httpClientAdapter = adapter;
+
+      final reply = await ai.sendMessage('set up a dev VM with nginx');
+      expect(reply, 'dev is ready');
+
+      final snippets = QuickAction().getFromPrefs();
+      expect(snippets, hasLength(1));
+      final snippet = snippets.single;
+      expect(snippet.name, startsWith('ai-run-dev-'));
+      expect(snippet.description, 'set up a dev VM with nginx');
+      expect(snippet.content, contains('vm_create_linux name="dev" cpus=2'));
+      expect(snippet.content, contains('#    ok from vm_create_linux'));
+      expect(snippet.content.split('\n'), contains('apt-get install -y nginx'));
+      // The read-only call is not part of the record.
+      expect(snippet.content, isNot(contains('wsl_list_distros')));
+
+      final roles = ai.conversationHistory.map((m) => m.role).toList();
+      expect(roles, [
+        'user',
+        'tool',
+        'tool',
+        'tool',
+        'snippet',
+        'assistant',
+      ]);
+      expect(ai.conversationHistory[4].content, snippet.name);
+
+      // And it survives a restart: the note is in the stored transcript.
+      final other = AiService();
+      await other.init();
+      expect(other.conversationHistory.any((m) => m.role == 'snippet'), true);
+    });
+
+    test('a run that failed after changing the machine still leaves the '
+        'snippet, even though its transcript notes are rolled back', () async {
+      final ai = await proService([
+        fakeTool('vm_create_linux',
+            recording: const ToolRecording(target: 'name'))
+      ]);
+      var call = 0;
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          return jsonBody(toolCallTurn([
+            {'name': 'vm_create_linux', 'args': '{"name":"dev"}'},
+          ]));
+        }
+        return ResponseBody.fromString('upstream down', 502);
+      });
+
+      await expectLater(
+        ai.sendMessage('create dev'),
+        throwsA(predicate((e) => e.toString().contains('byok-request-failed'))),
+      );
+
+      // The VM was created, and the record says so.
+      final snippets = QuickAction().getFromPrefs();
+      expect(snippets, hasLength(1));
+      expect(snippets.single.content, contains('vm_create_linux name="dev"'));
+      // The rollback that clears a failed run's notes stops at the snippet
+      // link: with no reply describing what happened, that link is what the
+      // user has. Only user/assistant turns reach the provider, so a retry
+      // is unaffected.
+      expect(ai.conversationHistory.map((m) => m.role).toList(),
+          ['user', 'tool', 'snippet']);
+    });
+
+    test('a run that only looked around files nothing', () async {
+      final ai = await proService([fakeTool('wsl_list_distros')]);
+      var call = 0;
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          return jsonBody(toolCallTurn([
+            {'name': 'wsl_list_distros', 'args': '{}'},
+          ]));
+        }
+        return jsonBody({
+          'choices': [
+            {
+              'message': {'role': 'assistant', 'content': 'two distros'}
+            }
+          ]
+        });
+      });
+
+      await ai.sendMessage('what do I have?');
+
+      expect(QuickAction().getFromPrefs(), isEmpty);
+      expect(ai.conversationHistory.any((m) => m.role == 'snippet'), false);
+    });
+
+    test('a caller that opts out — the sandbox chat — files nothing', () async {
+      final ai = await proService([]);
+      final create = fakeTool('vm_create_linux',
+          recording: const ToolRecording(target: 'name'));
+      var call = 0;
+      ai.dioForTesting.httpClientAdapter = _RecordingAdapter((options) {
+        call++;
+        if (call == 1) {
+          return jsonBody(toolCallTurn([
+            {'name': 'vm_create_linux', 'args': '{"name":"dev"}'},
+          ]));
+        }
+        return jsonBody({
+          'choices': [
+            {
+              'message': {'role': 'assistant', 'content': 'made'}
+            }
+          ]
+        });
+      });
+
+      final transcript = [
+        AiMessage(role: 'user', content: 'make dev', timestamp: DateTime.now())
+      ];
+      final reply = await ai.runAgentOn(transcript, [create], recordRun: false);
+
+      expect(reply, 'made');
+      expect(QuickAction().getFromPrefs(), isEmpty);
+      expect(transcript.map((m) => m.role).toList(), ['user', 'tool']);
     });
   });
 }

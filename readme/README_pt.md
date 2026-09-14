@@ -109,6 +109,7 @@
 **Pro** *(compra única: Microsoft Store no Windows, chave de licença em [wslmanager.com/buy](https://wslmanager.com/buy/) no macOS e para instalações fora da Store — nunca assinatura)*
 - [x] **AI Workspace** — execute Hermes Agent, OpenClaw, Open WebUI e OpenCode em uma distro WSL dedicada e isolada
 - [x] **Assistente de IA com ferramentas** — o chat integrado consegue de fato *operar* seu WSL: ele lista e inspeciona distros, executa comandos, edita configurações, cria trechos, monta discos e empacota distros com as mesmas ferramentas expostas pelo servidor MCP
+- [x] **Toda execução da IA que altera uma instância é salva como trecho** — com os comandos executados e o que cada ferramenta relatou, com link no chat, para você revisar, repetir em uma instância nova ou compartilhar
 - [x] **IA em sandbox** — suba uma distro Ubuntu descartável e dê a um chat de IA acesso *apenas* ao interior desse sandbox
 - [x] **Fila de tarefas** — entregue uma lista ao assistente e deixe-o trabalhar nela, marcando cada item conforme avança
 - [x] **Servidor MCP** — exponha o WSL ao Claude Desktop, ao Claude Code, ao opencode e a outros clientes MCP
