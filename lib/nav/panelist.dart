@@ -147,6 +147,22 @@ List<NavigationPaneItem> get originalItems {
       navigateGuarded('cloud', path: '/cloud');
     },
   ),
+  // Last for the same reason Cloud is: the pane runs out of height before
+  // it runs out of entries, and this is the newest and the most specialised
+  // of them — a configuration most people write once. Both backends pass
+  // the gate; a Mac driving a remote Windows host does not, because the
+  // file cloud-init reads lives under a profile on the other machine
+  // (bostrot/ai-tasks#76).
+  if (features.cloudInit)
+  PaneItem(
+    key: const Key('/cloudinit'),
+    icon: const Icon(FluentIcons.cloud_add),
+    title: Text('cloudinit-text'.i18n()),
+    body: const SizedBox.shrink(),
+    onTap: () {
+      navigateGuarded('cloudinit', path: '/cloudinit');
+    },
+  ),
   ];
 }
 

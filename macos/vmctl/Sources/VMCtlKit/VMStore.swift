@@ -37,6 +37,10 @@ public struct VMStore {
     public func diskPath(_ name: String) -> URL { vmDir(name).appendingPathComponent("disk.img") }
     public func efiStorePath(_ name: String) -> URL { vmDir(name).appendingPathComponent("efistore") }
     public func seedIsoPath(_ name: String) -> URL { vmDir(name).appendingPathComponent("seed.iso") }
+    /// The user-data the caller handed `create --user-data`, kept as the
+    /// record of what the guest was provisioned with; absent for VMs
+    /// created without one. Not re-applied by `reseed`.
+    public func userDataPath(_ name: String) -> URL { vmDir(name).appendingPathComponent("user-data") }
     public func auxStoragePath(_ name: String) -> URL { vmDir(name).appendingPathComponent("aux.img") }
     public func hardwareModelPath(_ name: String) -> URL { vmDir(name).appendingPathComponent("hardware_model.bin") }
     public func machineIdentifierPath(_ name: String) -> URL { vmDir(name).appendingPathComponent("machine_identifier.bin") }

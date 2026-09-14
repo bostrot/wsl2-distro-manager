@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/cloud_init.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -45,6 +46,7 @@ void main() {
   late Directory dataDir;
   late FakeVmctlShell shell;
   late _FakeCatalog catalog;
+  late List<String> messages;
 
   setUpAll(() {
     Notify();
@@ -54,15 +56,19 @@ void main() {
         loading = false,
         useWidget = false,
         leadingIcon = true,
-        dynamic widget}) {};
+        dynamic widget}) {
+      messages.add(msg.toString());
+    };
   });
 
   setUp(() async {
+    messages = [];
     dataDir = Directory.systemTemp.createTempSync('create-vm-screen-test');
     SharedPreferences.setMockInitialValues({'DataPath': dataDir.path});
     prefs = await SharedPreferences.getInstance();
     shell = FakeVmctlShell();
     shell.responses['list'] = '{"vms":[]}';
+    CloudInitStore.instance.reload();
     catalog = _FakeCatalog(dataDir);
     appleVmApiBuilder = () => AppleVmApi(
           shell: shell,
@@ -79,6 +85,7 @@ void main() {
       return backend;
     };
     vmImageCatalogBuilder = VmImageCatalog.new;
+    CloudInitStore.instance.reload();
     if (dataDir.existsSync()) dataDir.deleteSync(recursive: true);
   });
 
@@ -418,5 +425,104 @@ void main() {
                 of: button, matching: find.byWidgetPredicate((w) => w is Button))
             .first)
         .onPressed, isNotNull);
+  });
+
+  group('cloud-init', () {
+    testWidgets('the picker is offered for a Linux guest and not for macOS',
+        (tester) async {
+      await pump(tester);
+      expect(find.byKey(const ValueKey('test-create-cloudinit')), findsOneWidget);
+      expect(find.text('cloudinitvmhint-text'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('test-vm-guest-os')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('macOS').last);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('test-create-cloudinit')), findsNothing);
+    });
+
+    testWidgets('the picker goes with the installer-ISO choice, which reads no seed',
+        (tester) async {
+      await pump(tester);
+      await chooseInstallerIso(tester);
+      expect(find.byKey(const ValueKey('test-create-cloudinit')), findsNothing);
+    });
+
+    testWidgets('a configuration deleted since it was picked stops the create',
+        (tester) async {
+      await CloudInitStore.instance.save(
+          const CloudInitConfig(name: 'dev', content: '#cloud-config\n'));
+      shell.responses['create'] = '{"created":"box"}';
+      await pump(tester);
+      await tester.enterText(
+          find.byKey(const ValueKey('test-vm-image')), '/tmp/local.raw');
+      await tester.enterText(find.byKey(const ValueKey('test-vm-name')), 'box');
+      await tester.pumpAndSettle();
+      tester
+          .widget<ComboBox<String>>(
+              find.byKey(const ValueKey('test-create-cloudinit')))
+          .onChanged!('dev');
+      await tester.pump();
+      await CloudInitStore.instance.remove('dev');
+      await tester.pump();
+      await tester.ensureVisible(
+          find.byKey(const ValueKey('test-vm-create-button')));
+      await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+      await tester.pumpAndSettle();
+
+      // Refused and named, the way the Windows page does it — not a VM
+      // silently seeded with nothing.
+      expect(shell.calls.any((c) => c.contains('create')), isFalse);
+      expect(messages, contains('cloudinitmissing-text'));
+    });
+
+    testWidgets('a picked configuration reaches vmctl as --user-data',
+        (tester) async {
+      await CloudInitStore.instance.save(const CloudInitConfig(
+          name: 'dev', content: '#cloud-config\npackages:\n  - git\n'));
+      shell.responses['create'] = '{"created":"box"}';
+      String? handedOver;
+      shell.onCommand = (command) {
+        if (command != 'create') return;
+        final call = shell.calls.last;
+        final index = call.indexOf('--user-data');
+        if (index >= 0) handedOver = File(call[index + 1]).readAsStringSync();
+      };
+      await pump(tester);
+      // The image first: typing there opens its suggestion list, which is
+      // tall enough to sit over the create button. Moving on to the name
+      // closes it.
+      await tester.enterText(
+          find.byKey(const ValueKey('test-vm-image')), '/tmp/local.raw');
+      await tester.enterText(find.byKey(const ValueKey('test-vm-name')), 'box');
+      await tester.pumpAndSettle();
+      tester
+          .widget<ComboBox<String>>(
+              find.byKey(const ValueKey('test-create-cloudinit')))
+          .onChanged!('dev');
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.ensureVisible(
+          find.byKey(const ValueKey('test-vm-create-button')));
+      await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+      await tester.pumpAndSettle();
+
+      expect(handedOver, '#cloud-config\npackages:\n  - git\n');
+    });
+
+    testWidgets('None passes nothing', (tester) async {
+      shell.responses['create'] = '{"created":"box"}';
+      await pump(tester);
+      await tester.enterText(
+          find.byKey(const ValueKey('test-vm-image')), '/tmp/local.raw');
+      await tester.enterText(find.byKey(const ValueKey('test-vm-name')), 'box');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+          find.byKey(const ValueKey('test-vm-create-button')));
+      await tester.tap(find.byKey(const ValueKey('test-vm-create-button')));
+      await tester.pumpAndSettle();
+      final create = shell.calls.lastWhere((c) => c.contains('create'));
+      expect(create, isNot(contains('--user-data')));
+    });
   });
 }

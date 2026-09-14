@@ -895,6 +895,51 @@ void main() {
       expect(call, isNot(contains('--image')));
     });
 
+    test('a cloud-init document travels as a file that is gone afterwards',
+        () async {
+      shell.responses['create'] = '{"created":"dev"}';
+      String? handedOver;
+      String? handoffPath;
+      shell.onCommand = (command) {
+        if (command != 'create') return;
+        final call = shell.calls.last;
+        handoffPath = call[call.indexOf('--user-data') + 1];
+        handedOver = File(handoffPath!).readAsStringSync();
+      };
+      await api.createLinuxVm('dev',
+          imagePath: '/tmp/debian.qcow2',
+          userData: '#cloud-config\npackages:\n  - git\n');
+      // The document is on disk, verbatim, while vmctl runs (argv is no
+      // place for a multi-line YAML document) …
+      expect(handedOver, '#cloud-config\npackages:\n  - git\n');
+      // … and cleaned up once vmctl has copied it into the VM's directory.
+      expect(File(handoffPath!).existsSync(), isFalse);
+      expect(Directory(handoffPath!).parent.existsSync(), isFalse);
+    });
+
+    test('the handoff file is removed even when vmctl fails', () async {
+      shell.exitCodes['create'] = 1;
+      shell.errors['create'] = 'no';
+      String? handoffPath;
+      shell.onCommand = (command) {
+        if (command != 'create') return;
+        final call = shell.calls.last;
+        handoffPath = call[call.indexOf('--user-data') + 1];
+      };
+      await expectLater(
+          api.createLinuxVm('dev', userData: '#!/bin/sh\necho hi\n'),
+          throwsA(isA<AppleVmException>()));
+      expect(File(handoffPath!).existsSync(), isFalse);
+    });
+
+    test('no document, or a blank one, passes no --user-data', () async {
+      shell.responses['create'] = '{"created":"dev"}';
+      await api.createLinuxVm('dev');
+      expect(lastCall(), isNot(contains('--user-data')));
+      await api.createLinuxVm('dev', userData: '  \n');
+      expect(lastCall(), isNot(contains('--user-data')));
+    });
+
     test('macos create forwards the restore image', () async {
       shell.responses['create'] = '{"created":"sequoia"}';
       await api.createMacosVm('sequoia', restoreImagePath: '/tmp/r.ipsw');

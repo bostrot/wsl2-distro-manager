@@ -198,6 +198,7 @@ class AppleVmApi extends VmBackend {
         // filesystem over SSH, which is the same artifact by a longer road.
         rootfsExport: true,
         rootfsImportNeedsBase: true,
+        cloudInit: true,
       );
 
   /// The VM store: one directory per VM under the app's data path.
@@ -821,6 +822,13 @@ class AppleVmApi extends VmBackend {
   /// boot; [imagePath] seeds the disk from an existing raw image instead
   /// (e.g. a cloud image or a template). With neither the VM gets an empty
   /// disk. Sizes are in GB.
+  ///
+  /// [userData] is a cloud-init document of the user's own (a saved
+  /// configuration from the Cloud-init screen); vmctl folds it into the seed
+  /// next to the account and key it provisions, so it runs on the first
+  /// boot. It travels through a file — argv is no place for a multi-line
+  /// YAML document — that vmctl copies into the VM's directory and that is
+  /// gone again before this returns.
   Future<String> createLinuxVm(
     String name, {
     String? isoPath,
@@ -829,18 +837,36 @@ class AppleVmApi extends VmBackend {
     int cpus = 2,
     int memoryGb = 4,
     String user = 'user',
-  }) {
-    return _runChecked([
-      'create',
-      '--name', name,
-      '--os', 'linux',
-      '--disk-size', '$diskSizeGb',
-      '--cpus', '$cpus',
-      '--memory', '$memoryGb',
-      '--user', user,
-      if (isoPath != null && isoPath.isNotEmpty) ...['--iso', isoPath],
-      if (imagePath != null && imagePath.isNotEmpty) ...['--image', imagePath],
-    ]);
+    String? userData,
+  }) async {
+    Directory? handoff;
+    String? userDataPath;
+    if (userData != null && userData.trim().isNotEmpty) {
+      // Synchronous on purpose: a few hundred bytes, and the create page's
+      // widget tests run under a fake clock that never turns the real event
+      // loop an async write would need.
+      handoff = Directory.systemTemp.createTempSync('wslmanager-cloud-init-');
+      userDataPath = '${handoff.path}/user-data';
+      File(userDataPath).writeAsStringSync(userData, flush: true);
+    }
+    try {
+      return await _runChecked([
+        'create',
+        '--name', name,
+        '--os', 'linux',
+        '--disk-size', '$diskSizeGb',
+        '--cpus', '$cpus',
+        '--memory', '$memoryGb',
+        '--user', user,
+        if (isoPath != null && isoPath.isNotEmpty) ...['--iso', isoPath],
+        if (imagePath != null && imagePath.isNotEmpty) ...['--image', imagePath],
+        if (userDataPath != null) ...['--user-data', userDataPath],
+      ]);
+    } finally {
+      if (handoff != null && handoff.existsSync()) {
+        handoff.deleteSync(recursive: true);
+      }
+    }
   }
 
   /// Create a macOS guest VM (Apple Silicon only). [restoreImagePath] is a

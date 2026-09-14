@@ -534,12 +534,33 @@ class Editor extends StatelessWidget {
     required this.scrollController,
     required this.lineNumbers,
     required this.lineNum,
+    this.label,
+    this.hint,
+    this.languages,
+    this.heightFactor = 0.62,
+    this.editorKey,
   }) : super(key: key);
 
   final CodeLineEditingController contentController;
   final ScrollController scrollController;
   final String lineNumbers;
   final int lineNum;
+
+  /// The heading over the frame; the snippet script's by default.
+  final String? label;
+
+  /// What an empty editor shows; the snippet script's by default.
+  final String? hint;
+
+  /// The highlighter(s) to use; bash by default. The cloud-init editor
+  /// hands in YAML (bostrot/ai-tasks#76).
+  final Map<String, CodeHighlightThemeMode>? languages;
+
+  /// The frame's share of the window height.
+  final double heightFactor;
+
+  /// A key on the inner [CodeEditor], for tests that read its controller.
+  final Key? editorKey;
 
   @override
   Widget build(BuildContext context) {
@@ -549,7 +570,7 @@ class Editor extends StatelessWidget {
     // what the script *is*: a root bash script run inside an instance
     // (ST-60).
     return InfoLabel(
-      label: 'snippetscript-text'.i18n(),
+      label: label ?? 'snippetscript-text'.i18n(),
       labelStyle: const TextStyle(fontWeight: FontWeight.w500),
       child: Container(
         decoration: BoxDecoration(
@@ -558,10 +579,11 @@ class Editor extends StatelessWidget {
           borderRadius: BorderRadius.circular(4.0),
         ),
         padding: const EdgeInsets.all(4.0),
-        height: MediaQuery.of(context).size.height * 0.62,
+        height: MediaQuery.of(context).size.height * heightFactor,
         width: MediaQuery.of(context).size.width * 0.9,
         child: CodeEditor(
-            hint: '# ${'yourcodehere-text'.i18n()}',
+            key: editorKey,
+            hint: hint ?? '# ${'yourcodehere-text'.i18n()}',
             indicatorBuilder:
                 (context, editingController, chunkController, notifier) {
               return Row(
@@ -581,7 +603,8 @@ class Editor extends StatelessWidget {
               // The editor was pinned to the light syntax palette in both
               // themes (audit ST-59).
               codeTheme: CodeHighlightTheme(
-                  languages: {'bash': CodeHighlightThemeMode(mode: langBash)},
+                  languages: languages ??
+                      {'bash': CodeHighlightThemeMode(mode: langBash)},
                   theme: FluentTheme.of(context).brightness.isDark
                       ? atomOneDarkTheme
                       : atomOneLightTheme),

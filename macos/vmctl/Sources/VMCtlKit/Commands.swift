@@ -217,7 +217,10 @@ public enum VmctlCLI {
       list                                  List VMs as JSON
       create --name N --os linux [--iso PATH] [--image PATH]
              [--disk-size GB] [--cpus N] [--memory GB] [--user NAME]
-             [--password PW]
+             [--password PW] [--user-data PATH]
+                                            --user-data: a cloud-init
+                                            document applied on first boot
+                                            next to the seeded account
       create --name N --os macos [--restore-image PATH.ipsw]
              [--disk-size GB] [--cpus N] [--memory GB]
       start --name N [--gui]                Start a VM (detached daemon)
@@ -287,6 +290,15 @@ public enum VmctlCLI {
         let password = os == .linux && guestTakesPassword(user: user)
             ? (bag.options["password"] ?? generateGuestPassword())
             : nil
+        // Read before anything is created, so a bad path fails with nothing
+        // to clean up. Only a Linux guest boots a cloud-init seed at all.
+        var customUserData: String? = nil
+        if let userDataPath = bag.options["user-data"], !userDataPath.isEmpty {
+            guard os == .linux else {
+                throw VmctlError("--user-data only applies to a Linux guest.")
+            }
+            customUserData = try readCustomUserData(at: userDataPath)
+        }
         var config = VMConfig(
             name: name,
             os: os,
@@ -303,7 +315,7 @@ public enum VmctlCLI {
             switch os {
             case .linux:
                 try createLinux(store, config: config, imagePath: bag.options["image"],
-                                diskSizeBytes: diskSizeBytes)
+                                diskSizeBytes: diskSizeBytes, customUserData: customUserData)
             case .macos:
                 try createMacos(store, config: &config,
                                 restoreImagePath: bag.options["restore-image"],
@@ -318,11 +330,37 @@ public enum VmctlCLI {
         printJson(["created": name])
     }
 
+    /// A caller's cloud-init document: readable, UTF-8 and not blank. What
+    /// cloud-init makes of it is the app's concern — it validates the
+    /// header and the YAML before a document is ever saved — and a second,
+    /// hand-copied version of that rule here would only ever disagree with
+    /// the first.
+    static func readCustomUserData(at path: String) throws -> String {
+        guard let data = FileManager.default.contents(atPath: path) else {
+            throw VmctlError("cloud-init user-data not found: \(path)")
+        }
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw VmctlError("cloud-init user-data is not UTF-8 text: \(path)")
+        }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw VmctlError("cloud-init user-data is empty: \(path)")
+        }
+        return text
+    }
+
     static func createLinux(
-        _ store: VMStore, config: VMConfig, imagePath: String?, diskSizeBytes: UInt64
+        _ store: VMStore, config: VMConfig, imagePath: String?, diskSizeBytes: UInt64,
+        customUserData: String? = nil
     ) throws {
         let fm = FileManager.default
         try fm.createDirectory(at: store.vmDir(config.name), withIntermediateDirectories: true)
+        // Kept in the VM's directory as the record of what the guest was
+        // provisioned with; the seed ISO is rebuilt from scratch on every
+        // reseed, without it (see `writeSeed`).
+        if let customUserData {
+            try customUserData.write(
+                to: store.userDataPath(config.name), atomically: true, encoding: .utf8)
+        }
 
         if let imagePath, !imagePath.isEmpty {
             guard fm.fileExists(atPath: imagePath) else {
@@ -349,7 +387,8 @@ public enum VmctlCLI {
             user: config.user,
             publicKeys: store.authorizedKeys(),
             hostname: config.name,
-            password: config.password)
+            password: config.password,
+            customUserData: customUserData)
     }
 
     static func createMacos(
@@ -513,6 +552,12 @@ public enum VmctlCLI {
     /// (Re)writes a VM's cloud-init seed from its current config. [fresh]
     /// stamps a new instance id, which is what makes cloud-init apply the
     /// seed again on the next boot instead of skipping it as already done.
+    ///
+    /// vmctl's own document only. A caller's `--user-data` is applied once,
+    /// at creation: a reseed is a repair (the app runs one on its own when a
+    /// VM stops answering), and replaying a user's `runcmd`, `write_files`
+    /// and package list under a new instance id would re-provision a guest
+    /// somebody has been working in.
     static func writeSeed(_ store: VMStore, _ config: VMConfig, fresh: Bool) throws {
         try CloudInit.writeSeedIso(
             to: store.seedIsoPath(config.name),

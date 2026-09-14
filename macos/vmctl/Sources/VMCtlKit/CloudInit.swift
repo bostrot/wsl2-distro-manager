@@ -171,15 +171,101 @@ public enum CloudInit {
         """
     }
 
+    /// How vmctl's own cloud-config folds into a document the caller wrote.
+    ///
+    /// cloud-init merges the cloud-config parts of a multipart user-data in
+    /// order, and the part being merged *in* names the rules. `no_replace`
+    /// keeps every scalar the caller set (their `hostname`, their
+    /// `package_update`, their `ssh_pwauth`); `recurse_array` with
+    /// `list(append)` adds vmctl's `users`, `ssh_authorized_keys`, `chpasswd`
+    /// entries and `bootcmd` to theirs instead of replacing them. So the
+    /// account and key `exec`/`shell` depend on always land, and nothing the
+    /// caller wrote is overruled.
+    public static let seedMergeType = "list(append)+dict(no_replace,recurse_array)+str()"
+
+    /// The two scalars no caller's document may override, applied last with
+    /// `dict(replace)` so they win whatever came before: SSH stays key-only
+    /// (the console password vmctl writes must not become a network
+    /// credential — bostrot/ai-tasks#60), and root keeps the store's key,
+    /// which `exec` and the rootfs export depend on.
+    public static let pinnedUserData = """
+    #cloud-config
+    ssh_pwauth: false
+    disable_root: false
+
+    """
+    public static let pinnedMergeType = "list()+dict(replace)+str()"
+
+    /// The caller's document first, vmctl's second and the pins last, as one
+    /// `multipart/mixed` message — the form cloud-init defines for "more
+    /// than one user-data".
+    ///
+    /// The caller's part is typed `text/plain` on purpose: cloud-init decides
+    /// what such a part is from its first line (`#cloud-config`, `#!`,
+    /// `#include`, …), which is exactly the detection it applies to a bare
+    /// user-data file, so a script and a cloud-config both keep working
+    /// without vmctl having to know the difference. vmctl's part is typed
+    /// outright and carries the merge rules in its header, which is where
+    /// cloud-init reads them from without the YAML having to change.
+    public static func multipartUserData(
+        custom: String, seed: String, boundary: String = "==vmctl-\(UUID().uuidString)=="
+    ) -> String {
+        func terminated(_ text: String) -> String {
+            text.hasSuffix("\n") ? text : text + "\n"
+        }
+        return """
+        Content-Type: multipart/mixed; boundary="\(boundary)"
+        MIME-Version: 1.0
+
+        --\(boundary)
+        Content-Type: text/plain; charset="utf-8"
+        Content-Transfer-Encoding: 8bit
+        Content-Disposition: attachment; filename="user-data.custom"
+
+        \(terminated(custom))--\(boundary)
+        Content-Type: text/cloud-config; charset="utf-8"
+        Content-Transfer-Encoding: 8bit
+        Content-Disposition: attachment; filename="user-data.vmctl"
+        Merge-Type: \(seedMergeType)
+
+        \(terminated(seed))--\(boundary)
+        Content-Type: text/cloud-config; charset="utf-8"
+        Content-Transfer-Encoding: 8bit
+        Content-Disposition: attachment; filename="user-data.vmctl-pins"
+        Merge-Type: \(pinnedMergeType)
+
+        \(pinnedUserData)--\(boundary)--
+
+        """
+    }
+
+    /// The seed's `user-data` file: vmctl's own document, or — when the
+    /// caller supplied one — both, as a multipart message.
+    public static func seedUserData(
+        user: String, publicKeys: [String], hostname: String, password: String? = nil,
+        customUserData: String? = nil
+    ) -> String {
+        let own = userData(
+            user: user, publicKeys: publicKeys, hostname: hostname, password: password)
+        guard let custom = customUserData,
+              !custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return own }
+        return multipartUserData(custom: custom, seed: own)
+    }
+
     /// Write the seed directory and pack it as an ISO9660 image named
     /// `cidata` via hdiutil.
+    ///
+    /// [customUserData] is a document the caller wrote (`create --user-data`);
+    /// it goes into the seed alongside vmctl's own, see [multipartUserData].
     public static func writeSeedIso(
         to isoURL: URL,
         user: String,
         publicKeys: [String],
         hostname: String,
         password: String? = nil,
-        instanceId: String? = nil
+        instanceId: String? = nil,
+        customUserData: String? = nil
     ) throws {
         let fm = FileManager.default
         let seedDir = isoURL.deletingLastPathComponent().appendingPathComponent("seed.tmp")
@@ -187,8 +273,9 @@ public enum CloudInit {
         try fm.createDirectory(at: seedDir, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: seedDir) }
 
-        try userData(
-            user: user, publicKeys: publicKeys, hostname: hostname, password: password)
+        try seedUserData(
+            user: user, publicKeys: publicKeys, hostname: hostname, password: password,
+            customUserData: customUserData)
             .write(to: seedDir.appendingPathComponent("user-data"), atomically: true, encoding: .utf8)
         try metaData(hostname: hostname, instanceId: instanceId)
             .write(to: seedDir.appendingPathComponent("meta-data"), atomically: true, encoding: .utf8)

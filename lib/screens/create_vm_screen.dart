@@ -5,10 +5,12 @@ import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
 import 'package:wsl2distromanager/api/recipes/recipe_catalog.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/cloud_init.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart' show formatTransferSize;
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
+import 'package:wsl2distromanager/components/cloud_init_picker.dart';
 import 'package:wsl2distromanager/components/form_card.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -56,6 +58,10 @@ class _CreateVmPageState extends State<CreateVmPage> {
   // Cloud image first: it is the recommended path (no manual install).
   VmBootKind _bootKind = VmBootKind.cloudImage;
   String _recipeId = '';
+
+  /// The saved cloud-init configuration to seed a Linux guest with, by
+  /// name; empty for none (bostrot/ai-tasks#76).
+  String _cloudInitName = '';
   bool _creating = false;
   String? _nameError;
   String? _userError;
@@ -149,6 +155,18 @@ class _CreateVmPageState extends State<CreateVmPage> {
       return;
     }
 
+    // The picker shows "None" for a configuration deleted since it was
+    // chosen, but the choice is still held here; the Windows page refuses
+    // that create, and so does this one, rather than seed nothing in
+    // silence.
+    final cloudInit =
+        _cloudInitName.isEmpty ? null : CloudInitStore.instance.byName(_cloudInitName);
+    if (_cloudInitName.isNotEmpty && cloudInit == null) {
+      Notify.message('cloudinitmissing-text'.i18n([_cloudInitName]),
+          severity: InfoBarSeverity.error);
+      return;
+    }
+
     setState(() {
       _nameError = null;
       _userError = null;
@@ -233,6 +251,8 @@ class _CreateVmPageState extends State<CreateVmPage> {
           cpus: _intOf(_cpus, 2),
           memoryGb: _intOf(_memory, 4),
           user: user.isEmpty ? 'user' : user,
+          // Only a cloud image reads the seed; an installer ISO does not.
+          userData: isIso ? null : cloudInit?.content,
         );
       }
       if (_recipeId.isNotEmpty) {
@@ -595,6 +615,18 @@ class _CreateVmPageState extends State<CreateVmPage> {
                           : (value) => setState(() => _recipeId = value ?? ''),
                     ),
                   ),
+                  // Optional: a saved cloud-init configuration, folded into
+                  // the seed next to the account vmctl sets up, so it runs
+                  // on the first boot. Only a Linux guest booting a cloud
+                  // image reads the seed; an installer ISO does not.
+                  if (isLinux && _bootKind == VmBootKind.cloudImage)
+                    CloudInitPicker(
+                      value: _cloudInitName,
+                      enabled: !_creating,
+                      hint: 'cloudinitvmhint-text'.i18n(),
+                      onChanged: (value) =>
+                          setState(() => _cloudInitName = value),
+                    ),
                 ],
               ),
               const SizedBox(height: 20),

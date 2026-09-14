@@ -25,6 +25,7 @@ import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/api/wsl_distribution_conf.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/api/cloud_init.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/logging.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -172,7 +173,15 @@ class WSLApi extends VmBackend {
         hostIntegration: true,
         templatesDeprecated: true,
         rootfsExport: true,
+        // The user-data file goes under the profile of the user running
+        // wsl.exe; over SSH that profile is on the other machine.
+        cloudInit: (localCloudInitOverride ?? Platform.isWindows) && !_useRemoteWsl,
       );
+
+  /// Test seam: stands in for "this host runs wsl.exe itself" so the
+  /// cloud-init create path can be exercised on a Mac. Reset to null in
+  /// tearDown.
+  static bool? localCloudInitOverride;
 
   /// Where `--version` / `--status` answers come from.
   ///
@@ -1246,6 +1255,9 @@ class WSLApi extends VmBackend {
     // Settings keyed by distro name would otherwise be inherited by the next
     // instance created under the same name.
     await clearDistroPrefs(distribution);
+    // So would a cloud-init user-data file the create flow left behind (a
+    // crash mid-create, a first boot that never confirmed it finished).
+    if (!_useRemoteWsl) await CloudInitFiles.remove(distribution);
 
     // Check if folder is empty and delete
     if (!_useRemoteWsl) {

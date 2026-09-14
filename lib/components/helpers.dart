@@ -463,16 +463,19 @@ String getInstanceSize(String name) {
   }
 }
 
-/// Get the wslconfig path
-String getWslConfigPath() {
-  if (Platform.isWindows) {
-    final userHome =
-        Platform.environment['USERPROFILE'] ?? Directory.current.path;
-    return '$userHome\\.wslconfig';
-  }
-  final userHome = Platform.environment['HOME'] ?? Directory.current.path;
-  return '$userHome${Platform.pathSeparator}.wslconfig';
+/// The user's profile directory: `%USERPROFILE%` on Windows, `$HOME`
+/// elsewhere, the working directory when neither is set. Where the
+/// per-user files Windows tools read live — `.wslconfig`, `.cloud-init\`.
+String userProfileDir() {
+  final home = Platform.isWindows
+      ? Platform.environment['USERPROFILE']
+      : Platform.environment['HOME'];
+  return home ?? Directory.current.path;
 }
+
+/// Get the wslconfig path
+String getWslConfigPath() =>
+    '${userProfileDir()}${Platform.pathSeparator}.wslconfig';
 
 /// Return the general data path. Templates and downloads are saved here by default.
 /// It will be created if it does not exist.

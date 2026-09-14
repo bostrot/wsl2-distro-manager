@@ -73,6 +73,13 @@ class VmFeatures {
   /// have no such thing: `wsl.exe` drops straight into a shell.
   final bool guestCredentials;
 
+  /// A saved cloud-init configuration can be handed to a new instance and
+  /// runs on its first boot. The Apple backend seeds every Linux VM through
+  /// cloud-init already; on WSL it is cloud-init's own WSL datasource,
+  /// reading `%USERPROFILE%\.cloud-init\<distro>.user-data` — a file this
+  /// app can only write on the machine `wsl.exe` runs on.
+  final bool cloudInit;
+
   const VmFeatures({
     this.wslConfig = false,
     this.quickActions = false,
@@ -87,6 +94,7 @@ class VmFeatures {
     this.guestCredentials = false,
     this.rootfsExport = false,
     this.rootfsImportNeedsBase = false,
+    this.cloudInit = false,
   });
 }
 

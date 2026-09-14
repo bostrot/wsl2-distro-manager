@@ -231,6 +231,76 @@ import Testing
         #expect(text.contains("local-hostname: dev"))
     }
 
+    @Test func withoutACustomDocumentTheSeedIsTheOwnCloudConfigAlone() {
+        let text = CloudInit.seedUserData(
+            user: "eric", publicKeys: ["k"], hostname: "dev", customUserData: nil)
+        #expect(text.hasPrefix("#cloud-config"))
+        #expect(!text.contains("multipart"))
+        // Whitespace is no document either.
+        let blank = CloudInit.seedUserData(
+            user: "eric", publicKeys: ["k"], hostname: "dev", customUserData: "  \n")
+        #expect(blank == text)
+    }
+
+    @Test func aCustomDocumentRidesFirstInAMultipartSeed() {
+        let custom = "#cloud-config\npackages:\n  - git\n"
+        let text = CloudInit.multipartUserData(
+            custom: custom,
+            seed: CloudInit.userData(user: "eric", publicKeys: ["k"], hostname: "dev"),
+            boundary: "==B==")
+        #expect(text.hasPrefix("Content-Type: multipart/mixed; boundary=\"==B==\"\nMIME-Version: 1.0\n\n--==B==\n"))
+        // The caller's part comes first and untyped, so cloud-init reads
+        // its kind off the first line exactly as it would a bare file.
+        let customStart = text.range(of: "Content-Type: text/plain; charset=\"utf-8\"")!
+        let ownStart = text.range(of: "Content-Type: text/cloud-config")!
+        #expect(customStart.lowerBound < ownStart.lowerBound)
+        #expect(text.contains("\n\n#cloud-config\npackages:\n  - git\n--==B==\n"))
+        // vmctl's part names how it merges: nothing the caller wrote is
+        // replaced, and the lists are appended to theirs.
+        #expect(text.contains("Merge-Type: list(append)+dict(no_replace,recurse_array)+str()\n\n#cloud-config\nhostname: dev\n"))
+        // Last, and replacing: whatever the caller wrote, SSH stays
+        // key-only and root keeps the store's key.
+        let pinsStart = text.range(of: "Merge-Type: list()+dict(replace)+str()\n\n#cloud-config\nssh_pwauth: false\ndisable_root: false\n")!
+        #expect(ownStart.lowerBound < pinsStart.lowerBound)
+        #expect(text.hasSuffix("disable_root: false\n--==B==--\n"))
+    }
+
+    @Test func aDocumentWithoutATrailingNewlineStillClosesItsPart() {
+        let text = CloudInit.multipartUserData(
+            custom: "#!/bin/sh\necho hi", seed: "#cloud-config\nhostname: x", boundary: "==B==")
+        #expect(text.contains("echo hi\n--==B==\n"))
+        #expect(text.contains("hostname: x\n--==B==\n"))
+    }
+
+    @Test func customUserDataIsReadBeforeAnythingIsCreated() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vmctl-userdata-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        func write(_ name: String, _ body: String) throws -> String {
+            let url = dir.appendingPathComponent(name)
+            try body.write(to: url, atomically: true, encoding: .utf8)
+            return url.path
+        }
+        #expect(try VmctlCLI.readCustomUserData(at: try write("ok.yaml", "#cloud-config\npackages: [git]\n"))
+            == "#cloud-config\npackages: [git]\n")
+        #expect(try VmctlCLI.readCustomUserData(at: try write("script.sh", "#!/bin/sh\necho hi\n"))
+            .hasPrefix("#!/bin/sh"))
+        // Leading blank lines are fine; cloud-init strips them too.
+        #expect(try VmctlCLI.readCustomUserData(at: try write("lead.yaml", "\n\n#cloud-config\n"))
+            .hasSuffix("#cloud-config\n"))
+        #expect(throws: VmctlError.self) {
+            try VmctlCLI.readCustomUserData(at: dir.appendingPathComponent("missing").path)
+        }
+        #expect(throws: VmctlError.self) {
+            try VmctlCLI.readCustomUserData(at: try write("empty.yaml", "   \n"))
+        }
+        // The header is the app's check, not vmctl's: a document it did not
+        // write is passed through as it is.
+        #expect(try VmctlCLI.readCustomUserData(at: try write("plain.txt", "packages: [git]\n"))
+            == "packages: [git]\n")
+    }
+
     @Test func userDataRunsTheGettyFixEveryBoot() {
         let text = CloudInit.userData(
             user: "eric", publicKeys: ["ssh-ed25519 AAAA test"], hostname: "dev")

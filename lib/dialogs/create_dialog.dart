@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/cloud_init.dart';
 import 'package:wsl2distromanager/api/docker_images.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
@@ -17,6 +19,7 @@ import 'package:wsl2distromanager/dialogs/rating_dialog.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
 import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:wsl2distromanager/components/form_card.dart';
+import 'package:wsl2distromanager/components/cloud_init_picker.dart';
 import 'package:wsl2distromanager/components/suggest_on_focus.dart';
 
 enum CreateSourceType { repo, turnkey, local, docker, dockerLocalImage, vhdx }
@@ -122,6 +125,28 @@ bool _cancelCreate(ValueNotifier<CreateFailure?>? onError) {
   return false;
 }
 
+/// The first-boot wait: [cloudInitWaitScript] as root, bounded by
+/// [cloudInitWaitTimeout] through the broker (which reaps a hung `wsl.exe`),
+/// and cut short by [cancelSignal] — the process is left to the broker's
+/// timeout then, but the create page is handed back at once.
+Future<CloudInitWaitOutcome> waitForCloudInit(WSLApi api, String name,
+    {CancelSignal? cancelSignal}) {
+  final completer = Completer<CloudInitWaitOutcome>();
+  cancelSignal?.onCancel(() {
+    if (!completer.isCompleted) completer.complete(CloudInitWaitOutcome.cancelled);
+  });
+  api
+      .runInInstance(name, cloudInitWaitScript, timeout: cloudInitWaitTimeout)
+      .then((out) {
+    if (!completer.isCompleted) {
+      completer.complete(parseCloudInitWait(out.exitCode, out.stdout));
+    }
+  }, onError: (Object _) {
+    if (!completer.isCompleted) completer.complete(CloudInitWaitOutcome.failed);
+  });
+  return completer.future;
+}
+
 /// Returns true on success, false on any error so the caller can keep the dialog open.
 Future<bool> createInstance(
   TextEditingController nameController,
@@ -134,6 +159,7 @@ Future<bool> createInstance(
   bool isDockerLocalImage = false,
   bool isVhdx = false,
   bool requireUser = false,
+  String cloudInitName = '',
   ValueNotifier<CreateFailure?>? onError,
   ValueNotifier<CreateProgress?>? onProgress,
   CancelSignal? cancelSignal,
@@ -283,35 +309,110 @@ Future<bool> createInstance(
 
     // Navigator.of(context, rootNavigator: true).pop();
 
-    // Create instance
-    final ProcessResult result;
-    try {
-      result = await api.create(
-        name, distroName, effectiveLocation, (String msg) => Notify.message(msg),
-          image: isDockerImage,
-          isVhd: isVhdx,
-          onProgress: onProgress == null ? null : report,
-          cancelSignal: cancelSignal);
-    } on CancelledException {
-      return _cancelCreate(onError);
+    // A saved cloud-init configuration reaches the distro as
+    // `%USERPROFILE%\.cloud-init\<name>.user-data`, which cloud-init's WSL
+    // datasource reads on the first start (Ubuntu 24.04 and later ship it;
+    // other distros ignore the file). Written before the import so it is in
+    // place for that first boot, and taken away again once that boot has
+    // consumed it — or on any other exit, so it cannot apply itself to some
+    // later distro of the same name. The one exception is a first boot that
+    // could not confirm it ran cloud-init: then the file stays for the boot
+    // that will, and `WSLApi.remove` takes it away with the distro
+    // (bostrot/ai-tasks#76).
+    CloudInitConfig? cloudInit;
+    if (cloudInitName.isNotEmpty) {
+      // The picker is only offered where this holds, but the argument is
+      // trusted by nobody: on a Mac driving a remote host the file would
+      // land in a `$HOME` nothing reads.
+      if (!api.features.cloudInit) {
+        return _failCreate('cloudinitunsupported-text'.i18n(), onError,
+            diagnosable: false);
+      }
+      cloudInit = CloudInitStore.instance.byName(cloudInitName);
+      if (cloudInit == null) {
+        return _failCreate('cloudinitmissing-text'.i18n([cloudInitName]),
+            onError, diagnosable: false);
+      }
+      // Never overwrite a file the user put there by hand: it is theirs, and
+      // deleting it afterwards would be worse than refusing.
+      if (CloudInitFiles.exists(name)) {
+        return _failCreate(
+            'cloudinitfileexists-text'.i18n([CloudInitFiles.userDataPath(name)]),
+            onError,
+            diagnosable: false);
+      }
+      try {
+        await CloudInitFiles.write(name, cloudInit.content);
+      } catch (e) {
+        return _failCreate('cloudinitfilewritefailed-text'.i18n(['$e']),
+            onError, diagnosable: false);
+      }
     }
+    var keepUserData = false;
+    try {
+      // Create instance
+      final ProcessResult result;
+      try {
+        result = await api.create(
+          name, distroName, effectiveLocation, (String msg) => Notify.message(msg),
+            image: isDockerImage,
+            isVhd: isVhdx,
+            onProgress: onProgress == null ? null : report,
+            cancelSignal: cancelSignal);
+      } on CancelledException {
+        return _cancelCreate(onError);
+      }
 
-    // Check if instance was created then handle postprocessing
-    if (result.exitCode != 0) {
-      // Both streams: wsl.exe does not consistently pick one, and the code it
-      // stamps on the failure is the only part that is not localized. The
-      // banner gets a translated sentence and keeps the raw text behind a
-      // disclosure instead of printing it as the error (audit CI-22).
-      final stdout = result.stdout is List<int>
-          ? WSLApi().utf8Convert(result.stdout as List<int>)
-          : result.stdout;
-      final failure = WslFailure.fromStreams(stdout, result.stderr);
-      return _failCreate(
-          '${'createinstancefailed-text'.i18n([label])} ${failure.explanation}'.trim(),
-          onError,
-          diagnosable: true,
-          details: failure.details);
-    } else {
+      // Check if instance was created then handle postprocessing
+      if (result.exitCode != 0) {
+        // Both streams: wsl.exe does not consistently pick one, and the code
+        // it stamps on the failure is the only part that is not localized.
+        // The banner gets a translated sentence and keeps the raw text behind
+        // a disclosure instead of printing it as the error (audit CI-22).
+        final stdout = result.stdout is List<int>
+            ? WSLApi().utf8Convert(result.stdout as List<int>)
+            : result.stdout;
+        final failure = WslFailure.fromStreams(stdout, result.stderr);
+        return _failCreate(
+            '${'createinstancefailed-text'.i18n([label])} ${failure.explanation}'.trim(),
+            onError,
+            diagnosable: true,
+            details: failure.details);
+      }
+      if (cloudInit != null) {
+        // The first start boots the distro and, with it, cloud-init. Wait
+        // for it to finish before adding an account or reporting success:
+        // the account would otherwise land on a system still installing
+        // packages, and "created" would be said of a distro still setting
+        // itself up.
+        report(CreateProgress(
+          phase: CreatePhase.importing,
+          label: 'cloudinitwaiting-text'.i18n([label]),
+        ));
+        Notify.message('cloudinitwaiting-text'.i18n([label]), loading: true);
+        switch (await waitForCloudInit(api, name, cancelSignal: cancelSignal)) {
+          case CloudInitWaitOutcome.done:
+            break;
+          case CloudInitWaitOutcome.skipped:
+            // No cloud-init, or no systemd to run it: the file will never
+            // be read, so it goes, and the user hears that nothing ran.
+            Notify.message('cloudinitnotrun-text'.i18n([label]),
+                severity: InfoBarSeverity.warning);
+            break;
+          case CloudInitWaitOutcome.failed:
+            // Could not confirm the boot happened, so the file stays for
+            // the one that will; the create goes on with what it has.
+            keepUserData = true;
+            Notify.message('cloudinitwaitfailed-text'.i18n([label]),
+                severity: InfoBarSeverity.warning);
+            break;
+          case CloudInitWaitOutcome.cancelled:
+            // The distro exists and its first boot is under way; only the
+            // waiting stops.
+            keepUserData = true;
+            return _cancelCreate(onError);
+        }
+      }
       var userCmds = prefs.getStringList('UserCmds_$distroName');
       var groupCmds = prefs.getStringList('GroupCmds_$distroName');
       if (userCmds != null && groupCmds != null) {
@@ -388,6 +489,10 @@ Future<bool> createInstance(
       prefs.setString('Path_$name', effectiveLocation);
       recordInstanceCreated();
       return true;
+    } finally {
+      if (cloudInit != null && !keepUserData) {
+        await CloudInitFiles.remove(name);
+      }
     }
     // Download distro check
   } else {
@@ -411,6 +516,7 @@ class CreateWidget extends StatefulWidget {
     this.createError,
     this.createUserEnabled,
     this.nameTaken,
+    this.cloudInitName,
   }) : super(key: key);
 
   final TextEditingController nameController;
@@ -430,6 +536,11 @@ class CreateWidget extends StatefulWidget {
   /// while the inline message is showing — pressing it used to add a second
   /// copy of the same complaint in a second visual style (audit CI-02).
   final ValueNotifier<bool>? nameTaken;
+
+  /// The saved cloud-init configuration to apply, by name (empty for none).
+  /// Handed in only by a page whose backend can use one, so this doubles as
+  /// the switch for the picker (bostrot/ai-tasks#76).
+  final ValueNotifier<String>? cloudInitName;
 
   @override
   State<CreateWidget> createState() => _CreateWidgetState();
@@ -959,6 +1070,16 @@ class _CreateWidgetState extends State<CreateWidget> {
                     ),
                   ],
                 ],
+              ),
+            if (widget.cloudInitName != null)
+              ValueListenableBuilder<String>(
+                valueListenable: widget.cloudInitName!,
+                builder: (context, chosen, _) => CloudInitPicker(
+                  value: chosen,
+                  enabled: !(widget.creating?.value ?? false),
+                  hint: 'cloudinitwslhint-text'.i18n(),
+                  onChanged: (value) => widget.cloudInitName!.value = value,
+                ),
               ),
           ],
         ),

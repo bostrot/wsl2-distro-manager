@@ -44,6 +44,11 @@ class _CreatePageState extends State<CreatePage> {
   /// Mirrors the form's live duplicate check (audit CI-02).
   final ValueNotifier<bool> _nameTaken = ValueNotifier<bool>(false);
 
+  /// The saved cloud-init configuration to apply on first start, by name;
+  /// empty for none. Only offered where the backend can use it — a local
+  /// wsl.exe, whose user profile this app can write into (ai-tasks#76).
+  final ValueNotifier<String> _cloudInitName = ValueNotifier<String>('');
+
   /// Live only while a create is running.
   CancelSignal? _cancelSignal;
 
@@ -74,6 +79,7 @@ class _CreatePageState extends State<CreatePage> {
     _sourceType.dispose();
     _createUser.dispose();
     _nameTaken.dispose();
+    _cloudInitName.dispose();
     if (_creating.value) {
       _detached = true;
     } else {
@@ -160,6 +166,7 @@ class _CreatePageState extends State<CreatePage> {
             _sourceType.value == CreateSourceType.dockerLocalImage,
         isVhdx: _sourceType.value == CreateSourceType.vhdx,
         requireUser: _createUser.value && supportsDefaultUser(_sourceType.value),
+        cloudInitName: _cloudInitName.value,
         onError: _createError,
         onProgress: _progress,
         cancelSignal: token,
@@ -263,6 +270,8 @@ class _CreatePageState extends State<CreatePage> {
                   createError: _createError,
                   createUserEnabled: _createUser,
                   nameTaken: _nameTaken,
+                  cloudInitName:
+                      _api.features.cloudInit ? _cloudInitName : null,
               ),
               if (isCreating)
                 ValueListenableBuilder<CreateProgress?>(

@@ -14,6 +14,8 @@ import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/screens/cloud_screen.dart';
+import 'package:wsl2distromanager/api/cloud_init.dart';
+import 'package:wsl2distromanager/screens/cloud_init_screen.dart';
 import 'package:wsl2distromanager/screens/containers_screen.dart';
 import 'package:wsl2distromanager/screens/create_screen.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
@@ -142,6 +144,21 @@ final router = GoRouter(
           redirect: (context, state) =>
               LicenseManager.unreleasedFeaturesVisible ? null : '/',
           builder: (context, state) => const CloudPage(),
+        ),
+
+        /// Cloud-init configurations (bostrot/ai-tasks#76)
+        GoRoute(
+          path: '/cloudinit',
+          name: 'cloudinit',
+          builder: (context, state) => const CloudInitPage(),
+        ),
+
+        /// Cloud-init editor — a step into one configuration, so a push.
+        GoRoute(
+          path: '/cloudinit/edit',
+          name: 'cloudinit-editor',
+          builder: (context, state) =>
+              CloudInitEditorPage(existing: state.extra as CloudInitConfig?),
         ),
 
         /// Templates
