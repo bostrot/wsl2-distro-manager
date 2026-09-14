@@ -53,6 +53,7 @@ echo "==> Signing the app with its own entitlements"
 echo "==> Verifying"
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -d --entitlements - "$APP" 2>/dev/null | grep -q com.apple.security.virtualization
+codesign -d --entitlements - "$APP" 2>/dev/null | grep -q com.apple.security.files.user-selected.read-write
 codesign -d --entitlements - "$APP/Contents/Resources/vmctl" 2>/dev/null | grep -q com.apple.security.virtualization
 
 if [[ -n "${NOTARY_PROFILE:-}" ]]; then
