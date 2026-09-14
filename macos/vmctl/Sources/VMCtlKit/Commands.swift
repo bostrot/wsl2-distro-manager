@@ -198,6 +198,12 @@ public enum VmctlCLI {
                 try show(store, rest)
             case "shell":
                 return try shell(store, rest)
+            case "mounts":
+                try mounts(store, rest)
+            case "mount":
+                try mount(store, rest)
+            case "unmount":
+                try unmount(store, rest)
             case "help", "--help", "-h":
                 print(usage)
             default:
@@ -245,6 +251,14 @@ public enum VmctlCLI {
       shell --name N [--user U]             Interactive guest shell (SSH)
       console --name N                      Attach to the serial console
       show --name N                         Open/front the VM's screen window
+      mounts --name N                       Shared host directories as JSON
+      mount --name N --host DIR --guest PATH [--read-only]
+                                            Share a host directory; a Linux
+                                            guest mounts it at PATH, a macOS
+                                            guest under /Volumes/My Shared
+                                            Files/PATH. Takes effect on the
+                                            VM's next start
+      unmount --name N --guest PATH         Stop sharing a directory
 
     """
 

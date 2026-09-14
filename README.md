@@ -87,6 +87,7 @@
 - [x] systemd, automount, default user, start command and start path per distro
 - [x] Memory, processors, swap, networking mode, DNS and the rest of `.wslconfig`
 - [x] Mount a physical disk or a VHD into WSL, with partition and filesystem control
+- [x] Share host folders into a distro or VM at a mount point you pick, read-only if you like — the AI Workspace included
 
 **Work the way you already do**
 - [x] Open Windows Terminal, VS Code or Explorer straight inside a distro

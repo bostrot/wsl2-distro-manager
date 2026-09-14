@@ -5,6 +5,7 @@ import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/templates.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/volume_mounts.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/api/wsl_errors.dart';
 import 'package:wsl2distromanager/components/ai_diagnosis.dart';
@@ -15,6 +16,7 @@ import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/dialogs.dart';
 import 'package:wsl2distromanager/dialogs/guest_access_dialog.dart';
 import 'package:wsl2distromanager/dialogs/vm_credentials_dialog.dart';
+import 'package:wsl2distromanager/dialogs/volume_mounts_dialog.dart';
 
 /// Builder for the WSL Distro List Items. Each item is an expander with [item]
 /// as the title and [trailing] as the trailing text. [running] is a list of
@@ -720,6 +722,27 @@ class Bar extends StatelessWidget {
                                       }
                                     });
                               }),
+                  ),
+                ),
+              ),
+              // Host folders mounted inside the instance, at a path the
+              // user picks — both backends can, so this is gated on the
+              // service knowing the backend rather than on a feature flag
+              // (bostrot/ai-tasks#79).
+              if (VolumeMountService.isSupported(api))
+              MergeSemantics(
+                child: Tooltip(
+                  message: 'mounts-text'.i18n(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                        key: ValueKey('test-listitem-mounts-${widget.item}'),
+                        icon: const Icon(FluentIcons.fabric_folder_link,
+                            size: 16.0),
+                        onPressed: () {
+                          plausible.event(name: "wsl_mounts");
+                          showVolumeMountsDialog(widget.item);
+                        }),
                   ),
                 ),
               ),

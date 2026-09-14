@@ -89,6 +89,7 @@
 - [x] systemd, automount, Standardbenutzer, Startbefehl und Startpfad je Distribution
 - [x] Arbeitsspeicher, Prozessoren, Swap, Netzwerkmodus, DNS und der Rest von `.wslconfig`
 - [x] Einen physischen Datenträger oder eine VHD in WSL einbinden, mit Kontrolle über Partition und Dateisystem
+- [x] Host-Ordner unter einem frei gewählten Einhängepunkt in eine Distro oder VM freigeben, auf Wunsch schreibgeschützt — auch für den AI Workspace
 
 **So arbeiten, wie Sie es ohnehin tun**
 - [x] Windows Terminal, VS Code oder den Explorer direkt in einer Distribution öffnen

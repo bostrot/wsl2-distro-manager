@@ -11,12 +11,15 @@ import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/volume_mounts.dart';
 import 'package:wsl2distromanager/api/wsl.dart' show formatElapsed;
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/busy_button.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/notify.dart';
+import 'package:wsl2distromanager/dialogs/volume_mounts_dialog.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/screens/ai_workspace_config_dialog.dart';
 
@@ -620,6 +623,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               const SizedBox(height: 16),
             ],
             ...AiWorkspaceTool.values.map((tool) => _buildToolCard(tool)),
+            if (!_preparingDistro && _mountsSupported) ...[
+              const SizedBox(height: 8),
+              _buildMountsCard(context),
+            ],
           ],
           const SizedBox(height: 8),
           _buildSandboxSection(context),
@@ -709,6 +716,49 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: children,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Whether the workspace's backend can mount host folders at all. Fixed
+  /// for the page's life, and the page rebuilds every second while a tool
+  /// installs.
+  late final bool _mountsSupported =
+      VolumeMountService.isSupported(vmBackend());
+
+  /// Host folders mounted inside the workspace (bostrot/ai-tasks#79): the
+  /// tools run in there, and a project they are meant to work on lives out
+  /// here. The editor is the same one every instance row opens; the
+  /// workspace is just the instance called [kAiWorkspaceDistro].
+  Widget _buildMountsCard(BuildContext context) {
+    return Card(
+      key: const ValueKey('test-workspace-mounts-card'),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(FluentIcons.fabric_folder_link, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ai-workspace-mounts-title'.i18n(),
+                    style: FluentTheme.of(context).typography.subtitle),
+                const SizedBox(height: 4),
+                Text('ai-workspace-mounts-subtitle'.i18n(),
+                    style: TextStyle(
+                        fontSize: 12, color: secondaryTextColor(context))),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Button(
+            key: const ValueKey('test-workspace-mounts'),
+            onPressed: () => showVolumeMountsDialog(kAiWorkspaceDistro,
+                context: context),
+            child: Text('ai-workspace-mounts-btn'.i18n()),
           ),
         ],
       ),

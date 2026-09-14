@@ -88,6 +88,7 @@
 - [x] systemd, automount, alapértelmezett felhasználó, indítóparancs és indítási útvonal disztribúciónként
 - [x] Memória, processzorok, swap, hálózati mód, DNS és a `.wslconfig` többi része
 - [x] Csatolj fizikai lemezt vagy VHD-t a WSL-be, partíció- és fájlrendszer-választással
+- [x] Gazdagép-mappák megosztása egy disztróba vagy VM-be tetszőleges csatolási ponton, akár csak olvashatóan — az AI Workspace számára is
 
 **Dolgozz úgy, ahogy megszoktad**
 - [x] Nyisd meg a Windows Terminált, a VS Code-ot vagy az Intézőt közvetlenül egy disztribúción belül

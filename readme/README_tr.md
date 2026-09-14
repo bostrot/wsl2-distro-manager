@@ -88,6 +88,7 @@
 - [x] Dağıtım başına systemd, automount, varsayılan kullanıcı, başlangıç komutu ve başlangıç yolu
 - [x] Bellek, işlemciler, takas, ağ modu, DNS ve `.wslconfig`'in geri kalanı
 - [x] Fiziksel bir diski ya da bir VHD'yi bölüm ve dosya sistemi denetimiyle WSL'e bağlayın
+- [x] Ana makine klasörlerini seçtiğiniz bağlama noktasında bir dağıtıma veya VM'ye paylaşın, isterseniz salt okunur — AI Workspace dahil
 
 **Zaten çalıştığınız gibi çalışın**
 - [x] Windows Terminal'i, VS Code'u veya Dosya Gezgini'ni doğrudan bir dağıtımın içinde açın

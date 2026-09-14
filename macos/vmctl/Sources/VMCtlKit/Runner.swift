@@ -54,6 +54,22 @@ public final class VMRunner: NSObject, VZVirtualMachineDelegate {
                 switch result {
                 case .success:
                     FileHandle.standardError.write(Data("VM \(self.config.name) started\n".utf8))
+                    // A Linux guest mounts its shares itself, from the
+                    // config, once its sshd answers. Off the main thread:
+                    // this waits for a whole boot.
+                    if self.config.os == .linux, let mounts = self.config.mounts {
+                        let store = self.store
+                        let config = self.config
+                        // Only what VMFactory attached: a share whose host
+                        // directory is gone has no device for the guest to
+                        // mount, and the status says so instead.
+                        let present = VMFactory.presentMounts(config)
+                        let skipped = mounts.filter { !present.contains($0) }
+                        DispatchQueue.global(qos: .utility).async {
+                            VmctlCLI.syncGuestMounts(
+                                store: store, config: config, mounts: present, skipped: skipped)
+                        }
+                    }
                 case .failure(let error):
                     FileHandle.standardError.write(Data("VM start failed: \(error)\n".utf8))
                     self.store.clearPid(self.config.name)

@@ -26,6 +26,10 @@ public struct VMConfig: Codable, Equatable {
     public var macAddress: String
     /// Installer ISO attached until the user detaches it (linux only).
     public var isoPath: String?
+    /// Host directories shared into the guest. Nil for a VM whose shares were
+    /// never configured, so the daemon knows it has no guest to keep in sync;
+    /// empty once the user has cleared them (see `Mounts.swift`).
+    public var mounts: [VMMount]?
     public var createdAt: Date
 
     public init(
@@ -38,6 +42,7 @@ public struct VMConfig: Codable, Equatable {
         password: String? = nil,
         macAddress: String,
         isoPath: String? = nil,
+        mounts: [VMMount]? = nil,
         createdAt: Date = Date()
     ) {
         self.name = name
@@ -49,6 +54,7 @@ public struct VMConfig: Codable, Equatable {
         self.password = password
         self.macAddress = macAddress
         self.isoPath = isoPath
+        self.mounts = mounts
         self.createdAt = createdAt
     }
 }

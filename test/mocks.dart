@@ -84,6 +84,10 @@ class MockShell implements Shell {
   /// them is how the settings dialog's debounce is measured.
   final List<String> runCommands = [];
 
+  /// In-distro commands (matched by substring) that exit non-zero, for
+  /// callers that must notice a script failing rather than assume success.
+  final Set<String> failingRunCommands = {};
+
   /// What `wsl --version` prints. Empty is the *inbox* build, which answers
   /// nothing useful — and is the default here so a test that does not opt in
   /// keeps taking the pre-WSL-2.5 code paths (`--manage` unavailable).
@@ -237,6 +241,7 @@ class MockShell implements Shell {
         arguments.contains('-c')) {
       String cmd = arguments.last;
       runCommands.add(cmd);
+      if (failingRunCommands.any(cmd.contains)) exitCode = 1;
       if (cmd == 'command -v code') {
         if (simulateCodeMissing) {
           exitCode = 1;

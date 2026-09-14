@@ -88,6 +88,7 @@
 - [x] systemd, automount, usuario por defecto, comando y ruta de inicio por distro
 - [x] Memoria, procesadores, swap, modo de red, DNS y el resto de `.wslconfig`
 - [x] Monta un disco físico o un VHD en WSL, con control de partición y sistema de archivos
+- [x] Compartir carpetas del host en una distro o VM en el punto de montaje que elijas, en solo lectura si quieres — también para el AI Workspace
 
 **Trabajar como ya trabajas**
 - [x] Abre Windows Terminal, VS Code o el Explorador directamente dentro de una distro

@@ -57,6 +57,7 @@ public enum VMFactory {
         vzConfig.networkDevices = [try networkDevice(config)]
         vzConfig.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
         vzConfig.memoryBalloonDevices = [VZVirtioTraditionalMemoryBalloonDeviceConfiguration()]
+        vzConfig.directorySharingDevices = try linuxSharingDevices(config)
 
         // Serial console. With relay handles (the daemon's ConsoleRelay) the
         // port is interactive and attachable via `vmctl console`; without
@@ -129,6 +130,7 @@ public enum VMFactory {
         vzConfig.networkDevices = [try networkDevice(config)]
         vzConfig.memoryBalloonDevices = [VZVirtioTraditionalMemoryBalloonDeviceConfiguration()]
         vzConfig.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
+        vzConfig.directorySharingDevices = try macosSharingDevices(config)
 
         let graphics = VZMacGraphicsDeviceConfiguration()
         graphics.displays = [
@@ -162,6 +164,54 @@ public enum VMFactory {
             throw VmctlError("macOS guests require an Apple Silicon host.")
             #endif
         }
+    }
+
+    // MARK: directory sharing
+
+    /// The host directories still there to share. One whose directory has
+    /// gone missing is left out with a note on stderr (the daemon log)
+    /// rather than failing the start: a VM must not become unbootable because
+    /// a project folder was renamed.
+    static func presentMounts(_ config: VMConfig) -> [VMMount] {
+        (config.mounts ?? []).filter { mount in
+            var isDirectory: ObjCBool = false
+            let present = FileManager.default.fileExists(
+                atPath: mount.hostPath, isDirectory: &isDirectory) && isDirectory.boolValue
+            if !present {
+                FileHandle.standardError.write(Data(
+                    "Skipping share \(mount.tag): host directory missing: \(mount.hostPath)\n".utf8))
+            }
+            return present
+        }
+    }
+
+    /// One virtio-fs device per share, each under its own tag, which is what
+    /// the guest's fstab names (see `GuestMounts`).
+    static func linuxSharingDevices(_ config: VMConfig) throws -> [VZDirectorySharingDeviceConfiguration] {
+        try presentMounts(config).map { mount in
+            try VZVirtioFileSystemDeviceConfiguration.validateTag(mount.tag)
+            let device = VZVirtioFileSystemDeviceConfiguration(tag: mount.tag)
+            device.share = VZSingleDirectoryShare(directory: VZSharedDirectory(
+                url: URL(fileURLWithPath: mount.hostPath), readOnly: mount.readOnly))
+            return device
+        }
+    }
+
+    /// A macOS guest mounts every share itself under `/Volumes/My Shared
+    /// Files` when the device carries the automount tag, so all of them go
+    /// on one device, keyed by share name.
+    static func macosSharingDevices(_ config: VMConfig) throws -> [VZDirectorySharingDeviceConfiguration] {
+        let mounts = presentMounts(config)
+        guard !mounts.isEmpty else { return [] }
+        var directories: [String: VZSharedDirectory] = [:]
+        for mount in mounts {
+            directories[mount.guestPath] = VZSharedDirectory(
+                url: URL(fileURLWithPath: mount.hostPath), readOnly: mount.readOnly)
+        }
+        let device = VZVirtioFileSystemDeviceConfiguration(
+            tag: VZVirtioFileSystemDeviceConfiguration.macOSGuestAutomountTag)
+        device.share = VZMultipleDirectoryShare(directories: directories)
+        return [device]
     }
 
     // MARK: shared bits
