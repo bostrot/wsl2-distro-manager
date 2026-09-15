@@ -12,6 +12,14 @@ import 'fake_cloud.dart';
 const String _md5Line = '256 MD5:aa:bb:cc wslmanager (ED25519)';
 const String _sha256Line = '256 SHA256:zzzz wslmanager (ED25519)';
 
+/// A shell on which a deploy goes all the way through: the local key is
+/// recognised and the container is found running when it is checked on.
+FakeCloudShell _deployShell() => FakeCloudShell()
+  ..responses['-E md5'] = _md5Line
+  ..responses['-E sha256'] = _sha256Line
+  ..responses['docker inspect'] = 'running 0\n'
+  ..responses['is-system-running'] = 'running\n';
+
 CloudServer _running({String ip = '203.0.113.10', String name = 'deploy-1'}) =>
     CloudServer(
       id: '1',
@@ -90,9 +98,7 @@ void main() {
   });
 
   test('deploys an instance end to end', () async {
-    final shell = FakeCloudShell()
-      ..responses['-E md5'] = _md5Line
-      ..responses['-E sha256'] = _sha256Line;
+    final shell = _deployShell();
     final provider = FakeCloudProvider()
       ..getServerAnswers.addAll([
         const CloudServer(
@@ -136,10 +142,22 @@ void main() {
     // Windows drive letters.
     expect(upload, contains(' Ubuntu-cloud.tar '));
     expect(upload, isNot(contains(tempDir.path)));
-    expect(shell.sawCommand('docker import /root/Ubuntu-cloud.tar '
-        'wslmanager/ubuntu'), isTrue);
-    expect(shell.sawCommand('docker run --detach --name Ubuntu'), isTrue);
-    expect(shell.sawCommand('sleep infinity'), isTrue);
+    expect(
+        shell.sawCommand('docker import /root/Ubuntu-cloud.tar '
+            'wslmanager/ubuntu'),
+        isTrue);
+    // The fake image carries no systemd, so the container is kept alive
+    // with `sleep` — on the server's own network, so anything the user
+    // starts inside is reachable on the server's address.
+    final run = shell.commandContaining('docker run --detach');
+    expect(run, contains('--name Ubuntu'));
+    expect(run, contains('--network host'));
+    expect(run, contains('--init'));
+    expect(run, endsWith('wslmanager/ubuntu sleep infinity'));
+    expect(run, isNot(contains('--privileged')));
+    // And it is checked on afterwards rather than assumed to be up.
+    expect(shell.commandLines.indexWhere((l) => l.contains('docker inspect')),
+        greaterThan(shell.commandLines.indexOf(run)));
     // The staged archive is removed on both ends.
     expect(shell.sawCommand('rm -f /root/Ubuntu-cloud.tar'), isTrue);
     expect(File('${tempDir.path}/tmp/Ubuntu-cloud.tar').existsSync(), isFalse);
@@ -149,10 +167,198 @@ void main() {
     expect(stages, contains(DeployStage.waitingForDocker));
   });
 
+  test('boots a root filesystem that carries systemd with systemd as PID 1',
+      () async {
+    // What the probe of the imported image prints on an Ubuntu rootfs, and
+    // what systemd answers once the boot is over: the guest's resolver
+    // failed on a port the server owns, which is a booted system all the
+    // same.
+    final shell = _deployShell()
+      ..responses['docker run --rm'] = '/usr/lib/systemd/systemd\n'
+      ..responses['is-system-running'] = 'degraded\n';
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await service(shell, provider).deploy(
+      instance: 'web-2',
+      serverName: 'deploy-1',
+      serverType: 'cx22',
+      image: 'ubuntu-24.04',
+      location: 'nbg1',
+    );
+
+    // The probe asks the image itself, after the import and before the run,
+    // for each place systemd may live.
+    final probe = shell.commandContaining('docker run --rm');
+    expect(probe, contains('wslmanager/web-2 sh -c'));
+    expect(probe, contains('-x /usr/lib/systemd/systemd '));
+    expect(probe, contains('-x /lib/systemd/systemd '));
+
+    final run = shell.commandContaining('docker run --detach');
+    expect(run, contains('--name web-2'));
+    expect(run, contains('--network host'));
+    // What a booting systemd needs, and not the whole machine.
+    expect(run, contains('--cap-add SYS_ADMIN'));
+    expect(run, contains('--cgroupns host'));
+    expect(run, contains('--volume /sys/fs/cgroup:/sys/fs/cgroup:rw'));
+    expect(run, contains('--security-opt apparmor=unconfined'));
+    expect(run, contains('--tmpfs /run '));
+    expect(run, contains('--stop-signal SIGRTMIN+3'));
+    expect(run, contains('--stop-timeout 90'));
+    expect(run, contains('--env container=docker'));
+    expect(run, isNot(contains('--privileged')));
+    // systemd itself is the command, with the units that would provision or
+    // hijack the server masked on its "kernel command line".
+    expect(run, contains('wslmanager/web-2 /usr/lib/systemd/systemd '));
+    for (final unit in cloudMaskedUnits) {
+      expect(run, contains(' systemd.mask=$unit'));
+    }
+    expect(cloudMaskedUnits, containsAll(['cloud-init.service', 'ssh.socket']));
+    // Nothing keeps systemd from being PID 1.
+    expect(run, isNot(contains('--init')));
+    expect(run, isNot(contains('sleep infinity')));
+
+    // The boot itself is what is waited for, not the process.
+    final wait = shell.commandContaining('is-system-running');
+    expect(
+        wait, contains('docker exec web-2 systemctl is-system-running --wait'));
+    expect(shell.sawCommand('docker inspect'), isFalse);
+
+    final order = shell.commandLines;
+    expect(order.indexOf(probe),
+        greaterThan(order.indexWhere((l) => l.contains('docker import'))));
+    expect(order.indexOf(run), greaterThan(order.indexOf(probe)));
+    expect(order.indexOf(wait), greaterThan(order.indexOf(run)));
+  });
+
+  test('asks systemd again while its control socket is not up yet', () async {
+    final shell = _deployShell()
+      ..responses['docker run --rm'] = '/usr/lib/systemd/systemd\n'
+      // The first `docker exec` lands before PID 1 listens; ssh relays the
+      // failure and prints nothing.
+      ..failFirst['is-system-running'] = 1;
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await service(shell, provider).deploy(
+      instance: 'web-2',
+      serverName: 'deploy-1',
+      serverType: 'cx22',
+      image: 'ubuntu-24.04',
+      location: 'nbg1',
+    );
+
+    final asks =
+        shell.commandLines.where((l) => l.contains('is-system-running')).length;
+    expect(asks, 2);
+    // Between the two, the container is confirmed to still be there.
+    expect(shell.sawCommand('docker inspect --format'), isTrue);
+    expect(shell.sawCommand('docker rm'), isFalse);
+  });
+
+  test(
+      'a boot that ends in emergency mode fails the deploy, names the '
+      'failed units and removes the container', () async {
+    final shell = _deployShell()
+      ..responses['docker run --rm'] = '/usr/lib/systemd/systemd\n'
+      ..responses['is-system-running'] = 'maintenance\n'
+      ..responses['systemctl --failed'] =
+          'boot-efi.mount loaded failed failed /boot/efi\n'
+      ..responses['docker logs'] = 'Welcome to Ubuntu 24.04 LTS!';
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await expectLater(
+      service(shell, provider).deploy(
+        instance: 'web-2',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('web-2 did not come up'), contains('"maintenance"'),
+              contains('boot-efi.mount'), contains('Welcome to Ubuntu')))),
+    );
+    // Not left restarting in a loop on a billed server.
+    expect(shell.sawCommand('docker rm --force web-2'), isTrue);
+    expect(shell.sawCommand('docker logs --tail 20 web-2'), isTrue);
+  });
+
+  test('a server that cannot even run the probe fails the deploy', () async {
+    // Exit 1 is the probe saying "no"; 125 is Docker itself failing.
+    final shell = _deployShell()
+      ..exitCodes['docker run --rm'] = 125
+      ..errors['docker run --rm'] = 'Cannot connect to the Docker daemon';
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await expectLater(
+      service(shell, provider).deploy(
+        instance: 'Ubuntu',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having((e) => e.message, 'message',
+          allOf(contains('probing'), contains('Docker daemon')))),
+    );
+    expect(shell.sawCommand('docker run --detach'), isFalse);
+  });
+
+  test('a probe that fails or answers nonsense means no systemd', () async {
+    for (final shell in [
+      // No `sh` in the image, say.
+      _deployShell()..exitCodes['docker run --rm'] = 127,
+      // A path that is not one of the ones asked for.
+      _deployShell()..responses['docker run --rm'] = '/sbin/init\n',
+    ]) {
+      final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+      await service(shell, provider).deploy(
+        instance: 'Alpine',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      );
+      final run = shell.commandContaining('docker run --detach');
+      expect(run, endsWith('wslmanager/alpine sleep infinity'));
+      expect(run, isNot(contains('systemd.mask')));
+    }
+  });
+
+  test(
+      'a sleep container that does not stay up fails the deploy with its '
+      'log and is removed', () async {
+    final shell = _deployShell()
+      ..responses['docker inspect'] = 'restarting 3\n'
+      // A container's stdout and stderr are replayed by `docker logs` on
+      // its own, and an init that refuses to start says why on stderr.
+      ..responses['docker logs'] = 'starting'
+      ..errors['docker logs'] = 'exec: "sleep": executable file not found';
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await expectLater(
+      service(shell, provider).deploy(
+        instance: 'Ubuntu',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('Ubuntu did not come up'), contains('restarting 3'),
+              contains('starting'), contains('executable file not found')))),
+    );
+    expect(shell.sawCommand('docker logs --tail 20 Ubuntu'), isTrue);
+    expect(shell.sawCommand('docker rm --force Ubuntu'), isTrue);
+    // The staged archive does not outlive a failed deploy.
+    expect(File('${tempDir.path}/tmp/Ubuntu-cloud.tar').existsSync(), isFalse);
+  });
+
   test('reuses an SSH key the provider already holds', () async {
-    final shell = FakeCloudShell()
-      ..responses['-E md5'] = _md5Line
-      ..responses['-E sha256'] = _sha256Line;
+    final shell = _deployShell();
     final provider = FakeCloudProvider(sshKeys: const [
       CloudSshKey(id: '42', name: 'other-machine', fingerprint: 'aa:bb:cc'),
     ])
@@ -171,9 +377,7 @@ void main() {
   });
 
   test('uploads the key when the provider does not have it yet', () async {
-    final shell = FakeCloudShell()
-      ..responses['-E md5'] = _md5Line
-      ..responses['-E sha256'] = _sha256Line;
+    final shell = _deployShell();
     final provider = FakeCloudProvider(sshKeys: const [
       CloudSshKey(id: '42', name: 'someone-else', fingerprint: 'ff:ee:dd'),
     ])
@@ -221,9 +425,7 @@ void main() {
   });
 
   test('keeps polling while the server is still initializing', () async {
-    final shell = FakeCloudShell()
-      ..responses['-E md5'] = _md5Line
-      ..responses['-E sha256'] = _sha256Line;
+    final shell = _deployShell();
     final provider = FakeCloudProvider()
       ..getServerAnswers.addAll([
         const CloudServer(
@@ -253,9 +455,7 @@ void main() {
   });
 
   test('waits for cloud-init rather than racing the docker install', () async {
-    final shell = FakeCloudShell()
-      ..responses['-E md5'] = _md5Line
-      ..responses['-E sha256'] = _sha256Line
+    final shell = _deployShell()
       // The first two `test -f` calls fail, as they do while the server is
       // still installing Docker.
       ..failFirst['test -f $cloudReadyMarker'] = 2;
@@ -278,9 +478,7 @@ void main() {
   });
 
   test('a failing remote command surfaces the server\'s own stderr', () async {
-    final shell = FakeCloudShell()
-      ..responses['-E md5'] = _md5Line
-      ..responses['-E sha256'] = _sha256Line
+    final shell = _deployShell()
       ..exitCodes['docker import'] = 1
       ..errors['docker import'] = 'no space left on device';
     final provider = FakeCloudProvider()..getServerAnswers.add(_running());
@@ -389,7 +587,7 @@ void main() {
     final provider = FakeCloudProvider()..getServerAnswers.add(_running());
     final details = <String>[];
 
-    await service(FakeCloudShell(), provider, backend: backend).deploy(
+    await service(_deployShell(), provider, backend: backend).deploy(
       instance: 'Ubuntu',
       serverName: 'deploy-1',
       serverType: 'cx22',

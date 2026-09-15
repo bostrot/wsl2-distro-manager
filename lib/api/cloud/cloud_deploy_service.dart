@@ -20,6 +20,21 @@
 // provider itself keeps bootable. A pull is the same three steps read
 // backwards: `docker export`, download, import locally.
 //
+// "Run it" has to mean more than keeping the container alive, though
+// (bostrot/ai-tasks#84): a web server the instance served locally is expected
+// to answer on the cloud address afterwards. So the container shares the
+// server's network namespace — every port a service inside listens on is a
+// port on the public address, without anyone having to list them in advance
+// — and, when the root filesystem carries systemd, systemd is what runs as
+// its PID 1, so the units the user enabled locally come up the way they did
+// there. It gets the few privileges a booting systemd needs and nothing
+// else, on purpose: systemd's own units already know not to configure a
+// machine they have no capability to configure, which is what keeps the
+// guest's networkd, udev and sysctl off the server ([_dockerRunArgs]). The
+// deploy then waits for that boot to finish rather than for the process to
+// exist. A root filesystem with no systemd is kept alive with `sleep` as
+// before, and whatever it runs is the user's to start.
+//
 // Step 1 and the last step are the backend's, not this file's
 // ([VmBackend.exportRootfs] / [VmBackend.importRootfs]), because they are the
 // only part that differs per backend: WSL hands over a rootfs tarball
@@ -67,6 +82,42 @@ const String cloudRootUser = 'root';
 /// answering is not enough on its own — the daemon is installed part of the
 /// way through the boot, and a deploy that raced it failed on the import.
 const String cloudReadyMarker = '/run/wslmanager-ready';
+
+/// Where systemd lives in a root filesystem, in the order it is looked for.
+///
+/// `/sbin/init` is deliberately not on the list: on a systemd distribution
+/// it is a symlink to one of these, and on anything else it is SysV init,
+/// OpenRC or BusyBox, none of which is worth being PID 1 of a container —
+/// they would spawn gettys onto the server's console and little else.
+const List<String> cloudSystemdCandidates = [
+  '/usr/lib/systemd/systemd',
+  '/lib/systemd/systemd',
+];
+
+/// Units masked for the boot of a deployed root filesystem.
+///
+/// Passed as `systemd.mask=` on systemd's argv, which is where a container's
+/// PID 1 reads its "kernel command line" from — the image is a `docker
+/// import` of a tarball and cannot carry a layer of mask symlinks of its
+/// own. The list is short because the container's missing capabilities do
+/// most of this job (see [_dockerRunArgs]); what is left is what would run
+/// happily without any: cloud-init, which would set about provisioning a
+/// machine the provider already provisioned, and the guest's sshd, which
+/// shares port 22 with the server's own and must never be the one that wins
+/// it — every command this file runs assumes `root@server` is the server.
+/// Masking a unit a distribution does not ship is harmless.
+const List<String> cloudMaskedUnits = [
+  'cloud-init-local.service',
+  'cloud-init-main.service',
+  'cloud-init-network.service',
+  'cloud-init.service',
+  'cloud-config.service',
+  'cloud-final.service',
+  'ssh.service',
+  'ssh.socket',
+  'sshd.service',
+  'sshd.socket',
+];
 
 /// cloud-init handed to the provider at create time.
 ///
@@ -254,25 +305,10 @@ class CloudDeployService {
           what: 'importing the root filesystem');
 
       report(DeployStage.starting, instance);
-      await _run(
-          target,
-          [
-            'docker',
-            'run',
-            '--detach',
-            '--name',
-            instance,
-            '--restart',
-            'unless-stopped',
-            // A root filesystem has no entrypoint of its own, so the
-            // container needs one process to keep it alive; everything the
-            // user does afterwards is `docker exec` into it.
-            '--init',
-            _imageTag(instance),
-            'sleep',
-            'infinity',
-          ],
+      final systemd = await _findSystemd(target, _imageTag(instance));
+      await _run(target, _dockerRunArgs(instance, systemd),
           what: 'starting the container');
+      await _checkContainerUp(target, instance, systemd);
 
       report(DeployStage.cleaningUp);
       // Best effort: the deploy has succeeded by now, and failing it over a
@@ -341,6 +377,204 @@ class CloudDeployService {
       await _deleteQuietly(tarPath);
     }
   }
+
+  /// The path of systemd inside the imported image, or '' when it has none.
+  ///
+  /// Asked of the image itself rather than guessed from the instance's
+  /// distribution name: what matters is what the tarball carries, and a WSL
+  /// Ubuntu without systemd enabled still ships the binary, so it boots here
+  /// exactly like the VM does. Only the probe's own "no" — exit 1 — and an
+  /// image with no `sh` to run it in mean "no systemd"; anything else is
+  /// the server or its Docker failing, and a deploy that shrugged that off
+  /// would quietly start the user's system without its services.
+  Future<String> _findSystemd(String target, String image) async {
+    final probe = cloudSystemdCandidates
+        .map((path) => 'if [ -x $path ]; then echo $path; exit 0; fi')
+        .join('; ');
+    final result = await _exec(
+        'ssh',
+        cloudSshCommand(target,
+            ['docker', 'run', '--rm', image, 'sh', '-c', '$probe; exit 1']));
+    if (const [1, 126, 127].contains(result.exitCode)) return '';
+    if (result.exitCode != 0) {
+      throw CloudException(
+          _failureText('probing the root filesystem for systemd', result));
+    }
+    final found = result.stdout.trim();
+    return cloudSystemdCandidates.contains(found) ? found : '';
+  }
+
+  /// The `docker run` that boots the imported root filesystem as [instance].
+  ///
+  /// `--network host` is the point of the whole exercise: a service listening
+  /// on a port inside is reachable on that port of the server's address,
+  /// whatever port it is.
+  ///
+  /// With [systemd] set the container boots it as PID 1, with what that
+  /// needs and no more: CAP_SYS_ADMIN to mount its own tmpfs and namespaces,
+  /// a writable view of the cgroup tree it was started in, and the
+  /// container's AppArmor confinement lifted, which would otherwise deny
+  /// every mount the capability allows. Not `--privileged` — that would also
+  /// hand over the server's devices, its network configuration and its
+  /// module and sysctl tables, and systemd's own units decide by exactly
+  /// those whether they are on a real machine: networkd asks for
+  /// CAP_NET_ADMIN, udev for a writable /sys, sysctl for a writable
+  /// /proc/sys, modules-load for CAP_SYS_MODULE. The less the container has,
+  /// the less has to be masked by name, and a firewall or a second Docker
+  /// the user enabled inside simply fails to start instead of reconfiguring
+  /// the server. It is also what makes an fstab from a cloud image
+  /// harmless: with /sys read-only systemd ignores the EFI partition the
+  /// tarball no longer has, where a privileged boot waits for it and ends in
+  /// emergency mode.
+  ///
+  /// Without systemd, `sleep` keeps the container alive for `docker exec`.
+  List<String> _dockerRunArgs(String instance, String systemd) => <String>[
+        'docker',
+        'run',
+        '--detach',
+        '--name',
+        instance,
+        '--restart',
+        'unless-stopped',
+        '--network',
+        'host',
+        if (systemd.isEmpty) ...[
+          // A root filesystem has no entrypoint of its own, so the
+          // container needs one process to keep it alive; everything the
+          // user does afterwards is `docker exec` into it.
+          '--init',
+          _imageTag(instance),
+          'sleep',
+          'infinity',
+        ] else ...[
+          '--cap-add',
+          'SYS_ADMIN',
+          '--security-opt',
+          'apparmor=unconfined',
+          '--cgroupns',
+          'host',
+          '--volume',
+          '/sys/fs/cgroup:/sys/fs/cgroup:rw',
+          '--tmpfs',
+          '/run',
+          '--tmpfs',
+          '/run/lock',
+          // The signal systemd reads as "halt", and its own default of time
+          // to stop the user's services cleanly — a database inside deserves
+          // better than Docker's ten seconds.
+          '--stop-signal',
+          'SIGRTMIN+3',
+          '--stop-timeout',
+          '90',
+          '--env',
+          'container=docker',
+          _imageTag(instance),
+          systemd,
+          for (final unit in cloudMaskedUnits) 'systemd.mask=$unit',
+        ],
+      ];
+
+  /// Fail the deploy when [instance] did not come up on the server.
+  ///
+  /// `docker run --detach` reports success the moment the process is
+  /// spawned, and a container that is alive is not the same as a system that
+  /// booted: systemd stays PID 1 with a dead boot behind it when it falls
+  /// into emergency mode. So the systemd branch asks systemd itself and only
+  /// the `sleep` branch settles for the container's state. Either way a
+  /// container that failed is removed before the error is raised — left
+  /// alone it would restart in a loop on a server the user is paying for —
+  /// and the server itself is left for the user to look at or delete.
+  Future<void> _checkContainerUp(
+      String target, String instance, String systemd) async {
+    final failure = systemd.isEmpty
+        ? await _sleepContainerFailure(target, instance)
+        : await _systemdBootFailure(target, instance);
+    if (failure == null) return;
+    // Both streams: an init that refuses to start says why on stderr.
+    final log = await _exec('ssh',
+        cloudSshCommand(target, ['docker', 'logs', '--tail', '20', instance]));
+    final detail = [failure, log.stdout.trim(), log.stderr.trim()]
+        .where((part) => part.isNotEmpty)
+        .join('\n');
+    await _run(target, ['docker', 'rm', '--force', instance],
+        what: 'removing the failed container', allowFailure: true);
+    throw CloudException('$instance did not come up on the server. The '
+        'container was removed; the server is still running.\n$detail');
+  }
+
+  /// Why a `sleep` container is not running one poll interval after its
+  /// start, or null when it is.
+  Future<String?> _sleepContainerFailure(String target, String instance) async {
+    await Future.delayed(pollInterval);
+    final state = await _containerState(target, instance);
+    return state == 'running 0' ? null : 'Container state: $state.';
+  }
+
+  /// Why a systemd boot did not reach a running system, or null when it did.
+  ///
+  /// `is-system-running --wait` returns once the boot is over, with
+  /// `degraded` counting as booted: the guest's resolver is bound to fail on
+  /// a port the server already owns, and one failed unit is not a failed
+  /// system. Asked over `docker exec` as soon as the container exists —
+  /// systemd's control socket is up before anything else, but a call that
+  /// lands earlier still, or on a container Docker is already restarting,
+  /// gets no state at all. Then the container is checked instead and the
+  /// question repeated, until [readyTimeout] runs out.
+  Future<String?> _systemdBootFailure(String target, String instance) async {
+    final deadline = DateTime.now().add(readyTimeout);
+    while (true) {
+      final result = await _exec(
+          'ssh',
+          cloudSshCommand(target, [
+            'docker',
+            'exec',
+            instance,
+            'systemctl',
+            'is-system-running',
+            '--wait',
+          ]),
+          timeout: readyTimeout);
+      final state = result.stdout.trim();
+      if (state == 'running' || state == 'degraded') return null;
+      if (const ['maintenance', 'stopping', 'offline'].contains(state)) {
+        final failed = await _run(
+            target,
+            [
+              'docker',
+              'exec',
+              instance,
+              'systemctl',
+              '--failed',
+              '--no-legend'
+            ],
+            what: 'listing the failed units',
+            allowFailure: true);
+        return 'systemd reported "$state".'
+            '${failed.isEmpty ? '' : '\nFailed units:\n$failed'}';
+      }
+      final container = await _containerState(target, instance);
+      if (container != 'running 0') return 'Container state: $container.';
+      if (!DateTime.now().isBefore(deadline)) {
+        return 'systemd did not finish booting within '
+            '${readyTimeout.inMinutes} minutes'
+            '${state.isEmpty ? '' : ' (state: $state)'}.';
+      }
+      await Future.delayed(pollInterval);
+    }
+  }
+
+  /// `<status> <restart count>` of a container, e.g. `running 0`.
+  Future<String> _containerState(String target, String instance) => _run(
+        target,
+        [
+          'docker',
+          'inspect',
+          '--format',
+          '{{.State.Status}} {{.RestartCount}}',
+          instance,
+        ],
+        what: 'checking the container',
+      );
 
   /// Poll [server] until the provider has given it a public address.
   ///
