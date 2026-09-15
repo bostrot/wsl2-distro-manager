@@ -1173,83 +1173,100 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             // button was Stop (PS-23), and each disabled `FilledButton`
             // painted white on grey at 1.71:1 (PS-21) — plain `Button`s keep
             // their disabled foreground legible.
+            //
+            // The state actions sit in a `Wrap`, not straight in the row: a
+            // running OpenCode card carries Open Dashboard, Stop, Configure
+            // and Uninstall, and with the assistant panel open the card is
+            // narrow enough that a plain row pushed Uninstall 68 px past the
+            // edge (issue #82 screenshot, German labels). Uninstall stays
+            // pinned to the right; the others wrap onto a second line.
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (canInstall)
-                  _buildAction(
-                    key: ValueKey('test-ai-install-${tool.name}'),
-                    // A failed install leaves the tool in `error`, which is
-                    // not "installed" — a retry has to stay reachable.
-                    label: state?.status == ToolStatus.error
-                        ? 'retry-text'.i18n()
-                        : 'install-text'.i18n(),
-                    enabled: !isBusy && !isChecking,
-                    busy: _busyAction[tool] == _CardAction.install,
-                    onPressed: () => _handleInstall(tool),
-                  ),
-                if (state?.status == ToolStatus.stopped)
-                  _buildAction(
-                    key: ValueKey('test-ai-start-${tool.name}'),
-                    label: 'start-text'.i18n(),
-                    enabled: !isBusy && !isChecking,
-                    busy: _busyAction[tool] == _CardAction.start,
-                    onPressed: () => _handleStart(tool),
-                  ),
-                if (state?.status == ToolStatus.running ||
-                    state?.status == ToolStatus.starting) ...[
-                  // The thing to do with a running AI tool is to open it —
-                  // Open Dashboard is the primary, not Stop (PS-23). Shown
-                  // but disabled while starting: hiding it entirely reads as
-                  // "this tool has no dashboard" rather than "not yet".
-                  _maybeTooltip(
-                    state?.status == ToolStatus.starting
-                        ? 'ai-workspace-startingup-hint-text'.i18n()
-                        : null,
-                    BusyButton(
-                      key: ValueKey('test-ai-open-dashboard-${tool.name}'),
-                      filled: true,
-                      label: 'ai-workspace-open-dashboard-text'.i18n(),
-                      busy: _busyAction[tool] == _CardAction.dashboard,
-                      minWidth: 72.0,
-                      onPressed:
-                          (!isBusy && state?.status == ToolStatus.running)
-                              ? () => _handleOpenDashboard(tool)
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (canInstall)
+                        _buildAction(
+                          key: ValueKey('test-ai-install-${tool.name}'),
+                          // A failed install leaves the tool in `error`,
+                          // which is not "installed" — a retry has to stay
+                          // reachable.
+                          label: state?.status == ToolStatus.error
+                              ? 'retry-text'.i18n()
+                              : 'install-text'.i18n(),
+                          enabled: !isBusy && !isChecking,
+                          busy: _busyAction[tool] == _CardAction.install,
+                          onPressed: () => _handleInstall(tool),
+                        ),
+                      if (state?.status == ToolStatus.stopped)
+                        _buildAction(
+                          key: ValueKey('test-ai-start-${tool.name}'),
+                          label: 'start-text'.i18n(),
+                          enabled: !isBusy && !isChecking,
+                          busy: _busyAction[tool] == _CardAction.start,
+                          onPressed: () => _handleStart(tool),
+                        ),
+                      if (state?.status == ToolStatus.running ||
+                          state?.status == ToolStatus.starting) ...[
+                        // The thing to do with a running AI tool is to open
+                        // it — Open Dashboard is the primary, not Stop
+                        // (PS-23). Shown but disabled while starting: hiding
+                        // it entirely reads as "this tool has no dashboard"
+                        // rather than "not yet".
+                        _maybeTooltip(
+                          state?.status == ToolStatus.starting
+                              ? 'ai-workspace-startingup-hint-text'.i18n()
                               : null,
-                    ),
+                          BusyButton(
+                            key: ValueKey(
+                                'test-ai-open-dashboard-${tool.name}'),
+                            filled: true,
+                            label: 'ai-workspace-open-dashboard-text'.i18n(),
+                            busy: _busyAction[tool] == _CardAction.dashboard,
+                            minWidth: 72.0,
+                            onPressed:
+                                (!isBusy && state?.status == ToolStatus.running)
+                                    ? () => _handleOpenDashboard(tool)
+                                    : null,
+                          ),
+                        ),
+                        // Live while starting too: a tool stuck mid-migration
+                        // used to leave Uninstall as the only enabled way out
+                        // (PS-16).
+                        BusyButton(
+                          key: ValueKey('test-ai-stop-${tool.name}'),
+                          label: 'stop-text'.i18n(),
+                          busy: _busyAction[tool] == _CardAction.stop,
+                          minWidth: 72.0,
+                          onPressed: (!isBusy &&
+                                  (state?.status == ToolStatus.running ||
+                                      state?.status == ToolStatus.starting))
+                              ? () => _handleStop(tool)
+                              : null,
+                        ),
+                      ],
+                      // Only once something is installed: a tool that is not
+                      // there has no configuration to read, and its schema is
+                      // the one thing this dialog cannot infer from nothing.
+                      if (state?.status != ToolStatus.notInstalled &&
+                          state?.status != ToolStatus.error &&
+                          _configService.canConfigure(tool))
+                        BusyButton(
+                          key: ValueKey('test-ai-configure-${tool.name}'),
+                          label: 'ai-workspace-configure-text'.i18n(),
+                          busy: _busyAction[tool] == _CardAction.configure,
+                          minWidth: 72.0,
+                          onPressed: (!isBusy && !isChecking)
+                              ? () => _handleConfigure(tool)
+                              : null,
+                        ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  // Live while starting too: a tool stuck mid-migration used
-                  // to leave Uninstall as the only enabled way out (PS-16).
-                  BusyButton(
-                    key: ValueKey('test-ai-stop-${tool.name}'),
-                    label: 'stop-text'.i18n(),
-                    busy: _busyAction[tool] == _CardAction.stop,
-                    minWidth: 72.0,
-                    onPressed: (!isBusy &&
-                            (state?.status == ToolStatus.running ||
-                                state?.status == ToolStatus.starting))
-                        ? () => _handleStop(tool)
-                        : null,
-                  ),
-                ],
-                // Only once something is installed: a tool that is not
-                // there has no configuration to read, and its schema is the
-                // one thing this dialog cannot infer from nothing.
-                if (state?.status != ToolStatus.notInstalled &&
-                    state?.status != ToolStatus.error &&
-                    _configService.canConfigure(tool)) ...[
-                  const SizedBox(width: 8),
-                  BusyButton(
-                    key: ValueKey('test-ai-configure-${tool.name}'),
-                    label: 'ai-workspace-configure-text'.i18n(),
-                    busy: _busyAction[tool] == _CardAction.configure,
-                    minWidth: 72.0,
-                    onPressed: (!isBusy && !isChecking)
-                        ? () => _handleConfigure(tool)
-                        : null,
-                  ),
-                ],
-                const Spacer(),
+                ),
+                const SizedBox(width: 8),
                 BusyButton(
                   key: ValueKey('test-ai-uninstall-${tool.name}'),
                   label: 'uninstall-text'.i18n(),

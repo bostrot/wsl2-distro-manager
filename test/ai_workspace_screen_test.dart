@@ -508,6 +508,74 @@ void main() {
         reason: 'Uninstall must not be the only way out of a stuck start');
   });
 
+  // With the assistant panel open the OpenCode card is about 440 px wide,
+  // and a running, configurable tool carries four buttons. As one plain row
+  // they ran 68 px past the card edge (issue #82); the state actions now
+  // wrap while Uninstall keeps the right edge.
+  //
+  // Real labels for this one: raw i18n keys are so much longer that the page
+  // title alone overflows any width narrow enough to make the row wrap.
+  testWidgets('a running card wraps its actions instead of overflowing',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(610, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    MapLocalization.delegate.translations = {
+      const Locale('en'): {
+        'ai-workspace-title': 'AI Workspace',
+        'ai-workspace-installed-at-text': 'Installed: %s',
+        'running-text': 'Running',
+        'ai-workspace-open-dashboard-text': 'Open dashboard',
+        'stop-text': 'Stop',
+        'ai-workspace-configure-text': 'Configure',
+        'uninstall-text': 'Uninstall',
+      },
+    };
+    addTearDown(() async {
+      // Loading an empty map clears the sentences the delegate installed,
+      // so the other tests keep rendering raw keys as they always have.
+      MapLocalization.delegate.translations = {};
+      await MapLocalization.delegate.load(const Locale('en'));
+    });
+    await seedSettled(ToolStatus.running);
+
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        Provider<AiWorkspaceService>.value(value: service),
+        Provider<AiWorkspaceConfigService>.value(
+          value: AiWorkspaceConfigService(workspace: service),
+        ),
+      ],
+      child: FluentApp(
+        locale: const Locale('en'),
+        localizationsDelegates: [MapLocalization.delegate],
+        home: const ScaffoldPage(content: AiWorkspacePage()),
+      ),
+    ));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(tester.takeException(), isNull,
+        reason: 'the action row must not overflow at a narrow width');
+
+    final dashboard =
+        find.byKey(const ValueKey('test-ai-open-dashboard-openCode'));
+    final configure = find.byKey(const ValueKey('test-ai-configure-openCode'));
+    final uninstall = find.byKey(const ValueKey('test-ai-uninstall-openCode'));
+    expect(dashboard, findsOneWidget);
+    expect(find.byKey(const ValueKey('test-ai-stop-openCode')), findsOneWidget);
+    expect(configure, findsOneWidget);
+    expect(uninstall, findsOneWidget);
+
+    // Something moved to a second line rather than being squeezed...
+    expect(tester.getTopLeft(configure).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(dashboard).dy));
+    // ...and every button, Uninstall included, ends inside the card.
+    final card = find.ancestor(of: uninstall, matching: find.byType(Card));
+    final cardRight = tester.getBottomRight(card.first).dx;
+    for (final button in [dashboard, configure, uninstall]) {
+      expect(tester.getBottomRight(button).dx, lessThanOrEqualTo(cardRight));
+    }
+  });
+
   testWidgets('a missing workspace VM offers guided setup, not an error',
       (tester) async {
     tester.view.physicalSize = _kSurface;
