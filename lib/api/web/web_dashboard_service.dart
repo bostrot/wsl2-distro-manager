@@ -13,14 +13,23 @@
 // exposes (buildWslMcpTools), plus a thin JSON layer for the instance list
 // and the start/stop/duplicate buttons, so the two surfaces cannot drift
 // apart.
+//
+// It also carries the AI assistant (ai-tasks#83): `/api/chat` is the same
+// AiService, transcript and tools as the desktop panel, so a command given
+// from the phone shows up in the app and the other way round. The provider
+// key never leaves the host — the page only sends messages.
 
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
+import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
@@ -78,20 +87,41 @@ class WebDashboardService {
   static HttpServer? _server;
   static WslTerminalManager? _terminalManager;
 
+  /// The assistant run the dashboard started, while it is in flight. Static
+  /// for the same reason as [_server]. A run the desktop panel started shows
+  /// through [AiService.isRunning] instead; [_chatBusy] covers both.
+  static Future<void>? _chatRun;
+
+  /// Why the last dashboard-started run ended without a reply — an error
+  /// code such as `byok-request-failed`, or `cancelled` — until the next
+  /// send. The page turns the code into a sentence.
+  static String? _chatError;
+
+  @visibleForTesting
+  static Future<void>? get chatRunForTesting => _chatRun;
+
+  /// How many transcript entries one `/api/chat` answer carries at most. The
+  /// transcript persists across sessions and is unbounded; a phone polling
+  /// every second or two does not need all of it.
+  static const int maxChatMessages = 200;
+
   final VmBackend backend;
   final DashboardServerFactory serverFactory;
   final CloudflareTunnelService tunnel;
   final NetworkInterfaceLister interfaceLister;
+  final AiService ai;
 
   WebDashboardService({
     VmBackend? backend,
     DashboardServerFactory? serverFactory,
     CloudflareTunnelService? tunnel,
     NetworkInterfaceLister? interfaceLister,
+    AiService? ai,
   })  : backend = backend ?? vmBackend(),
         serverFactory = serverFactory ?? _defaultServerFactory,
         tunnel = tunnel ?? CloudflareTunnelService(localPort: port),
-        interfaceLister = interfaceLister ?? _defaultInterfaceLister;
+        interfaceLister = interfaceLister ?? _defaultInterfaceLister,
+        ai = ai ?? AiService();
 
   bool get isRunning => _server != null;
 
@@ -321,7 +351,130 @@ class WebDashboardService {
       }
     }
 
+    if (rest.isNotEmpty && rest.first == 'chat') {
+      return _chatRoute(request, rest.sublist(1));
+    }
+
     return _notFound();
+  }
+
+  /// `/api/chat`: the assistant on the phone (ai-tasks#83).
+  ///
+  /// GET is the shared transcript plus the run state. POST sends a message
+  /// and answers at once: a run can take minutes of tool calls, longer than
+  /// a phone browser or the tunnel keeps one request open, so the page polls
+  /// GET for the reply the way the terminal tab polls its output.
+  Future<Response> _chatRoute(Request request, List<String> rest) async {
+    if (rest.isEmpty) {
+      switch (request.method) {
+        case 'GET':
+          return _json(_chatState(request.url.queryParameters['rev']));
+        case 'POST':
+          final String message;
+          try {
+            final decoded = json.decode(await request.readAsString());
+            message =
+                decoded is Map ? '${decoded['message'] ?? ''}'.trim() : '';
+          } catch (_) {
+            return _json({'ok': false, 'error': 'Invalid JSON body'},
+                status: 400);
+          }
+          if (message.isEmpty) {
+            return _json({'ok': false, 'error': 'message is required'},
+                status: 400);
+          }
+          return _startChat(
+              (cancel) => ai.sendMessage(message, cancel: cancel));
+        default:
+          return _methodNotAllowed();
+      }
+    }
+    if (rest.length != 1) return _notFound();
+    if (request.method != 'POST') return _methodNotAllowed();
+    switch (rest.first) {
+      case 'retry':
+        return _startChat((cancel) => ai.retryLast(cancel: cancel));
+      case 'cancel':
+        // Stops a run whichever surface started it: one assistant, one run.
+        ai.cancelRun();
+        return _json({'ok': true});
+      case 'clear':
+        if (_chatBusy) return _chatBusyResponse();
+        ai.clearHistory();
+        _chatError = null;
+        return _json({'ok': true});
+    }
+    return _notFound();
+  }
+
+  bool get _chatBusy => _chatRun != null || ai.isRunning;
+
+  static Response _chatBusyResponse() =>
+      _json({'ok': false, 'error': 'busy'}, status: 409);
+
+  /// Kicks off [run] in the background and reports only that it started.
+  /// The preconditions AiService would throw for are answered up front, so
+  /// the page can say "no key" on Send instead of on the next poll.
+  Future<Response> _startChat(
+      Future<String> Function(CancelSignal cancel) run) async {
+    if (_chatBusy) return _chatBusyResponse();
+    // Not a 403: the page reads that status as "token invalid" and locks up.
+    if (!LicenseManager().isPro) {
+      return _json({'ok': false, 'error': 'pro-required'}, status: 400);
+    }
+    if (!ai.hasAiConfigured) {
+      return _json({'ok': false, 'error': 'byok-required'}, status: 400);
+    }
+    _chatError = null;
+    Future<void>? future;
+    // The user turn lands in the transcript before the first await, so the
+    // page's next poll already shows it while the provider is thinking.
+    future = run(CancelSignal()).then<void>((_) {}, onError: (Object e) {
+      _chatError = e is CancelledException ? 'cancelled' : _errorCode(e);
+    }).whenComplete(() {
+      if (identical(_chatRun, future)) _chatRun = null;
+    });
+    _chatRun = future;
+    return _json({'ok': true});
+  }
+
+  /// `Exception: byok-request-failed` → `byok-request-failed`: the codes the
+  /// desktop panel maps to sentences, handed to the page to do the same.
+  static String _errorCode(Object e) {
+    final text = e.toString();
+    const prefix = 'Exception: ';
+    return text.startsWith(prefix) ? text.substring(prefix.length) : text;
+  }
+
+  /// The transcript and run state. [knownRevision] is the transcript
+  /// revision the page already holds; when it still matches, the messages
+  /// are left out and the poll costs only the run state.
+  Map<String, dynamic> _chatState(String? knownRevision) {
+    final revision = ai.transcriptRevision.value;
+    final history = ai.conversationHistory;
+    final recent = history.length > maxChatMessages
+        ? history.sublist(history.length - maxChatMessages)
+        : history;
+    return {
+      'configured': ai.hasAiConfigured,
+      'pro': LicenseManager().isPro,
+      'model': ai.byokModel,
+      'busy': _chatBusy,
+      'status': ai.runStatus.value,
+      'streaming': ai.streamingText.value,
+      'error': _chatError,
+      'revision': revision,
+      'count': history.length,
+      if (knownRevision != '$revision')
+        'messages': [
+          for (final m in recent)
+            {
+              'role': m.role,
+              'content': m.content,
+              'timestamp': m.timestamp.toIso8601String(),
+            }
+        ],
+    };
   }
 
   /// Brings an instance up without opening anything on the host: the person

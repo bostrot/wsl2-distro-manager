@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -25,6 +26,27 @@ class _RecordingAdapter implements HttpClientAdapter {
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     requests.add(options);
     return responder(options);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// An adapter whose answer the test releases by hand, so a run can be
+/// observed — and cancelled — while it is in flight. Like the real adapter,
+/// a held answer is dropped once the request is cancelled.
+class _GatedAdapter implements HttpClientAdapter {
+  final Completer<ResponseBody> gate = Completer<ResponseBody>();
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) {
+    if (cancelFuture == null) return gate.future;
+    return Future.any([
+      gate.future,
+      cancelFuture.then((_) => throw DioException.requestCancelled(
+          requestOptions: options, reason: 'cancelled')),
+    ]);
   }
 
   @override
@@ -253,6 +275,72 @@ void main() {
       final reply = await ai.retryLast();
       expect(reply, 'ok now');
       expect(ai.conversationHistory, hasLength(2));
+    });
+  });
+
+  group('AiService run state', () {
+    // The desktop panel and the web dashboard share this one service
+    // (ai-tasks#83); these are what lets each side see the other's run.
+    Future<AiService> proWithKey() async {
+      final ai = AiService();
+      LicenseManager.storeInstallCheckOverride = () => true;
+      await LicenseManager().init();
+      ai.setByokApiKey('sk-test');
+      await ai.init();
+      ai.clearHistory();
+      return ai;
+    }
+
+    ResponseBody reply(String text) => jsonBody({
+          'choices': [
+            {
+              'message': {'content': text}
+            }
+          ]
+        });
+
+    test('isRunning is up only while a run is in flight', () async {
+      final ai = await proWithKey();
+      final adapter = _GatedAdapter();
+      ai.dioForTesting.httpClientAdapter = adapter;
+      expect(ai.isRunning, false);
+
+      final run = ai.sendMessage('hello');
+      expect(ai.isRunning, true);
+
+      adapter.gate.complete(reply('hi'));
+      await run;
+      expect(ai.isRunning, false);
+    });
+
+    test('cancelRun() stops a run that was started without a signal',
+        () async {
+      final ai = await proWithKey();
+      ai.dioForTesting.httpClientAdapter = _GatedAdapter();
+      final run = ai.sendMessage('hello');
+      expect(ai.isRunning, true);
+
+      ai.cancelRun();
+
+      await expectLater(run, throwsA(isA<CancelledException>()));
+      expect(ai.isRunning, false);
+      // The question stays for a retry, as after any interrupted run.
+      expect(ai.conversationHistory.map((m) => m.role), ['user']);
+    });
+
+    test('transcriptRevision moves with every change to the transcript',
+        () async {
+      final ai = await proWithKey();
+      ai.dioForTesting.httpClientAdapter =
+          _RecordingAdapter((_) => reply('hi'));
+      final start = ai.transcriptRevision.value;
+
+      await ai.sendMessage('hello');
+      final afterTurn = ai.transcriptRevision.value;
+      ai.clearHistory();
+
+      expect(afterTurn, greaterThan(start));
+      expect(ai.transcriptRevision.value, greaterThan(afterTurn));
     });
   });
 

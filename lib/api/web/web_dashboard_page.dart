@@ -7,7 +7,10 @@
 // it on every API call, so a scanned QR code or a shared link is all a
 // visitor needs. Everything beyond the instance list and start/stop goes
 // through `/api/tools/<name>` — the MCP tool set — so the dashboard can do
-// whatever the desktop app's AI tools and MCP clients can.
+// whatever the desktop app's AI tools and MCP clients can. The Assistant tab
+// is the app's AI chat itself (`/api/chat`, ai-tasks#83): one shared
+// transcript, polled while the tab is open because a run outlives what a
+// phone keeps a single request open for.
 
 /// Shown when the token is missing or wrong. Deliberately says nothing
 /// about the app beyond its name.
@@ -169,6 +172,27 @@ textarea{min-height:90px;resize:vertical}
 .stat b{display:block;font-size:22px;font-weight:800}
 .stat span{font-size:12px;color:var(--muted)}
 .hint{font-size:13px;color:var(--muted);margin:0 0 14px}
+[hidden]{display:none!important}
+
+.chatlog{display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius);height:min(60vh,560px);overflow:auto;overscroll-behavior:contain}
+.chatlog .empty{margin:auto 0}
+.msg{display:flex}
+.msg.user{justify-content:flex-end}
+.msg .bubble{max-width:min(85%,640px);padding:10px 13px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.45}
+.msg.user .bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg.assistant .bubble{background:var(--bg-3);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.assistant .bubble.live{border-style:dashed}
+.msg .bubble pre{margin:8px 0;padding:10px;border-radius:8px;background:var(--bg);border:1px solid var(--line);font-size:12px;overflow:auto;white-space:pre-wrap}
+.msg.user .bubble pre{background:rgba(0,0,0,.25);border-color:transparent;color:#fff}
+.msg .bubble code{font-size:13px;padding:1px 5px;border-radius:5px;background:rgba(127,127,127,.18)}
+.msg.note{font-size:12px;color:var(--faint);padding:0 4px;gap:6px;align-items:center}
+.msg.note .link{border:0;background:transparent;color:var(--accent);cursor:pointer;padding:0;font-size:12px;text-decoration:underline}
+.chatstatus{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--muted)}
+.spinner{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+.notice{padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--warn) 45%,var(--line));background:color-mix(in srgb,var(--warn) 10%,var(--bg-2));font-size:13px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.notice.err{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));background:color-mix(in srgb,var(--danger) 8%,var(--bg-2))}
+.composer{display:flex;gap:8px;margin-top:10px;align-items:flex-end}
+.composer textarea{flex:1;min-height:42px;max-height:160px;resize:none}
 </style>
 </head>
 <body>
@@ -184,6 +208,7 @@ textarea{min-height:90px;resize:vertical}
   </div>
   <nav class="tabs" id="tabs">
     <button data-tab="instances" class="active">Instances<span class="n" id="nInst">–</span></button>
+    <button data-tab="chat">Assistant<span class="n" id="nChat">–</span></button>
     <button data-tab="terminal">Terminal<span class="n" id="nSess">0</span></button>
     <button data-tab="snippets" id="tabSnippets">Snippets<span class="n" id="nSnip">–</span></button>
     <button data-tab="tools">Tools<span class="n" id="nTools">–</span></button>
@@ -199,6 +224,18 @@ textarea{min-height:90px;resize:vertical}
       <button class="btn danger" id="shutdownAll">Stop all</button>
     </div>
     <div class="grid" id="cards"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+  </section>
+
+  <section id="chat" hidden>
+    <div class="toolbar"><h2>Assistant</h2><span class="chip" id="chatModel" hidden></span><div class="grow"></div><button class="btn sm ghost" id="chatClear" disabled>Clear chat</button></div>
+    <p class="hint">The app's AI assistant, with the same tools and the same conversation as on the desktop: tell it to start, inspect or set up your instances from here. It runs on the API key configured in the app.</p>
+    <div class="notice" id="chatNotice" hidden></div>
+    <div class="chatlog" id="chatLog"></div>
+    <div class="chatstatus" id="chatStatus" hidden><span class="spinner"></span><span id="chatStatusText">Working…</span><div class="grow"></div><button class="btn sm danger" id="chatStop">Stop</button></div>
+    <div class="composer">
+      <textarea id="chatIn" rows="1" placeholder="Ask the assistant… (Enter sends, Shift+Enter for a new line)" autocomplete="off" autocapitalize="sentences"></textarea>
+      <button class="btn primary" id="chatSend" disabled>Send</button>
+    </div>
   </section>
 
   <section id="terminal" hidden>
@@ -585,11 +622,106 @@ function openToolForm(name, preset) {
   box.classList.add('open'); buildToolForm(box, tool, preset); box.scrollIntoView({behavior: 'smooth', block: 'start'});
 }
 
+// ---- assistant -------------------------------------------------------------
+// One transcript shared with the desktop panel. A run can take minutes of
+// tool calls, so Send returns at once and the tab polls /api/chat for the
+// notes, the streaming reply and the final answer while it is open.
+let chat = {configured: true, pro: true, busy: false, status: null, streaming: '', error: null, count: 0, messages: []};
+let chatRevision = null, chatTimer = null, chatLoaded = false;
+const CHAT_ERRORS = {
+  'busy': 'The assistant is still working — wait for it to finish or stop it.',
+  'pro-required': 'The assistant is a Pro feature.',
+  'byok-required': 'No API key yet. Add one in the app under Settings → AI assistant.',
+  'byok-request-failed': 'The request to the AI provider failed. Check the key, the endpoint and the network in the app, then retry.',
+  'byok-empty-response': 'The provider sent an empty reply. Retry.',
+  'cancelled': 'Stopped.',
+};
+const chatErrorText = code => CHAT_ERRORS[code] || code || 'Something went wrong.';
+function fmt(text) {
+  // Markdown-lite: fenced blocks, inline code and bold — what the assistant
+  // actually produces; the bubble is pre-wrap so line breaks survive.
+  return String(text ?? '').split(/```[^\n]*\n?/).map((p, i) => i % 2
+    ? `<pre>${esc(p.replace(/\n$/, ''))}</pre>`
+    : esc(p).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')).join('');
+}
+function chatEntry(m, live) {
+  if (m.role === 'tool') return `<div class="msg note">⚙ ran <span class="mono">${esc(m.content)}</span></div>`;
+  if (m.role === 'snippet') return `<div class="msg note">Saved this run as snippet <button class="link" data-snippet="${esc(m.content)}">${esc(m.content)}</button></div>`;
+  return `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}"><div class="bubble ${live ? 'live' : ''}">${fmt(m.content)}</div></div>`;
+}
+function renderChat() {
+  $('#nChat').textContent = chat.count;
+  $('#chatModel').hidden = !chat.model; $('#chatModel').textContent = chat.model || '';
+  const notice = $('#chatNotice');
+  let text = '', err = false;
+  if (!chat.pro) text = CHAT_ERRORS['pro-required'];
+  else if (!chat.configured) text = CHAT_ERRORS['byok-required'];
+  else if (chat.error && chat.error !== 'cancelled') { text = chatErrorText(chat.error); err = true; }
+  notice.hidden = !text; notice.className = 'notice' + (err ? ' err' : '');
+  notice.innerHTML = text ? `<span style="flex:1">${esc(text)}</span>${err && !chat.busy ? '<button class="btn sm" id="chatRetry">Retry</button>' : ''}` : '';
+  const retry = $('#chatRetry'); if (retry) retry.onclick = () => chatAction('retry', retry);
+  $('#chatStatus').hidden = !chat.busy;
+  $('#chatStatusText').textContent = chat.status ? 'Working… · ' + chat.status : 'Working…';
+  $('#chatSend').disabled = chat.busy || !chat.configured || !chat.pro;
+  $('#chatClear').disabled = chat.busy || !chat.messages.length;
+  const log = $('#chatLog');
+  const stick = !chatLoaded || log.scrollHeight - log.scrollTop - log.clientHeight < 48;
+  const items = chat.messages.map(m => chatEntry(m, false));
+  if (chat.busy && chat.streaming) items.push(chatEntry({role: 'assistant', content: chat.streaming}, true));
+  log.innerHTML = items.join('') || '<div class="empty"><b>Nothing yet</b>Try “which instances are running?” or “start Ubuntu and update it”.</div>';
+  if (stick) log.scrollTop = log.scrollHeight;
+  chatLoaded = true;
+}
+async function pollChat() {
+  if (unauthorized || document.hidden) return;
+  try {
+    const data = await api('/api/chat' + (chatRevision !== null ? '?rev=' + encodeURIComponent(chatRevision) : ''));
+    if (data.messages) { chat.messages = data.messages; chatRevision = data.revision; }
+    const wasBusy = chat.busy;
+    Object.assign(chat, {configured: data.configured, pro: data.pro, model: data.model, busy: data.busy, status: data.status, streaming: data.streaming || '', error: data.error, count: data.count});
+    renderChat();
+    // A finished run may have started, stopped or created an instance.
+    if (wasBusy && !chat.busy) refresh();
+  } catch (e) { /* surfaced by refresh */ }
+}
+function startChatPolling() { stopChatPolling(); pollChat(); chatTimer = setInterval(pollChat, 1500); }
+function stopChatPolling() { if (chatTimer) clearInterval(chatTimer); chatTimer = null; }
+async function sendChat() {
+  const inp = $('#chatIn'); const text = inp.value.trim();
+  if (!text || chat.busy) return;
+  try {
+    const r = await api('/api/chat', {method: 'POST', body: {message: text}});
+    if (!r.ok) throw new Error(r.error);
+    inp.value = ''; autosizeChat();
+    chat.busy = true; chat.error = null; renderChat(); pollChat();
+  } catch (e) { toast(chatErrorText(e.message), 'err'); }
+}
+async function chatAction(action, btn) {
+  try {
+    const r = await api('/api/chat/' + action, {method: 'POST'});
+    if (!r.ok) throw new Error(r.error);
+    if (action === 'clear') { chat.messages = []; chat.error = null; }
+    if (action === 'retry') { chat.busy = true; chat.error = null; }
+    renderChat(); pollChat();
+  } catch (e) { toast(chatErrorText(e.message), 'err'); }
+}
+function autosizeChat() { const t = $('#chatIn'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 160) + 'px'; }
+$('#chatSend').addEventListener('click', sendChat);
+$('#chatStop').addEventListener('click', () => chatAction('cancel'));
+$('#chatClear').addEventListener('click', async () => {
+  if (!await confirmDialog('Clear the conversation?', 'This clears it in the app as well.', 'Clear')) return;
+  chatAction('clear');
+});
+$('#chatIn').addEventListener('input', autosizeChat);
+$('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+$('#chatLog').addEventListener('click', e => { const b = e.target.closest('[data-snippet]'); if (b) showTab('snippets'); });
+
 // ---- tabs & lifecycle --------------------------------------------------------
 function showTab(id) {
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
   $$('main > section').forEach(s => s.hidden = s.id !== id);
   if (id === 'terminal' && activeSession) startPolling(); else stopPolling();
+  if (id === 'chat') startChatPolling(); else stopChatPolling();
   try { localStorage.setItem('wslm.tab', id); } catch (e) {}
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });

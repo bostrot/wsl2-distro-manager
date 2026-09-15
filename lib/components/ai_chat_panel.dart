@@ -53,6 +53,11 @@ class _AiChatPanelState extends State<AiChatPanel> {
   bool _isLoading = false;
   bool _tasksExpanded = false;
 
+  /// A run is in flight — this panel's own, or one the web dashboard
+  /// started on the shared service (ai-tasks#83). Either way Send waits and
+  /// the progress row shows.
+  bool get _busy => _isLoading || _ai.isRunning;
+
   /// The signal that genuinely stops the current run — tools and the
   /// in-flight request included, not just the UI (plan item 1).
   CancelSignal? _runCancel;
@@ -114,10 +119,20 @@ class _AiChatPanelState extends State<AiChatPanel> {
     super.initState();
     _ai.init().then((_) => setState(() {}));
     _todos.addListener(_onTodosChanged);
+    _ai.transcriptRevision.addListener(_onTranscriptChanged);
   }
 
   void _onTodosChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// The transcript changed under this panel — a run started from the web
+  /// dashboard added a turn, or the other side cleared the chat. This
+  /// panel's own runs already repaint through their onUpdate callback.
+  void _onTranscriptChanged() {
+    if (!mounted || _isLoading) return;
+    setState(() {});
+    _scrollToBottom();
   }
 
   /// Sends the "work through the queue" instruction, then auto-continues while
@@ -125,7 +140,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
   /// are done" the user asked for. It stops when the queue is empty, when a
   /// run makes no progress, or after [_maxAutoContinue] rounds.
   Future<void> _workOnTasks() async {
-    if (_isLoading || !_todos.hasOpen) return;
+    if (_busy || !_todos.hasOpen) return;
     _stopTasksRequested = false;
     await _dispatch(
         'Work through the task list until every item is done. Use todo_list '
@@ -136,7 +151,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
         !_stopTasksRequested &&
         _todos.hasOpen &&
         rounds < _maxAutoContinue &&
-        !_isLoading) {
+        !_busy) {
       final before = _todos.openCount;
       rounds++;
       await _dispatch('Continue with the remaining tasks.');
@@ -150,6 +165,8 @@ class _AiChatPanelState extends State<AiChatPanel> {
   void _cancelRun() {
     _stopTasksRequested = true;
     _runCancel?.cancel();
+    // Also stops a run the web dashboard started: one assistant, one run.
+    _ai.cancelRun();
     setState(() {
       _requestGeneration++;
       _isLoading = false;
@@ -158,7 +175,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
 
   Future<void> _sendMessage() async {
     final text = _inputController.text.trim();
-    if (text.isEmpty || _isLoading) return;
+    if (text.isEmpty || _busy) return;
     _inputController.clear();
     await _dispatch(text);
   }
@@ -171,7 +188,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
   /// [retry] the failed exchange already sits in the history and only the
   /// completion is re-run.
   Future<void> _dispatch(String text, {bool retry = false}) async {
-    if ((text.isEmpty && !retry) || _isLoading) return;
+    if ((text.isEmpty && !retry) || _busy) return;
 
     // Check license
     if (!_license.isPro) {
@@ -430,7 +447,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
                       itemBuilder: (context, index) {
                         if (index == history.length) {
                           final live = _ai.streamingText.value;
-                          if (!_isLoading || live.isEmpty) {
+                          if (!_busy || live.isEmpty) {
                             return const SizedBox.shrink();
                           }
                           return _TranscriptEntry(
@@ -449,7 +466,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
         ),
 
         // Loading indicator
-        if (_isLoading)
+        if (_busy)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
@@ -514,7 +531,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
               onClose: () => setState(() => _sendFailed = false),
               action: Button(
                 key: const ValueKey('test-aichat-retry'),
-                onPressed: _isLoading ? null : _retryLast,
+                onPressed: _busy ? null : _retryLast,
                 child: Text('retry-text'.i18n()),
               ),
             ),
@@ -544,7 +561,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
               const SizedBox(width: 8),
               Button(
                 onPressed:
-                    (_inputController.text.trim().isNotEmpty && !_isLoading)
+                    (_inputController.text.trim().isNotEmpty && !_busy)
                         ? _sendMessage
                         : null,
                 child: Text('ai-send-text'.i18n()),
@@ -904,6 +921,7 @@ class _AiChatPanelState extends State<AiChatPanel> {
   @override
   void dispose() {
     _todos.removeListener(_onTodosChanged);
+    _ai.transcriptRevision.removeListener(_onTranscriptChanged);
     _sessionsFlyout.dispose();
     _selectionDelegate.dispose();
     _inputController.dispose();

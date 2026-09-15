@@ -1,16 +1,66 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart' hide Response;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
+import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
+import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/web/web_dashboard_page.dart';
 import 'package:wsl2distromanager/api/web/web_dashboard_service.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 
 import 'mocks.dart';
+
+/// Stands in for the AI provider at the dio layer, as ai_service_test does:
+/// the dashboard's chat must never reach a real endpoint. [responder] may
+/// hold its answer back, so a test can look at the dashboard mid-run; like
+/// the real adapter, a held answer is dropped once the request is cancelled.
+class _ProviderAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+  final Future<ResponseBody> Function(RequestOptions options) responder;
+
+  _ProviderAdapter(this.responder);
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) {
+    requests.add(options);
+    final answer = responder(options);
+    if (cancelFuture == null) return answer;
+    return Future.any([
+      answer,
+      cancelFuture.then((_) => throw DioException.requestCancelled(
+          requestOptions: options, reason: 'cancelled')),
+    ]);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// A complete (non-streamed) chat completion carrying [message].
+ResponseBody _completion(Map<String, dynamic> message) =>
+    ResponseBody.fromString(
+      json.encode({
+        'choices': [
+          {'message': message}
+        ]
+      }),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+
+ResponseBody _textReply(String text) => _completion({'content': text});
 
 /// A backend that records what the dashboard asked of it, without any
 /// wsl.exe or vmctl behind it.
@@ -183,9 +233,11 @@ void main() {
     String? token,
     Map<String, String>? headers,
     Object? body,
+    Map<String, String> query = const {},
   }) async {
     final uri = Uri.parse('http://192.168.1.2:${WebDashboardService.port}$path')
         .replace(queryParameters: {
+      ...query,
       if (token != null) 'token': token,
     });
     return await capturedHandler!(Request(
@@ -459,7 +511,283 @@ void main() {
     });
   });
 
+  group('/api/chat', () {
+    late AiService ai;
+
+    setUp(() async {
+      // Pro, as the dashboard itself requires — the same overrides
+      // ai_service_test uses. A key is what makes the assistant configured.
+      LicenseManager.storeInstallCheckOverride = () => true;
+      LicenseManager.storeFreeFromOverride =
+          DateTime.now().toUtc().add(const Duration(days: 1));
+      await LicenseManager().init();
+      ai = AiService();
+      await ai.init();
+      ai.clearHistory();
+      // No real tool registry; the test that needs tools hands over the
+      // dashboard's own set.
+      ai.toolsForTesting = const [];
+    });
+
+    tearDown(() async {
+      ai.cancelRun();
+      await WebDashboardService.chatRunForTesting;
+      ai.clearHistory();
+      LicenseManager.storeInstallCheckOverride = null;
+      LicenseManager.storeFreeFromOverride = null;
+    });
+
+    Future<Map<String, dynamic>> chatState(WebDashboardService svc,
+            {String? rev}) async =>
+        decode(await call('/api/chat',
+            token: svc.token, query: {if (rev != null) 'rev': rev}));
+
+    Future<Map<String, dynamic>> send(
+            WebDashboardService svc, String message) async =>
+        decode(await call('/api/chat',
+            method: 'POST', token: svc.token, body: {'message': message}));
+
+    List<String> roles(Map<String, dynamic> state) => [
+          for (final m in (state['messages'] as List).cast<Map>())
+            m['role'] as String
+        ];
+
+    test('reports "no key" and an empty transcript before anything is set up',
+        () async {
+      final svc = service();
+      await svc.start();
+
+      final state = await chatState(svc);
+
+      expect(state['configured'], false);
+      expect(state['pro'], true);
+      expect(state['busy'], false);
+      expect(state['messages'], isEmpty);
+      expect(state['count'], 0);
+    });
+
+    test('a send without a key is refused up front and adds nothing',
+        () async {
+      final svc = service();
+      await svc.start();
+
+      final response = await call('/api/chat',
+          method: 'POST', token: svc.token, body: {'message': 'hi'});
+
+      expect(response.statusCode, 400);
+      expect((await decode(response))['error'], 'byok-required');
+      expect(ai.conversationHistory, isEmpty);
+    });
+
+    test('a send answers at once and the reply arrives on a later poll',
+        () async {
+      ai.setByokApiKey('sk-test');
+      final gate = Completer<ResponseBody>();
+      final provider = _ProviderAdapter((_) => gate.future);
+      ai.dioForTesting.httpClientAdapter = provider;
+      final svc = service();
+      await svc.start();
+
+      final started = await send(svc, 'which instances are running?');
+      final midRun = await chatState(svc);
+
+      expect(started['ok'], true);
+      expect(midRun['busy'], true);
+      // The question is already there while the provider thinks.
+      expect(roles(midRun), ['user']);
+
+      gate.complete(_textReply('Ubuntu is running.'));
+      await WebDashboardService.chatRunForTesting;
+      final done = await chatState(svc);
+
+      expect(done['busy'], false);
+      expect(done['error'], isNull);
+      expect(roles(done), ['user', 'assistant']);
+      expect((done['messages'] as List).last['content'], 'Ubuntu is running.');
+      // Sent to the provider on the key from the app; the key itself is
+      // not part of anything the page receives.
+      expect(provider.requests, hasLength(1));
+      expect(provider.requests.single.headers['Authorization'],
+          'Bearer sk-test');
+      final body = json.decode(provider.requests.single.data as String)
+          as Map<String, dynamic>;
+      expect((body['messages'] as List).last['content'],
+          'which instances are running?');
+      expect(json.encode(done), isNot(contains('sk-test')));
+    });
+
+    test("the assistant drives the dashboard's tools against the backend",
+        () async {
+      ai.setByokApiKey('sk-test');
+      ai.toolsForTesting =
+          buildWslMcpTools(backend, WslTerminalManager(wslApi: backend));
+      var round = 0;
+      ai.dioForTesting.httpClientAdapter = _ProviderAdapter((_) async {
+        round++;
+        if (round == 1) {
+          return _completion({
+            'content': null,
+            'tool_calls': [
+              {
+                'id': 'call_1',
+                'type': 'function',
+                'function': {
+                  'name': 'wsl_run_command',
+                  'arguments':
+                      json.encode({'distro': 'Ubuntu', 'command': 'uptime'}),
+                },
+              }
+            ],
+          });
+        }
+        return _textReply('Up for 3 days.');
+      });
+      final svc = service();
+      await svc.start();
+
+      await send(svc, 'how long has Ubuntu been up?');
+      await WebDashboardService.chatRunForTesting;
+      final state = await chatState(svc);
+
+      expect(backend.calls, contains('exec Ubuntu uptime'));
+      final messages = (state['messages'] as List).cast<Map>();
+      expect(roles(state), contains('tool'));
+      expect(messages.firstWhere((m) => m['role'] == 'tool')['content'],
+          'wsl_run_command');
+      expect(messages.last['role'], 'assistant');
+      expect(messages.last['content'], 'Up for 3 days.');
+      expect(state['busy'], false);
+    });
+
+    test('one run at a time: send, retry and clear are 409 until it is stopped',
+        () async {
+      ai.setByokApiKey('sk-test');
+      // Never answers — the run only ends when it is cancelled.
+      ai.dioForTesting.httpClientAdapter =
+          _ProviderAdapter((_) => Completer<ResponseBody>().future);
+      final svc = service();
+      await svc.start();
+      await send(svc, 'first');
+
+      final second = await call('/api/chat',
+          method: 'POST', token: svc.token, body: {'message': 'second'});
+      final retry =
+          await call('/api/chat/retry', method: 'POST', token: svc.token);
+      final clear =
+          await call('/api/chat/clear', method: 'POST', token: svc.token);
+
+      expect(second.statusCode, 409);
+      expect(retry.statusCode, 409);
+      expect(clear.statusCode, 409);
+      expect(ai.conversationHistory.map((m) => m.content), ['first']);
+
+      final cancel = await decode(
+          await call('/api/chat/cancel', method: 'POST', token: svc.token));
+      await WebDashboardService.chatRunForTesting;
+      final state = await chatState(svc);
+
+      expect(cancel['ok'], true);
+      expect(state['busy'], false);
+      expect(state['error'], 'cancelled');
+      // The question stays, as after any interrupted run, so retry works.
+      expect(roles(state), ['user']);
+    });
+
+    test('a failed provider request is reported as a code and retry re-runs',
+        () async {
+      ai.setByokApiKey('sk-test');
+      var fail = true;
+      ai.dioForTesting.httpClientAdapter = _ProviderAdapter((_) async => fail
+          ? ResponseBody.fromString('server error', 500)
+          : _textReply('ok now'));
+      final svc = service();
+      await svc.start();
+
+      await send(svc, 'hello');
+      await WebDashboardService.chatRunForTesting;
+      final failed = await chatState(svc);
+
+      expect(failed['busy'], false);
+      expect(failed['error'], 'byok-request-failed');
+      expect(roles(failed), ['user']);
+
+      fail = false;
+      final retried = await decode(
+          await call('/api/chat/retry', method: 'POST', token: svc.token));
+      await WebDashboardService.chatRunForTesting;
+      final state = await chatState(svc);
+
+      expect(retried['ok'], true);
+      expect(state['error'], isNull);
+      expect(roles(state), ['user', 'assistant']);
+      expect((state['messages'] as List).last['content'], 'ok now');
+    });
+
+    test('a poll with the revision it already holds gets no messages',
+        () async {
+      ai.setByokApiKey('sk-test');
+      ai.dioForTesting.httpClientAdapter =
+          _ProviderAdapter((_) async => _textReply('hi'));
+      final svc = service();
+      await svc.start();
+      await send(svc, 'hello');
+      await WebDashboardService.chatRunForTesting;
+
+      final full = await chatState(svc);
+      final unchanged = await chatState(svc, rev: '${full['revision']}');
+      await call('/api/chat/clear', method: 'POST', token: svc.token);
+      final afterClear = await chatState(svc, rev: '${full['revision']}');
+
+      expect(full['messages'], hasLength(2));
+      expect(unchanged.containsKey('messages'), false);
+      expect(unchanged['count'], 2);
+      // Clearing on the phone clears the shared transcript.
+      expect(afterClear['messages'], isEmpty);
+      expect(afterClear['revision'], isNot(full['revision']));
+      expect(ai.conversationHistory, isEmpty);
+    });
+
+    test('a malformed body, an empty message or a GET action is no run',
+        () async {
+      ai.setByokApiKey('sk-test');
+      final provider = _ProviderAdapter((_) async => _textReply('never'));
+      ai.dioForTesting.httpClientAdapter = provider;
+      final svc = service();
+      await svc.start();
+
+      final malformed = await capturedHandler!(Request(
+        'POST',
+        Uri.parse('http://h:1/api/chat?token=${svc.token}'),
+        body: '{not json',
+      ));
+      final empty = await call('/api/chat',
+          method: 'POST', token: svc.token, body: {'message': '  '});
+      final wrongMethod = await call('/api/chat/cancel', token: svc.token);
+
+      expect(malformed.statusCode, 400);
+      expect(empty.statusCode, 400);
+      expect(wrongMethod.statusCode, 405);
+      expect(provider.requests, isEmpty);
+      expect(ai.conversationHistory, isEmpty);
+    });
+
+    test('needs the token like every other endpoint', () async {
+      final svc = service();
+      await svc.start();
+
+      final response = await call('/api/chat', token: 'nope');
+
+      expect(response.statusCode, 403);
+    });
+  });
+
   group('page', () {
+    test('carries the Assistant tab and talks to /api/chat', () {
+      expect(webDashboardHtml, contains('data-tab="chat"'));
+      expect(webDashboardHtml, contains("'/api/chat'"));
+      expect(webDashboardHtml, contains("'/api/chat/'"));
+    });
+
     test('keeps a gap between the sticky header and the content', () {
       // The body is `<main class="wrap">`; a bare `main{padding-top}` rule
       // loses to the `.wrap` padding shorthand, so the gap must live there.

@@ -256,6 +256,24 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   /// is visibly moving rather than hanging.
   final ValueNotifier<String?> runStatus = ValueNotifier<String?>(null);
 
+  /// Bumped whenever the transcript changes — a turn added, a mid-run note,
+  /// a clear — so a surface that did not start the run can repaint instead
+  /// of showing a stale conversation. The desktop panel and the web
+  /// dashboard (ai-tasks#83) share this one service and its transcript.
+  final ValueNotifier<int> transcriptRevision = ValueNotifier<int>(0);
+
+  bool _running = false;
+
+  /// True while an agent run is in flight, whichever surface started it.
+  /// Two concurrent runs would interleave their tool calls and fight over
+  /// [runStatus] and [streamingText], so the other surface waits.
+  bool get isRunning => _running;
+
+  CancelSignal? _activeCancel;
+
+  /// Stops the current run, whichever surface started it. No-op when idle.
+  void cancelRun() => _activeCancel?.cancel();
+
   int _runTokens = 0;
 
   void _reportStep(int iteration) {
@@ -429,6 +447,11 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   }) async {
     _runTokens = 0;
     runStatus.value = null;
+    // Always a real signal, so [cancelRun] can stop a run whose caller
+    // passed none.
+    final signal = cancel ?? CancelSignal();
+    _activeCancel = signal;
+    _running = true;
     // [recordRun]: the main chat files instance-changing runs as a snippet
     // (ai-tasks#77); the sandbox chat passes false.
     final recorder =
@@ -437,7 +460,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       return await _runByokAgent(transcript, toolList,
           onUpdate: onUpdate,
           persist: persist,
-          cancel: cancel,
+          cancel: signal,
           systemPrompt: systemPrompt ?? _systemPrompt,
           recorder: recorder);
     } finally {
@@ -446,6 +469,8 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
       // Whatever ended the run — answer, Cancel or a failed request — the
       // instance-changing calls already happened; file them.
       if (recorder != null) _fileRun(recorder, transcript, persist, onUpdate);
+      _activeCancel = null;
+      _running = false;
     }
   }
 
@@ -894,11 +919,13 @@ Explain each setting briefly.
   void clearHistory() {
     _conversationHistory.clear();
     prefs.remove('AiConversation');
+    transcriptRevision.value++;
   }
 
   void _saveConversation() {
     final data =
         json.encode(_conversationHistory.map((m) => m.toJson()).toList());
     prefs.setString('AiConversation', data);
+    transcriptRevision.value++;
   }
 }
