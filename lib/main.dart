@@ -11,6 +11,7 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
+import 'package:wsl2distromanager/api/ai_workspace/shared_settings.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
 import 'package:wsl2distromanager/api/app_window.dart';
 import 'package:wsl2distromanager/api/execution/broker.dart';
@@ -233,6 +234,12 @@ class WSLManager extends StatelessWidget {
         aiWorkspaceService ?? AiWorkspaceService(broker: broker);
     final workspaceConfigService = aiWorkspaceConfigService ??
         AiWorkspaceConfigService(workspace: workspaceService);
+    // App-level, not page-level: an install outlives the AI Workspace page,
+    // and the tool it produces is configured whichever page is open then.
+    AiWorkspaceSharedSettingsService(
+      workspace: workspaceService,
+      config: workspaceConfigService,
+    ).attach();
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(

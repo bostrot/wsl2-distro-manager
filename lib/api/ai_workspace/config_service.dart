@@ -176,6 +176,16 @@ class ToolConfigDocument {
   });
 }
 
+/// What a failed workspace command has to say for itself: stderr, else
+/// stdout, else [fallback].
+String executionDetail(ExecutionResult result, String fallback) {
+  final stderr = result.stderr.trim();
+  if (stderr.isNotEmpty) return stderr;
+  final stdout = result.stdout.trim();
+  if (stdout.isNotEmpty) return stdout;
+  return fallback;
+}
+
 /// Fetches a schema document over HTTP. Replaced in tests.
 typedef SchemaFetcher = Future<String> Function(String url);
 
@@ -289,13 +299,8 @@ class AiWorkspaceConfigService {
     return source.substring(start);
   }
 
-  static String _detail(ExecutionResult result, String fallback) {
-    final stderr = result.stderr.trim();
-    if (stderr.isNotEmpty) return stderr;
-    final stdout = result.stdout.trim();
-    if (stdout.isNotEmpty) return stdout;
-    return fallback;
-  }
+  static String _detail(ExecutionResult result, String fallback) =>
+      executionDetail(result, fallback);
 
   /// Prints the first config file that exists, with its path on a marker
   /// line first. Single quotes only, and no `"` anywhere: a double quote
@@ -313,7 +318,14 @@ class AiWorkspaceConfigService {
 
   /// Reads [tool]'s configuration and pairs it with the best schema
   /// available.
-  Future<ToolConfigDocument> load(AiWorkspaceTool tool) async {
+  ///
+  /// [pullSchema] false skips asking the tool for its schema when none is
+  /// held yet — for a caller that wants the values, not the form, and would
+  /// otherwise wait on `openclaw config schema` for nothing.
+  Future<ToolConfigDocument> load(
+    AiWorkspaceTool tool, {
+    bool pullSchema = true,
+  }) async {
     final spec = _specs[tool];
     if (spec == null) {
       throw Exception('No configuration is known for this tool');
@@ -368,7 +380,7 @@ class AiWorkspaceConfigService {
     // flaky network, gets one more chance before the fields drop back to
     // whatever the file happens to hold. Free for a tool that publishes
     // nothing: [_loadSchema] returns at once when there is no source.
-    if (_schemas[tool] == null) {
+    if (pullSchema && _schemas[tool] == null) {
       await _loadSchema(tool);
     }
 

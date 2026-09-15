@@ -108,6 +108,7 @@
 
 **Pro** *(one-time purchase: a licence key from [wslmanager.com/buy](https://wslmanager.com/buy/), on Windows and macOS alike — never a subscription)*
 - [x] **AI Workspace** — run Hermes Agent, OpenClaw, Open WebUI and OpenCode in a dedicated, isolated WSL distro
+- [x] **One model and endpoint for every AI tool** — the assistant's API endpoint, key and model from Settings are what OpenCode, OpenClaw and Hermes use too; set them once, and a tool installed later gets them as well
 - [x] **AI assistant with tools** — the built-in chat can actually *operate* your WSL: it lists and inspects distros, runs commands, edits config, creates snippets, mounts disks and packages distros through the same tools the MCP server exposes
 - [x] **Every AI run that changes an instance is saved as a snippet** — the commands it ran and what each tool reported, linked from the chat, so you can review it, run it again on a fresh instance or share it
 - [x] **Sandboxed AI** — spin up a throwaway Ubuntu distro and give an AI chat access to *only* the inside of that sandbox

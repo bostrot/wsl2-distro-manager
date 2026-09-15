@@ -107,6 +107,7 @@
 
 **Pro** *（一次性购买：Windows 上通过 Microsoft Store，macOS 及非商店安装则从 [wslmanager.com/buy](https://wslmanager.com/buy/) 获取许可证密钥 —— 绝不是订阅制）*
 - [x] **AI Workspace** —— 在专用且隔离的 WSL 发行版中运行 Hermes Agent、OpenClaw、Open WebUI 和 OpenCode
+- [x] **所有 AI 工具共用一套模型与端点** —— 设置中 AI 助手的 API 端点、密钥和模型同样用于 OpenCode、OpenClaw 和 Hermes；只需设置一次，之后安装的工具也会自动获得
 - [x] **带工具的 AI 助手** —— 内置聊天能够真正*操作*你的 WSL：它会列出并检查发行版、执行命令、修改配置、创建片段、挂载磁盘并打包发行版，用的正是 MCP 服务器暴露的同一套工具
 - [x] **每次更改实例的 AI 运行都会保存为片段** —— 记录执行过的命令和各工具的反馈，并从聊天中链接过去，方便你复查、在新实例上重新运行或分享
 - [x] **沙箱 AI** —— 启动一个用完即弃的 Ubuntu 发行版，并让 AI 聊天*只能*访问该沙箱内部

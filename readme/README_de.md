@@ -110,6 +110,7 @@
 
 **Pro** *(einmaliger Kauf: Microsoft Store unter Windows, Lizenzschlüssel von [wslmanager.com/buy](https://wslmanager.com/buy/) unter macOS und für Installationen außerhalb des Stores — niemals ein Abonnement)*
 - [x] **AI Workspace** — Hermes Agent, OpenClaw, Open WebUI und OpenCode in einer eigenen, isolierten WSL-Distribution betreiben
+- [x] **Ein Modell und Endpunkt für alle KI-Tools** — API-Endpunkt, Schlüssel und Modell des KI-Assistenten aus den Einstellungen verwenden auch OpenCode, OpenClaw und Hermes; einmal festlegen, und ein später installiertes Tool erhält sie ebenfalls
 - [x] **KI-Assistent mit Werkzeugen** — der eingebaute Chat kann Ihr WSL wirklich *bedienen*: er listet und untersucht Distributionen, führt Befehle aus, bearbeitet die Konfiguration, legt Snippets an, bindet Datenträger ein und verpackt Distributionen über dieselben Werkzeuge, die der MCP-Server bereitstellt
 - [x] **Jeder KI-Lauf, der eine Instanz verändert, wird als Snippet gespeichert** — mit den ausgeführten Befehlen und dem, was jedes Werkzeug gemeldet hat, verlinkt aus dem Chat, damit Sie ihn prüfen, auf einer frischen Instanz erneut ausführen oder teilen können
 - [x] **KI in der Sandbox** — eine Wegwerf-Ubuntu-Distribution hochziehen und einem KI-Chat Zugriff *nur* auf das Innere dieser Sandbox geben

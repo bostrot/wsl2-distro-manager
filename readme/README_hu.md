@@ -109,6 +109,7 @@
 
 **Pro** *(egyszeri vásárlás: Microsoft Store Windowson, licenckulcs a [wslmanager.com/buy](https://wslmanager.com/buy/) oldalról macOS-en és a Store-on kívüli telepítésekhez — sosem előfizetés)*
 - [x] **AI Workspace** — futtasd a Hermes Agentet, az OpenClaw-t, az Open WebUI-t és az OpenCode-ot egy külön, elszigetelt WSL-disztribúcióban
+- [x] **Egy modell és végpont minden AI-eszközhöz** — az asszisztens Beállításokban megadott API-végpontját, kulcsát és modelljét használja az OpenCode, az OpenClaw és a Hermes is; add meg egyszer, és a később telepített eszköz is megkapja
 - [x] **MI-asszisztens eszközökkel** — a beépített csevegés valóban *működtetni* tudja a WSL-edet: kilistázza és megvizsgálja a disztribúciókat, parancsokat futtat, beállításokat szerkeszt, parancsrészleteket hoz létre, lemezeket csatol és disztribúciókat csomagol ugyanazokkal az eszközökkel, amelyeket az MCP-kiszolgáló is kínál
 - [x] **Minden példányt módosító MI-futtatás parancsrészletként lesz elmentve** — a lefuttatott parancsokkal és azzal, amit az egyes eszközök jelentettek, a csevegésből hivatkozva, hogy átnézhesd, egy friss példányon újra lefuttathasd vagy megoszthasd
 - [x] **Homokozóba zárt MI** — indíts egy eldobható Ubuntu disztribúciót, és adj egy MI-csevegésnek hozzáférést *kizárólag* annak a homokozónak a belsejéhez

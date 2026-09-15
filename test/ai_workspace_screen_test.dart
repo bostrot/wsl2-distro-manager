@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/runtime.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
@@ -741,5 +742,39 @@ void main() {
     expect(find.byKey(const ValueKey('test-sandbox-add')), findsNothing);
     expect(find.byKey(const ValueKey('test-sandbox-chat-wslm-sandbox-play')),
         findsNothing);
+  });
+  // The assistant's endpoint and model (bostrot/ai-tasks#81) live in a row
+  // of their own under the tool cards, and the row says what is set so the
+  // question "which model are these on?" needs no dialog.
+  testWidgets(
+      "the shared settings card names the assistant's model and opens the dialog",
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await seedSettled(ToolStatus.stopped);
+    AiService()
+      ..setByokBaseUrl('https://llm.example.com/v1')
+      ..setByokModel('gpt-4.1')
+      ..setByokApiKey('sk-byok');
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byKey(const ValueKey('test-workspace-shared-card')),
+        findsOneWidget);
+    expect(
+        find.text('ai-workspace-shared-current-text'
+            .i18n(['gpt-4.1', 'https://llm.example.com/v1'])),
+        findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('test-workspace-shared')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final endpoint = tester
+        .widget<Text>(find.byKey(const ValueKey('test-ai-shared-endpoint')));
+    expect(endpoint.data, 'https://llm.example.com/v1');
+    expect(find.text('sk-byok'), findsNothing,
+        reason: 'the key is shown nowhere but the field that edits it');
   });
 }

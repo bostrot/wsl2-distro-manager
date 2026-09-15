@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -8,6 +9,9 @@ import 'package:provider/provider.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
+import 'package:wsl2distromanager/api/ai_workspace/service.dart';
+import 'package:wsl2distromanager/api/ai_workspace/shared_settings.dart';
 import 'package:wsl2distromanager/api/apple/guest_greeting.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
@@ -557,7 +561,23 @@ class SettingsPageState extends State<SettingsPage> {
     return null;
   }
 
+  /// The AI Workspace's shared-settings writer, or null where the workspace
+  /// services are not in the tree (a test harness without them).
+  AiWorkspaceSharedSettingsService? _workspaceSharedSettings(
+      BuildContext context) {
+    try {
+      return AiWorkspaceSharedSettingsService(
+        workspace: context.read<AiWorkspaceService>(),
+        config: context.read<AiWorkspaceConfigService>(),
+      );
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
   Future<bool> saveSettings(BuildContext context) async {
+    // Resolved before the first await, while the context is still good.
+    final workspaceSettings = _workspaceSharedSettings(context);
     final remoteTarget = _remoteWslTargetController.text.trim();
     if (_useRemoteWsl && !_isRemoteWslTargetValid(remoteTarget)) {
       Notify.message('remote-wsl-target-required-text'.i18n(),
@@ -641,10 +661,18 @@ class SettingsPageState extends State<SettingsPage> {
       prefs.remove("RemoteWSLTarget");
     }
 
-    // AI settings
+    // AI settings. The AI Workspace tools run on the same endpoint, key and
+    // model (bostrot/ai-tasks#81): a change here is pushed into every
+    // installed tool, in the background so Save does not wait on the
+    // workspace distro, and reported through the notification bar.
+    final aiBefore = AiWorkspaceSharedSettings.fromAssistant();
     _aiService.setByokBaseUrl(_byokBaseUrlController.text);
     _aiService.setByokApiKey(_byokApiKeyController.text);
     _aiService.setByokModel(_byokModelController.text);
+    if (workspaceSettings != null &&
+        AiWorkspaceSharedSettings.fromAssistant() != aiBefore) {
+      unawaited(workspaceSettings.applyCurrentAndNotify());
+    }
 
     // Location settings. Null-safe: a field hidden on this backend (the
     // distro location does not exist on macOS) never registered a

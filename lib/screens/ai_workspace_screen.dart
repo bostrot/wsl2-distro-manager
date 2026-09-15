@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
+import 'package:wsl2distromanager/api/ai_workspace/shared_settings.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
@@ -22,6 +23,7 @@ import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/dialogs/volume_mounts_dialog.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 import 'package:wsl2distromanager/screens/ai_workspace_config_dialog.dart';
+import 'package:wsl2distromanager/screens/ai_workspace_shared_settings_dialog.dart';
 
 /// The five things a card can be asked to do, for per-action busy state
 /// (audit PS-15).
@@ -48,6 +50,12 @@ class AiWorkspacePage extends StatefulWidget {
 class _AiWorkspacePageState extends State<AiWorkspacePage> {
   late final AiWorkspaceService _service;
   late final AiWorkspaceConfigService _configService;
+
+  /// Writes the assistant's endpoint, key and model into every tool
+  /// (bostrot/ai-tasks#81). Built here rather than provided: it is nothing
+  /// but the two services above. The install hook is the copy main.dart
+  /// attached.
+  late final AiWorkspaceSharedSettingsService _sharedSettings;
   final SandboxService _sandbox = SandboxService();
   List<String> _sandboxes = [];
   // Gates only the distro check, not the page — cards render immediately.
@@ -90,6 +98,8 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // Shared instance from main.dart — startup already began these checks.
     _service = context.read<AiWorkspaceService>();
     _configService = context.read<AiWorkspaceConfigService>();
+    _sharedSettings = AiWorkspaceSharedSettingsService(
+        workspace: _service, config: _configService);
     _sandboxes = _sandbox.list();
     // Creation is app-global (it survives leaving this page); repaint the
     // section whenever its stage moves, including from "running" to done.
@@ -623,6 +633,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
               const SizedBox(height: 16),
             ],
             ...AiWorkspaceTool.values.map((tool) => _buildToolCard(tool)),
+            if (!_preparingDistro) ...[
+              const SizedBox(height: 8),
+              _buildSharedSettingsCard(context),
+            ],
             if (!_preparingDistro && _mountsSupported) ...[
               const SizedBox(height: 8),
               _buildMountsCard(context),
@@ -759,6 +773,59 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             onPressed: () => showVolumeMountsDialog(kAiWorkspaceDistro,
                 context: context),
             child: Text('ai-workspace-mounts-btn'.i18n()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The assistant's endpoint, key and model, which every tool uses
+  /// (bostrot/ai-tasks#81). The row says what is set, so the page answers
+  /// "which model are these tools on?" without opening the dialog, and
+  /// points at Settings while nothing is.
+  Widget _buildSharedSettingsCard(BuildContext context) {
+    final settings = _sharedSettings.current();
+    final subtitle = settings.isConfigured
+        ? 'ai-workspace-shared-current-text'
+            .i18n([settings.model, settings.endpoint])
+        : 'ai-workspace-shared-unset-text'.i18n();
+    return Card(
+      key: const ValueKey('test-workspace-shared-card'),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(FluentIcons.plug_connected, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ai-workspace-shared-title'.i18n(),
+                    style: FluentTheme.of(context).typography.subtitle),
+                const SizedBox(height: 4),
+                Text(subtitle,
+                    key: const ValueKey('test-workspace-shared-subtitle'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12, color: secondaryTextColor(context))),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Button(
+            key: const ValueKey('test-workspace-shared'),
+            onPressed: () async {
+              await showAiWorkspaceSharedSettingsDialog(
+                context: context,
+                service: _sharedSettings,
+                toolName: _toolName,
+                openSettings: () => navigateGuarded('settings'),
+              );
+              // The subtitle reads the assistant's values; repaint it.
+              if (mounted) setState(() {});
+            },
+            child: Text('ai-workspace-shared-btn'.i18n()),
           ),
         ],
       ),

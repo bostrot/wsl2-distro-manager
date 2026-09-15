@@ -951,6 +951,15 @@ class AiWorkspaceService {
         : cached;
   }
 
+  /// Runs once a tool is installed, before [install] reports success, so
+  /// whatever it does is done by the time the card offers Start. Set by
+  /// `AiWorkspaceSharedSettingsService.attach` (bostrot/ai-tasks#81); a
+  /// failure inside it is the hook's to report and never fails the install.
+  Future<void> Function(AiWorkspaceTool tool)? onInstalled;
+
+  /// The name a tool goes by on its card.
+  String toolName(AiWorkspaceTool tool) => _toolConfigs[tool]!.name;
+
   /// Install a workspace tool.
   Future<bool> install(AiWorkspaceTool tool) async {
     if (_installing.contains(tool)) return false;
@@ -1033,6 +1042,14 @@ class AiWorkspaceService {
         _persistConfirmedState(tool);
         Notify.message('ai-workspace-install-success-text'.i18n([config.name]),
             severity: InfoBarSeverity.success);
+        final hook = onInstalled;
+        if (hook != null) {
+          try {
+            await hook(tool);
+          } catch (_) {
+            // The tool is installed either way.
+          }
+        }
         return true;
       } else {
         _recordActionFailure(

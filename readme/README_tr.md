@@ -109,6 +109,7 @@
 
 **Pro** *(tek seferlik satın alma: Windows'ta Microsoft Store, macOS ve Store dışı kurulumlar için [wslmanager.com/buy](https://wslmanager.com/buy/) adresinden lisans anahtarı — asla abonelik değil)*
 - [x] **AI Workspace** — Hermes Agent, OpenClaw, Open WebUI ve OpenCode'u ayrılmış, yalıtılmış bir WSL dağıtımında çalıştırın
+- [x] **Tüm yapay zekâ araçları için tek model ve uç nokta** — Ayarlar'daki asistan API uç noktası, anahtarı ve modeli OpenCode, OpenClaw ve Hermes tarafından da kullanılır; bir kez ayarlayın, sonradan kurulan araçlar da bunları alır
 - [x] **Araçlı yapay zekâ asistanı** — yerleşik sohbet WSL'inizi gerçekten *kullanabilir*: MCP sunucusunun sunduğu araçların aynısıyla dağıtımları listeler ve inceler, komut çalıştırır, yapılandırmayı düzenler, parçacık oluşturur, disk bağlar ve dağıtım paketler
 - [x] **Bir örneği değiştiren her yapay zekâ çalıştırması parçacık olarak kaydedilir** — çalıştırılan komutlar ve her aracın bildirdikleriyle birlikte, sohbetten bağlantılı; böylece inceleyebilir, yeni bir örnekte yeniden çalıştırabilir veya paylaşabilirsiniz
 - [x] **Kum havuzunda yapay zekâ** — tek kullanımlık bir Ubuntu dağıtımı ayağa kaldırın ve bir yapay zekâ sohbetine *yalnızca* o kum havuzunun içine erişim verin
