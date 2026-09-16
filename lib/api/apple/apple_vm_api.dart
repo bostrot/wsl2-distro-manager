@@ -139,6 +139,31 @@ class AppleVmException implements Exception {
   String toString() => message;
 }
 
+/// What GNU tar says about a file system that moved under it while it was
+/// archiving, one line each. None of them means the archive is bad — the
+/// member in question is a moment older or newer than its neighbours, which
+/// on a running system is true of every member anyway — but tar still exits
+/// 1 for the first two.
+final RegExp _tarLiveWarning = RegExp(r'^tar: .*: ('
+    r'file changed as we read it'
+    r'|File removed before we read it'
+    r'|File shrank by \d+ bytes?; padding with zeros'
+    r'|socket ignored'
+    r')$');
+
+/// Whether [stderr] from a `tar -c` consists only of the warnings a running
+/// guest produces ([_tarLiveWarning]), so that its exit status 1 can be read
+/// as "differs", which is what GNU tar means by it, rather than as failure.
+///
+/// Only GNU tar's own words qualify — in English, which is why the export
+/// runs it under `LC_ALL=C` — busybox tar exits 1 for real errors and says
+/// other things about them ("can't open"), and anything unrecognised keeps
+/// the export failing loudly.
+bool tarExitedWithWarningsOnly(String stderr) {
+  final lines = LineSplitter.split(stderr).where((line) => line.isNotEmpty);
+  return lines.isNotEmpty && lines.every(_tarLiveWarning.hasMatch);
+}
+
 /// Manages Linux and macOS virtual machines through Apple's
 /// Virtualization.framework, by driving the bundled `vmctl` helper.
 ///
@@ -1135,9 +1160,22 @@ class AppleVmApi extends VmBackend {
       onStatus?.call('vmrootfsexporting-text'.i18n([instance]));
       await _streamExec(
         instance,
-        ['tar', '-cf', '-', '-C', '/', ..._rootfsExcludeArgs, '.'],
+        // `LC_ALL=C`: ssh forwards the Mac's locale, and the warnings the
+        // export tolerates are matched by their English wording.
+        [
+          'env',
+          'LC_ALL=C',
+          'tar',
+          '-cf',
+          '-',
+          '-C',
+          '/',
+          ..._rootfsExcludeArgs,
+          '.',
+        ],
         stdoutFile: file,
         what: 'vmrootfsexportfailed-text'.i18n([instance]),
+        tolerateTarWarnings: true,
       );
       if (!await file.exists() || await file.length() == 0) {
         throw AppleVmException('vmrootfsempty-text'.i18n([instance]));
@@ -1305,6 +1343,7 @@ class AppleVmApi extends VmBackend {
     File? stdoutFile,
     File? stdinFile,
     required String what,
+    bool tolerateTarWarnings = false,
   }) async {
     final remote = args.map(_shSingleQuote).join(' ');
     final Process process;
@@ -1363,7 +1402,14 @@ class AppleVmApi extends VmBackend {
       throw AppleVmException('$what\n'
           'Timed out after ${rootfsTransferTimeout.inMinutes} minutes.');
     }
-    if (exitCode != 0) {
+    // With [tolerateTarWarnings], GNU tar's exit 1 — "some files differ",
+    // which on a running guest means a log grew or a directory gained an
+    // entry during a walk that takes minutes — is a snapshot, not a
+    // failure, provided that is all tar had to say.
+    final tolerated = tolerateTarWarnings &&
+        exitCode == 1 &&
+        tarExitedWithWarningsOnly(stderrBuffer.toString());
+    if (exitCode != 0 && !tolerated) {
       final detail = stderrBuffer.toString().trim();
       throw AppleVmException(detail.isEmpty ? what : '$what\n$detail');
     }

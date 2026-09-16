@@ -206,10 +206,15 @@ class CloudServerType {
     this.architecture = '',
   });
 
-  /// `cx22 · 2 vCPU · 4 GB · 40 GB · 3.79 EUR/mo`
+  /// `cx22 · x86 · 2 vCPU · 4 GB · 40 GB · 3.79 EUR/mo`
+  ///
+  /// The architecture sits right after the name because it is the one
+  /// attribute that decides whether a deploy can work at all, and a type's
+  /// name (`cax11`, `cpx11`) does not say it.
   String get label {
     final parts = <String>[
       name,
+      if (architecture.isNotEmpty) architecture,
       if (cores > 0) '$cores vCPU',
       if (memoryGb > 0) '${_trim(memoryGb)} GB',
       if (diskGb > 0) '$diskGb GB',

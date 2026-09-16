@@ -233,7 +233,7 @@ void main() {
 
     expect(catalogue.serverTypes.map((t) => t.name), ['cx22']);
     expect(catalogue.serverTypes.single.label,
-        'cx22 · 2 vCPU · 4 GB · 40 GB · 3.69 EUR/mo');
+        'cx22 · x86 · 2 vCPU · 4 GB · 40 GB · 3.69 EUR/mo');
     expect(catalogue.locations.single.label, 'nbg1 · Nuremberg, DE');
     // Images are addressed by name, which survives Hetzner's rebuilds; the
     // numeric id does not.

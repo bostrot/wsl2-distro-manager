@@ -35,6 +35,14 @@
 // exist. A root filesystem with no systemd is kept alive with `sleep` as
 // before, and whatever it runs is the user's to start.
 //
+// Two things are checked before a byte is moved, because both would
+// otherwise cost the user a long export and a billed server to find out:
+// the server type's CPU architecture has to be the instance's (a provider
+// sells both, and the programs in an arm64 rootfs do not run on an x86
+// server or the other way round), and a boot that does fail is left on the
+// server, stopped, with its log in the error — the evidence of what went
+// wrong is worth more than a tidy server ([_checkContainerUp]).
+//
 // Step 1 and the last step are the backend's, not this file's
 // ([VmBackend.exportRootfs] / [VmBackend.importRootfs]), because they are the
 // only part that differs per backend: WSL hands over a rootfs tarball
@@ -53,6 +61,7 @@
 // wrong for a Linux cloud server. These targets get POSIX quoting instead.
 
 import 'dart:async';
+import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -76,6 +85,46 @@ final RegExp cloudNamePattern = RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,61}$');
 /// The user the app connects to a fresh cloud server as. Providers create
 /// exactly one account on a stock image and this is it.
 const String cloudRootUser = 'root';
+
+/// The CPU architecture family a provider's wording means: `arm` for the
+/// 64-bit ARM types (Hetzner says `arm`, others `arm64` or `aarch64`), `x86`
+/// for the Intel/AMD ones (`x86`, `x86_64`, `amd64`, `x64`), '' for anything
+/// else or nothing at all.
+String cloudArchitectureFamily(String reported) {
+  final value = reported.trim().toLowerCase();
+  // Whole words only: a description that merely contains the letters is
+  // not a family.
+  if (RegExp(r'\b(arm|arm64|armv8|aarch64)\b').hasMatch(value)) return 'arm';
+  if (RegExp(r'\b(x86|x86_64|x86-64|amd64|x64)\b').hasMatch(value)) {
+    return 'x86';
+  }
+  return '';
+}
+
+/// The architecture family of the instances this machine exports, or ''
+/// when it is neither of the two a provider sells.
+///
+/// Read off the machine rather than out of the archive: both backends
+/// virtualise the host's own architecture (WSL 2 and Virtualization.framework
+/// do not emulate), so an instance is arm64 on an Apple Silicon Mac or a
+/// Windows-on-ARM machine and x86-64 everywhere else, and a 2 GB tarball
+/// does not have to be opened to know it.
+///
+/// The app's own ABI is the answer except under emulation: the Windows build
+/// is x64 only, and on an ARM64 PC it runs under x64 emulation with an ABI
+/// that says `windows_x64` while every WSL distribution there is arm64.
+/// Windows tells an emulated process about that in `PROCESSOR_ARCHITEW6432`,
+/// which is consulted first; [environment] and [abi] exist so tests can
+/// describe a machine other than the one running them.
+String cloudLocalArchitecture({Abi? abi, Map<String, String>? environment}) {
+  final env = environment ?? Platform.environment;
+  final emulated = cloudArchitectureFamily(env['PROCESSOR_ARCHITEW6432'] ?? '');
+  if (emulated.isNotEmpty) return emulated;
+  final name = (abi ?? Abi.current()).toString(); // e.g. `macos_arm64`
+  if (name.endsWith('_arm64')) return 'arm';
+  if (name.endsWith('_x64') || name.endsWith('_ia32')) return 'x86';
+  return '';
+}
 
 /// Marker cloud-init touches once Docker is up, so the deploy waits for a
 /// *ready* machine rather than merely a reachable one. `docker version`
@@ -202,16 +251,23 @@ class CloudDeployService {
     ExecutionBroker? broker,
     VmBackend? backend,
     this.sshDirectoryOverride,
+    String? localArchitecture,
     this.commandTimeout = const Duration(minutes: 10),
     this.transferTimeout = const Duration(hours: 2),
     this.readyTimeout = const Duration(minutes: 10),
     this.pollInterval = const Duration(seconds: 5),
   })  : _broker = broker ?? ExecutionBroker(shell: shell ?? ProcessShell()),
-        _backend = backend;
+        _backend = backend,
+        localArchitecture = localArchitecture ?? cloudLocalArchitecture();
 
   final CloudProvider provider;
   final ExecutionBroker _broker;
   final VmBackend? _backend;
+
+  /// The architecture family ([cloudArchitectureFamily]) of the instances
+  /// this machine exports; '' turns the check off. Tests pass their own
+  /// rather than inheriting whatever machine runs them.
+  final String localArchitecture;
 
   /// How long one ordinary remote command may take.
   final Duration commandTimeout;
@@ -247,12 +303,19 @@ class CloudDeployService {
   /// Returns the server once the instance is running on it. Every stage is
   /// reported through [onProgress] — the whole thing takes minutes and a UI
   /// with no idea which minute it is in cannot be trusted.
+  ///
+  /// [serverArchitecture] is what the provider says [serverType] runs on
+  /// (see [CloudServerType.architecture]). When it is known and is not this
+  /// machine's, the deploy is refused here, before the export: the rootfs
+  /// would import fine and then fail on its first `exec`, minutes and one
+  /// billed server later.
   Future<CloudServer> deploy({
     required String instance,
     required String serverName,
     required String serverType,
     required String image,
     required String location,
+    String serverArchitecture = '',
     void Function(DeployProgress progress)? onProgress,
   }) async {
     _checkName(instance, 'instance');
@@ -260,6 +323,16 @@ class CloudDeployService {
     if (!canDeploy) {
       throw CloudException('Deploying is not supported for '
           '${backend.instanceNoun} instances on this backend.');
+    }
+    final wanted = cloudArchitectureFamily(serverArchitecture);
+    if (wanted.isNotEmpty &&
+        localArchitecture.isNotEmpty &&
+        wanted != localArchitecture) {
+      // "an arm", "an x86": both families happen to be said with a vowel.
+      throw CloudException('$serverType is an $wanted server type, but the '
+          '${backend.instanceNoun} instances on this machine are '
+          '$localArchitecture: their programs cannot run there. Pick an '
+          '$localArchitecture server type.');
     }
 
     void report(DeployStage stage, [String detail = '']) =>
@@ -305,7 +378,7 @@ class CloudDeployService {
           what: 'importing the root filesystem');
 
       report(DeployStage.starting, instance);
-      final systemd = await _findSystemd(target, _imageTag(instance));
+      final systemd = await _findSystemd(target, instance);
       await _run(target, _dockerRunArgs(instance, systemd),
           what: 'starting the container');
       await _checkContainerUp(target, instance, systemd);
@@ -386,8 +459,11 @@ class CloudDeployService {
   /// exactly like the VM does. Only the probe's own "no" — exit 1 — and an
   /// image with no `sh` to run it in mean "no systemd"; anything else is
   /// the server or its Docker failing, and a deploy that shrugged that off
-  /// would quietly start the user's system without its services.
-  Future<String> _findSystemd(String target, String image) async {
+  /// would quietly start the user's system without its services. The
+  /// kernel refusing to run the image's `sh` at all is the one failure
+  /// worth a sentence of its own ([_failureText]).
+  Future<String> _findSystemd(String target, String instance) async {
+    final image = _imageTag(instance);
     final probe = cloudSystemdCandidates
         .map((path) => 'if [ -x $path ]; then echo $path; exit 0; fi')
         .join('; ');
@@ -395,7 +471,10 @@ class CloudDeployService {
         'ssh',
         cloudSshCommand(target,
             ['docker', 'run', '--rm', image, 'sh', '-c', '$probe; exit 1']));
-    if (const [1, 126, 127].contains(result.exitCode)) return '';
+    if (const [1, 126, 127].contains(result.exitCode) &&
+        !_isExecFormatError(result)) {
+      return '';
+    }
     if (result.exitCode != 0) {
       throw CloudException(
           _failureText('probing the root filesystem for systemd', result));
@@ -480,10 +559,19 @@ class CloudDeployService {
   /// spawned, and a container that is alive is not the same as a system that
   /// booted: systemd stays PID 1 with a dead boot behind it when it falls
   /// into emergency mode. So the systemd branch asks systemd itself and only
-  /// the `sleep` branch settles for the container's state. Either way a
-  /// container that failed is removed before the error is raised — left
-  /// alone it would restart in a loop on a server the user is paying for —
-  /// and the server itself is left for the user to look at or delete.
+  /// the `sleep` branch settles for the container's state.
+  ///
+  /// A container that failed is *kept*, stopped: what it logged is the only
+  /// record of why a boot that works locally did not work there, and the
+  /// error carries as much of it as fits — the container's own output and,
+  /// under systemd, the journal's warnings. Stopping is what keeps it from
+  /// coming back in a loop on a server the user is paying for: its policy is
+  /// `unless-stopped`, under which a container stopped by hand stays down
+  /// until a `docker start` brings it back on purpose, restart policy and
+  /// all. The stop is given a short deadline rather than the container's own
+  /// ninety seconds — a boot that wedged is not going to halt cleanly either,
+  /// and the error is already known. The server itself is left for the user
+  /// to look at or delete.
   Future<void> _checkContainerUp(
       String target, String instance, String systemd) async {
     final failure = systemd.isEmpty
@@ -493,13 +581,25 @@ class CloudDeployService {
     // Both streams: an init that refuses to start says why on stderr.
     final log = await _exec('ssh',
         cloudSshCommand(target, ['docker', 'logs', '--tail', '20', instance]));
-    final detail = [failure, log.stdout.trim(), log.stderr.trim()]
-        .where((part) => part.isNotEmpty)
-        .join('\n');
-    await _run(target, ['docker', 'rm', '--force', instance],
-        what: 'removing the failed container', allowFailure: true);
+    var journal = systemd.isEmpty
+        ? ''
+        : await _inContainer(target, instance,
+            ['journalctl', '--no-pager', '-p', 'warning', '-n', '30'],
+            what: 'reading the journal');
+    // journalctl's way of saying nothing was logged; not evidence.
+    if (journal == '-- No entries --') journal = '';
+    final detail = [
+      failure,
+      log.stdout.trim(),
+      log.stderr.trim(),
+      if (journal.isNotEmpty) 'Journal:\n$journal',
+    ].where((part) => part.isNotEmpty).join('\n');
+    await _run(target, ['docker', 'stop', '--time', '15', instance],
+        what: 'stopping the failed container', allowFailure: true);
     throw CloudException('$instance did not come up on the server. The '
-        'container was removed; the server is still running.\n$detail');
+        'container was stopped and left there to look at ("docker logs '
+        '$instance", "docker start $instance" on the server); the server '
+        'is still running.\n$detail');
   }
 
   /// Why a `sleep` container is not running one poll interval after its
@@ -537,31 +637,37 @@ class CloudDeployService {
       final state = result.stdout.trim();
       if (state == 'running' || state == 'degraded') return null;
       if (const ['maintenance', 'stopping', 'offline'].contains(state)) {
-        final failed = await _run(
-            target,
-            [
-              'docker',
-              'exec',
-              instance,
-              'systemctl',
-              '--failed',
-              '--no-legend'
-            ],
-            what: 'listing the failed units',
-            allowFailure: true);
+        final failed = await _inContainer(
+            target, instance, ['systemctl', '--failed', '--no-legend'],
+            what: 'listing the failed units');
         return 'systemd reported "$state".'
             '${failed.isEmpty ? '' : '\nFailed units:\n$failed'}';
       }
       final container = await _containerState(target, instance);
       if (container != 'running 0') return 'Container state: $container.';
       if (!DateTime.now().isBefore(deadline)) {
+        // A boot still "starting" after this long is one unit that never
+        // finishes; name it, or the user is left guessing which of a
+        // hundred it was.
+        final jobs = await _inContainer(
+            target, instance, ['systemctl', 'list-jobs', '--no-legend'],
+            what: 'listing the pending jobs');
         return 'systemd did not finish booting within '
             '${readyTimeout.inMinutes} minutes'
-            '${state.isEmpty ? '' : ' (state: $state)'}.';
+            '${state.isEmpty ? '' : ' (state: $state)'}.'
+            '${jobs.isEmpty ? '' : '\nStill starting:\n$jobs'}';
       }
       await Future.delayed(pollInterval);
     }
   }
+
+  /// Run [args] inside [instance] for its output, '' when that fails: these
+  /// are the diagnostics gathered on the way to an error, and a diagnostic
+  /// that cannot be read is not a second error.
+  Future<String> _inContainer(String target, String instance, List<String> args,
+          {required String what}) =>
+      _run(target, ['docker', 'exec', instance, ...args],
+          what: what, allowFailure: true);
 
   /// `<status> <restart count>` of a container, e.g. `running 0`.
   Future<String> _containerState(String target, String instance) => _run(
@@ -801,8 +907,22 @@ class CloudDeployService {
         ? result.stderr.trim()
         : result.stdout.trim();
     final suffix = detail.isEmpty ? '' : '\n$detail';
-    return 'Failed while $what (exit ${result.exitCode}).$suffix';
+    // The kernel refusing the image's own programs: a rootfs of the other
+    // architecture. Docker reports it as a failed start (exit 125), which
+    // read literally would be "the server cannot run containers".
+    final hint = _isExecFormatError(result)
+        ? '\nThe server cannot run the programs in this root filesystem: its '
+            'CPU architecture is not this machine\'s'
+            '${localArchitecture.isEmpty ? '' : ' ($localArchitecture)'}. '
+            'Delete the server and deploy again onto a server type of the '
+            'same architecture.'
+        : '';
+    return 'Failed while $what (exit ${result.exitCode}).$suffix$hint';
   }
+
+  static bool _isExecFormatError(ExecutionResult result) =>
+      result.exitCode != 0 &&
+      result.stderr.toLowerCase().contains('exec format error');
 
   /// The image a deployed instance is imported as. Tagged under one prefix so
   /// `docker images` on the server says where these came from.

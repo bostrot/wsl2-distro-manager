@@ -216,6 +216,46 @@ void main() {
     expect(cloudNamePattern.hasMatch(name), isTrue);
   });
 
+  testWidgets('the preselected server type is one the instances can run on',
+      (tester) async {
+    // Hetzner's list is alphabetical, which puts its ARM types first; an
+    // x86 machine offered `cax11` by default would fail every deploy with
+    // "exec format error", minutes and one billed server later.
+    final provider = FakeCloudProvider(
+      catalogueValue: const CloudCatalogue(
+        serverTypes: [
+          CloudServerType(id: '45', name: 'cax11', architecture: 'arm'),
+          CloudServerType(id: '22', name: 'cx22', architecture: 'x86'),
+        ],
+        locations: [CloudLocation(id: '1', name: 'nbg1')],
+        images: [CloudImage(id: 'ubuntu-24.04', name: 'ubuntu-24.04')],
+      ),
+    );
+    final backend = FakeDeployBackend(instances: ['Ubuntu']);
+    await pump(
+      tester,
+      CloudPage(
+        provider: provider,
+        backend: backend,
+        service: CloudDeployService(
+            provider: provider, backend: backend, localArchitecture: 'x86'),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('test-cloud-deploy')));
+    await tester.pumpAndSettle();
+
+    final combo = tester.widget<ComboBox<String>>(
+        find.byKey(const ValueKey('test-cloud-type-combo')));
+    expect(combo.value, 'cx22');
+    // The other one is listed — it is on offer — but cannot be chosen.
+    final enabled = {for (final item in combo.items!) item.value: item.enabled};
+    expect(enabled, {'cax11': false, 'cx22': true});
+    // And the architecture is on the label, so a choice reads as what it
+    // is rather than as a cheaper size.
+    expect(find.textContaining('cx22 · x86'), findsOneWidget);
+  });
+
   testWidgets('the suggested name is legal even for an awkward instance name',
       (tester) async {
     // A default the form rejects the moment it opens is worse than none: a

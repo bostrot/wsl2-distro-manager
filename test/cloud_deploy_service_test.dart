@@ -1,3 +1,4 @@
+import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -51,14 +52,19 @@ void main() {
     FakeCloudShell shell,
     FakeCloudProvider provider, {
     FakeDeployBackend? backend,
+    // Pinned rather than read off the machine running the tests, which is
+    // arm64 on one developer's Mac and x86-64 in CI.
+    String localArchitecture = 'x86',
+    Duration readyTimeout = const Duration(seconds: 5),
   }) =>
       CloudDeployService(
         provider: provider,
         shell: shell,
         backend: backend ?? FakeDeployBackend(),
         sshDirectoryOverride: sshDir.path,
+        localArchitecture: localArchitecture,
         pollInterval: Duration.zero,
-        readyTimeout: const Duration(seconds: 5),
+        readyTimeout: readyTimeout,
       );
 
   group('posix quoting', () {
@@ -256,12 +262,14 @@ void main() {
 
   test(
       'a boot that ends in emergency mode fails the deploy, names the '
-      'failed units and removes the container', () async {
+      'failed units and keeps the container stopped', () async {
     final shell = _deployShell()
       ..responses['docker run --rm'] = '/usr/lib/systemd/systemd\n'
       ..responses['is-system-running'] = 'maintenance\n'
       ..responses['systemctl --failed'] =
           'boot-efi.mount loaded failed failed /boot/efi\n'
+      ..responses['journalctl'] =
+          'systemd[1]: boot-efi.mount: Mount process exited, code=exited'
       ..responses['docker logs'] = 'Welcome to Ubuntu 24.04 LTS!';
     final provider = FakeCloudProvider()..getServerAnswers.add(_running());
 
@@ -276,12 +284,205 @@ void main() {
       throwsA(isA<CloudException>().having(
           (e) => e.message,
           'message',
-          allOf(contains('web-2 did not come up'), contains('"maintenance"'),
-              contains('boot-efi.mount'), contains('Welcome to Ubuntu')))),
+          allOf(
+              contains('web-2 did not come up'),
+              contains('"maintenance"'),
+              contains('boot-efi.mount'),
+              contains('Welcome to Ubuntu'),
+              contains('Mount process exited'),
+              contains('docker start web-2')))),
     );
-    // Not left restarting in a loop on a billed server.
-    expect(shell.sawCommand('docker rm --force web-2'), isTrue);
     expect(shell.sawCommand('docker logs --tail 20 web-2'), isTrue);
+    // The journal is read while the container is still up — it is gone
+    // from `docker exec` once the container is stopped.
+    final lines = shell.commandLines;
+    expect(lines.indexWhere((l) => l.contains('journalctl')),
+        lessThan(lines.indexWhere((l) => l.contains('docker stop --time'))));
+    // Kept for a look, but not left restarting in a loop on a billed
+    // server: `unless-stopped` honours a stop. And the stop is not given
+    // the container's own ninety seconds — the error is already known.
+    expect(shell.sawCommand('docker rm'), isFalse);
+    expect(shell.sawCommand('docker update'), isFalse);
+    expect(shell.sawCommand('docker stop --time 15 web-2'), isTrue);
+  });
+
+  test('an empty journal is left out of the error rather than quoted',
+      () async {
+    final shell = _deployShell()
+      ..responses['docker run --rm'] = '/usr/lib/systemd/systemd\n'
+      ..responses['is-system-running'] = 'maintenance\n'
+      ..responses['journalctl'] = '-- No entries --\n';
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await expectLater(
+      service(shell, provider).deploy(
+        instance: 'web-2',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having((e) => e.message, 'message',
+          allOf(contains('"maintenance"'), isNot(contains('Journal'))))),
+    );
+  });
+
+  test('a boot that never finishes names the jobs still pending', () async {
+    final shell = _deployShell()
+      ..responses['docker run --rm'] = '/usr/lib/systemd/systemd\n'
+      ..responses['is-system-running'] = 'starting\n'
+      ..responses['list-jobs'] = '12 snapd.seeded.service start running\n';
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await expectLater(
+      // Short enough not to wait, long enough for the address poll before
+      // it, which shares the timeout.
+      service(shell, provider, readyTimeout: const Duration(milliseconds: 300))
+          .deploy(
+        instance: 'web-2',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('did not finish booting'), contains('starting'),
+              contains('snapd.seeded.service')))),
+    );
+    expect(shell.sawCommand('docker stop --time 15 web-2'), isTrue);
+  });
+
+  test('a server of the other architecture is refused before the export',
+      () async {
+    final shell = _deployShell();
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+    final backend = FakeDeployBackend();
+
+    await expectLater(
+      service(shell, provider, backend: backend, localArchitecture: 'arm')
+          .deploy(
+        instance: 'Ubuntu',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        serverArchitecture: 'x86',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having((e) => e.message, 'message',
+          allOf(contains('cx22 is an x86 server type'), contains('arm')))),
+    );
+    // Nothing was exported, created or billed for.
+    expect(backend.exports, isEmpty);
+    expect(provider.lastCreate, isEmpty);
+    expect(shell.calls, isEmpty);
+  });
+
+  test('a matching or unknown server architecture deploys as before', () async {
+    for (final architecture in ['arm', 'arm64', '']) {
+      final shell = _deployShell();
+      final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+      await service(shell, provider, localArchitecture: 'arm').deploy(
+        instance: 'Ubuntu',
+        serverName: 'deploy-1',
+        serverType: 'cax11',
+        serverArchitecture: architecture,
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      );
+      expect(provider.lastCreate['serverType'], 'cax11');
+    }
+  });
+
+  test('an image the server cannot execute is explained, not shrugged off',
+      () async {
+    // What Docker prints when the kernel refuses the image's own `sh`: the
+    // rootfs was built for the other architecture. Exit 125 is the same
+    // code as "no daemon", so the words are what tell it apart.
+    final shell = _deployShell()
+      ..exitCodes['docker run --rm'] = 125
+      ..errors['docker run --rm'] = 'docker: Error response from daemon: '
+          'failed to create task for container: exec: "sh": exec format error';
+    final provider = FakeCloudProvider()..getServerAnswers.add(_running());
+
+    await expectLater(
+      service(shell, provider, localArchitecture: 'arm').deploy(
+        instance: 'Ubuntu',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having(
+          (e) => e.message,
+          'message',
+          allOf(
+              contains('probing'),
+              contains('exec format error'),
+              contains('CPU architecture'),
+              contains('(arm)'),
+              contains('same architecture')))),
+    );
+    expect(shell.sawCommand('docker run --detach'), isFalse);
+
+    // The same words from the start itself — an image with no `sh` for the
+    // probe but a systemd of the wrong architecture — get the same hint.
+    final late = _deployShell()
+      ..exitCodes['docker run --rm'] = 127
+      ..exitCodes['docker run --detach'] = 125
+      ..errors['docker run --detach'] = 'exec: "sleep": exec format error';
+    await expectLater(
+      service(late, FakeCloudProvider()..getServerAnswers.add(_running()))
+          .deploy(
+        instance: 'Ubuntu',
+        serverName: 'deploy-1',
+        serverType: 'cx22',
+        image: 'ubuntu-24.04',
+        location: 'nbg1',
+      ),
+      throwsA(isA<CloudException>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('starting the container'),
+              contains('CPU architecture')))),
+    );
+  });
+
+  test('architecture families are read from either side\'s wording', () {
+    expect(cloudArchitectureFamily('x86'), 'x86');
+    expect(cloudArchitectureFamily('x86_64'), 'x86');
+    expect(cloudArchitectureFamily('amd64'), 'x86');
+    expect(cloudArchitectureFamily('arm'), 'arm');
+    expect(cloudArchitectureFamily('arm64'), 'arm');
+    expect(cloudArchitectureFamily('aarch64'), 'arm');
+    expect(cloudArchitectureFamily(''), '');
+    expect(cloudArchitectureFamily('riscv64'), '');
+    // Whole words: a description is not a family just for containing one.
+    expect(cloudArchitectureFamily('x86_64 (AMD, warm pool)'), 'x86');
+    expect(cloudArchitectureFamily('charm'), '');
+
+    const none = <String, String>{};
+    expect(
+        cloudLocalArchitecture(abi: Abi.macosArm64, environment: none), 'arm');
+    expect(cloudLocalArchitecture(abi: Abi.windowsArm64, environment: none),
+        'arm');
+    expect(
+        cloudLocalArchitecture(abi: Abi.windowsX64, environment: none), 'x86');
+    expect(cloudLocalArchitecture(abi: Abi.linuxX64, environment: none), 'x86');
+    expect(
+        cloudLocalArchitecture(abi: Abi.linuxRiscv64, environment: none), '');
+    // The x64 build on an ARM64 Windows PC runs under emulation: its ABI
+    // says x64, but the machine — and every WSL distribution on it — is
+    // arm64, which Windows tells the emulated process about.
+    expect(
+        cloudLocalArchitecture(abi: Abi.windowsX64, environment: const {
+          'PROCESSOR_ARCHITECTURE': 'AMD64',
+          'PROCESSOR_ARCHITEW6432': 'ARM64',
+        }),
+        'arm');
+    // Whatever runs the tests is one of the two a provider sells.
+    expect(cloudLocalArchitecture(), anyOf('arm', 'x86'));
   });
 
   test('a server that cannot even run the probe fails the deploy', () async {
@@ -328,7 +529,7 @@ void main() {
 
   test(
       'a sleep container that does not stay up fails the deploy with its '
-      'log and is removed', () async {
+      'log and is kept stopped', () async {
     final shell = _deployShell()
       ..responses['docker inspect'] = 'restarting 3\n'
       // A container's stdout and stderr are replayed by `docker logs` on
@@ -352,7 +553,10 @@ void main() {
               contains('starting'), contains('executable file not found')))),
     );
     expect(shell.sawCommand('docker logs --tail 20 Ubuntu'), isTrue);
-    expect(shell.sawCommand('docker rm --force Ubuntu'), isTrue);
+    expect(shell.sawCommand('docker stop --time 15 Ubuntu'), isTrue);
+    expect(shell.sawCommand('docker rm'), isFalse);
+    // No systemd, so no journal to ask for.
+    expect(shell.sawCommand('journalctl'), isFalse);
     // The staged archive does not outlive a failed deploy.
     expect(File('${tempDir.path}/tmp/Ubuntu-cloud.tar').existsSync(), isFalse);
   });

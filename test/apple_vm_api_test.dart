@@ -995,7 +995,9 @@ void main() {
       final call = streamedExecCall();
       expect(call, containsAll(['exec', '--name', 'ubuntu', '--user', 'root']));
       final remote = remoteCommandOf(call);
-      expect(remote, startsWith("'tar' '-cf' '-' '-C' '/'"));
+      // Under the C locale: the export reads tar's warnings by their
+      // English wording, and ssh would otherwise forward the Mac's locale.
+      expect(remote, startsWith("'env' 'LC_ALL=C' 'tar' '-cf' '-' '-C' '/'"));
       expect(remote, endsWith("'.'"));
       // Nothing was started or stopped: the guest was already up.
       expect(shell.calls.any((c) => c.contains('start')), isFalse);
@@ -1088,6 +1090,64 @@ void main() {
       // archive, and nothing downstream can tell one of those from a whole
       // one.
       expect(archive.existsSync(), isFalse);
+    });
+
+    test('a file that changed under tar is a warning, not a failed export',
+        () async {
+      // The guest is running while it is read, so this happens whenever a
+      // log grows or a directory gains an entry during the walk. GNU tar
+      // exits 1 for it; the archive is a snapshot all the same, and a
+      // deploy that gave up on it would fail one attempt in a few for no
+      // reason anyone could act on.
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.responses['exec'] = 'TAR-BYTES';
+      shell.exitCodeQueue['exec'] = [0, 1];
+      shell.errors['exec'] =
+          'tar: ./var/log/journal/abc/system.journal: file changed as we read it\n'
+          'tar: ./var/log: file changed as we read it\n'
+          'tar: ./tmp/x: File removed before we read it\n'
+          'tar: ./run/docker.sock: socket ignored\n';
+
+      await api.exportRootfs('ubuntu', archive.path);
+
+      expect(archive.readAsStringSync(), 'TAR-BYTES');
+    });
+
+    test('exit 1 with anything else on stderr still fails the export',
+        () async {
+      // busybox tar exits 1 for real errors, and so does GNU tar for a
+      // warning it has not been taught here; neither is a snapshot.
+      shell.responses['list'] = vmList([vm('ubuntu', running: true)]);
+      shell.responses['exec'] = 'TAR';
+      shell.exitCodeQueue['exec'] = [0, 1];
+      shell.errors['exec'] = "tar: can't open './root/x': Permission denied";
+
+      await expectLater(
+        api.exportRootfs('ubuntu', archive.path),
+        throwsA(predicate((e) => '$e'.contains('Permission denied'))),
+      );
+      expect(archive.existsSync(), isFalse);
+    });
+
+    test('only GNU tar\'s live-system warnings count as harmless', () {
+      expect(
+          tarExitedWithWarningsOnly(
+              'tar: ./var/log/syslog: file changed as we read it\n'),
+          isTrue);
+      expect(
+          tarExitedWithWarningsOnly('tar: ./a: File removed before we read it\n'
+              'tar: ./b: File shrank by 12 bytes; padding with zeros\n'
+              'tar: ./c: File shrank by 1 byte; padding with zeros\n'),
+          isTrue);
+      expect(tarExitedWithWarningsOnly(''), isFalse);
+      expect(
+          tarExitedWithWarningsOnly('tar: ./a: file changed as we read it\n'
+              'tar: ./etc/shadow: Cannot open: Permission denied\n'),
+          isFalse);
+      expect(
+          tarExitedWithWarningsOnly(
+              'tar: Exiting with failure status due to previous errors\n'),
+          isFalse);
     });
 
     test('a transfer that hangs is killed and reported', () async {

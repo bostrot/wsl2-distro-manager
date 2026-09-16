@@ -284,11 +284,13 @@ class _CloudPageState extends State<CloudPage> {
       builder: (context) => _DeployDialog(
         instances: instances,
         catalogue: catalogue,
+        localArchitecture: service.localArchitecture,
         onDeploy: (request) => _runTransfer(() async {
           final server = await service.deploy(
             instance: request.instance,
             serverName: request.serverName,
             serverType: request.serverType,
+            serverArchitecture: request.serverArchitecture,
             image: request.image,
             location: request.location,
             onProgress: _onProgress,
@@ -607,6 +609,9 @@ class DeployRequest {
   final String instance;
   final String serverName;
   final String serverType;
+
+  /// What the catalogue says [serverType] runs on, '' when it did not say.
+  final String serverArchitecture;
   final String image;
   final String location;
 
@@ -614,6 +619,7 @@ class DeployRequest {
     required this.instance,
     required this.serverName,
     required this.serverType,
+    this.serverArchitecture = '',
     required this.image,
     required this.location,
   });
@@ -626,11 +632,16 @@ class _DeployDialog extends StatefulWidget {
     required this.instances,
     required this.catalogue,
     required this.onDeploy,
+    this.localArchitecture = '',
   });
 
   final List<String> instances;
   final CloudCatalogue catalogue;
   final void Function(DeployRequest request) onDeploy;
+
+  /// The architecture family of the instances on offer, so the preselected
+  /// server type is one they can run on. '' preselects the first type.
+  final String localArchitecture;
 
   @override
   State<_DeployDialog> createState() => _DeployDialogState();
@@ -687,12 +698,28 @@ class _DeployDialogState extends State<_DeployDialog> {
         : widget.catalogue.images.first.id;
   }
 
+  /// The preselected server type: the first one of the instances' own
+  /// architecture, because the list is alphabetical and at Hetzner that puts
+  /// the ARM types (`cax…`) before the x86 ones — a default that would fail
+  /// every deploy from an x86 machine.
+  String? get _defaultServerType {
+    final types = widget.catalogue.serverTypes;
+    if (types.isEmpty) return null;
+    return types.firstWhere(_canRunHere, orElse: () => types.first).name;
+  }
+
+  /// Whether the instances can run on [type]: either side not saying its
+  /// architecture counts as yes, the service's own check being the backstop.
+  bool _canRunHere(CloudServerType type) {
+    final local = widget.localArchitecture;
+    final family = cloudArchitectureFamily(type.architecture);
+    return local.isEmpty || family.isEmpty || family == local;
+  }
+
   @override
   Widget build(BuildContext context) {
     final catalogue = widget.catalogue;
-    _serverType ??= catalogue.serverTypes.isEmpty
-        ? null
-        : catalogue.serverTypes.first.name;
+    _serverType ??= _defaultServerType;
     _location ??=
         catalogue.locations.isEmpty ? null : catalogue.locations.first.name;
     _image ??= _defaultImage;
@@ -742,8 +769,14 @@ class _DeployDialogState extends State<_DeployDialog> {
                 isExpanded: true,
                 value: _serverType,
                 items: [
+                  // A type of the other architecture is shown, so the user
+                  // sees it is on offer, but cannot be chosen: nothing in
+                  // the instance would run on it.
                   for (final type in catalogue.serverTypes)
-                    ComboBoxItem(value: type.name, child: Text(type.label)),
+                    ComboBoxItem(
+                        value: type.name,
+                        enabled: _canRunHere(type),
+                        child: Text(type.label)),
                 ],
                 onChanged: (type) => setState(() => _serverType = type),
               ),
@@ -815,11 +848,16 @@ class _DeployDialogState extends State<_DeployDialog> {
       setState(() => _validation = 'clouddeployincomplete-text'.i18n());
       return;
     }
+    final architecture = widget.catalogue.serverTypes
+        .firstWhere((type) => type.name == serverType,
+            orElse: () => const CloudServerType(id: '', name: ''))
+        .architecture;
     Navigator.pop(context);
     widget.onDeploy(DeployRequest(
       instance: _instance,
       serverName: name,
       serverType: serverType,
+      serverArchitecture: architecture,
       image: image,
       location: location,
     ));
