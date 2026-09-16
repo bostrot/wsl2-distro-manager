@@ -190,6 +190,14 @@ class _AiChatPanelState extends State<AiChatPanel> {
   Future<void> _dispatch(String text, {bool retry = false}) async {
     if ((text.isEmpty && !retry) || _busy) return;
 
+    // AI switched off in Settings — the dock is normally gone with it, but
+    // a queued task run or a sandbox chat can still land here.
+    if (!AiService.featuresEnabled) {
+      if (_inputController.text.isEmpty) _inputController.text = text;
+      _block('ai-disabled-text', 'settings', 'opensettings-text');
+      return;
+    }
+
     // Check license
     if (!_license.isPro) {
       _block('ai-chat-pro-required-text', 'license', 'upgrade-text');
@@ -250,13 +258,19 @@ class _AiChatPanelState extends State<AiChatPanel> {
       });
 
       final msg = e.toString();
-      if (msg.contains('pro-required') || msg.contains('byok-required')) {
+      if (msg.contains('ai-disabled') ||
+          msg.contains('pro-required') ||
+          msg.contains('byok-required')) {
         // The question never reached a provider, so give it back rather than
         // making the user retype it (PS-33).
         if (_inputController.text.isEmpty) _inputController.text = text;
-        msg.contains('pro-required')
-            ? _block('ai-chat-pro-required-text', 'license', 'upgrade-text')
-            : _block(_ai.configRequiredKey, 'settings', 'opensettings-text');
+        if (msg.contains('ai-disabled')) {
+          _block('ai-disabled-text', 'settings', 'opensettings-text');
+        } else if (msg.contains('pro-required')) {
+          _block('ai-chat-pro-required-text', 'license', 'upgrade-text');
+        } else {
+          _block(_ai.configRequiredKey, 'settings', 'opensettings-text');
+        }
       } else {
         setState(() => _sendFailed = true);
       }

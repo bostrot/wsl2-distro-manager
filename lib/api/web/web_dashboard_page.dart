@@ -626,10 +626,11 @@ function openToolForm(name, preset) {
 // One transcript shared with the desktop panel. A run can take minutes of
 // tool calls, so Send returns at once and the tab polls /api/chat for the
 // notes, the streaming reply and the final answer while it is open.
-let chat = {configured: true, pro: true, busy: false, status: null, streaming: '', error: null, count: 0, messages: []};
+let chat = {enabled: true, configured: true, pro: true, busy: false, status: null, streaming: '', error: null, count: 0, messages: []};
 let chatRevision = null, chatTimer = null, chatLoaded = false;
 const CHAT_ERRORS = {
   'busy': 'The assistant is still working — wait for it to finish or stop it.',
+  'ai-disabled': 'AI features are turned off in the app under Settings → Bring Your Own AI Key.',
   'pro-required': 'The assistant is a Pro feature.',
   'byok-required': 'No API key yet. Add one in the app under Settings → AI assistant.',
   'byok-request-failed': 'The request to the AI provider failed. Check the key, the endpoint and the network in the app, then retry.',
@@ -654,7 +655,8 @@ function renderChat() {
   $('#chatModel').hidden = !chat.model; $('#chatModel').textContent = chat.model || '';
   const notice = $('#chatNotice');
   let text = '', err = false;
-  if (!chat.pro) text = CHAT_ERRORS['pro-required'];
+  if (!chat.enabled) text = CHAT_ERRORS['ai-disabled'];
+  else if (!chat.pro) text = CHAT_ERRORS['pro-required'];
   else if (!chat.configured) text = CHAT_ERRORS['byok-required'];
   else if (chat.error && chat.error !== 'cancelled') { text = chatErrorText(chat.error); err = true; }
   notice.hidden = !text; notice.className = 'notice' + (err ? ' err' : '');
@@ -662,7 +664,7 @@ function renderChat() {
   const retry = $('#chatRetry'); if (retry) retry.onclick = () => chatAction('retry', retry);
   $('#chatStatus').hidden = !chat.busy;
   $('#chatStatusText').textContent = chat.status ? 'Working… · ' + chat.status : 'Working…';
-  $('#chatSend').disabled = chat.busy || !chat.configured || !chat.pro;
+  $('#chatSend').disabled = chat.busy || !chat.enabled || !chat.configured || !chat.pro;
   $('#chatClear').disabled = chat.busy || !chat.messages.length;
   const log = $('#chatLog');
   const stick = !chatLoaded || log.scrollHeight - log.scrollTop - log.clientHeight < 48;
@@ -678,7 +680,7 @@ async function pollChat() {
     const data = await api('/api/chat' + (chatRevision !== null ? '?rev=' + encodeURIComponent(chatRevision) : ''));
     if (data.messages) { chat.messages = data.messages; chatRevision = data.revision; }
     const wasBusy = chat.busy;
-    Object.assign(chat, {configured: data.configured, pro: data.pro, model: data.model, busy: data.busy, status: data.status, streaming: data.streaming || '', error: data.error, count: data.count});
+    Object.assign(chat, {enabled: data.enabled !== false, configured: data.configured, pro: data.pro, model: data.model, busy: data.busy, status: data.status, streaming: data.streaming || '', error: data.error, count: data.count});
     renderChat();
     // A finished run may have started, stopped or created an instance.
     if (wasBusy && !chat.busy) refresh();

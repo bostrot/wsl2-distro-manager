@@ -8,6 +8,7 @@ import 'package:localization/localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/app_window.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
@@ -55,6 +56,15 @@ class RootPageState extends State<RootPage> with WindowListener {
   /// scope, so parking focus on it is enough to make Tab work (audit IA-01).
   final shellFocusScope = FocusScopeNode(debugLabel: 'Shell Focus Scope');
   final shellTraversalPolicy = ShellTraversalPolicy();
+
+  /// What the chat dock rebuilds on. App-lifetime globals, merged once: the
+  /// shell rebuilds on every status message, and a merge made inside the
+  /// builder re-subscribed to all three each time.
+  late final Listenable _dockListenable = Listenable.merge([
+    GlobalVariable.aiPanel,
+    GlobalVariable.sandboxChat,
+    AiService.featuresChanged,
+  ]);
 
   String status = '';
   bool loading = false;
@@ -113,6 +123,8 @@ class RootPageState extends State<RootPage> with WindowListener {
     // The footer pane item reads the licence state, so it has to rebuild when
     // that changes.
     LicenseManager().addListener(_onLicenseChanged);
+    // So does the AI Workspace entry when AI is switched off in Settings.
+    AiService.featuresChanged.addListener(_onLicenseChanged);
     initRoot(statusMsg);
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => adoptKeyboardFocus());
@@ -151,6 +163,7 @@ class RootPageState extends State<RootPage> with WindowListener {
     _messageTimer?.cancel();
     windowManager.removeListener(this);
     LicenseManager().removeListener(_onLicenseChanged);
+    AiService.featuresChanged.removeListener(_onLicenseChanged);
     searchController.dispose();
     searchFocusNode.dispose();
     shellFocusScope.dispose();
@@ -279,10 +292,11 @@ class RootPageState extends State<RootPage> with WindowListener {
         // page and stays put while the user moves around — a dock the user
         // can keep "in the background", unlike the modal it replaces.
         final body = ListenableBuilder(
-          listenable: Listenable.merge(
-              [GlobalVariable.aiPanel, GlobalVariable.sandboxChat]),
+          listenable: _dockListenable,
           builder: (context, _) {
-            if (!GlobalVariable.aiPanel.value) return pageWithStatus;
+            if (!GlobalVariable.aiPanel.value || !AiService.featuresEnabled) {
+              return pageWithStatus;
+            }
             var sandbox = GlobalVariable.sandboxChat.value;
             // A sandbox deleted while docked (any path — the button, the MCP
             // tool) must not leave a dead transcript on screen.

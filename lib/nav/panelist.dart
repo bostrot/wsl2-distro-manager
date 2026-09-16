@@ -4,6 +4,7 @@ import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/badge_pill.dart';
 import 'package:wsl2distromanager/components/beta_badge.dart';
 import 'package:wsl2distromanager/components/constants.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/dialogs/info_dialog.dart';
 import 'package:wsl2distromanager/dialogs/mount_dialog.dart';
@@ -72,7 +73,9 @@ List<NavigationPaneItem> get originalItems {
       navigateGuarded('templates', path: '/templates');
     },
   ),
-  if (features.aiWorkspace)
+  // Hidden, not paywalled, once AI is switched off in Settings: the entry
+  // is the one place the workspace distro gets provisioned from.
+  if (features.aiWorkspace && AiService.featuresEnabled)
   PaneItem(
     key: const Key('/ai-workspace'),
     icon: const Icon(FluentIcons.robot),

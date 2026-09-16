@@ -453,6 +453,23 @@ void main() {
       expect(shell.scripts, isEmpty);
       expect(messages, isEmpty);
     });
+
+    test('AI switched off writes nothing either, even with tools installed',
+        () async {
+      // Save is the one path that reaches the workspace distro without the
+      // AI Workspace page; with the switch off it must not provision or
+      // write into anything (bostrot/ai-tasks#85).
+      AiService.setFeaturesEnabled(false);
+      addTearDown(() => AiService.setFeaturesEnabled(true));
+      configureAssistant();
+      install(AiWorkspaceTool.hermesAgent);
+
+      final results = await service.applyCurrentAndNotify();
+
+      expect(results, isEmpty);
+      expect(shell.scripts, isEmpty);
+      expect(messages, isEmpty);
+    });
   });
 
   // "Set it once": a tool installed after the assistant was set up is pointed

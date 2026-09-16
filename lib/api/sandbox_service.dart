@@ -391,7 +391,10 @@ class SandboxChat {
 
   List<AiMessage> get history => List.unmodifiable(_history);
 
-  bool get canSend => LicenseManager().isPro && _ai.hasAiConfigured;
+  bool get canSend =>
+      AiService.featuresEnabled &&
+      LicenseManager().isPro &&
+      _ai.hasAiConfigured;
 
   /// What the sandbox is called in the prompt: a WSL distro on Windows, a VM
   /// on the Apple backend. The model reasons about the environment it is told
@@ -407,6 +410,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
 
   Future<String> send(String query,
       {void Function()? onUpdate, CancelSignal? cancel}) async {
+    if (!AiService.featuresEnabled) throw Exception('ai-disabled');
     if (!LicenseManager().isPro) throw Exception('pro-required');
     if (!_ai.hasAiConfigured) throw Exception('byok-required');
     _history.add(AiMessage(
@@ -419,6 +423,7 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   /// Retry after a failed send: the user message is already in the history.
   Future<String> retryLast(
       {void Function()? onUpdate, CancelSignal? cancel}) async {
+    if (!AiService.featuresEnabled) throw Exception('ai-disabled');
     if (!LicenseManager().isPro) throw Exception('pro-required');
     if (!_ai.hasAiConfigured) throw Exception('byok-required');
     return _completeFromHistory(onUpdate: onUpdate, cancel: cancel);

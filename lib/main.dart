@@ -171,7 +171,10 @@ void main() async {
   // screen opens rather than probed at startup.
   final aiWorkspaceConfigService =
       AiWorkspaceConfigService(workspace: aiWorkspaceService);
-  if (LicenseManager().isPro &&
+  // A user who turned AI off in Settings gets no distro set up for them
+  // either — the silent first-launch install is what the switch is for.
+  if (AiService.featuresEnabled &&
+      LicenseManager().isPro &&
       vmBackend().features.aiWorkspace &&
       !isAppleHost) {
     unawaited(aiWorkspaceService.ensureInitialized());

@@ -12,7 +12,9 @@ import 'package:wsl2distromanager/components/notify.dart';
 /// CI-23). An affordance that cannot do its job is not shown.
 bool canDiagnoseWithAi() {
   try {
-    return LicenseManager().isPro && AiService().hasAiConfigured;
+    return AiService.featuresEnabled &&
+        LicenseManager().isPro &&
+        AiService().hasAiConfigured;
   } catch (_) {
     return false;
   }

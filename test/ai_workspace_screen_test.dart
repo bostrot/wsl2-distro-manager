@@ -777,4 +777,69 @@ void main() {
     expect(find.text('sk-byok'), findsNothing,
         reason: 'the key is shown nowhere but the field that edits it');
   });
+
+  // The page is the other place (besides startup) that provisions the
+  // workspace distro. With AI switched off in Settings it must say where the
+  // switch is and never run a single command (bostrot/ai-tasks#85).
+  testWidgets('AI switched off shows the notice and never touches WSL',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    AiService.setFeaturesEnabled(false);
+    addTearDown(() => AiService.setFeaturesEnabled(true));
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('ai-disabled-text'), findsOneWidget);
+    expect(find.byKey(const ValueKey('test-ai-workspace-open-settings')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('test-ai-workspace-upgrade')),
+        findsNothing, reason: 'off is not the same as unpaid');
+    expect(find.byKey(const ValueKey('test-ai-workspace-beta-badge')),
+        findsNothing);
+    expect(testShell.allCommands, isEmpty,
+        reason: 'no probe, no provisioning while AI is off');
+  });
+
+  testWidgets('a lapsed licence with AI off sees the paywall, not the switch',
+      (tester) async {
+    // The switch is only offered to Pro, so the notice pointing at it must
+    // never win over the upgrade prompt.
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    GlobalVariable.testProEnabled = false;
+    AiService.setFeaturesEnabled(false);
+    addTearDown(() => AiService.setFeaturesEnabled(true));
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byKey(const ValueKey('test-ai-workspace-upgrade')),
+        findsOneWidget);
+    expect(find.text('ai-disabled-text'), findsNothing);
+    expect(testShell.allCommands, isEmpty);
+  });
+
+  testWidgets('switched back on while mounted, the page starts probing',
+      (tester) async {
+    await tester.binding.setSurfaceSize(_kSurface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    AiService.setFeaturesEnabled(false);
+    addTearDown(() => AiService.setFeaturesEnabled(true));
+    testShell.stdoutData = 'ai-workspace';
+
+    await tester.pumpWidget(_page(service));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('ai-disabled-text'), findsOneWidget);
+    expect(testShell.allCommands, isEmpty);
+
+    AiService.setFeaturesEnabled(true);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('ai-disabled-text'), findsNothing);
+    expect(testShell.allCommands, isNotEmpty,
+        reason: 'the probe that initState skipped runs now');
+  });
 }

@@ -155,6 +155,8 @@ listájának betöltése** gomb a szolgáltató `/models` végpontjából tölti
 automatikus kiegészítést, a **Kapcsolat tesztelése** pedig bizonyítja, hogy a
 hitelesítő adatok működnek, még mielőtt megnyitnád a csevegést.
 
+**Egyik sem kell?** A **Beállítások → Bring Your Own AI Key → MI-funkciók** kapcsoló kikapcsolja az asszisztenst, a hibadiagnosztikát és az AI Workspace-t — semmi MI-vel kapcsolatos nem jelenik meg, és nem készül el helyetted a munkaterület-környezet sem. Pro esetén alapból be van kapcsolva.
+
 **Homokozók** (AI Workspace → *Homokozó disztribúció hozzáadása*) eldobható példányt
 hoznak létre bármely katalógusképfájlból (alapértelmezés szerint a legújabb Ubuntuból)
 — Windowson WSL-disztribúciót, macOS-en felhőképfájlból induló Linux virtuális gépet,

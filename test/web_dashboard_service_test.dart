@@ -560,10 +560,31 @@ void main() {
       final state = await chatState(svc);
 
       expect(state['configured'], false);
+      expect(state['enabled'], true);
       expect(state['pro'], true);
       expect(state['busy'], false);
       expect(state['messages'], isEmpty);
       expect(state['count'], 0);
+    });
+
+    test('a send with AI switched off is refused up front and the page is told',
+        () async {
+      ai.setByokApiKey('sk-test');
+      AiService.setFeaturesEnabled(false);
+      addTearDown(() => AiService.setFeaturesEnabled(true));
+      final svc = service();
+      await svc.start();
+
+      final state = await chatState(svc);
+      expect(state['enabled'], false);
+      expect(state['configured'], true);
+
+      final response = await call('/api/chat',
+          method: 'POST', token: svc.token, body: {'message': 'hi'});
+
+      expect(response.statusCode, 400);
+      expect((await decode(response))['error'], 'ai-disabled');
+      expect(ai.conversationHistory, isEmpty);
     });
 
     test('a send without a key is refused up front and adds nothing',
@@ -786,6 +807,14 @@ void main() {
       expect(webDashboardHtml, contains('data-tab="chat"'));
       expect(webDashboardHtml, contains("'/api/chat'"));
       expect(webDashboardHtml, contains("'/api/chat/'"));
+    });
+
+    test('reads the AI switch out of every poll, not just the initial state',
+        () {
+      // The notice and the disabled Send both key off `chat.enabled`; a poll
+      // that does not copy the flag leaves them at their initial `true`.
+      expect(webDashboardHtml, contains('enabled: data.enabled !== false'));
+      expect(webDashboardHtml, contains("CHAT_ERRORS['ai-disabled']"));
     });
 
     test('keeps a gap between the sticky header and the content', () {

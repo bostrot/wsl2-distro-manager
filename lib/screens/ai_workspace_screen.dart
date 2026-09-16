@@ -6,6 +6,7 @@ import 'package:wsl2distromanager/components/error_view.dart';
 import 'package:localization/localization.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/ai_workspace/config_service.dart';
 import 'package:wsl2distromanager/api/ai_workspace/service.dart';
@@ -92,6 +93,10 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     }
   }
 
+  /// Off means the page must not touch WSL at all: opening it is the other
+  /// path (besides startup) that provisions the workspace distro.
+  bool get _aiEnabled => AiService.featuresEnabled;
+
   @override
   void initState() {
     super.initState();
@@ -105,7 +110,19 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     // section whenever its stage moves, including from "running" to done.
     SandboxService.creationStage.addListener(_onSandboxStage);
     SandboxService.creationProgress.addListener(_onSandboxStage);
-    if (_isPro) {
+    AiService.featuresChanged.addListener(_onAiSwitch);
+    _startIfAvailable();
+  }
+
+  /// Whether [_initService] has run for this page. Off-then-on without
+  /// leaving the page (the switch lives one guarded navigation away, but a
+  /// rebuild can outlive it) must probe then, not render every tool as
+  /// "not installed" over an empty state.
+  bool _started = false;
+
+  void _startIfAvailable() {
+    if (_isPro && _aiEnabled) {
+      _started = true;
       // Spinner only where nothing is known yet; cached state renders at
       // once and is refreshed below without blocking the UI.
       _checkingTools
@@ -114,16 +131,25 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
             (tool) => _service.getState(tool)?.hasKnownStatus != true));
       _initService();
     } else {
-      // Skip touching WSL entirely for non-Pro users — nothing to probe.
+      // Skip touching WSL entirely for non-Pro users and for users who
+      // switched AI off — nothing to probe, nothing to set up.
       _preparingDistro = false;
       _checkingTools.clear();
     }
+  }
+
+  void _onAiSwitch() {
+    if (!mounted) return;
+    setState(() {
+      if (!_started) _startIfAvailable();
+    });
   }
 
   @override
   void dispose() {
     SandboxService.creationStage.removeListener(_onSandboxStage);
     SandboxService.creationProgress.removeListener(_onSandboxStage);
+    AiService.featuresChanged.removeListener(_onAiSwitch);
     _installWatch?.cancel();
     _startingWatch?.cancel();
     super.dispose();
@@ -579,6 +605,41 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
     );
   }
 
+  /// Reached by URL or from a stale pane: the entry itself is hidden while
+  /// AI is off. Says where the switch is instead of quietly provisioning.
+  Widget _buildSwitchedOff(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(FluentIcons.robot,
+                size: 36, color: secondaryTextColor(context)),
+            const SizedBox(height: 20),
+            Text(
+              'ai-workspace-title'.i18n(),
+              textAlign: TextAlign.center,
+              style: FluentTheme.of(context).typography.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'ai-disabled-text'.i18n(),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: secondaryTextColor(context)),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              key: const ValueKey('test-ai-workspace-open-settings'),
+              onPressed: () => navigateGuarded('settings'),
+              child: Text('opensettings-text'.i18n()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _toolName(AiWorkspaceTool tool) {
     switch (tool) {
       case AiWorkspaceTool.hermesAgent: return 'Hermes Agent';
@@ -590,8 +651,13 @@ class _AiWorkspacePageState extends State<AiWorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Paywall before the switch: the switch is only offered to Pro, so a
+    // lapsed licence must not be told to flip a control it cannot see.
     if (!_isPro) {
       return _buildPaywall(context);
+    }
+    if (!_aiEnabled) {
+      return _buildSwitchedOff(context);
     }
 
     return SingleChildScrollView(

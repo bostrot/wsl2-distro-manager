@@ -113,6 +113,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _aiTestBusy = false;
   bool _useRemoteWsl = false;
   bool _vmGreeting = true;
+  bool _aiEnabled = true;
   bool _mcpEnabled = false;
   bool _mcpTokenVisible = false;
   bool _tunnelStarting = false;
@@ -359,6 +360,7 @@ class SettingsPageState extends State<SettingsPage> {
     }
     _useRemoteWsl = prefs.getBool('UseRemoteWSL') ?? false;
     _vmGreeting = prefs.getBool(GuestGreeting.enabledPrefKey) ?? true;
+    _aiEnabled = AiService.featuresEnabled;
     String? remoteTarget = prefs.getString('RemoteWSLTarget');
     if (remoteTarget != null && remoteTarget.trim().isNotEmpty) {
       _remoteWslTargetController.text = remoteTarget;
@@ -1131,7 +1133,31 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-        // No enable toggle — the key is the only chat path, not an option.
+        // The one switch for everything AI: not a chat on/off — the key is
+        // the only chat path — but an opt-out for Pro users who do not want
+        // an assistant, a diagnosis button or a workspace distro set up for
+        // them (bostrot/ai-tasks#85). Free users have none of it to switch —
+        // unless it is off, so a lapsed licence can still find its way back.
+        if (isPro || !_aiEnabled)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InfoLabel(
+              label: 'ai-enabled-text'.i18n(),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+              child: Row(children: [
+                ToggleSwitch(
+                  key: const ValueKey('test-ai-enabled-toggle'),
+                  checked: _aiEnabled,
+                  onChanged: (value) {
+                    setState(() => _aiEnabled = value);
+                    AiService.setFeaturesEnabled(value);
+                  },
+                ),
+                const SizedBox(width: 10.0),
+                Expanded(child: Text('ai-enabled-info-text'.i18n())),
+              ]),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

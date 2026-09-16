@@ -150,6 +150,8 @@ Studio, …). Enter the base URL, key and model. The **Load model list** button
 fills an autocomplete from the provider's `/models`, and **Test connection**
 proves the credentials work before you open the chat.
 
+**Don't want any of it?** **Settings → Bring Your Own AI Key → AI features** switches the assistant, the error diagnosis and the AI Workspace off — nothing AI-related is shown, and no workspace environment is set up for you. It is on by default for Pro.
+
 **Sandboxes** (AI Workspace → *Add sandbox distro*) create a throwaway
 instance from any catalog image (newest Ubuntu by default) — a WSL distro on
 Windows, a Linux VM seeded from a cloud image on macOS, which is created and

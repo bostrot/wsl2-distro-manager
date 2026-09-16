@@ -350,6 +350,9 @@ class AiWorkspaceSharedSettingsService {
   /// result list of its own, Settings saving new values. Nothing is written
   /// while nothing is set up.
   Future<List<SharedSettingsResult>> applyCurrentAndNotify() async {
+    // With AI switched off nothing reaches the workspace distro — this is
+    // the one path from Save that would otherwise provision it.
+    if (!AiService.featuresEnabled) return const [];
     final settings = current();
     if (!settings.isConfigured) return const [];
     final results = await applyToAll(settings);

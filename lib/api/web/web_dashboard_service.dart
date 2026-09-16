@@ -419,6 +419,9 @@ class WebDashboardService {
       Future<String> Function(CancelSignal cancel) run) async {
     if (_chatBusy) return _chatBusyResponse();
     // Not a 403: the page reads that status as "token invalid" and locks up.
+    if (!AiService.featuresEnabled) {
+      return _json({'ok': false, 'error': 'ai-disabled'}, status: 400);
+    }
     if (!LicenseManager().isPro) {
       return _json({'ok': false, 'error': 'pro-required'}, status: 400);
     }
@@ -456,6 +459,7 @@ class WebDashboardService {
         ? history.sublist(history.length - maxChatMessages)
         : history;
     return {
+      'enabled': AiService.featuresEnabled,
       'configured': ai.hasAiConfigured,
       'pro': LicenseManager().isPro,
       'model': ai.byokModel,

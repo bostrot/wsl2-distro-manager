@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
+import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/components/ai_chat_button.dart';
 import 'package:wsl2distromanager/components/analytics.dart';
@@ -23,6 +24,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  /// Both are app-lifetime globals; merged once so a home rebuild does not
+  /// re-subscribe the button to them every time.
+  late final Listenable _chatButtonListenable =
+      Listenable.merge([GlobalVariable.aiPanel, AiService.featuresChanged]);
+
   final VmBackend api = vmBackend();
   List<String> distroNames = [];
 
@@ -133,15 +139,20 @@ class _HomePageState extends State<HomePage> {
             // sits at its own right edge — just left of the divider.
             right: 16,
             bottom: 16,
-            // The shell dock listens to the same notifier and rebuilds; the
-            // button only needs it for the open/closed semantics.
-            child: ValueListenableBuilder<bool>(
-              valueListenable: GlobalVariable.aiPanel,
-              builder: (context, open, _) => AiChatButton(
-                key: const ValueKey('test-ai-chat-toggle'),
-                open: open,
-                onPressed: () => GlobalVariable.aiPanel.value = !open,
-              ),
+            // The shell dock listens to the same notifiers and rebuilds; the
+            // button only needs them for the open/closed semantics and to
+            // leave the screen the moment AI is switched off in Settings.
+            child: ListenableBuilder(
+              listenable: _chatButtonListenable,
+              builder: (context, _) {
+                if (!AiService.featuresEnabled) return const SizedBox.shrink();
+                final open = GlobalVariable.aiPanel.value;
+                return AiChatButton(
+                  key: const ValueKey('test-ai-chat-toggle'),
+                  open: open,
+                  onPressed: () => GlobalVariable.aiPanel.value = !open,
+                );
+              },
             ),
           ),
       ],

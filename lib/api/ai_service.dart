@@ -80,6 +80,39 @@ class AiService {
   /// manage the key regardless; [sendMessage] does the entitlement check.
   bool get hasByokConfigured => byokApiKey.isNotEmpty;
 
+  /// The one switch for everything AI-shaped. Pro brings the assistant, the
+  /// error diagnosis and the AI Workspace along, and on Windows it set the
+  /// workspace distro up at first launch without asking — a Pro user who
+  /// bought the app for something else had an "AI assistant install without
+  /// confirmation" (Store review, bostrot/ai-tasks#85). Off, nothing AI is
+  /// shown, nothing is provisioned, and every AI entry point refuses with
+  /// `ai-disabled`. On by default: the switch is an opt-out, not a setup
+  /// step, so a Pro user who wants the assistant still gets it at once.
+  static const String enabledPrefKey = 'AiFeaturesEnabled';
+
+  static bool get featuresEnabled => prefs.getBool(enabledPrefKey) ?? true;
+
+  /// Fires whenever [setFeaturesEnabled] flips the switch, so the shell can
+  /// drop the nav pane entry and the chat dock right away instead of on the
+  /// next navigation. Listeners read [featuresEnabled] for the value: the
+  /// pref stays the single source of truth (tests reset it between cases),
+  /// this only says that it moved.
+  static final ChangeNotifier featuresChanged = _featuresNotifier;
+  static final _AiFeaturesNotifier _featuresNotifier = _AiFeaturesNotifier();
+
+  static void setFeaturesEnabled(bool value) {
+    if (value == featuresEnabled) return;
+    prefs.setBool(enabledPrefKey, value);
+    if (!value) {
+      // Off means off now, not after the current run: the dock and its Stop
+      // button are about to disappear, and a run left going would keep
+      // executing tools and billing the key with no way to halt it.
+      _instance.cancelRun();
+      GlobalVariable.aiPanel.value = false;
+    }
+    _featuresNotifier.fire();
+  }
+
   /// Whether the provider has what it needs to take a request.
   bool get hasAiConfigured => hasByokConfigured;
 
@@ -291,6 +324,9 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
 
   Future<String> sendMessage(String query,
       {void Function()? onUpdate, CancelSignal? cancel}) async {
+    if (!featuresEnabled) {
+      throw Exception('ai-disabled');
+    }
     if (!_license.isPro) {
       throw Exception('pro-required');
     }
@@ -314,6 +350,9 @@ You also have a task queue (todo_list, todo_add, todo_set_done, todo_remove). Wh
   /// failed send, whose user message is already in the history.
   Future<String> retryLast(
       {void Function()? onUpdate, CancelSignal? cancel}) async {
+    if (!featuresEnabled) {
+      throw Exception('ai-disabled');
+    }
     if (!_license.isPro) {
       throw Exception('pro-required');
     }
@@ -928,4 +967,10 @@ Explain each setting briefly.
     prefs.setString('AiConversation', data);
     transcriptRevision.value++;
   }
+}
+
+/// [ChangeNotifier.notifyListeners] is protected; this is the one place that
+/// is allowed to call it for [AiService.featuresChanged].
+class _AiFeaturesNotifier extends ChangeNotifier {
+  void fire() => notifyListeners();
 }

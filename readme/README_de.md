@@ -157,6 +157,8 @@ Autovervollständigung aus dem `/models`-Endpunkt des Anbieters, und
 **Verbindung testen** belegt, dass die Zugangsdaten stimmen, bevor Sie den Chat
 öffnen.
 
+**Nichts davon gewünscht?** **Einstellungen → Bring Your Own AI Key → KI-Funktionen** schaltet den Assistenten, die Fehlerdiagnose und den AI Workspace aus — nichts KI-Bezogenes wird angezeigt, und es wird keine Workspace-Umgebung für Sie eingerichtet. Für Pro ist der Schalter standardmäßig an.
+
 **Sandboxes** (AI Workspace → *Sandbox-Distribution hinzufügen*) erzeugen eine
 Wegwerf-Instanz aus einem beliebigen Katalog-Image (standardmäßig das neueste
 Ubuntu) — unter Windows eine WSL-Distribution, unter macOS eine aus einem

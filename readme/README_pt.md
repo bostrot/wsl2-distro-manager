@@ -155,6 +155,8 @@ LM Studio, …). Informe a URL base, a chave e o modelo. O botão **Carregar lis
 modelos** preenche um autocompletar a partir do `/models` do provedor, e **Testar
 conexão** comprova que as credenciais funcionam antes de você abrir o chat.
 
+**Não quer nada disso?** **Configurações → Bring Your Own AI Key → Recursos de IA** desliga o assistente, o diagnóstico de erros e o AI Workspace — nada relacionado à IA é mostrado e nenhum ambiente de trabalho é preparado para você. No Pro vem ligado por padrão.
+
 **Sandboxes** (AI Workspace → *Adicionar distro sandbox*) criam uma instância
 descartável a partir de qualquer imagem do catálogo (o Ubuntu mais recente, por
 padrão) — uma distro WSL no Windows, uma VM Linux originada de uma imagem de nuvem
