@@ -1,0 +1,406 @@
+{
+  "source": "https://github.com/bostrot/wsl-scripts",
+  "count": 80,
+  "scripts": [
+    {
+      "name": "adminer",
+      "info": "name: adminer\ndescription: Adminer web UI on port 8080 for managing PostgreSQL, MySQL, and other databases (pairs with the postgresql/mysql scripts).\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "apt-upgrade",
+      "info": "name: apt-upgrade\ndescription: Basic apt upgrade script\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Debian\n",
+      "updatedAt": "2024-05-30T15:26:18Z"
+    },
+    {
+      "name": "basic-dev-tools-alpine",
+      "info": "name: basic-dev-tools-alpine\ndescription: Install essential development tools (curl, git, wget, build-base, etc)\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "basic-dev-tools-arch",
+      "info": "name: basic-dev-tools-arch\ndescription: Install essential development tools (curl, git, wget, base-devel, etc)\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "basic-dev-tools-ubuntu",
+      "info": "name: basic-dev-tools-ubuntu\ndescription: Install essential development tools (curl, git, wget, build-essential, etc)\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "captainkyds_scripz",
+      "info": "name: captainkyds_scripz\ndescription: This script builds a command to clean unneeded apt files and upgrade your debian based system (Ubuntu, Debian or Kali).\nversion: 1.0.0\nauthor: captainkyds\nlicense: MIT\ngit: https://github.com/captainkyds/captainkyds_scripts4wsl.git\ndistro: Debian\n",
+      "updatedAt": "2023-04-22T12:39:59Z"
+    },
+    {
+      "name": "clickhouse",
+      "info": "name: clickhouse\ndescription: ClickHouse OLAP database with the HTTP play UI on port 8123 and the native protocol on 9009. Default user, no password.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "code-server",
+      "info": "name: code-server\ndescription: VS Code in the browser (code-server) on port 8088. No auth (development default). Home directory and extensions kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "couchdb",
+      "info": "name: couchdb\ndescription: Apache CouchDB 3 document database with its API and Fauxton UI on port 5984. User admin, password admin. Data kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "cpp-dev-tools-alpine",
+      "info": "name: cpp-dev-tools-alpine\ndescription: Install C/C++ compilers, CMake, and debugging tools\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "cpp-dev-tools-arch",
+      "info": "name: cpp-dev-tools-arch\ndescription: Install C/C++ compilers, CMake, and debugging tools\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "cpp-dev-tools-ubuntu",
+      "info": "name: cpp-dev-tools-ubuntu\ndescription: Install C/C++ compilers, CMake, and debugging tools\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "database-tools-arch",
+      "info": "name: database-tools-arch\ndescription: Install PostgreSQL and MySQL client tools, Redis CLI\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "database-tools-ubuntu",
+      "info": "name: database-tools-ubuntu\ndescription: Install PostgreSQL and MySQL client tools, Redis CLI, and MongoDB tools\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "docker-registry",
+      "info": "name: docker-registry\ndescription: Private Docker image registry on port 5000 (push with docker tag image localhost:5000/image && docker push). Images kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "docker-toolchain-alpine",
+      "info": "name: docker-toolchain-alpine\ndescription: Install Docker CLI and Docker Compose for Alpine Linux\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "docker-toolchain-arch",
+      "info": "name: docker-toolchain-arch\ndescription: Install Docker Engine and Docker Compose for Arch Linux\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "docker-toolchain-ubuntu",
+      "info": "name: docker-toolchain-ubuntu\ndescription: Install Docker Engine and Docker Compose for Ubuntu\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "dotnet-dev-env-alpine",
+      "info": "name: dotnet-dev-env-alpine\ndescription: Install .NET SDK for C# development\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "dotnet-dev-env-arch",
+      "info": "name: dotnet-dev-env-arch\ndescription: Install .NET SDK and runtime for C# development\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "dotnet-dev-env-ubuntu",
+      "info": "name: dotnet-dev-env-ubuntu\ndescription: Install .NET SDK and runtime for C# development\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "elasticsearch",
+      "info": "name: elasticsearch\ndescription: Elasticsearch 8 single-node search cluster on port 9200. Security disabled, 512 MB heap. Indices kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "fake-systemd-nonroot",
+      "info": "name: fake-systemd-nonroot\ndescription: Fake systemd for WSL as non-root user (but with sudo rights)\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/fake-systemd\ndistro: Debian\n",
+      "updatedAt": "2022-11-29T17:33:48Z"
+    },
+    {
+      "name": "fake-systemd-root",
+      "info": "name: fake-systemd-root\ndescription: Fake systemd for WSL as root user\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/fake-systemd\ndistro: Debian\n",
+      "updatedAt": "2022-11-29T17:33:48Z"
+    },
+    {
+      "name": "gitea",
+      "info": "name: gitea\ndescription: Gitea self-hosted Git service — web UI on port 3000, Git-over-SSH on port 2222. Repositories kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "go-toolchain-alpine",
+      "info": "name: go-toolchain-alpine\ndescription: Install Go programming language\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "go-toolchain-arch",
+      "info": "name: go-toolchain-arch\ndescription: Install Go programming language\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "go-toolchain-ubuntu",
+      "info": "name: go-toolchain-ubuntu\ndescription: Install Go programming language (latest stable version)\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "grafana",
+      "info": "name: grafana\ndescription: Grafana dashboards on port 3030 (admin / admin on first login). Dashboards kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "influxdb",
+      "info": "name: influxdb\ndescription: InfluxDB 2 time-series database with its UI and API on port 8086. User admin, password adminadmin, org wslm, bucket default. Data kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "java-dev-env-alpine",
+      "info": "name: java-dev-env-alpine\ndescription: Install OpenJDK 21 with Maven and Gradle build tools\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "java-dev-env-arch",
+      "info": "name: java-dev-env-arch\ndescription: Install OpenJDK 21 with Maven and Gradle build tools\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "java-dev-env-ubuntu",
+      "info": "name: java-dev-env-ubuntu\ndescription: Install OpenJDK 21 LTS with Maven and Gradle build tools\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "jenkins",
+      "info": "name: jenkins\ndescription: Jenkins LTS CI server with its web UI on port 8090 and agent port 50000. Jobs kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "jupyter",
+      "info": "name: jupyter\ndescription: JupyterLab (minimal notebook image) on port 8888. No token or password (development default). Notebooks in /home/jovyan/work kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "kafka-redpanda",
+      "info": "name: kafka-redpanda\ndescription: Kafka-compatible Redpanda broker on port 9092. No auth (development default).\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "keycloak",
+      "info": "name: keycloak\ndescription: Keycloak identity and access management in dev mode with its admin console on port 8180. Admin admin / admin. Realms kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "kubernetes-tools-arch",
+      "info": "name: kubernetes-tools-arch\ndescription: Install kubectl and helm for Kubernetes management\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "kubernetes-tools-ubuntu",
+      "info": "name: kubernetes-tools-ubuntu\ndescription: Install kubectl, helm, and k9s for Kubernetes management\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "mailpit",
+      "info": "name: mailpit\ndescription: Mailpit local SMTP catcher — point your app at SMTP port 1025 and read every mail it sends in the web UI on port 8025.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "mariadb",
+      "info": "name: mariadb\ndescription: MariaDB 11 database server on port 3307. User root, password root, database app. Data kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "meilisearch",
+      "info": "name: meilisearch\ndescription: Meilisearch full-text search engine with its API and mini dashboard on port 7700. Development mode, no master key. Indexes kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "memcached",
+      "info": "name: memcached\ndescription: Memcached 1.6 in-memory cache on port 11211. No auth (development default).\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "minio-s3",
+      "info": "name: minio-s3\ndescription: S3-compatible object storage (MinIO) with a web console on port 9001, API on 9000. Credentials minioadmin / minioadmin.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "mongodb",
+      "info": "name: mongodb\ndescription: MongoDB 7 document database on port 27017. No auth (development default); data kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "mosquitto",
+      "info": "name: mosquitto\ndescription: Eclipse Mosquitto 2 MQTT broker on port 1883. Anonymous clients allowed (development default).\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "mysql",
+      "info": "name: mysql\ndescription: MySQL 8 database server on port 3306. Root password root, database app.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "n8n",
+      "info": "name: n8n\ndescription: n8n workflow automation with its editor on port 5678. Workflows kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "nats",
+      "info": "name: nats\ndescription: NATS 2 message broker with JetStream on port 4222 and its monitoring UI on port 8222. No auth (development default). Streams kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "neo4j",
+      "info": "name: neo4j\ndescription: Neo4j 5 graph database with its browser on port 7474 and Bolt on port 7687. User neo4j, password neo4jpass. Data kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "nginx",
+      "info": "name: nginx\ndescription: Nginx static web server on port 8081, serving the wslm-nginx-html volume (default welcome page until you add files).\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "nodejs-toolchain-alpine",
+      "info": "name: nodejs-toolchain-alpine\ndescription: Install Node.js with npm and yarn package managers\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "nodejs-toolchain-arch",
+      "info": "name: nodejs-toolchain-arch\ndescription: Install Node.js LTS with npm and yarn package managers\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "nodejs-toolchain-ubuntu",
+      "info": "name: nodejs-toolchain-ubuntu\ndescription: Install Node.js LTS with npm and yarn package managers\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "ollama",
+      "info": "name: ollama\ndescription: Ollama local LLM server on port 11434 (CPU inference). Pull a model afterwards with docker exec wslm-ollama ollama pull llama3.2\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "open-webui",
+      "info": "name: open-webui\ndescription: Open WebUI chat interface for Ollama on port 8085. Connects to the ollama script's server on port 11434. Chats and accounts kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "pgadmin",
+      "info": "name: pgadmin\ndescription: pgAdmin 4 web UI for PostgreSQL on port 5050. Login admin@example.com / admin. Server connections kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "php-dev-env-alpine",
+      "info": "name: php-dev-env-alpine\ndescription: Install PHP with Composer and common extensions\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "php-dev-env-arch",
+      "info": "name: php-dev-env-arch\ndescription: Install PHP with Composer and common extensions\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "php-dev-env-ubuntu",
+      "info": "name: php-dev-env-ubuntu\ndescription: Install PHP 8.3 with Composer and common extensions\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "portainer",
+      "info": "name: portainer\ndescription: Portainer CE Docker management UI on port 9443 (HTTPS). Manages this distro's Docker via its socket. Settings kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "postgresql",
+      "info": "name: postgresql\ndescription: PostgreSQL 16 database server on port 5432. User postgres, password postgres, database postgres.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "prometheus",
+      "info": "name: prometheus\ndescription: Prometheus metrics server with its UI on port 9090, scraping itself by default. Metrics kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "python-dev-env-alpine",
+      "info": "name: python-dev-env-alpine\ndescription: Install Python 3 with pip and development packages\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "python-dev-env-arch",
+      "info": "name: python-dev-env-arch\ndescription: Install Python 3 with pip, venv, and common development packages\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "python-dev-env-ubuntu",
+      "info": "name: python-dev-env-ubuntu\ndescription: Install Python 3 with pip, venv, and common development packages\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "rabbitmq",
+      "info": "name: rabbitmq\ndescription: RabbitMQ broker with the management dashboard on port 15672 and AMQP on 5672. Credentials guest / guest.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "redis",
+      "info": "name: redis\ndescription: Redis 7 in-memory key/value store on port 6379. No auth (development default).\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "ruby-dev-env-alpine",
+      "info": "name: ruby-dev-env-alpine\ndescription: Install Ruby with bundler for Ruby development\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "ruby-dev-env-arch",
+      "info": "name: ruby-dev-env-arch\ndescription: Install Ruby with bundler for Ruby development\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "ruby-dev-env-ubuntu",
+      "info": "name: ruby-dev-env-ubuntu\ndescription: Install Ruby with rbenv and bundler for Ruby development\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "rust-toolchain-alpine",
+      "info": "name: rust-toolchain-alpine\ndescription: Install Rust programming language with cargo\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "rust-toolchain-arch",
+      "info": "name: rust-toolchain-arch\ndescription: Install Rust programming language with rustup and cargo\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "rust-toolchain-ubuntu",
+      "info": "name: rust-toolchain-ubuntu\ndescription: Install Rust programming language with rustup and cargo\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "terraform-tools-alpine",
+      "info": "name: terraform-tools-alpine\ndescription: Install Terraform and Ansible for Infrastructure as Code\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "terraform-tools-arch",
+      "info": "name: terraform-tools-arch\ndescription: Install Terraform and Ansible for Infrastructure as Code\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Arch",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "terraform-tools-ubuntu",
+      "info": "name: terraform-tools-ubuntu\ndescription: Install Terraform, Ansible, and Packer for Infrastructure as Code\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Ubuntu",
+      "updatedAt": "2026-09-03T18:35:58Z"
+    },
+    {
+      "name": "uptime-kuma",
+      "info": "name: uptime-kuma\ndescription: Uptime Kuma self-hosted monitoring with its dashboard on port 3001. Monitors kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "vault",
+      "info": "name: vault\ndescription: HashiCorp Vault secrets manager in dev mode on port 8200 with root token root. Dev mode keeps everything in memory (lost on restart).\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "verdaccio",
+      "info": "name: verdaccio\ndescription: Verdaccio private npm registry with its web UI on port 4873. Packages kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
+      "updatedAt": "2026-09-06T00:26:58Z"
+    }
+  ]
+}
