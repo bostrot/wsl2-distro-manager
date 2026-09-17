@@ -10,6 +10,7 @@ import 'package:wsl2distromanager/api/cloud_init.dart';
 import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
+import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 import 'package:wsl2distromanager/screens/create_vm_screen.dart';
 
@@ -83,9 +84,14 @@ void main() {
           earlyExitProbeDelay: Duration.zero,
         );
     vmImageCatalogBuilder = () => catalog;
+    // The picker asks the active backend whether it carries cloud-init. On a
+    // Windows test host the default would be a WSLApi, whose constructor
+    // fetches the distro catalogue and leaves a timer pending.
+    vmBackendBuilder = appleVmApiBuilder;
   });
 
   tearDown(() {
+    vmBackendBuilder = defaultVmBackendBuilder;
     appleVmApiBuilder = () {
       final backend = AppleVmApi();
       return backend;
