@@ -1197,5 +1197,12 @@
   "ai-workspace-shared-openwebui-text": "Open WebUI bezieht seinen Endpunkt aus dem Container, mit dem es erstellt wurde. Lege ihn in dessen Admin-Bereich unter Verbindungen fest.",
   "ai-workspace-shared-no-output-text": "Das Tool hat keine Fehlermeldung ausgegeben.",
   "ai-workspace-shared-auto-applied-text": "%s wurde mit Modell und Endpunkt des KI-Assistenten eingerichtet.",
-  "ai-workspace-shared-auto-failed-text": "%s0 konnte Modell und Endpunkt des KI-Assistenten nicht übernehmen: %s1"
+  "ai-workspace-shared-auto-failed-text": "%s0 konnte Modell und Endpunkt des KI-Assistenten nicht übernehmen: %s1",
+  "experimentalfeatures-text": "Experimentelle Funktionen",
+  "experimentalfeatures-info-text": "Funktionen, die noch nicht fertig sind. Jede bleibt ausgeblendet, bis du sie hier einschaltest; dann erscheint sie in der Navigation und, wo vorhanden, in den Werkzeugen des Assistenten und in den Einstellungen.",
+  "experimental-containers-info-text": "Docker- und Podman-Container auf diesem Rechner verwalten.",
+  "experimental-kubernetes-info-text": "Die Cluster aus deiner kubeconfig durchsuchen.",
+  "experimental-cloud-info-text": "Eine Instanz zu einem Cloud-Anbieter bereitstellen und zurückholen.",
+  "experimental-cloudinit-info-text": "Cloud-init-Konfigurationen schreiben und neue Instanzen damit einrichten.",
+  "experimental-playbooks-info-text": "Den Zustand einer Instanz als Code beschreiben und auf bestehende Instanzen anwenden."
 }

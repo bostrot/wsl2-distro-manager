@@ -1196,5 +1196,12 @@
   "ai-workspace-shared-openwebui-text": "Open WebUI uç noktasını oluşturulduğu konteynerden alır. Kendi yönetim panelinde Bağlantılar altından ayarlayın.",
   "ai-workspace-shared-no-output-text": "Araç bir hata mesajı bildirmedi.",
   "ai-workspace-shared-auto-applied-text": "%s, yapay zekâ asistanının modeli ve uç noktasıyla ayarlandı.",
-  "ai-workspace-shared-auto-failed-text": "%s0 yapay zekâ asistanının modelini ve uç noktasını alamadı: %s1"
+  "ai-workspace-shared-auto-failed-text": "%s0 yapay zekâ asistanının modelini ve uç noktasını alamadı: %s1",
+  "experimentalfeatures-text": "Deneysel özellikler",
+  "experimentalfeatures-info-text": "Henüz tamamlanmamış özellikler. Her biri burada açılana kadar gizli kalır; sonra gezinmede ve varsa asistanın araçlarında ve Ayarlar'da görünür.",
+  "experimental-containers-info-text": "Bu makinedeki Docker ve Podman kapsayıcılarını yönetin.",
+  "experimental-kubernetes-info-text": "kubeconfig dosyanızdaki kümelere göz atın.",
+  "experimental-cloud-info-text": "Bir örneği bir bulut sağlayıcısına dağıtın ve geri alın.",
+  "experimental-cloudinit-info-text": "cloud-init yapılandırmaları yazın ve yeni örnekleri bunlarla hazırlayın.",
+  "experimental-playbooks-info-text": "Bir örneğin durumunu kod olarak tanımlayın ve mevcut örneklere uygulayın."
 }

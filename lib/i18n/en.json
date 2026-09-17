@@ -1196,5 +1196,12 @@
   "ai-workspace-shared-openwebui-text": "Open WebUI takes its endpoint from the container it was created with. Set it in its own admin panel under Connections.",
   "ai-workspace-shared-no-output-text": "The tool reported no error message.",
   "ai-workspace-shared-auto-applied-text": "%s was set up with the assistant's model and endpoint.",
-  "ai-workspace-shared-auto-failed-text": "%s0 could not take the assistant's model and endpoint: %s1"
+  "ai-workspace-shared-auto-failed-text": "%s0 could not take the assistant's model and endpoint: %s1",
+  "experimentalfeatures-text": "Experimental features",
+  "experimentalfeatures-info-text": "Features that are not finished yet. Each one stays hidden until you switch it on here; it then appears in the navigation and, where it has them, in the assistant's tools and in Settings.",
+  "experimental-containers-info-text": "Manage the Docker and Podman containers on this machine.",
+  "experimental-kubernetes-info-text": "Browse the clusters from your kubeconfig.",
+  "experimental-cloud-info-text": "Deploy an instance to a cloud provider and pull it back.",
+  "experimental-cloudinit-info-text": "Write cloud-init configurations and seed new instances with them.",
+  "experimental-playbooks-info-text": "Describe an instance's state as code and apply it to existing instances."
 }

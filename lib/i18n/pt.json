@@ -1198,5 +1198,12 @@
   "ai-workspace-shared-openwebui-text": "O Open WebUI obtém seu endpoint do contêiner com o qual foi criado. Configure-o no próprio painel de administração, em Conexões.",
   "ai-workspace-shared-no-output-text": "A ferramenta não informou nenhuma mensagem de erro.",
   "ai-workspace-shared-auto-applied-text": "%s foi configurado com o modelo e o endpoint do assistente de IA.",
-  "ai-workspace-shared-auto-failed-text": "%s0 não conseguiu adotar o modelo e o endpoint do assistente de IA: %s1"
+  "ai-workspace-shared-auto-failed-text": "%s0 não conseguiu adotar o modelo e o endpoint do assistente de IA: %s1",
+  "experimentalfeatures-text": "Funcionalidades experimentais",
+  "experimentalfeatures-info-text": "Funcionalidades ainda não concluídas. Cada uma fica oculta até que a ative aqui; depois aparece na navegação e, onde os tiver, nas ferramentas do assistente e nas Definições.",
+  "experimental-containers-info-text": "Gerir os contentores Docker e Podman desta máquina.",
+  "experimental-kubernetes-info-text": "Explorar os clusters do seu kubeconfig.",
+  "experimental-cloud-info-text": "Implantar uma instância num fornecedor de nuvem e trazê-la de volta.",
+  "experimental-cloudinit-info-text": "Escrever configurações cloud-init e preparar novas instâncias com elas.",
+  "experimental-playbooks-info-text": "Descrever o estado de uma instância como código e aplicá-lo a instâncias existentes."
 }

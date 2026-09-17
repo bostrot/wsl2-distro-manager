@@ -1197,5 +1197,12 @@
   "ai-workspace-shared-openwebui-text": "Open WebUI 的端点来自其创建时的容器。请在它自己的管理面板的“连接”中设置。",
   "ai-workspace-shared-no-output-text": "该工具未报告任何错误信息。",
   "ai-workspace-shared-auto-applied-text": "已为 %s 设置 AI 助手的模型与端点。",
-  "ai-workspace-shared-auto-failed-text": "%s0 无法接受 AI 助手的模型与端点：%s1"
+  "ai-workspace-shared-auto-failed-text": "%s0 无法接受 AI 助手的模型与端点：%s1",
+  "experimentalfeatures-text": "实验性功能",
+  "experimentalfeatures-info-text": "尚未完成的功能。每项功能在此处开启前都保持隐藏；开启后会出现在导航中，并在适用时出现在助手的工具和设置中。",
+  "experimental-containers-info-text": "管理本机上的 Docker 和 Podman 容器。",
+  "experimental-kubernetes-info-text": "浏览 kubeconfig 中的集群。",
+  "experimental-cloud-info-text": "将实例部署到云服务商并取回。",
+  "experimental-cloudinit-info-text": "编写 cloud-init 配置并用它初始化新实例。",
+  "experimental-playbooks-info-text": "以代码描述实例的状态并应用到现有实例。"
 }

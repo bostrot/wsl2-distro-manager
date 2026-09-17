@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/api/cloud_init.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/nav/router.dart';
 
@@ -26,6 +27,13 @@ class CloudInitPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The field goes with the destination: while cloud-init is not switched
+    // on in Settings, or not carried by the backend, a create page must not
+    // offer a picker that links to a screen the pane does not show
+    // (bostrot/ai-tasks#87).
+    if (!ExperimentalFeatures.isVisible(ExperimentalFeature.cloudInit)) {
+      return const SizedBox.shrink();
+    }
     final store = CloudInitStore.instance;
     return ListenableBuilder(
       listenable: store,

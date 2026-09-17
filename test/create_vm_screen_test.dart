@@ -7,6 +7,7 @@ import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/apple/vm_image_catalog.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/cloud_init.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/api/recipes/recipe_service.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -64,7 +65,12 @@ void main() {
   setUp(() async {
     messages = [];
     dataDir = Directory.systemTemp.createTempSync('create-vm-screen-test');
-    SharedPreferences.setMockInitialValues({'DataPath': dataDir.path});
+    // The cloud-init picker follows its switch in Settings
+    // (bostrot/ai-tasks#87); the page's cloud-init tests need it on.
+    SharedPreferences.setMockInitialValues({
+      'DataPath': dataDir.path,
+      ExperimentalFeature.cloudInit.prefKey: true,
+    });
     prefs = await SharedPreferences.getInstance();
     shell = FakeVmctlShell();
     shell.responses['list'] = '{"vms":[]}';

@@ -1196,5 +1196,12 @@
   "ai-workspace-shared-openwebui-text": "Open WebUIは作成時のコンテナからエンドポイントを取得します。Open WebUI自身の管理画面の「接続」で設定してください。",
   "ai-workspace-shared-no-output-text": "ツールからエラーメッセージは返されませんでした。",
   "ai-workspace-shared-auto-applied-text": "%s に AI アシスタントのモデルとエンドポイントを設定しました。",
-  "ai-workspace-shared-auto-failed-text": "%s0 は AI アシスタントのモデルとエンドポイントを受け付けませんでした: %s1"
+  "ai-workspace-shared-auto-failed-text": "%s0 は AI アシスタントのモデルとエンドポイントを受け付けませんでした: %s1",
+  "experimentalfeatures-text": "実験的な機能",
+  "experimentalfeatures-info-text": "まだ完成していない機能です。ここで有効にするまで表示されません。有効にするとナビゲーションに現れ、該当する場合はアシスタントのツールや設定にも表示されます。",
+  "experimental-containers-info-text": "このマシンの Docker と Podman のコンテナを管理します。",
+  "experimental-kubernetes-info-text": "kubeconfig にあるクラスターを閲覧します。",
+  "experimental-cloud-info-text": "インスタンスをクラウドプロバイダーにデプロイし、取り戻します。",
+  "experimental-cloudinit-info-text": "cloud-init 設定を作成し、新しいインスタンスの初期設定に使います。",
+  "experimental-playbooks-info-text": "インスタンスの状態をコードとして記述し、既存のインスタンスに適用します。"
 }

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide Page;
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:localization/localization.dart';
 import 'package:wsl2distromanager/components/badge_pill.dart';
@@ -15,7 +16,8 @@ import 'package:wsl2distromanager/nav/router.dart';
 /// Rebuilt on every access so the entries follow the active backend's
 /// feature set (WSL-only destinations disappear on the Apple backend).
 List<NavigationPaneItem> get originalItems {
-  final features = vmBackend().features;
+  final backend = vmBackend();
+  final features = backend.features;
   return [
   PaneItem(
     key: const Key('/'),
@@ -39,13 +41,13 @@ List<NavigationPaneItem> get originalItems {
   ),
   // Containers sit next to the instances rather than inside their list: the
   // engine, not this app, owns their lifecycle (bostrot/ai-tasks#57).
-  // Unreleased, so debug runs only — see [LicenseManager
-  // .unreleasedFeaturesVisible].
-  if (LicenseManager.unreleasedFeaturesVisible)
+  // Experimental, so only once switched on in Settings — see
+  // [ExperimentalFeatures].
+  if (ExperimentalFeatures.isVisible(ExperimentalFeature.containers, backend: backend))
   PaneItem(
     key: const Key('/containers'),
     icon: const Icon(FluentIcons.product_list),
-    title: Text('containers-text'.i18n()),
+    title: Text(ExperimentalFeature.containers.labelKey.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
       navigateGuarded('containers', path: '/containers');
@@ -53,12 +55,12 @@ List<NavigationPaneItem> get originalItems {
   ),
   // Kubernetes sits next to Containers for the same reason Containers sits
   // next to the instances: the cluster owns these, this app only drives them
-  // (bostrot/ai-tasks#61). Unreleased, so debug runs only.
-  if (LicenseManager.unreleasedFeaturesVisible)
+  // (bostrot/ai-tasks#61). Experimental, so only once switched on.
+  if (ExperimentalFeatures.isVisible(ExperimentalFeature.kubernetes, backend: backend))
   PaneItem(
     key: const Key('/kubernetes'),
     icon: const Icon(FluentIcons.cloud),
-    title: Text('kubernetes-text'.i18n()),
+    title: Text(ExperimentalFeature.kubernetes.labelKey.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
       navigateGuarded('kubernetes', path: '/kubernetes');
@@ -128,12 +130,13 @@ List<NavigationPaneItem> get originalItems {
   // commands run inside an instance, which both backends offer — but not
   // over remote WSL, whose SSH wrapper caps an inline command at a couple
   // of KB while every step here ships a base64 script several KB long
-  // (bostrot/ai-tasks#78).
-  if (features.quickActions && !vmBackend().isRemote)
+  // (bostrot/ai-tasks#78). Experimental on top of that gate, so only once
+  // switched on.
+  if (ExperimentalFeatures.isVisible(ExperimentalFeature.playbooks, backend: backend))
   PaneItem(
     key: const Key('/playbooks'),
     icon: const Icon(FluentIcons.build_definition),
-    title: Text('playbooks-text'.i18n()),
+    title: Text(ExperimentalFeature.playbooks.labelKey.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
       navigateGuarded('playbooks', path: '/playbooks');
@@ -156,12 +159,12 @@ List<NavigationPaneItem> get originalItems {
   // the running guest rather than out of its disk image (#62, reopened). The
   // gate stays because it is the capability the screen depends on, not a
   // platform check in disguise.
-  // Unreleased on top of that gate, so debug runs only.
-  if (features.rootfsExport && LicenseManager.unreleasedFeaturesVisible)
+  // Experimental on top of that gate, so only once switched on.
+  if (ExperimentalFeatures.isVisible(ExperimentalFeature.cloud, backend: backend))
   PaneItem(
     key: const Key('/cloud'),
     icon: const Icon(FluentIcons.cloud_upload),
-    title: Text('cloud-text'.i18n()),
+    title: Text(ExperimentalFeature.cloud.labelKey.i18n()),
     infoBadge: const BetaPaneBadge(),
     body: const SizedBox.shrink(),
     onTap: () {
@@ -173,12 +176,13 @@ List<NavigationPaneItem> get originalItems {
   // of them — a configuration most people write once. Both backends pass
   // the gate; a Mac driving a remote Windows host does not, because the
   // file cloud-init reads lives under a profile on the other machine
-  // (bostrot/ai-tasks#76).
-  if (features.cloudInit)
+  // (bostrot/ai-tasks#76). Experimental on top of that gate, so only once
+  // switched on.
+  if (ExperimentalFeatures.isVisible(ExperimentalFeature.cloudInit, backend: backend))
   PaneItem(
     key: const Key('/cloudinit'),
     icon: const Icon(FluentIcons.cloud_add),
-    title: Text('cloudinit-text'.i18n()),
+    title: Text(ExperimentalFeature.cloudInit.labelKey.i18n()),
     body: const SizedBox.shrink(),
     onTap: () {
       navigateGuarded('cloudinit', path: '/cloudinit');

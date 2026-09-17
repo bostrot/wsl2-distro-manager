@@ -34,7 +34,7 @@ import 'package:wsl2distromanager/api/cloud/hetzner_provider.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
 import 'package:wsl2distromanager/api/kubernetes/kube_models.dart';
 import 'package:wsl2distromanager/api/kubernetes/kube_service.dart';
-import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
 import 'package:wsl2distromanager/api/distro_package.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
@@ -61,13 +61,18 @@ List<McpTool> buildWslMcpTools(
   return [
     ..._genericTools(backend),
     // The container_*, kube_* and cloud_* families follow their screens
-    // behind the same gate: an MCP client is as much a shipped surface as the
-    // pane is.
-    if (LicenseManager.unreleasedFeaturesVisible) ...[
+    // behind the same switches: an MCP client is as much a shipped surface
+    // as the pane is, so a family is registered only once its feature is
+    // switched on in Settings (bostrot/ai-tasks#87).
+    if (ExperimentalFeatures.isVisible(ExperimentalFeature.containers,
+        backend: backend))
       ..._containerTools(containerService ?? ContainerService()),
+    if (ExperimentalFeatures.isVisible(ExperimentalFeature.kubernetes,
+        backend: backend))
       ..._kubeTools(kubeService ?? KubeService()),
+    if (ExperimentalFeatures.isVisible(ExperimentalFeature.cloud,
+        backend: backend))
       ..._cloudTools(cloudProvider ?? _configuredCloudProvider),
-    ],
     if (backend is WSLApi)
       ..._wslOnlyTools(
         backend,

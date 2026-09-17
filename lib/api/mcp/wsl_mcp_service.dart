@@ -11,6 +11,7 @@ import 'dart:math';
 
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
@@ -37,6 +38,15 @@ class WslMcpService {
   // sessions.
   static HttpServer? _server;
   static WslTerminalManager? _terminalManager;
+
+  /// The server behind the endpoint, with the
+  /// [ExperimentalFeatures.generation] its tool list was built at: the
+  /// container_*, kube_* and cloud_* families follow the switches in
+  /// Settings, so a flip rebuilds the list on the next request instead of
+  /// waiting for the server to be turned off and on. Static like [_server]:
+  /// every WslMcpService() must agree on what is running.
+  static McpServer? _mcp;
+  static int _mcpGeneration = 0;
 
   final VmBackend wslApi;
   final McpServerFactory serverFactory;
@@ -150,15 +160,11 @@ class WslMcpService {
     if (isRunning) return;
 
     _terminalManager = WslTerminalManager(wslApi: wslApi);
-    final mcp = McpServer(
-      serverName: 'wsl2-distro-manager',
-      serverVersion: currentVersion,
-      tools: buildWslMcpTools(wslApi, _terminalManager!),
-    );
+    _mcp = _buildMcp();
 
     final handler = const Pipeline()
         .addMiddleware(_authMiddleware(() => token))
-        .addHandler((request) => _handleMcpRequest(request, mcp));
+        .addHandler((request) => _handleMcpRequest(request, _currentMcp()));
 
     try {
       // 127.0.0.1, not 0.0.0.0: this endpoint can run arbitrary commands in
@@ -174,12 +180,32 @@ class WslMcpService {
   Future<void> stop() async {
     await _server?.close(force: true);
     _server = null;
+    _mcp = null;
     // Disabling the server shouldn't leave orphaned WSL shell processes
     // running in the background.
     await _terminalManager?.closeAll();
     _terminalManager = null;
     // Nor a public URL still routing to a server that's no longer there.
     await tunnel.stop();
+  }
+
+  McpServer _buildMcp() {
+    _mcpGeneration = ExperimentalFeatures.generation.value;
+    return McpServer(
+      serverName: 'wsl2-distro-manager',
+      serverVersion: currentVersion,
+      tools: buildWslMcpTools(wslApi, _terminalManager!),
+    );
+  }
+
+  /// The server for this request: the one built at start, or a fresh one
+  /// when an experimental switch has moved since. The terminal manager is
+  /// kept, so open shells survive the rebuild.
+  McpServer _currentMcp() {
+    if (_mcpGeneration != ExperimentalFeatures.generation.value) {
+      _mcp = _buildMcp();
+    }
+    return _mcp!;
   }
 
   Future<Response> _handleMcpRequest(Request request, McpServer mcp) async {

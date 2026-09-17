@@ -9,9 +9,9 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/kubernetes/kube_models.dart';
 import 'package:wsl2distromanager/api/kubernetes/kube_service.dart';
-import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -79,7 +79,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     // The family rides behind the same gate the Kubernetes screen does.
-    LicenseManager.unreleasedFeaturesOverride = true;
+    ExperimentalFeatures.overrideAll = true;
     shell = FakeKubectlShell();
     // Every tool probes for kubectl first, and resolves the current context.
     shell.responses['version --client'] = '{"clientVersion":{}}';
@@ -94,7 +94,7 @@ void main() {
     names = tools.map((t) => t.name).toList();
   });
 
-  tearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+  tearDown(() => ExperimentalFeatures.overrideAll = null);
 
   group('registration', () {
     test('the whole read-only family is registered', () {
@@ -132,7 +132,7 @@ void main() {
     });
 
     test('the family is not registered while Kubernetes is unreleased', () {
-      LicenseManager.unreleasedFeaturesOverride = false;
+      ExperimentalFeatures.overrideAll = false;
       final backend = FakeBackend();
       final hidden =
           buildWslMcpTools(backend, WslTerminalManager(wslApi: backend))

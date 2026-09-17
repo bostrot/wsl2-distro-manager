@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
-import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
@@ -109,8 +109,8 @@ void main() {
   test('the tool surface covers the whole lifecycle', () {
     // container_* is gated with the Containers screen; this assertion is
     // about the whole surface, so open the gate for it.
-    LicenseManager.unreleasedFeaturesOverride = true;
-    addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+    ExperimentalFeatures.overrideAll = true;
+    addTearDown(() => ExperimentalFeatures.overrideAll = null);
     final names =
         buildWslMcpTools(wslApi, terminalManager).map((t) => t.name).toSet();
     // v2 exposes create → configure → operate → destroy. The one-way
@@ -397,8 +397,8 @@ void main() {
   group('recording declarations (ai-tasks#77)', () {
     test('the tools that change an instance declare how they are recorded,'
         ' read-only ones do not', () {
-      LicenseManager.unreleasedFeaturesOverride = true;
-      addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+      ExperimentalFeatures.overrideAll = true;
+      addTearDown(() => ExperimentalFeatures.overrideAll = null);
       final tools = buildWslMcpTools(wslApi, terminalManager);
       final recorded =
           tools.where((t) => t.recording != null).map((t) => t.name).toSet();
@@ -445,8 +445,8 @@ void main() {
     });
 
     test('every declared target or shell argument exists on its tool', () {
-      LicenseManager.unreleasedFeaturesOverride = true;
-      addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+      ExperimentalFeatures.overrideAll = true;
+      addTearDown(() => ExperimentalFeatures.overrideAll = null);
       for (final t in buildWslMcpTools(wslApi, terminalManager)) {
         final recording = t.recording;
         if (recording == null) continue;

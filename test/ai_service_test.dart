@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/quick_actions.dart';
@@ -193,9 +194,9 @@ void main() {
       // A prompt that advertises tools the model cannot call earns a round of
       // invented tool calls and an apology (bostrot/ai-tasks#67), so the
       // guidance rides the same gate the tools do.
-      Future<String> promptWith(bool gateOpen) async {
-        LicenseManager.unreleasedFeaturesOverride = gateOpen;
-        addTearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+      Future<String> promptWith(bool? gateOpen) async {
+        ExperimentalFeatures.overrideAll = gateOpen;
+        addTearDown(() => ExperimentalFeatures.overrideAll = null);
         final ai = AiService();
         LicenseManager.storeInstallCheckOverride = () => true;
         await LicenseManager().init();
@@ -238,6 +239,14 @@ void main() {
       expect(closed, isNot(contains('kube_')));
       expect(closed, isNot(contains('cloud_servers')));
       expect(closed, isNot(contains('container_')));
+
+      // Each family has its own switch in Settings (bostrot/ai-tasks#87), so
+      // the prompt names only the families that are actually on.
+      ExperimentalFeatures.setEnabled(ExperimentalFeature.kubernetes, true);
+      final kubeOnly = await promptWith(null);
+      expect(kubeOnly, contains('kube_pod_logs'));
+      expect(kubeOnly, isNot(contains('cloud_servers')));
+      expect(kubeOnly, isNot(contains('container_')));
     });
 
     test('a request failure keeps the user message so retry can re-run it',

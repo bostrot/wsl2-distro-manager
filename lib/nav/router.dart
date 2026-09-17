@@ -12,7 +12,7 @@ import 'package:wsl2distromanager/screens/community_screen.dart';
 import 'package:wsl2distromanager/screens/snippet_editor_screen.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
-import 'package:wsl2distromanager/api/license_manager.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/screens/cloud_screen.dart';
 import 'package:wsl2distromanager/api/cloud_init.dart';
 import 'package:wsl2distromanager/screens/cloud_init_screen.dart';
@@ -55,6 +55,16 @@ Future<void> navigateGuardedOn(GoRouter target, String name,
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Where a route belonging to [feature] sends the user while the feature is
+/// off: home. The routes stay registered — a `redirect` rather than dropping
+/// them, because it is re-evaluated on every navigation, while this router
+/// is a top-level `final` whose route list would be built exactly once — so
+/// a restored, hand-typed or deep-linked path to a switched-off destination
+/// lands on the home screen instead of on the feature.
+String? experimentalRedirect(ExperimentalFeature feature) =>
+    ExperimentalFeatures.isVisible(feature) ? null : '/';
+
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final router = GoRouter(
   navigatorKey: rootNavigatorKey,
@@ -114,6 +124,8 @@ final router = GoRouter(
         GoRoute(
           path: '/playbooks',
           name: 'playbooks',
+          redirect: (context, state) =>
+              experimentalRedirect(ExperimentalFeature.playbooks),
           builder: (context, state) => const PlaybooksPage(),
         ),
 
@@ -121,6 +133,8 @@ final router = GoRouter(
         GoRoute(
           path: '/playbooks/edit',
           name: 'playbook-editor',
+          redirect: (context, state) =>
+              experimentalRedirect(ExperimentalFeature.playbooks),
           builder: (context, state) =>
               PlaybookEditorPage(existing: state.extra as Playbook?),
         ),
@@ -132,7 +146,8 @@ final router = GoRouter(
           path: '/playbooks/apply',
           name: 'playbook-apply',
           redirect: (context, state) =>
-              state.extra is Playbook ? null : '/playbooks',
+              experimentalRedirect(ExperimentalFeature.playbooks) ??
+              (state.extra is Playbook ? null : '/playbooks'),
           builder: (context, state) =>
               PlaybookApplyPage(playbook: state.extra as Playbook),
         ),
@@ -141,12 +156,8 @@ final router = GoRouter(
         GoRoute(
           path: '/containers',
           name: 'containers',
-          // Registered but unreachable outside a debug run: a `redirect`
-          // rather than dropping the route, because it is re-evaluated on
-          // every navigation, while this router is a top-level `final` whose
-          // route list would be built exactly once.
           redirect: (context, state) =>
-              LicenseManager.unreleasedFeaturesVisible ? null : '/',
+              experimentalRedirect(ExperimentalFeature.containers),
           builder: (context, state) => const ContainersPage(),
         ),
 
@@ -154,12 +165,8 @@ final router = GoRouter(
         GoRoute(
           path: '/kubernetes',
           name: 'kubernetes',
-          // Registered but unreachable outside a debug run: a `redirect`
-          // rather than dropping the route, because it is re-evaluated on
-          // every navigation, while this router is a top-level `final` whose
-          // route list would be built exactly once.
           redirect: (context, state) =>
-              LicenseManager.unreleasedFeaturesVisible ? null : '/',
+              experimentalRedirect(ExperimentalFeature.kubernetes),
           builder: (context, state) => const KubernetesPage(),
         ),
 
@@ -167,12 +174,8 @@ final router = GoRouter(
         GoRoute(
           path: '/cloud',
           name: 'cloud',
-          // Registered but unreachable outside a debug run: a `redirect`
-          // rather than dropping the route, because it is re-evaluated on
-          // every navigation, while this router is a top-level `final` whose
-          // route list would be built exactly once.
           redirect: (context, state) =>
-              LicenseManager.unreleasedFeaturesVisible ? null : '/',
+              experimentalRedirect(ExperimentalFeature.cloud),
           builder: (context, state) => const CloudPage(),
         ),
 
@@ -180,6 +183,8 @@ final router = GoRouter(
         GoRoute(
           path: '/cloudinit',
           name: 'cloudinit',
+          redirect: (context, state) =>
+              experimentalRedirect(ExperimentalFeature.cloudInit),
           builder: (context, state) => const CloudInitPage(),
         ),
 
@@ -187,6 +192,8 @@ final router = GoRouter(
         GoRoute(
           path: '/cloudinit/edit',
           name: 'cloudinit-editor',
+          redirect: (context, state) =>
+              experimentalRedirect(ExperimentalFeature.cloudInit),
           builder: (context, state) =>
               CloudInitEditorPage(existing: state.extra as CloudInitConfig?),
         ),

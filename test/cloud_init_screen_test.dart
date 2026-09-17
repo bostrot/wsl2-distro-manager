@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/cloud_init.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/components/cloud_init_picker.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -37,7 +38,10 @@ void main() {
 
   setUp(() async {
     messages = [];
-    SharedPreferences.setMockInitialValues({});
+    // The picker follows the cloud-init switch in Settings
+    // (bostrot/ai-tasks#87); these tests are about the picker itself.
+    SharedPreferences.setMockInitialValues(
+        {ExperimentalFeature.cloudInit.prefKey: true});
     prefs = await SharedPreferences.getInstance();
     store.reload();
   });

@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
@@ -460,6 +461,27 @@ void main() {
       expect(names, containsAll({'wsl_list_distros', 'wsl_run_command',
           'wsl_unregister_distro', 'wsl_terminal_start'}));
       expect(tools.first['inputSchema'], isA<Map>());
+    });
+
+    test('a family switched on in Settings is listed on the next request',
+        () async {
+      // The container_*, kube_* and cloud_* families follow the experimental
+      // switches (bostrot/ai-tasks#87); a dashboard left open should see a
+      // flip without being turned off and on.
+      final svc = service();
+      await svc.start();
+
+      Future<Set<dynamic>> names() async {
+        final body = await decode(await call('/api/tools', token: svc.token));
+        return (body['tools'] as List).cast<Map>().map((t) => t['name']).toSet();
+      }
+
+      expect(await names(), isNot(contains('kube_contexts')));
+      ExperimentalFeatures.setEnabled(ExperimentalFeature.kubernetes, true);
+      expect(await names(), contains('kube_contexts'));
+      ExperimentalFeatures.setEnabled(ExperimentalFeature.kubernetes, false);
+      expect(await names(), isNot(contains('kube_contexts')));
+      expect(await names(), contains('wsl_list_distros'));
     });
 
     test('calling a tool round-trips through the backend', () async {

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_service.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
@@ -136,6 +137,32 @@ void main() {
           'wsl_terminal_signal',
           'wsl_terminal_close',
         }));
+  });
+
+  test('a family switched on in Settings is listed on the next request',
+      () async {
+    // The container_*, kube_* and cloud_* families follow the experimental
+    // switches (bostrot/ai-tasks#87), and a client connected to a running
+    // server should see a flip without the server being turned off and on.
+    final svc = service();
+    await svc.start();
+
+    Future<Set<dynamic>> names() async {
+      final response = await post(
+        {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'},
+        token: svc.token,
+      );
+      final body = json.decode(await response.readAsString());
+      return (body['result']['tools'] as List).map((t) => t['name']).toSet();
+    }
+
+    expect(await names(), isNot(contains('kube_contexts')));
+    ExperimentalFeatures.setEnabled(ExperimentalFeature.kubernetes, true);
+    expect(await names(), contains('kube_contexts'));
+    ExperimentalFeatures.setEnabled(ExperimentalFeature.kubernetes, false);
+    expect(await names(), isNot(contains('kube_contexts')));
+    // The rest of the surface is there throughout.
+    expect(await names(), contains('wsl_list_distros'));
   });
 
   test('an actual tool call round-trips through the real WSLApi', () async {

@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/vm/vm_platform.dart';
 import 'package:wsl2distromanager/api/wsl.dart';
@@ -23,12 +24,12 @@ void main() {
     prefs = await SharedPreferences.getInstance();
     // Most of these assertions are about the *backend* gate; the unreleased
     // gate is exercised on its own below, so keep it out of the way here.
-    LicenseManager.unreleasedFeaturesOverride = true;
+    ExperimentalFeatures.overrideAll = true;
   });
 
   tearDown(() {
     vmBackendBuilder = defaultVmBackendBuilder;
-    LicenseManager.unreleasedFeaturesOverride = null;
+    ExperimentalFeatures.overrideAll = null;
   });
 
   Set<String> paneKeys() => originalItems
@@ -88,14 +89,13 @@ void main() {
       expect(paneKeys(), contains("[<'/cloud'>]"));
     });
 
-    test('Containers, Kubernetes and Cloud are hidden outside a debug run',
-        () {
+    test('Containers, Kubernetes and Cloud are hidden until switched on', () {
       // Each drives something this app does not own and none is finished
-      // enough to release, so all three sit behind the gate Pro rides on in
-      // a debug build — including on the backend that satisfies every other
-      // condition for them.
+      // enough to release, so all three sit behind their experimental
+      // switches — including on the backend that satisfies every other
+      // condition for them. The override stands in for all the switches.
       vmBackendBuilder = () => WSLApi(shell: MockShell());
-      LicenseManager.unreleasedFeaturesOverride = false;
+      ExperimentalFeatures.overrideAll = false;
       final hidden = paneKeys();
       expect(hidden, isNot(contains("[<'/containers'>]")));
       expect(hidden, isNot(contains("[<'/kubernetes'>]")));
@@ -104,20 +104,24 @@ void main() {
       expect(hidden, contains("[<'/templates'>]"));
       expect(hidden, contains("[<'/addinstance'>]"));
 
-      LicenseManager.unreleasedFeaturesOverride = true;
+      ExperimentalFeatures.overrideAll = true;
       final shown = paneKeys();
       expect(shown, contains("[<'/containers'>]"));
       expect(shown, contains("[<'/kubernetes'>]"));
       expect(shown, contains("[<'/cloud'>]"));
     });
 
-    test('the gate defaults to the same answer the Pro debug gate gives', () {
+    test('the switches default to the same answer the Pro debug gate gives',
+        () {
       // Not hard-coded to false: under `flutter test` the Pro debug gate is
-      // deliberately off, and these three follow it rather than carrying a
-      // second rule of their own.
-      LicenseManager.unreleasedFeaturesOverride = null;
+      // deliberately off, and with no choice stored the experimental
+      // features follow it rather than carrying a second rule of their own
+      // (bostrot/ai-tasks#87; the switches themselves are covered in
+      // experimental_features_test.dart).
+      ExperimentalFeatures.overrideAll = null;
       vmBackendBuilder = () => WSLApi(shell: MockShell());
-      expect(LicenseManager.unreleasedFeaturesVisible, LicenseManager().isPro);
+      expect(ExperimentalFeatures.isEnabled(ExperimentalFeature.containers),
+          LicenseManager().isPro);
       expect(paneKeys(), isNot(contains("[<'/containers'>]")));
     });
 

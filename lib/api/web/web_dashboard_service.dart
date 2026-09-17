@@ -29,6 +29,7 @@ import 'package:shelf/shelf_io.dart' as io;
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/apple/apple_vm_api.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
@@ -86,6 +87,15 @@ class WebDashboardService {
   // on the one real server and its terminal sessions.
   static HttpServer? _server;
   static WslTerminalManager? _terminalManager;
+
+  /// The tool list the routes serve, with the
+  /// [ExperimentalFeatures.generation] it was built at: the container_*,
+  /// kube_* and cloud_* families follow the switches in Settings, so a flip
+  /// rebuilds the list on the next request instead of waiting for the
+  /// dashboard to be turned off and on. Static for the same reason as
+  /// [_server].
+  static List<McpTool>? _tools;
+  static int _toolsGeneration = 0;
 
   /// The assistant run the dashboard started, while it is in flight. Static
   /// for the same reason as [_server]. A run the desktop panel started shows
@@ -235,10 +245,10 @@ class WebDashboardService {
     if (isRunning) return;
 
     _terminalManager = WslTerminalManager(wslApi: backend);
-    final tools = buildWslMcpTools(backend, _terminalManager!);
+    _tools = _buildTools();
     final handler = const Pipeline()
         .addMiddleware(_authMiddleware(() => token))
-        .addHandler((request) => _route(request, tools));
+        .addHandler((request) => _route(request, _currentTools()));
 
     try {
       // Every interface on purpose — see the file comment.
@@ -254,10 +264,26 @@ class WebDashboardService {
   Future<void> stop() async {
     await _server?.close(force: true);
     _server = null;
+    _tools = null;
     await _terminalManager?.closeAll();
     _terminalManager = null;
     // A public URL routing to a dead server is worse than no URL.
     await tunnel.stop();
+  }
+
+  List<McpTool> _buildTools() {
+    _toolsGeneration = ExperimentalFeatures.generation.value;
+    return buildWslMcpTools(backend, _terminalManager!);
+  }
+
+  /// The tools for this request: the list built at start, or a fresh one
+  /// when an experimental switch has moved since. The terminal manager is
+  /// kept, so open shells survive the rebuild.
+  List<McpTool> _currentTools() {
+    if (_toolsGeneration != ExperimentalFeatures.generation.value) {
+      _tools = _buildTools();
+    }
+    return _tools!;
   }
 
   Future<Response> _route(Request request, List<McpTool> tools) async {

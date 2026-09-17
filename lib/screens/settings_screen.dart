@@ -15,6 +15,7 @@ import 'package:wsl2distromanager/api/ai_workspace/shared_settings.dart';
 import 'package:wsl2distromanager/api/apple/guest_greeting.dart';
 import 'package:wsl2distromanager/api/containers/container_models.dart';
 import 'package:wsl2distromanager/api/containers/container_service.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/kubernetes/kube_service.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/cloudflare_tunnel_service.dart';
@@ -31,6 +32,7 @@ import 'package:wsl2distromanager/api/wsl_capabilities.dart';
 import 'package:wsl2distromanager/api/wslconfig.dart';
 import 'package:wsl2distromanager/components/constants.dart';
 import 'package:wsl2distromanager/components/debounced_text_box.dart';
+import 'package:wsl2distromanager/components/experimental_features_section.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/named_button.dart';
 import 'package:wsl2distromanager/components/notify.dart';
@@ -270,11 +272,19 @@ class SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    // The Kubernetes section and the container engine pick follow their
+    // experimental switches, so a flip in the section below rebuilds them.
+    ExperimentalFeatures.generation.addListener(_onExperimentalChanged);
     readData();
+  }
+
+  void _onExperimentalChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    ExperimentalFeatures.generation.removeListener(_onExperimentalChanged);
     // No save-on-dispose. It was meant to make leaving the screen commit and
     // observably never fired, which is exactly what made ST-01 a blocker: the
     // code believed in auto-save while the screen discarded everything. The
@@ -748,7 +758,7 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         ],
         // Settings for a destination nobody can open are just clutter.
-        if (LicenseManager.unreleasedFeaturesVisible) ...[
+        if (ExperimentalFeatures.isVisible(ExperimentalFeature.kubernetes)) ...[
         const SizedBox(height: 10),
         Expander(
           header: Text('kubernetessettings-text'.i18n()),
@@ -789,6 +799,15 @@ class SettingsPageState extends State<SettingsPage> {
           content: _buildExperimentalSettings(context),
         ),
         ],
+        // The opt-in switches for the destinations that are not finished:
+        // last, on every host, because they are the one section a user
+        // visits once (bostrot/ai-tasks#87).
+        const SizedBox(height: 10),
+        Expander(
+          key: const ValueKey('test-experimental-features-expander'),
+          header: Text('experimentalfeatures-text'.i18n()),
+          content: const ExperimentalFeaturesSection(),
+        ),
       ],
     );
   }
@@ -2085,8 +2104,8 @@ class SettingsPageState extends State<SettingsPage> {
         // after the fact is picked up without anyone revisiting this
         // (bostrot/ai-tasks#57). The rest of this section is the older Docker
         // Hub rootfs support, which ships; only the engine pick follows
-        // Containers behind its gate.
-        if (LicenseManager.unreleasedFeaturesVisible)
+        // Containers behind its switch.
+        if (ExperimentalFeatures.isVisible(ExperimentalFeature.containers))
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: InfoLabel(

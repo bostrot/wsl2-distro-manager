@@ -1196,5 +1196,12 @@
   "ai-workspace-shared-openwebui-text": "Open WebUI는 생성 당시의 컨테이너에서 엔드포인트를 가져옵니다. Open WebUI 자체 관리 화면의 연결에서 설정하세요.",
   "ai-workspace-shared-no-output-text": "도구가 오류 메시지를 보고하지 않았습니다.",
   "ai-workspace-shared-auto-applied-text": "%s에 AI 어시스턴트의 모델과 엔드포인트를 설정했습니다.",
-  "ai-workspace-shared-auto-failed-text": "%s0이(가) AI 어시스턴트의 모델과 엔드포인트를 받아들이지 못했습니다: %s1"
+  "ai-workspace-shared-auto-failed-text": "%s0이(가) AI 어시스턴트의 모델과 엔드포인트를 받아들이지 못했습니다: %s1",
+  "experimentalfeatures-text": "실험적 기능",
+  "experimentalfeatures-info-text": "아직 완성되지 않은 기능입니다. 여기서 켜기 전까지는 숨겨져 있으며, 켜면 내비게이션에 나타나고 해당하는 경우 어시스턴트 도구와 설정에도 표시됩니다.",
+  "experimental-containers-info-text": "이 컴퓨터의 Docker 및 Podman 컨테이너를 관리합니다.",
+  "experimental-kubernetes-info-text": "kubeconfig의 클러스터를 둘러봅니다.",
+  "experimental-cloud-info-text": "인스턴스를 클라우드 제공업체에 배포하고 다시 가져옵니다.",
+  "experimental-cloudinit-info-text": "cloud-init 구성을 작성하고 새 인스턴스를 그것으로 초기화합니다.",
+  "experimental-playbooks-info-text": "인스턴스의 상태를 코드로 기술하고 기존 인스턴스에 적용합니다."
 }

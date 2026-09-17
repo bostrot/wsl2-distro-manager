@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:wsl2distromanager/api/ai_service.dart';
 import 'package:wsl2distromanager/api/app_window.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/sandbox_service.dart';
 import 'package:wsl2distromanager/components/ai_chat_panel.dart';
@@ -125,6 +126,8 @@ class RootPageState extends State<RootPage> with WindowListener {
     LicenseManager().addListener(_onLicenseChanged);
     // So does the AI Workspace entry when AI is switched off in Settings.
     AiService.featuresChanged.addListener(_onLicenseChanged);
+    // And the experimental destinations when one is switched on or off.
+    ExperimentalFeatures.generation.addListener(_onLicenseChanged);
     initRoot(statusMsg);
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => adoptKeyboardFocus());
@@ -164,6 +167,7 @@ class RootPageState extends State<RootPage> with WindowListener {
     windowManager.removeListener(this);
     LicenseManager().removeListener(_onLicenseChanged);
     AiService.featuresChanged.removeListener(_onLicenseChanged);
+    ExperimentalFeatures.generation.removeListener(_onLicenseChanged);
     searchController.dispose();
     searchFocusNode.dispose();
     shellFocusScope.dispose();

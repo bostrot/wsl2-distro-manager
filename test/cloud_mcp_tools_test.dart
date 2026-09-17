@@ -7,16 +7,25 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/cloud/cloud_models.dart';
 import 'package:wsl2distromanager/api/cloud/cloud_provider.dart';
-import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_mcp_tools.dart';
 import 'package:wsl2distromanager/api/mcp/wsl_terminal_manager.dart';
+import 'package:wsl2distromanager/api/vm/vm_backend.dart';
 import 'package:wsl2distromanager/components/helpers.dart';
 import 'package:wsl2distromanager/components/notify.dart';
 
 import 'fake_cloud.dart';
 import 'vm_backend_test.dart' show FakeBackend;
+
+/// A backend that can hand an instance over as a rootfs tarball: the cloud_*
+/// family follows the Cloud destination, which is only offered on one that
+/// can (bostrot/ai-tasks#62, #87).
+class _CloudBackend extends FakeBackend {
+  @override
+  VmFeatures get features => const VmFeatures(rootfsExport: true);
+}
 
 CloudServer server({
   String id = '1',
@@ -59,7 +68,7 @@ void main() {
 
   /// Rebuild the registry against [supplied] as the connected account.
   void build({CloudProvider? Function()? supplied}) {
-    final backend = FakeBackend();
+    final backend = _CloudBackend();
     final tools = buildWslMcpTools(
       backend,
       WslTerminalManager(wslApi: backend),
@@ -72,12 +81,12 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    LicenseManager.unreleasedFeaturesOverride = true;
+    ExperimentalFeatures.overrideAll = true;
     provider = FakeCloudProvider(servers: [server()]);
     build();
   });
 
-  tearDown(() => LicenseManager.unreleasedFeaturesOverride = null);
+  tearDown(() => ExperimentalFeatures.overrideAll = null);
 
   test('only the two read tools are registered', () {
     expect(names, containsAll(['cloud_servers', 'cloud_server_info']));
@@ -85,8 +94,18 @@ void main() {
         everyElement(isIn({'cloud_servers', 'cloud_server_info'})));
   });
 
-  test('the family is not registered while Cloud is unreleased', () {
-    LicenseManager.unreleasedFeaturesOverride = false;
+  test('the family is not registered while Cloud is switched off', () {
+    ExperimentalFeatures.overrideAll = false;
+    final backend = _CloudBackend();
+    final hidden =
+        buildWslMcpTools(backend, WslTerminalManager(wslApi: backend))
+            .map((t) => t.name);
+    expect(hidden.where((n) => n.startsWith('cloud_')), isEmpty);
+  });
+
+  test('nor on a backend that cannot export a rootfs, even switched on', () {
+    // Like the pane entry: a Cloud that cannot deploy is not offered, and
+    // its tools go with it (bostrot/ai-tasks#62).
     final backend = FakeBackend();
     final hidden =
         buildWslMcpTools(backend, WslTerminalManager(wslApi: backend))

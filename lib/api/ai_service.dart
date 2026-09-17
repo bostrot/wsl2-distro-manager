@@ -14,6 +14,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:wsl2distromanager/api/ai_run_recorder.dart';
 import 'package:wsl2distromanager/api/cancellation.dart';
+import 'package:wsl2distromanager/api/experimental_features.dart';
 import 'package:wsl2distromanager/api/license_manager.dart';
 import 'package:wsl2distromanager/api/mcp/mcp_server.dart';
 import 'package:wsl2distromanager/api/mcp/todo_tools.dart';
@@ -195,42 +196,80 @@ class AiService {
   /// WSL instead of guessing — a scoped instance (the sandbox chat) passes a
   /// narrower list.
   List<McpTool>? _tools;
-  List<McpTool> get tools => _tools ??= [
-        ...buildWslMcpTools(vmBackend(), WslTerminalManager()),
+
+  /// The [ExperimentalFeatures.generation] the registry list was built at,
+  /// or null when [_tools] was handed in (a scoped instance, a test) and is
+  /// not this getter's to rebuild.
+  int? _toolsGeneration;
+
+  /// One for the life of the chat, whatever the tool list does: the
+  /// wsl_terminal_* session ids the model holds live in it.
+  WslTerminalManager? _terminalManager;
+
+  List<McpTool> get tools {
+    // Rebuilt when a switch in Settings has moved since: the container_*,
+    // kube_* and cloud_* families follow those switches, and a list cached
+    // for the process would advertise (or keep callable) the wrong ones
+    // against a prompt that already says otherwise.
+    final generation = ExperimentalFeatures.generation.value;
+    if (_tools == null ||
+        (_toolsGeneration != null && _toolsGeneration != generation)) {
+      _tools = [
+        ...buildWslMcpTools(
+            vmBackend(), _terminalManager ??= WslTerminalManager()),
         ...buildTodoTools(TodoStore.instance),
       ];
+      _toolsGeneration = generation;
+    }
+    return _tools!;
+  }
 
   @visibleForTesting
-  set toolsForTesting(List<McpTool> value) => _tools = value;
+  WslTerminalManager? get terminalManagerForTesting => _terminalManager;
+
+  @visibleForTesting
+  set toolsForTesting(List<McpTool> value) {
+    _tools = value;
+    _toolsGeneration = null;
+  }
 
   /// Named only when the container_*, kube_* and cloud_* tools were actually
   /// registered — a prompt that advertises tools the model cannot call earns a
-  /// round of invented tool calls and an apology.
-  String get _containerGuidance => LicenseManager.unreleasedFeaturesVisible
-      ? 'Docker and Podman containers are a separate thing from VMs and '
-          'distros, with their own tools: container_list, '
-          'container_start/stop/restart, container_logs, container_exec, '
-          'container_inspect, and the read-only container_images, '
-          'container_volumes, container_networks, container_stats, '
-          'container_processes and container_disk_usage. Use those for '
-          'anything about containers, and never wsl_* — removing a container '
-          '(container_remove) is permanent and confirm-gated like '
-          'unregistering an instance.\n'
-          'Kubernetes clusters from the user\'s kubeconfig have kube_* tools, '
-          'and they are READ-ONLY on purpose: kube_contexts, kube_namespaces, '
-          'kube_workloads, kube_pods, kube_pod_logs, kube_describe, kube_get, '
-          'kube_events, kube_top. You cannot restart, scale or delete '
-          'anything in a cluster — when that is what the user needs, say so '
-          'and point them at the Kubernetes screen. Debugging order that '
-          'works: kube_workloads with unhealthy_only, then kube_pods with '
-          'problems_only, then kube_describe on the failing pod for its '
-          'Events, then kube_pod_logs with previous: true for a '
-          'CrashLoopBackOff. Search logs with the contains/pattern arguments '
-          'instead of pulling thousands of lines back.\n'
-          'Cloud servers have cloud_servers and cloud_server_info, also '
-          'read-only — creating and deleting servers is done on the Cloud '
-          'screen because both cost money.\n'
-      : '';
+  /// round of invented tool calls and an apology. Each family follows its own
+  /// switch in Settings, so each paragraph is added on its own.
+  String get _containerGuidance {
+    final backend = vmBackend();
+    bool on(ExperimentalFeature feature) =>
+        ExperimentalFeatures.isVisible(feature, backend: backend);
+    return [
+      if (on(ExperimentalFeature.containers))
+        'Docker and Podman containers are a separate thing from VMs and '
+            'distros, with their own tools: container_list, '
+            'container_start/stop/restart, container_logs, container_exec, '
+            'container_inspect, and the read-only container_images, '
+            'container_volumes, container_networks, container_stats, '
+            'container_processes and container_disk_usage. Use those for '
+            'anything about containers, and never wsl_* — removing a container '
+            '(container_remove) is permanent and confirm-gated like '
+            'unregistering an instance.\n',
+      if (on(ExperimentalFeature.kubernetes))
+        'Kubernetes clusters from the user\'s kubeconfig have kube_* tools, '
+            'and they are READ-ONLY on purpose: kube_contexts, kube_namespaces, '
+            'kube_workloads, kube_pods, kube_pod_logs, kube_describe, kube_get, '
+            'kube_events, kube_top. You cannot restart, scale or delete '
+            'anything in a cluster — when that is what the user needs, say so '
+            'and point them at the Kubernetes screen. Debugging order that '
+            'works: kube_workloads with unhealthy_only, then kube_pods with '
+            'problems_only, then kube_describe on the failing pod for its '
+            'Events, then kube_pod_logs with previous: true for a '
+            'CrashLoopBackOff. Search logs with the contains/pattern arguments '
+            'instead of pulling thousands of lines back.\n',
+      if (on(ExperimentalFeature.cloud))
+        'Cloud servers have cloud_servers and cloud_server_info, also '
+            'read-only — creating and deleting servers is done on the Cloud '
+            'screen because both cost money.\n',
+    ].join();
+  }
 
   /// Told to the model so it does not file a duplicate with wsl_create_snippet
   /// when the user asks for a record of what it did (ai-tasks#77).
