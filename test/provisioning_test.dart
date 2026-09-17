@@ -513,6 +513,19 @@ runcmd:
           reason: 'the applied record survives a later check');
     });
 
+    test('two runs recorded in the same clock tick still list newest first',
+        () async {
+      // A coarse clock, or an apply and a check back to back, can stamp two
+      // runs with one instant; the later record must still come first.
+      PlaybookRunStore.instance.now = () => DateTime(2026, 9, 17, 12);
+      final backend = ScriptedBackend();
+      await ProvisioningRunner(backend).apply('ubuntu', playbook);
+      await ProvisioningRunner(backend).apply('ubuntu', playbook, check: true);
+      final runs = PlaybookRunStore.instance.forPlaybook('dev');
+      expect(runs.map((r) => r.at).toSet(), hasLength(1));
+      expect(runs.map((r) => r.check), [true, false]);
+    });
+
     test('a run the user stopped is not recorded', () async {
       final backend = ScriptedBackend();
       var calls = 0;

@@ -1081,9 +1081,21 @@ class PlaybookRunStore extends ChangeNotifier {
   /// files another change holds; see doc/playbooks.md).
   List<PlaybookRun> forPlaybook(String playbook) {
     _load();
-    final list = _runs.where((r) => r.playbook == playbook).toList()
-      ..sort((a, b) => b.at.compareTo(a.at));
-    return list;
+    // Newest first. Two runs recorded within one clock tick — an apply and
+    // a check back to back, or a coarse clock — keep the order they were
+    // recorded in, the later one first; the sort alone would leave them as
+    // it found them.
+    final indexed = _runs
+        .where((r) => r.playbook == playbook)
+        .toList()
+        .asMap()
+        .entries
+        .toList()
+      ..sort((a, b) {
+        final byTime = b.value.at.compareTo(a.value.at);
+        return byTime != 0 ? byTime : b.key.compareTo(a.key);
+      });
+    return [for (final e in indexed) e.value];
   }
 
   void _load() {
