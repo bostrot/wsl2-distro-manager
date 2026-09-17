@@ -22,6 +22,12 @@ add_executable(${BINARY_NAME} WIN32
 # that need different build settings.
 apply_standard_settings(${BINARY_NAME})
 
+# C++/WinRT (store_channel.cpp) is built on coroutines. Under the C++17 the
+# standard settings ask for, it falls back to <experimental/coroutine>, which
+# the MSVC 14.51 STL (Visual Studio 2026, today's windows-latest) rejects with
+# a static assertion; with C++20 it takes the standard <coroutine> header.
+target_compile_features(${BINARY_NAME} PRIVATE cxx_std_20)
+
 # Add preprocessor definitions for the build version.
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION=\"${FLUTTER_VERSION}\"")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MAJOR=${FLUTTER_VERSION_MAJOR}")
