@@ -22,6 +22,7 @@ class _Adapter implements HttpClientAdapter {
     this.names = const ['redis'],
     this.brokenFor = const {},
     this.catalogue,
+    this.catalogueContentType = Headers.jsonContentType,
   });
   final List<String> names;
   final Set<String> brokenFor;
@@ -31,6 +32,10 @@ class _Adapter implements HttpClientAdapter {
   /// exercised — and how every test written before that endpoint existed
   /// keeps testing what it used to.
   final String? catalogue;
+
+  /// What the catalogue is served as. raw.githubusercontent.com, where it
+  /// lives, answers `text/plain` for a `.json` file.
+  final String catalogueContentType;
   int commitCalls = 0;
   int listingCalls = 0;
   int catalogueCalls = 0;
@@ -60,7 +65,7 @@ class _Adapter implements HttpClientAdapter {
       catalogueCalls++;
       if (catalogue == null) return ResponseBody.fromString('nope', 503);
       return ResponseBody.fromString(catalogue!, 200, headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType]
+        Headers.contentTypeHeader: [catalogueContentType]
       });
     }
     if (path.contains('api.github.com')) {
@@ -149,6 +154,17 @@ void main() {
       expect(adapter.catalogueCalls, 1);
       // The point of the endpoint: neither the folder listing nor any
       // per-script fetch happens at all.
+      expect(adapter.listingCalls, 0);
+    });
+
+    test('served as text/plain, as the raw branch URL does, it still parses',
+        () async {
+      final adapter = _Adapter(
+        catalogue: catalogueOf({'redis': _info}),
+        catalogueContentType: 'text/plain; charset=utf-8',
+      );
+      final scripts = await build(adapter).list();
+      expect(scripts.map((s) => s.name), ['redis']);
       expect(adapter.listingCalls, 0);
     });
 
