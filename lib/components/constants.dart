@@ -83,9 +83,11 @@ const String gitRepoRawLink =
 
 /// The whole community catalogue in one response: every folder's `info.yml`
 /// already collected, so the browser makes one request where it used to make
-/// one per script. Served by the `cdn/scripts.json` workflow in `n8n/`;
-/// [gitApiScriptsLink] and [repoScripts] stay the fallback when it is down.
-String communityCatalogUrl = 'https://n8n.aachen.dev/webhook/cdn/scripts.json';
+/// one per script. Published on this repository's `catalogue` branch by the
+/// Community catalogue workflow and read raw from there; [gitApiScriptsLink]
+/// and [repoScripts] stay the fallback when it is unreachable.
+String communityCatalogUrl =
+    'https://raw.githubusercontent.com/bostrot/wsl2-distro-manager/catalogue/cdn/scripts.json';
 
 String gitApiScriptsLink =
     'https://api.github.com/repos/bostrot/wsl-scripts/contents/scripts';

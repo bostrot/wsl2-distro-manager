@@ -56,7 +56,7 @@ class _Adapter implements HttpClientAdapter {
             Headers.contentTypeHeader: [Headers.jsonContentType]
           });
     }
-    if (path.contains('/webhook/cdn/scripts.json')) {
+    if (path.contains('/catalogue/cdn/scripts.json')) {
       catalogueCalls++;
       if (catalogue == null) return ResponseBody.fromString('nope', 503);
       return ResponseBody.fromString(catalogue!, 200, headers: {

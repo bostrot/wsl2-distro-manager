@@ -1,5 +1,5 @@
 /// Builds `cdn/scripts.json`: the whole community catalogue as one file,
-/// published by GitHub Pages from this repository's root.
+/// published on this repository's `catalogue` branch and read raw from there.
 ///
 /// The Community screen used to assemble this itself, at runtime, on every
 /// machine that opened it: list `scripts/` in bostrot/wsl-scripts, then fetch
