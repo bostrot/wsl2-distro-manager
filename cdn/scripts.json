@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/bostrot/wsl-scripts",
-  "count": 80,
+  "count": 85,
   "scripts": [
     {
       "name": "adminer",
@@ -128,6 +128,26 @@
       "updatedAt": "2026-09-06T00:26:58Z"
     },
     {
+      "name": "github-runner",
+      "info": "name: github-runner\ndescription: Self-hosted GitHub Actions runner as a service. Edit the snippet first and paste your repo/org URL and the registration token from Settings > Actions > Runners > New self-hosted runner\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Fedora\n  - Arch\n",
+      "updatedAt": "2026-09-13T09:46:27Z"
+    },
+    {
+      "name": "github-runner-macos",
+      "info": "name: github-runner-macos\ndescription: Self-hosted GitHub Actions runner on macOS (a macOS VM or any Mac), started at login. Edit the snippet first and paste your repo/org URL and the registration token from Settings > Actions > Runners > New self-hosted runner\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: macOS\n",
+      "updatedAt": "2026-09-13T09:46:27Z"
+    },
+    {
+      "name": "gitlab-runner",
+      "info": "name: gitlab-runner\ndescription: Self-hosted GitLab Runner as a service (shell or docker executor). Edit the snippet first and paste your GitLab URL and the glrt- runner token from Settings > CI/CD > Runners > New project runner\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n  - Arch\n",
+      "updatedAt": "2026-09-13T09:21:15Z"
+    },
+    {
+      "name": "gitlab-runner-macos",
+      "info": "name: gitlab-runner-macos\ndescription: Self-hosted GitLab Runner on macOS (a macOS VM or any Mac), started at login. Edit the snippet first and paste your GitLab URL and the glrt- runner token from Settings > CI/CD > Runners > New project runner\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: macOS\n",
+      "updatedAt": "2026-09-13T09:21:15Z"
+    },
+    {
       "name": "go-toolchain-alpine",
       "info": "name: go-toolchain-alpine\ndescription: Install Go programming language\nversion: 1.0.0\nauthor: FizzWizzleDazzle\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro: Alpine",
       "updatedAt": "2026-09-03T18:35:58Z"
@@ -220,7 +240,7 @@
     {
       "name": "minio-s3",
       "info": "name: minio-s3\ndescription: S3-compatible object storage (MinIO) with a web console on port 9001, API on 9000. Credentials minioadmin / minioadmin.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
-      "updatedAt": "2026-09-06T00:26:58Z"
+      "updatedAt": "2026-09-13T09:46:27Z"
     },
     {
       "name": "mongodb",
@@ -281,6 +301,11 @@
       "name": "open-webui",
       "info": "name: open-webui\ndescription: Open WebUI chat interface for Ollama on port 8085. Connects to the ollama script's server on port 11434. Chats and accounts kept in a named volume.\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n",
       "updatedAt": "2026-09-06T00:26:58Z"
+    },
+    {
+      "name": "opencode",
+      "info": "name: opencode\ndescription: OpenCode AI coding agent CLI on PATH. Run `opencode` for the TUI, or `opencode web --port 4096` for the browser UI\nversion: 1.0.0\nauthor: bostrot\nlicense: MIT\ngit: https://github.com/bostrot/wsl-scripts\ndistro:\n  - Debian\n  - Ubuntu\n  - Alpine\n  - Fedora\n  - Arch\n",
+      "updatedAt": "2026-09-13T09:21:15Z"
     },
     {
       "name": "pgadmin",
