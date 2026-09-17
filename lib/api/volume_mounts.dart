@@ -627,7 +627,10 @@ class AppleVolumeMountDriver implements VolumeMountDriver {
     }
     final existing = {for (final m in before) m.guestPath: m};
     for (final mount in mounts) {
-      final hostPath = p.normalize(mount.hostPath.trim());
+      // Host paths here are the Mac's, so POSIX rules whatever the host the
+      // code runs on — the default context would turn `/a/` into `\a` under
+      // a Windows test run and report every row as changed.
+      final hostPath = p.posix.normalize(mount.hostPath.trim());
       if (existing[mount.guestPath] == VolumeMount(
           hostPath: hostPath,
           guestPath: mount.guestPath,
