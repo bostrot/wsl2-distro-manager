@@ -5,7 +5,9 @@
 # The cases that matter are the unhappy ones: an expired HOMEBREW_TAP_TOKEN
 # is what broke `brew install --cask bostrot/tap/wsl-manager` on 2026-09-09
 # (bostrot/ai-tasks#63), and it broke it quietly — the build had already
-# replaced the dmg the published cask pointed at.
+# replaced the dmg the published cask pointed at. The attach step's guard at
+# the bottom is what keeps that from happening again, for this tap and for
+# Homebrew's own homebrew/cask alike.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SCRIPT="$PWD/scripts/update_homebrew_cask.sh"
@@ -65,7 +67,7 @@ cask "wsl-manager" do
   version "$1"
   sha256 "$2"
 
-  url "https://github.com/bostrot/wsl2-distro-manager/releases/download/v#{version}/wsl2-distro-manager-v#{version}-macos.dmg"
+  url "https://github.com/bostrot/wslmanager/releases/download/v#{version}/wsl2-distro-manager-v#{version}-macos.dmg"
   name "WSL Manager"
   depends_on arch: :arm64
 end
@@ -76,24 +78,13 @@ STALE="d25d60ce2429ecf6be63b40cba7a6112e736ec980806cc3c26031a2af0b4f7cb"
 ok()   { echo "ok   $1"; }
 fail() { echo "FAIL $1" >&2; exit 1; }
 
-# check ------------------------------------------------------------------
-seed 2.0.1 "$STALE"
-OUT=$(TAP_TOKEN=t "$SCRIPT" check)
-grep -qx "writable=true" <<<"$OUT" || fail "check reports a readable tap as writable"
-grep -qx "cask_version=2.0.1" <<<"$OUT" || fail "check reports the published version"
-ok "check reads the tap and reports its version"
-
-OUT=$(FAKE_MODE=401 TAP_TOKEN=t "$SCRIPT" check 2>"$WORK/err")
-! grep -q "::warning" <<<"$OUT" || fail "check keeps warnings out of stdout, which becomes GITHUB_OUTPUT"
-grep -qx "writable=false" <<<"$OUT" || fail "an expired token reports writable=false"
-grep -q "contents:write" "$WORK/err" || fail "the 401 says how to fix the token"
-ok "check survives an expired token and says what to do"
-
-OUT=$(TAP_TOKEN="  " "$SCRIPT" check 2>/dev/null)
-grep -qx "writable=false" <<<"$OUT" || fail "a whitespace-only token reports writable=false"
-ok "check treats a whitespace-only token as no token"
-
 # update -----------------------------------------------------------------
+if TAP_TOKEN=t "$SCRIPT" check >/dev/null 2>"$WORK/err"; then
+  fail "the removed check mode is rejected"
+fi
+grep -q "expected update" "$WORK/err" || fail "an unknown mode names the one that exists"
+ok "only update is a mode"
+
 seed 2.0.1 "$STALE"
 TAP_TOKEN=t "$SCRIPT" update 2.0.2 "$DMG" >/dev/null
 grep -qx "  version \"2.0.2\"" "$FAKE_STATE" || fail "update writes the new version"
@@ -144,51 +135,43 @@ ok "update refuses to checksum a dmg that is not there"
 
 # The attach step's guard ---------------------------------------------
 # Run the workflow's own shell, not a copy of it: what this is really
-# checking is that a signed rebuild stops replacing a dmg the published cask
-# is pointing at while the tap cannot be rewritten.
+# checking is that a rebuild never replaces a dmg that is on the release. Two
+# casks point at that dmg by checksum — this tap and Homebrew's own
+# homebrew/cask, which BrewTestBot bumps and nothing in the workflow can
+# rewrite — so a replaced dmg fails `brew upgrade wsl-manager` for everyone
+# until the next version (2.3.0, 2026-09-17).
 awk '/^      - name: Attach to release \(main only\)$/{f=1} f&&/^        run: [|]$/{r=1;next} r&&NF&&!/^          /{exit} r' \
   .github/workflows/macos.yml | sed -e 's|^          ||' \
   -e 's|\${{ steps.get_version.outputs.version }}|2.0.2|g' > "$WORK/attach.sh"
 [ -s "$WORK/attach.sh" ] || fail "macos.yml still has a run block under 'Attach to release (main only)'"
+! grep -q -- '--clobber' "$WORK/attach.sh" || fail "attach no longer passes --clobber"
 
-attach() { # <assets> <has_signing> <has_tap_token> <writable> <cask version>
+attach() { # <assets> <has_signing>
   rm -f "$FAKE_STATE.calls"
-  PATH="$WORK/bin:$PATH" FAKE_ASSETS="$1" HAS_SIGNING="$2" HAS_TAP_TOKEN="$3" \
-    TAP_WRITABLE="$4" CASK_VERSION="$5" bash "$WORK/attach.sh" >/dev/null
+  PATH="$WORK/bin:$PATH" FAKE_ASSETS="$1" HAS_SIGNING="$2" bash "$WORK/attach.sh" >/dev/null
   grep -q UPLOAD "$FAKE_STATE.calls" 2>/dev/null && echo uploaded || echo skipped
 }
 DMGS="wsl2-distro-manager-v2.0.2-macos.dmg wsl2-distro-manager-v2.0.2-setup.exe"
+WINONLY="wsl2-distro-manager-v2.0.2-setup.exe"
 
-[ "$(attach "" true true true 2.0.1)" = uploaded ] \
-  || fail "a release with no mac dmg yet gets one"
+[ "$(attach "" true)" = uploaded ] \
+  || fail "a release with no assets yet gets the mac ones"
 ok   "attach uploads when the release carries no dmg"
 
-[ "$(attach "$DMGS" false true true 2.0.1)" = skipped ] \
+[ "$(attach "$WINONLY" true)" = uploaded ] \
+  || fail "a release with only the Windows asset gets the mac ones"
+ok   "attach uploads when only the Windows installer is there"
+
+[ "$(attach "$DMGS" true)" = skipped ] \
+  || fail "a signed rebuild never replaces a published dmg"
+ok   "attach leaves a published dmg alone even for a signed build"
+
+[ "$(attach "$DMGS" false)" = skipped ] \
   || fail "an ad-hoc build never replaces a published dmg"
-ok   "attach still refuses to clobber with an unsigned build"
+ok   "attach leaves a published dmg alone for an unsigned build"
 
-[ "$(attach "$DMGS" true true false 2.0.2)" = skipped ] \
-  || fail "a signed build waits when the cask points here and the tap is stuck"
-ok   "attach leaves the dmg the stale cask advertises alone"
-
-# The case that actually happened: the token expired, so the tap is
-# unwritable *and* the cask could not be read. Unknown must be treated as
-# "might be this version" — guessing otherwise republished the dmg and left
-# the cask advertising a checksum nothing served.
-[ "$(attach "$DMGS" true true false "")" = skipped ] \
-  || fail "an unreadable cask is treated as if it advertised this version"
-ok   "attach holds back when the tap read failed and the cask version is unknown"
-
-[ "$(attach "$DMGS" true true false 2.0.1)" = uploaded ] \
-  || fail "an unwritable tap whose cask points at an older release blocks nothing"
-ok   "attach clobbers when the cask points at an older version"
-
-[ "$(attach "$DMGS" true true true 2.0.2)" = uploaded ] \
-  || fail "a writable tap lets a signed rebuild land"
-ok   "attach clobbers when the cask can follow"
-
-[ "$(attach "$DMGS" true false "" "")" = uploaded ] \
-  || fail "a fork with no tap token is not held back by the tap guard"
-ok   "attach ignores the tap guard where there is no tap token"
+[ "$(attach "" false)" = skipped ] \
+  || fail "an ad-hoc build is never pinned to a release"
+ok   "attach uploads nothing from an unsigned build"
 
 echo "all homebrew cask checks passed"

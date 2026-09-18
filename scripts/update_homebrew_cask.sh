@@ -2,22 +2,16 @@
 # Keep the cask in bostrot/homebrew-tap pointing at the bytes the GitHub
 # release actually serves.
 #
-#   scripts/update_homebrew_cask.sh check
 #   scripts/update_homebrew_cask.sh update <version> <path to the release dmg>
 #
-# `check` answers, before the build replaces anything on the release,
-# whether the tap can be read at all and which version the published cask
-# advertises. `update` rewrites the cask's version and sha256, commits it,
-# and reads it back to prove the change landed.
-#
-# The two halves exist because the failure they guard against is not the
-# cask going stale on its own: it is a *new* dmg landing on a release the
-# published cask already points at, while the tap cannot be written. The
-# cask then advertises a checksum nothing serves and every
-# `brew install --cask bostrot/tap/wsl-manager` dies with "Cask reports
-# different checksum" (bostrot/ai-tasks#63 — HOMEBREW_TAP_TOKEN had expired,
-# so three main builds in a row uploaded a freshly notarized 2.0.2 dmg that
-# the cask could never follow).
+# Rewrites the cask's version and sha256, commits it, and reads it back to
+# prove the change landed. The dmg it is handed must be the one the release
+# serves: a cask whose checksum matches nothing fails every
+# `brew install --cask bostrot/tap/wsl-manager` with "Cask reports different
+# checksum" (bostrot/ai-tasks#63 — HOMEBREW_TAP_TOKEN had expired, so the
+# cask could not follow the dmg that main builds kept replacing under 2.0.2).
+# The workflow no longer replaces a released dmg at all, so the cask only
+# ever moves forward to a new version.
 #
 # Environment:
 #   TAP_TOKEN  token with contents:write on the tap — required.
@@ -27,7 +21,7 @@
 #              fake so the whole thing is exercised offline.
 set -euo pipefail
 
-MODE="${1:?check or update}"
+MODE="${1:?update}"
 TAP="${TAP:-bostrot/homebrew-tap}"
 CASK_PATH="${CASK_PATH:-Casks/wsl-manager.rb}"
 GH_CLI="${GH_CLI:-gh}"
@@ -65,31 +59,8 @@ cask_field() { # <file> <field>
   sed -n -E "s|^  $2 \"(.*)\"\$|\1|p" "$1" | head -1
 }
 
-# `writable` is the question the caller is really asking, but what this can
-# answer for free is whether the tap reads back at all — which is how a dead
-# token presents (401 on the read, long before the PUT). A token that reads
-# and cannot write would still get this far and fail in `update`; the point
-# of asking early is the common case, not every case.
-if [ "$MODE" = "check" ]; then
-  if [ -z "$TOKEN" ]; then
-    echo "::warning::HOMEBREW_TAP_TOKEN is empty once whitespace is stripped." >&2
-    echo "writable=false"
-    exit 0
-  fi
-  if ! read_cask > "$WORK/cask.rb" 2>"$WORK/err"; then
-    cat "$WORK/err" >&2
-    tap_hint
-    echo "::warning::$TAP is unreadable with HOMEBREW_TAP_TOKEN; the cask cannot follow this build." >&2
-    echo "writable=false"
-    exit 0
-  fi
-  echo "writable=true"
-  echo "cask_version=$(cask_field "$WORK/cask.rb" version)"
-  exit 0
-fi
-
 if [ "$MODE" != "update" ]; then
-  echo "::error::unknown mode '$MODE'; expected check or update" >&2
+  echo "::error::unknown mode '$MODE'; expected update" >&2
   exit 2
 fi
 

@@ -147,66 +147,46 @@ jobs:
             wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg
             wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip
 
-      # Ask the tap what it serves *before* anything on the release moves.
-      # A signed rebuild replaces the dmg under a tag the published cask may
-      # already point at, and once that happens a cask the workflow cannot
-      # rewrite is a cask no download matches — which is how an expired
-      # HOMEBREW_TAP_TOKEN broke `brew install` for 2.0.2
-      # (bostrot/ai-tasks#63). Never fatal: the answer only decides whether
-      # the attach step below is allowed to clobber.
-      - name: Check the Homebrew tap (main only)
-        id: tap
-        if: github.ref == 'refs/heads/main' && env.HAS_TAP_TOKEN == 'true'
-        env:
-          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: ./scripts/update_homebrew_cask.sh check >> "$GITHUB_OUTPUT"
-
       # The Windows releaser creates the GitHub release on main; this only
       # attaches the mac artifacts to it once it exists. Best effort: on a
       # race (release not created yet) the nightly artifacts above still
-      # carry the build.
+      # carry the build, and the next main build attaches them.
+      #
+      # A dmg that is on the release stays there. Two casks point at it by
+      # checksum: bostrot/homebrew-tap, which the step below rewrites, and
+      # Homebrew's own homebrew/cask, which BrewTestBot bumps within hours of
+      # a tag and nothing here can touch. Replacing the dmg under a released
+      # tag changes the checksum under that cask, and every `brew upgrade
+      # wsl-manager` then fails with "Cask reports different checksum" until
+      # the next version — 2.3.0 broke that way on 2026-09-17, and 2.0.2 the
+      # same way for the tap when HOMEBREW_TAP_TOKEN had expired
+      # (bostrot/ai-tasks#63). Later builds of the same version only ever
+      # ship as nightly artifacts; a bad release asset is replaced by hand,
+      # together with a version bump.
+      #
+      # An unsigned build attaches nothing: it would pin an ad-hoc dmg that
+      # Gatekeeper rejects to the release for good.
       - name: Attach to release (main only)
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAP_WRITABLE: ${{ steps.tap.outputs.writable }}
-          CASK_VERSION: ${{ steps.tap.outputs.cask_version }}
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           TAG="v$VERSION"
+          if [ "$HAS_SIGNING" != "true" ]; then
+            echo "This build is unsigned; not attaching it to $TAG."
+            exit 0
+          fi
           if gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null \
                | grep -q -- '-macos.dmg$'; then
-            # An ad-hoc build must never replace a signed, notarized asset
-            # that is already on the release (2.0.0 was signed by hand).
-            if [ "$HAS_SIGNING" != "true" ]; then
-              echo "$TAG already carries a macOS dmg and this build is unsigned; not clobbering."
-              exit 0
-            fi
-            # A signed one must not either while the cask advertising this
-            # very version cannot be moved with it: a stale checksum fails
-            # every `brew install --cask bostrot/tap/wsl-manager`, whereas
-            # leaving the dmg alone only costs this build its release asset.
-            #
-            # An empty CASK_VERSION counts as "advertises this version". It
-            # means the read failed — the same expired token that makes the
-            # tap unwritable — so the one thing known is that the cask cannot
-            # be corrected, and what it points at is a guess. Guessing "some
-            # other version" is what published a checksum nothing served on
-            # 2026-09-09: the read 401'd, this test compared "" against
-            # "2.0.2", found them different and clobbered the dmg the cask
-            # was in fact advertising.
-            if [ "$HAS_TAP_TOKEN" = "true" ] && [ "$TAP_WRITABLE" != "true" ] \
-               && { [ -z "$CASK_VERSION" ] || [ "$CASK_VERSION" = "$VERSION" ]; }; then
-              echo "::warning::The tap is unwritable and its cask advertises ${CASK_VERSION:-a version this build could not read}; leaving $TAG's dmg alone."
-              exit 0
-            fi
+            echo "$TAG already carries a macOS dmg; leaving it alone."
+            exit 0
           fi
           for i in 1 2 3 4 5; do
             if gh release upload "$TAG" \
               "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.dmg" \
-              "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip" \
-              --clobber; then
+              "wsl2-distro-manager-v${{ steps.get_version.outputs.version }}-macos.zip"; then
               exit 0
             fi
             sleep 60
@@ -237,10 +217,10 @@ jobs:
           DMG="wsl2-distro-manager-v$VERSION-macos.dmg"
 
           # Hash what the release actually serves rather than the file just
-          # built: the attach step above deliberately leaves an asset in
-          # place instead of clobbering it, so the two are not always the
-          # same bytes. A cask whose sha256 does not match the download
-          # fails for every user with a checksum error.
+          # built: the attach step above never replaces an asset, so the two
+          # are the same bytes only for the build that attached it. A cask
+          # whose sha256 does not match the download fails for every user
+          # with a checksum error.
           if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
                --pattern "$DMG" --dir "$RUNNER_TEMP" --clobber; then
             echo "::notice::$TAG carries no $DMG; leaving the cask alone."
@@ -249,9 +229,9 @@ jobs:
           # Homebrew quarantines what a cask installs, so pointing it at a
           # build Gatekeeper rejects is worse than leaving it stale: every
           # `brew install` then dies with "damaged and can't be opened".
-          # Without the signing secrets the job packages an ad-hoc dmg, and
-          # the attach step will publish it when the release carries no mac
-          # asset yet — so check the artifact, not this job's own config.
+          # The attach step never publishes an ad-hoc dmg, but one uploaded
+          # by hand can be — so check the artifact, not this job's own
+          # config.
           if ! xcrun stapler validate "$RUNNER_TEMP/$DMG" >/dev/null 2>&1; then
             echo "::warning::$DMG is not notarized; leaving the cask where it is."
             exit 0
